@@ -62,7 +62,7 @@ LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_SYSTEM_SHARED_LIBRARIES := libc
 LOCAL_SHARED_LIBRARIES := libcxxabi
 
-ifneq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),arm arm64))
+ifneq ($(TARGET_ARCH),arm)
 	LOCAL_SHARED_LIBRARIES += libdl
 endif
 
