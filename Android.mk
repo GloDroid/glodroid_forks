@@ -73,7 +73,17 @@ LOCAL_MODULE := libc++
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
-LOCAL_LDFLAGS := -lrt -pthread
+
+ifeq ($(HOST_OS), darwin)
+LOCAL_LDFLAGS := \
+            -Wl,-unexported_symbols_list,external/libcxx/lib/libc++unexp.exp  \
+            -Wl,-reexported_symbols_list,external/libcxx/lib/libc++abi2.exp \
+            -Wl,-force_symbols_not_weak_list,external/libcxx/lib/notweak.exp \
+            -Wl,-force_symbols_weak_list,external/libcxx/lib/weak.exp
+else
+LOCAL_LDFLAGS :=  -lrt -lpthread
+endif
+
 LOCAL_SHARED_LIBRARIES := libcxxabi
 include $(BUILD_HOST_SHARED_LIBRARY)
 endif
