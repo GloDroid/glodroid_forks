@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+# Don't build for unbundled branches
+ifeq (,$(TARGET_BUILD_APPS))
+
 # libcxx isn't working on mips yet
 ifneq ($(TARGET_ARCH),$(filter $(TARGET_ARCH), mips mips64))
 LOCAL_PATH := $(call my-dir)
@@ -87,3 +90,5 @@ endif
 LOCAL_SHARED_LIBRARIES := libcxxabi
 include $(BUILD_HOST_SHARED_LIBRARY)
 endif
+
+endif  # TARGET_BUILD_APPS
