@@ -26,50 +26,6 @@ static void unimplemented_stub(const char* function) {
 
 #define UNIMPLEMENTED unimplemented_stub(__PRETTY_FUNCTION__)
 
-float wcstof(const wchar_t *, wchar_t **)
-{
-    UNIMPLEMENTED;
-    return 0;
-}
-
-double wcstod(const wchar_t *, wchar_t **)
-{
-    UNIMPLEMENTED;
-    return 0;
-}
-
-long double wcstold(const wchar_t *, wchar_t **)
-{
-    UNIMPLEMENTED;
-    return 0;
-}
-
-long long wcstoll(const wchar_t *, wchar_t **, int)
-{
-    UNIMPLEMENTED;
-    return 0;
-}
-
-unsigned long long wcstoull(const wchar_t *, wchar_t **, int)
-{
-    UNIMPLEMENTED;
-    return 0;
-}
-
-size_t wcsnrtombs(char *, const wchar_t **, size_t, size_t, mbstate_t *)
-{
-    UNIMPLEMENTED;
-    errno = EILSEQ;
-    return (size_t)-1;
-}
-
-size_t mbsnrtowcs(wchar_t *, const char **, size_t, size_t, mbstate_t *)
-{
-    UNIMPLEMENTED;
-    errno = EILSEQ;
-    return (size_t)-1;
-}
-
 nl_catd catopen(const char *, int)
 {
     UNIMPLEMENTED;
