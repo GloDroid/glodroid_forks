@@ -109,9 +109,6 @@ size_t wcsrtombs(char* restrict dst, const wchar_t** restrict src, size_t len,
 #if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
 #include <support/win32/support.h> // pull in *swprintf defines
 #endif // _LIBCPP_MSVCRT
-#ifdef __ANDROID__
-#include <support/android/wchar_bionic.h>
-#endif // __ANDROID__
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
