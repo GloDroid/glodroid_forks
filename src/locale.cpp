@@ -30,6 +30,8 @@
 #include "__sso_allocator"
 #if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
 #include <support/win32/locale_win32.h>
+#elif defined(__ANDROID__)
+#include <support/android/langinfo.h>
 #else // _LIBCPP_MSVCRT
 #include <langinfo.h>
 #endif // !_LIBCPP_MSVCRT

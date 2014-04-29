@@ -193,6 +193,8 @@ template <class charT> class messages_byname;
 #include <ctime>
 #if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
 #include <support/win32/locale_win32.h>
+#elif defined(__ANDROID__)
+#include <support/android/nl_types.h>
 #else // _LIBCPP_MSVCRT
 #include <nl_types.h>
 #endif  // !_LIBCPP_MSVCRT

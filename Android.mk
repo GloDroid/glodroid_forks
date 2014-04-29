@@ -1,0 +1,71 @@
+#
+# Copyright (C) 2014 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+LOCAL_PATH := $(call my-dir)
+
+LIBCXX_SRC_FILES := \
+	src/algorithm.cpp \
+	src/bind.cpp \
+	src/chrono.cpp \
+	src/condition_variable.cpp \
+	src/debug.cpp \
+	src/exception.cpp \
+	src/future.cpp \
+	src/hash.cpp \
+	src/ios.cpp \
+	src/iostream.cpp \
+	src/locale.cpp \
+	src/memory.cpp \
+	src/mutex.cpp \
+	src/new.cpp \
+	src/optional.cpp \
+	src/random.cpp \
+	src/regex.cpp \
+	src/shared_mutex.cpp \
+	src/stdexcept.cpp \
+	src/string.cpp \
+	src/strstream.cpp \
+	src/system_error.cpp \
+	src/thread.cpp \
+	src/typeinfo.cpp \
+	src/utility.cpp \
+	src/valarray.cpp \
+	src/stubs.cpp \
+
+LIBCXX_CPPFLAGS := \
+	-I$(LOCAL_PATH)/include/ \
+	-Iexternal/libcxxabi/include \
+	-std=c++11 \
+	-nostdlib \
+	-fexceptions \
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libc++
+LOCAL_CLANG := true
+LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
+LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
+LOCAL_SYSTEM_SHARED_LIBRARIES := libc
+LOCAL_SHARED_LIBRARIES := libcxxabi
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libc++
+LOCAL_CLANG := true
+LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
+LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
+LOCAL_LDFLAGS := -lrt -pthread
+LOCAL_SHARED_LIBRARIES := libcxxabi
+include $(BUILD_HOST_SHARED_LIBRARY)
