@@ -70,12 +70,6 @@ size_t mbsnrtowcs(wchar_t *, const char **, size_t, size_t, mbstate_t *)
     return (size_t)-1;
 }
 
-int mbtowc(wchar_t *, const char *, size_t)
-{
-    UNIMPLEMENTED;
-    return -1;
-}
-
 nl_catd catopen(const char *, int)
 {
     UNIMPLEMENTED;
