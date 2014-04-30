@@ -17,8 +17,6 @@
 # Don't build for unbundled branches
 ifeq (,$(TARGET_BUILD_APPS))
 
-# libcxx isn't working on mips yet
-ifneq ($(TARGET_ARCH),$(filter $(TARGET_ARCH), mips mips64))
 LOCAL_PATH := $(call my-dir)
 
 LIBCXX_SRC_FILES := \
@@ -65,6 +63,15 @@ LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_SYSTEM_SHARED_LIBRARIES := libc
 LOCAL_SHARED_LIBRARIES := libcxxabi
 
+# Bug: 14296739
+# The MIPS target in LLVM is spuriously generating a text relocation for
+# __gxx_personality_v0 in the .eh_frame section. This triggers a linker
+# warning, since it is not considered PIC. Disable warnings as errors
+# for this link step until we can get the bug fixed.
+ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH), mips mips64))
+LOCAL_LDFLAGS := -Wl,--no-fatal-warnings
+endif
+
 ifneq ($(TARGET_ARCH),arm)
 	LOCAL_SHARED_LIBRARIES += libdl
 endif
@@ -89,6 +96,5 @@ endif
 
 LOCAL_SHARED_LIBRARIES := libcxxabi
 include $(BUILD_HOST_SHARED_LIBRARY)
-endif
 
 endif  # TARGET_BUILD_APPS
