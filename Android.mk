@@ -50,7 +50,6 @@ LIBCXX_SRC_FILES := \
 
 LIBCXX_CPPFLAGS := \
 	-I$(LOCAL_PATH)/include/ \
-	-Iexternal/libcxxabi/include \
 	-std=c++11 \
 	-nostdinc++ \
 	-fexceptions \
@@ -59,10 +58,11 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
-LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
+LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS) -Iexternal/libcxxrt/src -DLIBCXXRT
 LOCAL_RTTI_FLAG := -frtti
+LOCAL_STATIC_LIBRARIES := libcxxrt
+LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_SYSTEM_SHARED_LIBRARIES := libc
-LOCAL_SHARED_LIBRARIES := libc++abi
 
 # Bug: 14296739
 # The MIPS target in LLVM is spuriously generating a text relocation for
@@ -89,16 +89,18 @@ LOCAL_LDFLAGS := -nodefaultlibs
 LOCAL_LDLIBS := -lc
 
 ifeq ($(HOST_OS), darwin)
+LOCAL_CPPFLAGS += -Iexternal/libcxxabi/include
 LOCAL_LDFLAGS += \
             -Wl,-unexported_symbols_list,external/libcxx/lib/libc++unexp.exp  \
-            -Wl,-reexported_symbols_list,external/libcxx/lib/libc++abi2.exp \
             -Wl,-force_symbols_not_weak_list,external/libcxx/lib/notweak.exp \
             -Wl,-force_symbols_weak_list,external/libcxx/lib/weak.exp
+LOCAL_STATIC_LIBRARIES := libc++abi
 else
-LOCAL_LDLIBS += -lrt -lpthread
+LOCAL_CPPFLAGS += -Iexternal/libcxxrt/src -DLIBCXXRT
+LOCAL_STATIC_LIBRARIES := libcxxrt libcompiler_rt libunwind
+LOCAL_LDLIBS += -lrt -lpthread -ldl
 endif
 
-LOCAL_SHARED_LIBRARIES := libc++abi libcompiler_rt
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 endif  # TARGET_BUILD_APPS
