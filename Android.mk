@@ -52,7 +52,7 @@ LIBCXX_CPPFLAGS := \
 	-I$(LOCAL_PATH)/include/ \
 	-Iexternal/libcxxabi/include \
 	-std=c++11 \
-	-nostdlib \
+	-nostdinc++ \
 	-fexceptions \
 
 include $(CLEAR_VARS)
@@ -83,18 +83,20 @@ LOCAL_MODULE := libc++
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
+LOCAL_LDFLAGS := -nodefaultlibs
+LOCAL_LDLIBS := -lc
 
 ifeq ($(HOST_OS), darwin)
-LOCAL_LDFLAGS := \
+LOCAL_LDFLAGS += \
             -Wl,-unexported_symbols_list,external/libcxx/lib/libc++unexp.exp  \
             -Wl,-reexported_symbols_list,external/libcxx/lib/libc++abi2.exp \
             -Wl,-force_symbols_not_weak_list,external/libcxx/lib/notweak.exp \
             -Wl,-force_symbols_weak_list,external/libcxx/lib/weak.exp
 else
-LOCAL_LDFLAGS :=  -lrt -lpthread
+LOCAL_LDLIBS += -lrt -lpthread
 endif
 
-LOCAL_SHARED_LIBRARIES := libcxxabi
+LOCAL_SHARED_LIBRARIES := libcxxabi libcompiler_rt
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 endif  # TARGET_BUILD_APPS
