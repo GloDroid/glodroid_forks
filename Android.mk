@@ -61,7 +61,7 @@ LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_SYSTEM_SHARED_LIBRARIES := libc
-LOCAL_SHARED_LIBRARIES := libcxxabi
+LOCAL_SHARED_LIBRARIES := libc++abi
 
 # Bug: 14296739
 # The MIPS target in LLVM is spuriously generating a text relocation for
@@ -96,7 +96,7 @@ else
 LOCAL_LDLIBS += -lrt -lpthread
 endif
 
-LOCAL_SHARED_LIBRARIES := libcxxabi libcompiler_rt
+LOCAL_SHARED_LIBRARIES := libc++abi libcompiler_rt
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 endif  # TARGET_BUILD_APPS
