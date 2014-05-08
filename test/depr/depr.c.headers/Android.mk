@@ -20,10 +20,6 @@ test_name := depr/depr.c.headers/stdarg_h
 test_src := stdarg_h.pass.cpp
 include external/libcxx/test/Android.build.mk
 
-test_name := depr/depr.c.headers/uchar_h
-test_src := uchar_h.pass.cpp
-include external/libcxx/test/Android.build.mk
-
 test_name := depr/depr.c.headers/string_h
 test_src := string_h.pass.cpp
 include external/libcxx/test/Android.build.mk
@@ -86,10 +82,6 @@ include external/libcxx/test/Android.build.mk
 
 test_name := depr/depr.c.headers/signal_h
 test_src := signal_h.pass.cpp
-include external/libcxx/test/Android.build.mk
-
-test_name := depr/depr.c.headers/math_h
-test_src := math_h.pass.cpp
 include external/libcxx/test/Android.build.mk
 
 test_name := depr/depr.c.headers/stdio_h

@@ -28,8 +28,4 @@ test_name := numerics/c.math/version_cmath
 test_src := version_cmath.pass.cpp
 include external/libcxx/test/Android.build.mk
 
-test_name := numerics/c.math/cmath
-test_src := cmath.pass.cpp
-include external/libcxx/test/Android.build.mk
-
 include $(call all-makefiles-under,$(LOCAL_PATH))

@@ -28,8 +28,4 @@ test_name := input.output/file.streams/c.files/version_ccstdio
 test_src := version_ccstdio.pass.cpp
 include external/libcxx/test/Android.build.mk
 
-test_name := input.output/file.streams/c.files/cstdio
-test_src := cstdio.pass.cpp
-include external/libcxx/test/Android.build.mk
-
 include $(call all-makefiles-under,$(LOCAL_PATH))

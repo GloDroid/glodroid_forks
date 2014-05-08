@@ -24,10 +24,6 @@ test_name := language.support/support.types/size_t
 test_src := size_t.pass.cpp
 include external/libcxx/test/Android.build.mk
 
-test_name := language.support/support.types/max_align_t
-test_src := max_align_t.pass.cpp
-include external/libcxx/test/Android.build.mk
-
 test_name := language.support/support.types/version
 test_src := version.pass.cpp
 include external/libcxx/test/Android.build.mk
