@@ -77,6 +77,7 @@ ifneq ($(TARGET_ARCH),arm)
 	LOCAL_SHARED_LIBRARIES += libdl
 endif
 
+LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -101,6 +102,7 @@ LOCAL_STATIC_LIBRARIES := libcxxrt libcompiler_rt libunwind
 LOCAL_LDLIBS += -lrt -lpthread -ldl
 endif
 
+LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 endif  # TARGET_BUILD_APPS
