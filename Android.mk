@@ -98,8 +98,9 @@ LOCAL_LDFLAGS += \
 LOCAL_STATIC_LIBRARIES := libc++abi
 else
 LOCAL_CPPFLAGS += -Iexternal/libcxxrt/src -DLIBCXXRT
-LOCAL_STATIC_LIBRARIES := libcxxrt libcompiler_rt libunwind
-LOCAL_LDLIBS += -lrt -lpthread -ldl
+LOCAL_STATIC_LIBRARIES := libcxxrt libunwind
+LOCAL_WHOLE_STATIC_LIBRARIES := libcompiler_rt
+LOCAL_LDLIBS += -lrt -lpthread -ldl -lm
 endif
 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
