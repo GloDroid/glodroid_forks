@@ -36,10 +36,6 @@ test_name := strings/c.strings/cstring
 test_src := cstring.pass.cpp
 include external/libcxx/test/Android.build.mk
 
-test_name := strings/c.strings/version_cuchar
-test_src := version_cuchar.pass.cpp
-include external/libcxx/test/Android.build.mk
-
 test_name := strings/c.strings/version_cwchar
 test_src := version_cwchar.pass.cpp
 include external/libcxx/test/Android.build.mk
@@ -50,10 +46,6 @@ include external/libcxx/test/Android.build.mk
 
 test_name := strings/c.strings/version_cstring
 test_src := version_cstring.pass.cpp
-include external/libcxx/test/Android.build.mk
-
-test_name := strings/c.strings/cuchar
-test_src := cuchar.pass.cpp
 include external/libcxx/test/Android.build.mk
 
 include $(call all-makefiles-under,$(LOCAL_PATH))

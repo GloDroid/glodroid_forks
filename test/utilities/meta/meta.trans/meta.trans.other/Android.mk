@@ -32,10 +32,6 @@ test_name := utilities/meta/meta.trans/meta.trans.other/underlying_type
 test_src := underlying_type.pass.cpp
 include external/libcxx/test/Android.build.mk
 
-test_name := utilities/meta/meta.trans/meta.trans.other/aligned_storage
-test_src := aligned_storage.pass.cpp
-include external/libcxx/test/Android.build.mk
-
 test_name := utilities/meta/meta.trans/meta.trans.other/enable_if
 test_src := enable_if.pass.cpp
 include external/libcxx/test/Android.build.mk
