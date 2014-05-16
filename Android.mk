@@ -58,7 +58,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
-LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS) -Iexternal/libcxxrt/src -DLIBCXXRT
+LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS) -Iexternal/libcxxrt/include -DLIBCXXRT
 LOCAL_RTTI_FLAG := -frtti
 LOCAL_STATIC_LIBRARIES := libcxxrt
 LOCAL_SHARED_LIBRARIES := libdl
@@ -97,7 +97,7 @@ LOCAL_LDFLAGS += \
             -Wl,-force_symbols_weak_list,external/libcxx/lib/weak.exp
 LOCAL_STATIC_LIBRARIES := libc++abi
 else
-LOCAL_CPPFLAGS += -Iexternal/libcxxrt/src -DLIBCXXRT
+LOCAL_CPPFLAGS += -Iexternal/libcxxrt/include -DLIBCXXRT
 LOCAL_STATIC_LIBRARIES := libcxxrt libunwind
 LOCAL_WHOLE_STATIC_LIBRARIES := libcompiler_rt
 LOCAL_LDLIBS += -lrt -lpthread -ldl -lm
