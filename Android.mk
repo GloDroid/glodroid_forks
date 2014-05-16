@@ -48,19 +48,31 @@ LIBCXX_SRC_FILES := \
 	src/valarray.cpp \
 	src/stubs.cpp \
 
+LIBCXX_C_INCLUDES := \
+	$(LOCAL_PATH)/include/ \
+
 LIBCXX_CPPFLAGS := \
-	-I$(LOCAL_PATH)/include/ \
 	-std=c++11 \
 	-nostdinc++ \
 	-fexceptions \
 
+# target static lib
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
-LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS) -Iexternal/libcxxrt/include -DLIBCXXRT
+LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES) external/libcxxrt/include
+LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS) -DLIBCXXRT
 LOCAL_RTTI_FLAG := -frtti
 LOCAL_WHOLE_STATIC_LIBRARIES := libcxxrt
+LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
+include $(BUILD_STATIC_LIBRARY)
+
+# target dynamic lib
+include $(CLEAR_VARS)
+LOCAL_MODULE := libc++
+LOCAL_CLANG := true
+LOCAL_WHOLE_STATIC_LIBRARIES := libc++
 LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_SYSTEM_SHARED_LIBRARIES := libc
 
@@ -80,25 +92,40 @@ endif
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_SHARED_LIBRARY)
 
+# host static lib
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
+LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_RTTI_FLAG := -frtti
-LOCAL_LDFLAGS := -nodefaultlibs
-LOCAL_LDLIBS := -lc
 
 ifeq ($(HOST_OS), darwin)
-LOCAL_CPPFLAGS += -Iexternal/libcxxabi/include
+LOCAL_C_INCLDUES += external/libcxxabi/include
+LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi
+else
+LOCAL_C_INCLUDES += external/libcxxrt/include
+LOCAL_CPPFLAGS += -DLIBCXXRT
+LOCAL_WHOLE_STATIC_LIBRARIES := libcompiler_rt libcxxrt
+endif
+LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
+include $(BUILD_HOST_STATIC_LIBRARY)
+
+# host dynamic lib
+include $(CLEAR_VARS)
+LOCAL_MODULE := libc++
+LOCAL_CLANG := true
+LOCAL_LDFLAGS := -nodefaultlibs
+LOCAL_LDLIBS := -lc
+LOCAL_WHOLE_STATIC_LIBRARIES := libc++
+
+ifeq ($(HOST_OS), darwin)
 LOCAL_LDFLAGS += \
             -Wl,-unexported_symbols_list,external/libcxx/lib/libc++unexp.exp  \
             -Wl,-force_symbols_not_weak_list,external/libcxx/lib/notweak.exp \
             -Wl,-force_symbols_weak_list,external/libcxx/lib/weak.exp
-LOCAL_STATIC_LIBRARIES := libc++abi
 else
-LOCAL_CPPFLAGS += -Iexternal/libcxxrt/src -DLIBCXXRT
-LOCAL_WHOLE_STATIC_LIBRARIES := libcompiler_rt libcxxrt
 LOCAL_LDLIBS += -lrt -lpthread -ldl -lm
 endif
 
