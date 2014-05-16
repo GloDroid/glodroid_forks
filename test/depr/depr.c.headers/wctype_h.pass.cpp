@@ -92,7 +92,7 @@ int main()
 {
     wint_t w = 0;
     wctrans_t wctr = 0;
-    wctype_t wct = (wctype_t)0;
+    wctype_t wct = 0;
     static_assert((std::is_same<decltype(iswalnum(w)), int>::value), "");
     static_assert((std::is_same<decltype(iswalpha(w)), int>::value), "");
     static_assert((std::is_same<decltype(iswblank(w)), int>::value), "");
