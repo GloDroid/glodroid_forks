@@ -21,4 +21,7 @@ LOCAL_C_INCLUDES := \
 	external/libcxxrt/include \
 	$(LOCAL_C_INCLUDES) \
 
+LOCAL_CPPFLAGS += -nostdinc++
+LOCAL_LDFLAGS += -nodefaultlibs
+LOCAL_LDLIBS += -lm -lc
 LOCAL_SHARED_LIBRARIES += libc++
