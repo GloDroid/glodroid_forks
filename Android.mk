@@ -102,7 +102,7 @@ LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_RTTI_FLAG := -frtti
 
 ifeq ($(HOST_OS), darwin)
-LOCAL_C_INCLDUES += external/libcxxabi/include
+LOCAL_C_INCLUDES += external/libcxxabi/include
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi
 else
 LOCAL_C_INCLUDES += external/libcxxrt/include
