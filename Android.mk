@@ -100,6 +100,7 @@ LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_RTTI_FLAG := -frtti
+LOCAL_MULTILIB := both
 
 ifeq ($(HOST_OS), darwin)
 LOCAL_C_INCLUDES += external/libcxxabi/include
@@ -119,6 +120,7 @@ LOCAL_CLANG := true
 LOCAL_LDFLAGS := -nodefaultlibs
 LOCAL_LDLIBS := -lc
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++
+LOCAL_MULTILIB := both
 
 ifeq ($(HOST_OS), darwin)
 LOCAL_LDFLAGS += \
