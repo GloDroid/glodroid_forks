@@ -46,7 +46,6 @@ LIBCXX_SRC_FILES := \
 	src/typeinfo.cpp \
 	src/utility.cpp \
 	src/valarray.cpp \
-	src/stubs.cpp \
 
 LIBCXX_C_INCLUDES := \
 	$(LOCAL_PATH)/include/ \
