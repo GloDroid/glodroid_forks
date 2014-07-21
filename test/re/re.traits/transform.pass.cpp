@@ -8,6 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: androideabi
+
 // <regex>
 
 // template <class charT> struct regex_traits;
