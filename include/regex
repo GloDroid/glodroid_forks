@@ -962,9 +962,18 @@ public:
     typedef _CharT                  char_type;
     typedef basic_string<char_type> string_type;
     typedef locale                  locale_type;
+#ifdef __ANDROID__
+    typedef uint16_t                char_class_type;
+#else
     typedef ctype_base::mask        char_class_type;
+#endif
 
+#ifdef __ANDROID__
+    static const char_class_type __regex_word = 0x8000;
+#else
     static const char_class_type __regex_word = 0x80;
+#endif
+
 private:
     locale __loc_;
     const ctype<char_type>* __ct_;
