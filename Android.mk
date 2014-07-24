@@ -76,15 +76,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES := libc++
 LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_SYSTEM_SHARED_LIBRARIES := libc libm
 
-# Bug: 14296739
-# The MIPS target in LLVM is spuriously generating a text relocation for
-# __gxx_personality_v0 in the .eh_frame section. This triggers a linker
-# warning, since it is not considered PIC. Disable warnings as errors
-# for this link step until we can get the bug fixed.
-ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH), mips mips64))
-LOCAL_LDFLAGS := -Wl,--no-fatal-warnings
-endif
-
 ifneq ($(TARGET_ARCH),arm)
 	LOCAL_SHARED_LIBRARIES += libdl
 endif
