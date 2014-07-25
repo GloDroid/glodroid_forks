@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: androideabi
+
 // <locale>
 
 // const locale& operator=(const locale& other) throw();

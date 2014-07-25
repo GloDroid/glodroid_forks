@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: androideabi
+
 // <iomanip>
 
 // template <class charT> T10 put_time(const struct tm* tmb, const charT* fmt);

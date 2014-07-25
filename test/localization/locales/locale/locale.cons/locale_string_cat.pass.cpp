@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: androideabi
+
 // <locale>
 
 // locale(const locale& other, const string& std_name, category cat);

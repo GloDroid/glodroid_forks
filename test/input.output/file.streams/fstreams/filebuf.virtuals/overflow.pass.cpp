@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: androideabi
+
 // <fstream>
 
 // int_type overflow(int_type c = traits::eof());

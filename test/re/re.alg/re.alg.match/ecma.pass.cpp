@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: androideabi
+
 // <regex>
 
 // template <class BidirectionalIterator, class Allocator, class charT, class traits>
