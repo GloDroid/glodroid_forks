@@ -122,4 +122,16 @@ endif
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_HOST_SHARED_LIBRARY)
 
+LIT := $(ANDROID_BUILD_TOP)/external/llvm/utils/lit/lit.py
+test-libcxx-host: libc++
+	LIT=$(LIT) LIT_MODE=host make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
+test-libcxx-target: libc++
+	LIT=$(LIT) LIT_MODE=device make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
+
+# Don't want to just make test-libcxx-(host|target) dependencies of this because
+# the two families can't be run concurrently.
+test-libcxx: libc++
+	LIT=$(LIT) LIT_MODE=host make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
+	LIT=$(LIT) LIT_MODE=device make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
+
 endif  # TARGET_BUILD_APPS
