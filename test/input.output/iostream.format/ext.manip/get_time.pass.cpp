@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: androideabi
+
 // <iomanip>
 
 // template <class charT> T9 get_time(struct tm* tmb, const charT* fmt);

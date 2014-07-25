@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: androideabi
+
 // <streambuf>
 
 // template <class charT, class traits = char_traits<charT> >

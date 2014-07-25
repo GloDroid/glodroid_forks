@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: androideabi
+
 // <regex>
 
 // template <class charT, class traits = regex_traits<charT>> class basic_regex;
