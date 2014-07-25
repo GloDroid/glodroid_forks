@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 //
 // XFAIL: apple-darwin
+// XFAIL: android
 // XFAIL: androideabi
 
 // <locale>
