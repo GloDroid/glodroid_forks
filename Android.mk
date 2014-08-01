@@ -14,9 +14,6 @@
 # limitations under the License.
 #
 
-# Don't build for unbundled branches
-ifeq (,$(TARGET_BUILD_APPS))
-
 LOCAL_PATH := $(call my-dir)
 
 LIBCXX_SRC_FILES := \
@@ -100,6 +97,9 @@ endif
 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_HOST_STATIC_LIBRARY)
+
+# Don't build for unbundled branches
+ifeq (,$(TARGET_BUILD_APPS))
 
 # host dynamic lib
 include $(CLEAR_VARS)
