@@ -9,6 +9,7 @@
 
 // XFAIL: android
 // XFAIL: androideabi
+// REQUIRES: locale.zh_CN.UTF-8
 
 // <locale>
 

@@ -9,6 +9,7 @@
 
 // XFAIL: android
 // XFAIL: androideabi
+// REQUIRES: locale.ru_RU.UTF-8
 
 // <locale>
 
