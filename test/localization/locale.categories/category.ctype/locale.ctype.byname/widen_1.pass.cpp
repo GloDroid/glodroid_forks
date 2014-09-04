@@ -7,9 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: android
-// XFAIL: androideabi
-
 // <locale>
 
 // template <class charT> class ctype_byname;
@@ -17,6 +14,8 @@
 // charT widen(char c) const;
 
 // I doubt this test is portable
+
+// XFAIL: linux
 
 #include <locale>
 #include <cassert>

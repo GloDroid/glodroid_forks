@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: android
-// XFAIL: androideabi
 // REQUIRES: locale.fr_FR.UTF-8
 
 // <locale>

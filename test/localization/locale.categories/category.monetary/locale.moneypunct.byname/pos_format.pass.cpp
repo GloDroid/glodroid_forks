@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 //
 // XFAIL: apple-darwin
-// XFAIL: android
-// XFAIL: androideabi
 
 // REQUIRES: locale.en_US.UTF-8
 // REQUIRES: locale.fr_FR.UTF-8
