@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// XFAIL: android
-// XFAIL: androideabi
 // XFAIL: apple-darwin
 
 // REQUIRES: locale.fr_FR.UTF-8

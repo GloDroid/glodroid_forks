@@ -7,9 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: android
-// XFAIL: androideabi
-
 // <locale>
 
 // template <class charT> class ctype_byname;
@@ -18,6 +15,7 @@
 
 // XFAIL: with_system_lib=x86_64-apple-darwin11
 // XFAIL: with_system_lib=x86_64-apple-darwin12
+// XFAIL: linux
 
 #include <locale>
 #include <cassert>
