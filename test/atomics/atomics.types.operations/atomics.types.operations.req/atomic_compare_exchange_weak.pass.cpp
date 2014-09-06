@@ -21,6 +21,8 @@
 #include <type_traits>
 #include <cassert>
 
+#include <cmpxchg_loop.h>
+
 template <class T>
 void
 test()
@@ -30,7 +32,7 @@ test()
         A a;
         T t(T(1));
         std::atomic_init(&a, t);
-        assert(std::atomic_compare_exchange_weak(&a, &t, T(2)) == true);
+        assert(c_cmpxchg_weak_loop(&a, &t, T(2)) == true);
         assert(a == T(2));
         assert(t == T(1));
         assert(std::atomic_compare_exchange_weak(&a, &t, T(3)) == false);
@@ -42,7 +44,7 @@ test()
         volatile A a;
         T t(T(1));
         std::atomic_init(&a, t);
-        assert(std::atomic_compare_exchange_weak(&a, &t, T(2)) == true);
+        assert(c_cmpxchg_weak_loop(&a, &t, T(2)) == true);
         assert(a == T(2));
         assert(t == T(1));
         assert(std::atomic_compare_exchange_weak(&a, &t, T(3)) == false);
