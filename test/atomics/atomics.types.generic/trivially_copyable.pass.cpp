@@ -47,6 +47,9 @@
 //     T operator=(T) noexcept;
 // };
 
+// Android's clang isn't new enough to have the fix for this test.
+// XFAIL: android
+
 #include <atomic>
 #include <new>
 #include <cassert>
