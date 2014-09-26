@@ -58,7 +58,7 @@ LIBCXX_CPPFLAGS := \
 
 # target static lib
 include $(CLEAR_VARS)
-LOCAL_MODULE := libc++
+LOCAL_MODULE := libc++_static
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
@@ -73,7 +73,7 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
-LOCAL_WHOLE_STATIC_LIBRARIES := libc++
+LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_CXX_STL := none
 
@@ -86,7 +86,7 @@ include $(BUILD_SHARED_LIBRARY)
 
 # host static lib
 include $(CLEAR_VARS)
-LOCAL_MODULE := libc++
+LOCAL_MODULE := libc++_static
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
@@ -109,7 +109,7 @@ LOCAL_MODULE := libc++
 LOCAL_CLANG := true
 LOCAL_LDFLAGS := -nodefaultlibs
 LOCAL_LDLIBS := -lc
-LOCAL_WHOLE_STATIC_LIBRARIES := libc++
+LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_MULTILIB := both
 LOCAL_CXX_STL := none
 
