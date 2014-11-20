@@ -11,6 +11,8 @@
 
 // template <class Y, class D> explicit shared_ptr(unique_ptr<Y, D>&&r);
 
+// UNSUPPORTED: asan, msan
+
 #include <memory>
 #include <new>
 #include <cstdlib>
@@ -53,6 +55,9 @@ struct A
 
 int A::count = 0;
 
+void fn ( const std::shared_ptr<int> &) {}
+void fn ( const std::shared_ptr<B> &) { assert (false); }
+
 int main()
 {
     {
@@ -89,4 +94,10 @@ int main()
     }
     }
     assert(A::count == 0);
+
+    // LWG 2399
+    {
+    throw_next = false;
+    fn(std::unique_ptr<int>(new int));
+    }
 }

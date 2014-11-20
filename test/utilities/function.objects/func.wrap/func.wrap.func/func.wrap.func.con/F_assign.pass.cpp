@@ -16,6 +16,8 @@
 //         && Convertible<Callable<F, ArgTypes...>::result_type
 //   operator=(F f);
 
+// UNSUPPORTED: asan, msan
+
 #include <functional>
 #include <new>
 #include <cstdlib>

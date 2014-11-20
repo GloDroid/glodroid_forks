@@ -7,15 +7,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: android
-// XFAIL: androideabi
-
 // <locale>
 
 // class money_put<charT, OutputIterator>
 
 // iter_type put(iter_type s, bool intl, ios_base& f, char_type fill,
 //               const string_type& units) const;
+
+// REQUIRES: locale.en_US.UTF-8
 
 #include <locale>
 #include <ios>

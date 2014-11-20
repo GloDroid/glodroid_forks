@@ -6,12 +6,16 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+//
+// UNSUPPORTED: libcpp-has-no-threads
 
 // <thread>
 
 // class thread
 
 // template <class F, class ...Args> thread(F&& f, Args&&... args);
+
+// UNSUPPORTED: asan, msan
 
 #include <thread>
 #include <new>
