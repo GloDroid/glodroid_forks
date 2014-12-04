@@ -7,15 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-// Bionic's wchar_t ctype functions are only valid for the ASCII range.
-// XFAIL: android
-// XFAIL: androideabi
-
 // <locale>
 
 // template <class charT> class ctype_byname;
 
 // bool is(mask m, charT c) const;
+
+// REQUIRES: locale.en_US.UTF-8
 
 #include <locale>
 #include <type_traits>

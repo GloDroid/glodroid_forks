@@ -7,7 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
- // test operator new[]
+// test operator new[]
+// NOTE: asan and msan will not call the new handler.
+// UNSUPPORTED: asan, msan
+
 
 #include <new>
 #include <cstddef>

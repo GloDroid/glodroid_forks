@@ -6,6 +6,8 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+//
+// UNSUPPORTED: libcpp-has-no-threads
 
 // <atomic>
 
@@ -47,9 +49,6 @@
 //     T operator=(T) noexcept;
 // };
 
-// Android's clang isn't new enough to have the fix for this test.
-// XFAIL: android
-
 #include <atomic>
 #include <new>
 #include <cassert>
@@ -57,18 +56,18 @@
 #include <chrono> // for nanoseconds
 
 struct TriviallyCopyable {
-	TriviallyCopyable ( int i ) : i_(i) {}
-	int i_;
-	};
+    TriviallyCopyable ( int i ) : i_(i) {}
+    int i_;
+    };
 
 template <class T>
 void test ( T t ) {
-	std::atomic<T> t0(t);
-	}
+    std::atomic<T> t0(t);
+    }
 
 int main()
 {
-	test(TriviallyCopyable(42));
-	test(std::this_thread::get_id());
-	test(std::chrono::nanoseconds(2));
+    test(TriviallyCopyable(42));
+    test(std::this_thread::get_id());
+    test(std::chrono::nanoseconds(2));
 }

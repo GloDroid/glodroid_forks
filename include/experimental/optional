@@ -151,11 +151,7 @@ public:
 
 #include <__undef_min_max>
 
-#ifdef _LIBCPP_DEBUG
-#   include <__debug>
-#else
-#   define _LIBCPP_ASSERT(x, m) ((void)0)
-#endif
+#include <__debug>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -696,4 +692,4 @@ _LIBCPP_END_NAMESPACE_STD
 
 #endif  // _LIBCPP_STD_VER > 11
 
-#endif  // _LIBCPP_ARRAY
+#endif  // _LIBCPP_OPTIONAL
