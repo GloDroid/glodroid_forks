@@ -13,6 +13,8 @@
 
 // ~ctype();
 
+// UNSUPPORTED: asan, msan
+
 #include <locale>
 #include <cassert>
 #include <new>

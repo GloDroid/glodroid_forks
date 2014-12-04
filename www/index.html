@@ -126,6 +126,8 @@
    <p>LLVM and Clang can self host in C++ and C++11 mode with libc++ on Linux.</p>
    <p>libc++ is also a 100% complete C++14 implementation. A list of new features and changes for 
       C++14 can be found <a href="cxx1y_status.html">here</a>.</p>
+   <p>A list of features and changes for the next C++ standard, known here as
+      "C++1z" (probably to be C++17) can be found <a href="cxx1z_status.html">here</a>.</p>
    <p>Implementation of the post-c++14 Technical Specifications is in progress. A list of features and
       the current status of these features can be found <a href="ts1z_status.html">here</a>.</p>
    <p>
@@ -139,9 +141,6 @@
    <!--======================================================================-->
    <p>These are the libc++ build bots</p>
    <ul>
-      <li><a href="http://lab.llvm.org:8013/builders/libcxx_clang-x86_64-darwin11-RA">
-        clang-libcxxabi-x86_64-darwin11
-      </a></li>
       <li><a href="http://llvm-amd64.freebsd.your.org/b/builders/libcxx-amd64-freebsd">
         clang-libcxxrt-x86_64-freebsd10
       </a></li>
@@ -150,6 +149,9 @@
       </a></li>
       <li><a href="http://lab.llvm.org:8011/builders/libcxx-libcxxabi-x86_64-linux-debian">
         clang-libcxxabi-x86_64-linux-debian
+      </a></li>
+      <li><a href="http://lab.llvm.org:8011/builders/libcxx-libcxxabi-x86_64-linux-ubuntu">
+        clang-libcxxabi-x86_64-linux-ubuntu
       </a></li>
     </ul>
 
@@ -431,6 +433,37 @@ End of search list.
           <li><code>clang++ -stdlib=libc++ helloworld.cpp -lcxxrt</code></li>
         </ul>
      </p>
+  </p>
+
+  <!--=====================================================================-->
+  <h2 id="local-abi">Using a local ABI library</h2>
+  <!--=====================================================================-->
+  <p>
+    <strong>Note: This is not recommended in almost all cases.</strong><br>
+    Generally these instructions should only be used when you can't install
+    your ABI library.
+  </p>
+  <p>
+    Normally you must link libc++ against a ABI shared library that the
+    linker can find.  If you want to build and test libc++ against an ABI
+    library not in the linker's path you need to set
+    <code>-DLIBCXX_CXX_ABI_LIBRARY_PATH=/path/to/abi/lib</code> when
+    configuring CMake.
+  </p>
+  <p>
+    An example build using libc++abi would look like:
+    <ul>
+    <li><code>CC=clang CXX=clang++ cmake
+              -DLIBCXX_CXX_ABI=libc++abi
+              -DLIBCXX_LIBCXXABI_INCLUDE_PATHS="/path/to/libcxxabi/include"
+              -DLIBCXX_CXX_ABI_LIBRARY_PATH="/path/to/libcxxabi-build/lib"
+              path/to/libcxx</code></li>
+    <li><code>make</code></li>
+    </ul>
+  </p>
+  <p>
+    When testing libc++ LIT will automatically link against the proper ABI
+    library.
   </p>
 
   <!--=====================================================================-->
