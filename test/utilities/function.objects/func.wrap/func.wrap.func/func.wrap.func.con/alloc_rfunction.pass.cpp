@@ -13,6 +13,8 @@
 
 // template<class A> function(allocator_arg_t, const A&, function&&);
 
+// UNSUPPORTED: asan, msan
+
 #include <functional>
 #include <cassert>
 

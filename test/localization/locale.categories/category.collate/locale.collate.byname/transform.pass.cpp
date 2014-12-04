@@ -7,14 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: android
-// XFAIL: androideabi
-
 // <locale>
 
 // template <class charT> class collate_byname
 
 // string_type transform(const charT* low, const charT* high) const;
+
+// REQUIRES: locale.en_US.UTF-8
 
 #include <locale>
 #include <string>

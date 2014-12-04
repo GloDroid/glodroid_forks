@@ -6,6 +6,8 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+//
+// UNSUPPORTED: libcpp-has-no-threads
 
 // <atomic>
 
@@ -66,6 +68,7 @@ int main()
         std::atomic_init(&obj, true);
         assert(obj == true);
         bool b0 = obj.is_lock_free();
+        (void)b0; // to placate scan-build
         obj.store(false);
         assert(obj == false);
         obj.store(true, std::memory_order_release);
@@ -121,6 +124,7 @@ int main()
         std::atomic_init(&obj, true);
         assert(obj == true);
         bool b0 = obj.is_lock_free();
+        (void)b0; // to placate scan-build
         obj.store(false);
         assert(obj == false);
         obj.store(true, std::memory_order_release);
@@ -176,6 +180,7 @@ int main()
         std::atomic_init(&obj, true);
         assert(obj == true);
         bool b0 = obj.is_lock_free();
+        (void)b0; // to placate scan-build
         obj.store(false);
         assert(obj == false);
         obj.store(true, std::memory_order_release);

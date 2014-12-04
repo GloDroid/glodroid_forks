@@ -7,12 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: android
-// XFAIL: androideabi
-
 // <iomanip>
 
 // template <class moneyT> T7 get_money(moneyT& mon, bool intl = false);
+
+// REQUIRES: locale.en_US.UTF-8
 
 #include <iomanip>
 #include <cassert>

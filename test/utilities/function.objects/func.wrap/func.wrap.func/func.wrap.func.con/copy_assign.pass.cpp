@@ -13,6 +13,8 @@
 
 // function& operator=(const function& f);
 
+// UNSUPPORTED: asan, msan
+
 #include <functional>
 #include <new>
 #include <cstdlib>
