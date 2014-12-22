@@ -15,6 +15,7 @@
 
 // TODO GLIBC uses a different string for positive and negative NAN numbers.
 // XFAIL: linux-gnu
+// XFAIL: android
 
 #include <locale>
 #include <ios>
