@@ -21,7 +21,6 @@ ifeq (,$(TARGET_BUILD_APPS))
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++_build_commands_$(ANDROID_DEVICE)
-LOCAL_CXX := $(LOCAL_PATH)/buildcmdscc $(CLANG_CXX)
 LOCAL_SRC_FILES := dummy.cpp
 LOCAL_CXX_STL := libc++
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../test/support
@@ -37,7 +36,6 @@ LOCAL_CPPFLAGS := \
 LOCAL_CPPFLAGS += -O0
 
 LOCAL_RTTI_FLAG := -frtti
-LOCAL_CLANG := true
-include $(BUILD_EXECUTABLE)
+include $(LOCAL_PATH)/testconfig.mk
 
 endif
