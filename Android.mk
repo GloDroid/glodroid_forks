@@ -126,15 +126,56 @@ LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 LIT := $(ANDROID_BUILD_TOP)/external/llvm/utils/lit/lit.py
-test-libcxx-host: libc++
-	LIT=$(LIT) LIT_MODE=host make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
-test-libcxx-target: libc++
-	LIT=$(LIT) LIT_MODE=device make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
+LIBCXX_CONFIGTESTS := $(ANDROID_BUILD_TOP)/external/libcxx/buildcmds/configtests.py
+LIBCXX_TEST_MK := $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
+
+test-libcxx-target: test-libcxx-target-clang
+test-libcxx-host: test-libcxx-host-clang
+
+test-libcxx-target-clang: libc++
+	python $(LIBCXX_CONFIGTESTS) --compiler=clang
+	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
+test-libcxx-target-gcc: libc++
+	python $(LIBCXX_CONFIGTESTS) --compiler=gcc
+	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
+test-libcxx-target-clang-32: libc++
+	python $(LIBCXX_CONFIGTESTS) --bitness=32 --compiler=clang
+	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
+test-libcxx-target-gcc-32: libc++
+	python $(LIBCXX_CONFIGTESTS) --bitness=32 --compiler=gcc
+	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
+test-libcxx-target-clang-64: libc++
+	python $(LIBCXX_CONFIGTESTS) --bitness=64 --compiler=clang
+	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
+test-libcxx-target-gcc-64: libc++
+	python $(LIBCXX_CONFIGTESTS) --bitness=64 --compiler=gcc
+	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
+
+test-libcxx-host-clang: libc++
+	python $(LIBCXX_CONFIGTESTS) --compiler=clang --host
+	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
+test-libcxx-host-gcc: libc++
+	python $(LIBCXX_CONFIGTESTS) --compiler=gcc --host
+	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
+test-libcxx-host-clang-32: libc++
+	python $(LIBCXX_CONFIGTESTS) --bitness=32 --compiler=clang --host
+	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
+test-libcxx-host-gcc-32: libc++
+	python $(LIBCXX_CONFIGTESTS) --bitness=32 --compiler=gcc --host
+	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
+test-libcxx-host-clang-64: libc++
+	python $(LIBCXX_CONFIGTESTS) --bitness=64 --compiler=clang --host
+	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
+test-libcxx-host-gcc-64: libc++
+	python $(LIBCXX_CONFIGTESTS) --bitness=64 --compiler=gcc --host
+	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
 
 # Don't want to just make test-libcxx-(host|target) dependencies of this because
 # the two families can't be run concurrently.
 test-libcxx: libc++
+	python buildcmds/configtests.py --host
 	LIT=$(LIT) LIT_MODE=host make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
+	python buildcmds/configtests.py
 	LIT=$(LIT) LIT_MODE=device make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
 
 endif  # TARGET_BUILD_APPS
