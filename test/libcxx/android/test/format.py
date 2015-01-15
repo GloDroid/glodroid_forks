@@ -104,7 +104,10 @@ class TestFormat(HostTestFormat):
         exec_file = os.path.basename(exec_path)
         cmd = ['adb', 'shell', 'rm', '-rf', self._working_directory(exec_file)]
         lit.util.executeCommand(cmd)
-        os.remove(exec_path)
+        try:
+            os.remove(exec_path)
+        except OSError:
+            pass
 
     def _run(self, exec_path, lit_config, in_dir=None):
         exec_file = os.path.basename(exec_path)
