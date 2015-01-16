@@ -28,7 +28,7 @@ class Configuration(libcxx.test.config.Configuration):
 
     def configure_build_cmds(self):
         os.chdir(self.config.android_root)
-        self.build_cmds_dir = os.path.join(self.src_root, 'buildcmds')
+        self.build_cmds_dir = os.path.join(self.libcxx_src_root, 'buildcmds')
         if not libcxx.android.build.mm(self.build_cmds_dir,
                                        self.config.android_root):
             raise RuntimeError('Could not generate build commands.')
@@ -81,7 +81,7 @@ class Configuration(libcxx.test.config.Configuration):
         if mode == 'device':
             return libcxx.android.test.format.TestFormat(
                 self.cxx_under_test,
-                self.src_root,
+                self.libcxx_src_root,
                 self.obj_root,
                 self.cxx_template,
                 self.link_template,
