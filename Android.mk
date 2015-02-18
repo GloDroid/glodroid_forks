@@ -72,8 +72,31 @@ LOCAL_CLANG := true
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_CXX_STL := none
+include $(BUILD_SHARED_LIBRARY)
 
+# NDK static lib
+include $(CLEAR_VARS)
+LOCAL_MODULE := libc++_ndk
+LOCAL_CLANG := true
+LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
+LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
+LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
+LOCAL_RTTI_FLAG := -frtti
+LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi libcompiler_rt
+LOCAL_CXX_STL := none
+include $(BUILD_STATIC_LIBRARY)
 
+# NDK dynamic lib
+include $(CLEAR_VARS)
+LOCAL_MODULE := libc++_ndk
+LOCAL_CLANG := true
+LOCAL_WHOLE_STATIC_LIBRARIES := libc++_ndk
+LOCAL_STATIC_LIBRARIES := libc_ndk
+LOCAL_SHARED_LIBRARIES := libdl
+LOCAL_SYSTEM_SHARED_LIBRARIES := libc
+LOCAL_LDFLAGS := -Wl,--hash-style=sysv
+LOCAL_CXX_STL := none
+LOCAL_STRIP_MODULE := keep_symbols
 include $(BUILD_SHARED_LIBRARY)
 
 # host static lib
