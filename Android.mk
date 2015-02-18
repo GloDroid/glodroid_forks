@@ -63,7 +63,6 @@ LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_RTTI_FLAG := -frtti
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi libcompiler_rt
 LOCAL_CXX_STL := none
-LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_STATIC_LIBRARY)
 
 # target dynamic lib
@@ -74,11 +73,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_CXX_STL := none
 
-ifneq ($(TARGET_ARCH),arm)
-	LOCAL_SHARED_LIBRARIES += libdl
-endif
 
-LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_SHARED_LIBRARY)
 
 # host static lib
@@ -97,7 +92,6 @@ ifneq ($(HOST_OS), darwin)
 LOCAL_WHOLE_STATIC_LIBRARIES += libcompiler_rt
 endif
 
-LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_HOST_STATIC_LIBRARY)
 
 # Don't build for unbundled branches
@@ -122,7 +116,6 @@ else
 LOCAL_LDLIBS += -lrt -lpthread -ldl -lm
 endif
 
-LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 LIT := $(ANDROID_BUILD_TOP)/external/llvm/utils/lit/lit.py
