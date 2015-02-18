@@ -57,7 +57,8 @@ class HostTestFormat(libcxx.test.format.LibcxxTestFormat):
 
 class TestFormat(HostTestFormat):
     def __init__(self, cxx_under_test, libcxx_src_root, libcxx_obj_root,
-                 cxx_template, link_template, device_dir, timeout):
+                 cxx_template, link_template, device_dir, timeout,
+                 exec_env=None):
         HostTestFormat.__init__(
             self,
             cxx_under_test,
@@ -67,6 +68,7 @@ class TestFormat(HostTestFormat):
             link_template,
             timeout)
         self.device_dir = device_dir
+        self.exec_env = {} if exec_env is None else exec_env
 
     def _working_directory(self, file_name):
         return os.path.join(self.device_dir, file_name)
@@ -111,9 +113,12 @@ class TestFormat(HostTestFormat):
 
     def _run(self, exec_path, lit_config, in_dir=None):
         exec_file = os.path.basename(exec_path)
-        shell_cmd = 'cd {} && {}; echo $?'.format(
-            self._working_directory(exec_file),
-            self._wd_path(exec_file, exec_file))
+        env_string = ' '.join(['='.join([k, v]) for k, v in
+                               self.exec_env.items()])
+        shell_cmd = 'cd {work_dir} && {env_string} {cmd}; echo $?'.format(
+            work_dir=self._working_directory(exec_file),
+            env_string=env_string,
+            cmd=self._wd_path(exec_file, exec_file))
         cmd = ['timeout', self.timeout, 'adb', 'shell', shell_cmd]
 
         # Tests will commonly fail with ETXTBSY. Possibly related to this bug:
