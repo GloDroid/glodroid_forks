@@ -102,7 +102,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
 LOCAL_LDFLAGS := -nodefaultlibs
-LOCAL_LDLIBS := -lc
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_MULTILIB := both
 LOCAL_CXX_STL := none
@@ -113,7 +112,7 @@ LOCAL_LDFLAGS += \
             -Wl,-force_symbols_not_weak_list,external/libcxx/lib/notweak.exp \
             -Wl,-force_symbols_weak_list,external/libcxx/lib/weak.exp
 else
-LOCAL_LDLIBS += -lrt -lpthread -ldl -lm
+LOCAL_LDLIBS += -lrt -lpthread -ldl
 endif
 
 include $(BUILD_HOST_SHARED_LIBRARY)
