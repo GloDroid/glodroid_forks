@@ -1,43 +1,25 @@
 import os
-import shlex
-import time
 
 import lit.util  # pylint: disable=import-error
 
+from libcxx.android.executors import AdbExecutor
+from libcxx.test.executor import LocalExecutor, TimeoutExecutor
 import libcxx.test.format
 import libcxx.android.adb as adb
 
 
 class HostTestFormat(libcxx.test.format.LibcxxTestFormat):
     # pylint: disable=super-init-not-called
-    def __init__(self, cxx_under_test, libcxx_src_root, libcxx_obj_root,
-                 cxx_template, link_template, timeout):
-        self.cxx_under_test = cxx_under_test
+    def __init__(self, cxx, libcxx_src_root, libcxx_obj_root, timeout,
+                 exec_env=None):
+        self.cxx = cxx
         self.libcxx_src_root = libcxx_src_root
         self.libcxx_obj_root = libcxx_obj_root
-        self.cxx_template = cxx_template
-        self.link_template = link_template
-        self.timeout = timeout
         self.use_verify_for_fail = False
+        self.executor = TimeoutExecutor(timeout, LocalExecutor())
+        self.exec_env = {} if exec_env is None else exec_env
 
-    def _compile(self, output_path, source_path, use_verify=False):
-        if use_verify:
-            raise NotImplementedError(
-                'AndroidConfiguration does not support use_verify mode.')
-        cxx_args = self.cxx_template.replace('%OUT%', output_path)
-        cxx_args = cxx_args.replace('%SOURCE%', source_path)
-        cmd = [self.cxx_under_test] + shlex.split(cxx_args)
-        out, err, exit_code = lit.util.executeCommand(cmd)
-        return cmd, out, err, exit_code
-
-    def _link(self, exec_path, object_path):
-        link_args = self.link_template.replace('%OUT%', exec_path)
-        link_args = link_args.replace('%SOURCE%', object_path)
-        cmd = [self.cxx_under_test] + shlex.split(link_args)
-        out, err, exit_code = lit.util.executeCommand(cmd)
-        return cmd, out, err, exit_code
-
-    def _run(self, exec_path, lit_config, in_dir=None):
+    def _run(self, exec_path, _, in_dir=None):
         cmd = [exec_path]
         # We need to use LD_LIBRARY_PATH because the build system's rpath is
         # relative, which won't work since we're running from /tmp. We can
@@ -56,19 +38,17 @@ class HostTestFormat(libcxx.test.format.LibcxxTestFormat):
 
 
 class TestFormat(HostTestFormat):
-    def __init__(self, cxx_under_test, libcxx_src_root, libcxx_obj_root,
-                 cxx_template, link_template, device_dir, timeout,
-                 exec_env=None):
+    def __init__(self, cxx, libcxx_src_root, libcxx_obj_root, device_dir,
+                 timeout, exec_env=None):
         HostTestFormat.__init__(
             self,
-            cxx_under_test,
+            cxx,
             libcxx_src_root,
             libcxx_obj_root,
-            cxx_template,
-            link_template,
-            timeout)
+            timeout,
+            exec_env)
         self.device_dir = device_dir
-        self.exec_env = {} if exec_env is None else exec_env
+        self.executor = TimeoutExecutor(timeout, AdbExecutor())
 
     def _working_directory(self, file_name):
         return os.path.join(self.device_dir, file_name)
@@ -111,31 +91,5 @@ class TestFormat(HostTestFormat):
         except OSError:
             pass
 
-    def _run(self, exec_path, lit_config, in_dir=None):
-        exec_file = os.path.basename(exec_path)
-        env_string = ' '.join(['='.join([k, v]) for k, v in
-                               self.exec_env.items()])
-        shell_cmd = 'cd {work_dir} && {env_string} {cmd}; echo $?'.format(
-            work_dir=self._working_directory(exec_file),
-            env_string=env_string,
-            cmd=self._wd_path(exec_file, exec_file))
-        cmd = ['timeout', self.timeout, 'adb', 'shell', shell_cmd]
-
-        # Tests will commonly fail with ETXTBSY. Possibly related to this bug:
-        # https://code.google.com/p/android/issues/detail?id=65857. Work around
-        # it by just waiting a second and then retrying.
-        for _ in range(10):
-            out, err, exit_code = lit.util.executeCommand(cmd)
-            if exit_code == 0:
-                if 'Text file busy' in out:
-                    time.sleep(1)
-                else:
-                    out = out.strip().split('\r\n')
-                    status_line = out[-1:][0]
-                    out = '\n'.join(out[:-1])
-                    exit_code = int(status_line)
-                    break
-            else:
-                err += '\nTimed out after {} seconds'.format(self.timeout)
-                break
-        return self._make_report(cmd, out, err, exit_code)
+    def _run(self, exec_path, _, in_dir=None):
+        raise NotImplementedError()
