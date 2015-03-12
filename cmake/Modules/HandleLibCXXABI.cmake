@@ -49,7 +49,7 @@ macro(setup_abi_lib abipathvar abidefines abilib abifiles abidirs)
       endif()
     endforeach()
     if (NOT found)
-      message(FATAL_ERROR "Failed to find ${fpath}")
+      message(WARNING "Failed to find ${fpath}")
     endif()
   endforeach()
 
@@ -78,13 +78,18 @@ if ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libstdc++" OR
 elseif ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libcxxabi")
   if (LIBCXX_CXX_ABI_INTREE)
     # Link against just-built "cxxabi" target.
-    set(CXXABI_LIBNAME cxxabi)
+    if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY)
+        set(CXXABI_LIBNAME cxxabi_static)
+    else()
+        set(CXXABI_LIBNAME cxxabi_shared)
+    endif()
+    set(LIBCXX_LIBCPPABI_VERSION "2" PARENT_SCOPE)
   else()
     # Assume c++abi is installed in the system, rely on -lc++abi link flag.
     set(CXXABI_LIBNAME "c++abi")
   endif()
   setup_abi_lib("LIBCXX_LIBCXXABI_INCLUDE_PATHS" ""
-    ${CXXABI_LIBNAME} "cxxabi.h" ""
+    ${CXXABI_LIBNAME} "cxxabi.h;__cxxabi_config.h" ""
     )
 elseif ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libcxxrt")
   setup_abi_lib("LIBCXX_LIBCXXRT_INCLUDE_PATHS" "-DLIBCXXRT"
