@@ -82,9 +82,19 @@ int main()
     assert(f);
     assert(f.target<int (A::*)(int) const>() != 0);
     }
+#if __cplusplus >= 201103L
     {
     Foo f;
     std::function<void(int)> fun = std::bind(&Foo::bar, &f, std::placeholders::_1);
+    fun(10);
+    }
+#endif
+    {
+    std::function<void(int)> fun(std::allocator_arg,
+                                 test_allocator<int(*)(int)>(),
+                                 &g);
+    assert(fun);
+    assert(fun.target<int(*)(int)>() != 0);
     fun(10);
     }
 }
