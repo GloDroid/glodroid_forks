@@ -34,22 +34,33 @@ else()
     )
 endif()
 
+#if LIBCXX_CXX_ABI_LIBRARY_PATH is defined we want to add it to the search path.
+if (DEFINED LIBCXX_CXX_ABI_LIBRARY_PATH)
+  target_link_libraries(cxx "-L${LIBCXX_CXX_ABI_LIBRARY_PATH}")
+endif()
+
 if (DEFINED LIBCXX_CXX_ABI_DEPS)
   add_dependencies(cxx LIBCXX_CXX_ABI_DEPS)
 endif()
 
+set(libraries "")
+if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY)
+    # TODO(ericwf): Remove these GNU specific linker flags and let CMake do the
+    # configuration. This will be more portable.
+    list(APPEND libraries "-Wl,--whole-archive" "-Wl,-Bstatic")
+    list(APPEND libraries "${LIBCXX_CXX_ABI_LIBRARY}")
+    list(APPEND libraries "-Wl,-Bdynamic" "-Wl,--no-whole-archive")
+else()
+    list(APPEND libraries "${LIBCXX_CXX_ABI_LIBRARY}")
+endif()
+
 # Generate library list.
-set(libraries ${LIBCXX_CXX_ABI_LIBRARY})
 append_if(libraries LIBCXX_HAS_PTHREAD_LIB pthread)
 append_if(libraries LIBCXX_HAS_C_LIB c)
 append_if(libraries LIBCXX_HAS_M_LIB m)
 append_if(libraries LIBCXX_HAS_RT_LIB rt)
 append_if(libraries LIBCXX_HAS_GCC_S_LIB gcc_s)
 
-#if LIBCXX_CXX_ABI_LIBRARY_PATH is defined we want to add it to the search path.
-if (DEFINED LIBCXX_CXX_ABI_LIBRARY_PATH)
-  target_link_libraries(cxx "-L${LIBCXX_CXX_ABI_LIBRARY_PATH}")
-endif()
 target_link_libraries(cxx ${libraries})
 
 # Setup flags.
@@ -57,6 +68,10 @@ append_if(LIBCXX_COMPILE_FLAGS LIBCXX_HAS_FPIC_FLAG -fPIC)
 append_if(LIBCXX_LINK_FLAGS LIBCXX_HAS_NODEFAULTLIBS_FLAG -nodefaultlibs)
 
 if ( APPLE )
+  if (NOT DEFINED LIBCXX_LIBCPPABI_VERSION)
+    set(LIBCXX_LIBCPPABI_VERSION "2")
+  endif()
+
   if ( CMAKE_OSX_DEPLOYMENT_TARGET STREQUAL "10.6" )
     list(APPEND LIBCXX_COMPILE_FLAGS "-U__STRICT_ANSI__")
     list(APPEND LIBCXX_LINK_FLAGS
