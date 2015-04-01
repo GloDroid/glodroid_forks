@@ -61,7 +61,7 @@ LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_RTTI_FLAG := -frtti
-LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi libcompiler_rt
+LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi
 LOCAL_CXX_STL := none
 include $(BUILD_STATIC_LIBRARY)
 
@@ -91,11 +91,6 @@ LOCAL_RTTI_FLAG := -frtti
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi
 LOCAL_MULTILIB := both
 LOCAL_CXX_STL := none
-
-ifneq ($(HOST_OS), darwin)
-LOCAL_WHOLE_STATIC_LIBRARIES += libcompiler_rt
-endif
-
 include $(BUILD_HOST_STATIC_LIBRARY)
 
 # Don't build for unbundled branches
