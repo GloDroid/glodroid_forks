@@ -17,10 +17,7 @@ class HostTestFormat(libcxx.test.format.LibcxxTestFormat):
         self.libcxx_obj_root = libcxx_obj_root
         self.use_verify_for_fail = False
         self.executor = TimeoutExecutor(timeout, LocalExecutor())
-        self.exec_env = {} if exec_env is None else exec_env
 
-    def _run(self, exec_path, _, in_dir=None):
-        cmd = [exec_path]
         # We need to use LD_LIBRARY_PATH because the build system's rpath is
         # relative, which won't work since we're running from /tmp. We can
         # either scan `cxx_under_test`/`link_template` to determine whether
@@ -32,9 +29,8 @@ class HostTestFormat(libcxx.test.format.LibcxxTestFormat):
             os.path.join(outdir, 'lib'),
             os.path.join(outdir, 'lib64'),
         ])
-        out, err, rc = lit.util.executeCommand(
-            cmd, cwd=in_dir, env={'LD_LIBRARY_PATH': libpath})
-        return self._make_report(cmd, out, err, rc)
+        default_env = {'LD_LIBRARY_PATH': libpath}
+        self.exec_env = default_env if exec_env is None else exec_env
 
 
 class TestFormat(HostTestFormat):
