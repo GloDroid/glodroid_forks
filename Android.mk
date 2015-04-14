@@ -73,11 +73,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_CXX_STL := none
 LOCAL_STATIC_LIBRARIES_arm := libunwind_llvm
-LOCAL_STATIC_LIBRARIES_arm64 := libunwindbacktrace
-LOCAL_STATIC_LIBRARIES_mips := libunwindbacktrace
-LOCAL_STATIC_LIBRARIES_mips64 := libunwindbacktrace
-LOCAL_STATIC_LIBRARIES_x86 := libunwindbacktrace
-LOCAL_STATIC_LIBRARIES_x86_64 := libunwindbacktrace
 include $(BUILD_SHARED_LIBRARY)
 
 # host static lib
