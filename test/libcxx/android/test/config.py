@@ -14,9 +14,9 @@ class Configuration(libcxx.test.config.Configuration):
 
     def configure(self):
         self.configure_src_root()
+        self.configure_build_cmds()
         self.configure_obj_root()
 
-        self.configure_build_cmds()
         self.configure_cxx()
         self.configure_triple()
         self.configure_features()
@@ -30,6 +30,13 @@ class Configuration(libcxx.test.config.Configuration):
             'Using link template: {}'.format(self.cxx.link_template))
         self.lit_config.note('Using available_features: %s' %
                              list(self.config.available_features))
+
+    def configure_obj_root(self):
+        test_config_file = os.path.join(self.build_cmds_dir, 'testconfig.mk')
+        if 'HOST_NATIVE_TEST' in open(test_config_file).read():
+            self.libcxx_obj_root = os.getenv('ANDROID_HOST_OUT')
+        else:
+            self.libcxx_obj_root = os.getenv('ANDROID_PRODUCT_OUT')
 
     def configure_build_cmds(self):
         os.chdir(self.config.android_root)
