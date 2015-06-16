@@ -47,7 +47,10 @@ class AdbExecutor(libcxx.test.executor.RemoteExecutor):
             if 'Text file busy' in out:
                 time.sleep(1)
             else:
-                out = out.strip().split('\r\n')
+                # The inner strip is to make sure we don't have garbage at
+                # either end of the list. The outer strip is for compatibility
+                # with old adbd's that would send \r\n.
+                out = [s.strip() for s in out.strip().split('\n')]
                 status_line = out[-1:][0]
                 out = '\n'.join(out[:-1])
                 exit_code = int(status_line)
