@@ -73,6 +73,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_CXX_STL := none
 LOCAL_STATIC_LIBRARIES_arm := libunwind_llvm
+LOCAL_LDFLAGS_arm := -Wl,--exclude-libs,libunwind_llvm.a
 include $(BUILD_SHARED_LIBRARY)
 
 # host static lib
