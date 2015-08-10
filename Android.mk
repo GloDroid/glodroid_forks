@@ -49,7 +49,7 @@ LIBCXX_C_INCLUDES := \
 	external/libcxxabi/include \
 
 LIBCXX_CPPFLAGS := \
-	-std=c++11 \
+	-std=c++14 \
 	-nostdinc++ \
 	-fexceptions \
 
