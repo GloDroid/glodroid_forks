@@ -17,40 +17,43 @@
 LOCAL_PATH := $(call my-dir)
 
 LIBCXX_SRC_FILES := \
-	src/algorithm.cpp \
-	src/bind.cpp \
-	src/chrono.cpp \
-	src/condition_variable.cpp \
-	src/debug.cpp \
-	src/exception.cpp \
-	src/future.cpp \
-	src/hash.cpp \
-	src/ios.cpp \
-	src/iostream.cpp \
-	src/locale.cpp \
-	src/memory.cpp \
-	src/mutex.cpp \
-	src/new.cpp \
-	src/optional.cpp \
-	src/random.cpp \
-	src/regex.cpp \
-	src/shared_mutex.cpp \
-	src/stdexcept.cpp \
-	src/string.cpp \
-	src/strstream.cpp \
-	src/system_error.cpp \
-	src/thread.cpp \
-	src/typeinfo.cpp \
-	src/utility.cpp \
-	src/valarray.cpp \
+    src/algorithm.cpp \
+    src/any.cpp \
+    src/bind.cpp \
+    src/chrono.cpp \
+    src/condition_variable.cpp \
+    src/config_elast.h \
+    src/debug.cpp \
+    src/exception.cpp \
+    src/future.cpp \
+    src/hash.cpp \
+    src/ios.cpp \
+    src/iostream.cpp \
+    src/locale.cpp \
+    src/memory.cpp \
+    src/mutex.cpp \
+    src/new.cpp \
+    src/optional.cpp \
+    src/random.cpp \
+    src/regex.cpp \
+    src/shared_mutex.cpp \
+    src/stdexcept.cpp \
+    src/string.cpp \
+    src/strstream.cpp \
+    src/support \
+    src/system_error.cpp \
+    src/thread.cpp \
+    src/typeinfo.cpp \
+    src/utility.cpp \
+    src/valarray.cpp \
 
 LIBCXX_C_INCLUDES := \
-	$(LOCAL_PATH)/include/ \
+    $(LOCAL_PATH)/include/ \
 
 LIBCXX_CPPFLAGS := \
-	-std=c++14 \
-	-nostdinc++ \
-	-fexceptions \
+    -std=c++14 \
+    -nostdinc++ \
+    -fexceptions \
 
 # target static lib
 include $(CLEAR_VARS)

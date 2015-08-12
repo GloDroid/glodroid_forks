@@ -17,7 +17,7 @@ class AdbExecutor(libcxx.test.executor.RemoteExecutor):
     def _remote_temp(self, is_dir):
         dir_arg = '-d' if is_dir else ''
         cmd = 'mktemp -q {} /data/local/tmp/libcxx.XXXXXXXXXX'.format(dir_arg)
-        temp_path, err, exitCode = self._execute_command_remote([cmd])
+        _, temp_path, err, exitCode = self._execute_command_remote([cmd])
         temp_path = temp_path.strip()
         if exitCode != 0:
             raise RuntimeError(err)
@@ -30,13 +30,18 @@ class AdbExecutor(libcxx.test.executor.RemoteExecutor):
         adb_cmd = ['adb', 'shell']
         if self.serial:
             adb_cmd.extend(['-s', self.serial])
-        if env:
+
+        delimiter = 'x'
+        probe_cmd = ' '.join(cmd) + '; echo {}$?'.format(delimiter)
+
+        env_cmd = []
+        if env is not None:
             env_cmd = ['env'] + ['%s=%s' % (k, v) for k, v in env.items()]
-        else:
-            env_cmd = []
-        remote_cmd = ' '.join(env_cmd + cmd + ['; echo $?'])
+
+        remote_cmd = ' '.join(env_cmd + [probe_cmd])
         if remote_work_dir != '.':
             remote_cmd = 'cd {} && {}'.format(remote_work_dir, remote_cmd)
+
         adb_cmd.append(remote_cmd)
 
         # Tests will commonly fail with ETXTBSY. Possibly related to this bug:
@@ -47,12 +52,14 @@ class AdbExecutor(libcxx.test.executor.RemoteExecutor):
             if 'Text file busy' in out:
                 time.sleep(1)
             else:
-                # The inner strip is to make sure we don't have garbage at
-                # either end of the list. The outer strip is for compatibility
-                # with old adbd's that would send \r\n.
-                out = [s.strip() for s in out.strip().split('\n')]
-                status_line = out[-1:][0]
-                out = '\n'.join(out[:-1])
-                exit_code = int(status_line)
-                break
-        return out, err, exit_code
+                out, delim, rc_str = out.rpartition(delimiter)
+                if delim == '':
+                    continue
+
+                out = out.strip()
+                try:
+                    exit_code = int(rc_str)
+                    break
+                except ValueError:
+                    continue
+        return adb_cmd, out, err, exit_code
