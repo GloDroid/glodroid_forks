@@ -46,7 +46,6 @@ LIBCXX_SRC_FILES := \
 
 LIBCXX_C_INCLUDES := \
 	$(LOCAL_PATH)/include/ \
-	external/libcxxabi/include \
 
 LIBCXX_CPPFLAGS := \
 	-std=c++14 \
@@ -59,6 +58,7 @@ LOCAL_MODULE := libc++_static
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_RTTI_FLAG := -frtti
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi
@@ -69,6 +69,7 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include external/libcxxabi/include
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_CXX_STL := none
@@ -82,6 +83,7 @@ LOCAL_MODULE := libc++_static
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_RTTI_FLAG := -frtti
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi
@@ -96,6 +98,7 @@ ifeq (,$(TARGET_BUILD_APPS))
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include external/libcxxabi/include
 LOCAL_LDFLAGS := -nodefaultlibs
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_MULTILIB := both
