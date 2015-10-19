@@ -6,6 +6,7 @@ import lit.Test        # pylint: disable=import-error
 import lit.TestRunner  # pylint: disable=import-error
 import lit.util        # pylint: disable=import-error
 
+from libcxx.test.executor import LocalExecutor as LocalExecutor
 import libcxx.util
 
 
@@ -59,6 +60,10 @@ class LibcxxTestFormat(object):
         is_pass_test = name.endswith('.pass.cpp')
         is_fail_test = name.endswith('.fail.cpp')
 
+        if test.config.unsupported:
+            return (lit.Test.UNSUPPORTED,
+                    "A lit.local.cfg marked this unsupported")
+
         res = lit.TestRunner.parseIntegratedTestScript(
             test, require_script=is_sh_test)
         # Check if a result for the test was returned. If so return that
@@ -75,7 +80,7 @@ class LibcxxTestFormat(object):
 
         # Dispatch the test based on its suffix.
         if is_sh_test:
-            if self.executor:
+            if not isinstance(self.executor, LocalExecutor):
                 # We can't run ShTest tests with a executor yet.
                 # For now, bail on trying to run them
                 return lit.Test.UNSUPPORTED, 'ShTest format not yet supported'
@@ -120,8 +125,8 @@ class LibcxxTestFormat(object):
             # should add a `// FILE-DEP: foo.dat` to each test to track this.
             data_files = [os.path.join(local_cwd, f)
                           for f in os.listdir(local_cwd) if f.endswith('.dat')]
-            out, err, rc = self.executor.run(exec_path, [exec_path],
-                                             local_cwd, data_files, env)
+            cmd, out, err, rc = self.executor.run(exec_path, [exec_path],
+                                                  local_cwd, data_files, env)
             if rc != 0:
                 report = libcxx.util.makeReport(cmd, out, err, rc)
                 report = "Compiled With: %s\n%s" % (compile_cmd, report)
@@ -136,13 +141,16 @@ class LibcxxTestFormat(object):
 
     def _evaluate_fail_test(self, test):
         source_path = test.getSourcePath()
-        # TODO: Move the checking of USE_VERIFY into
-        # lit.TestRunner.parseIntegratedTestScript by adding support for custom
-        # tags.
         with open(source_path, 'r') as f:
             contents = f.read()
-        use_verify = 'USE_VERIFY' in contents and self.use_verify_for_fail
-        extra_flags = ['-Xclang', '-verify'] if use_verify else []
+        verify_tags = ['expected-note', 'expected-remark', 'expected-warning',
+                       'expected-error', 'expected-no-diagnostics']
+        use_verify = self.use_verify_for_fail and \
+                     any([tag in contents for tag in verify_tags])
+        extra_flags = []
+        if use_verify:
+            extra_flags += ['-Xclang', '-verify',
+                            '-Xclang', '-verify-ignore-unexpected=note']
         cmd, out, err, rc = self.cxx.compile(source_path, out=os.devnull,
                                              flags=extra_flags)
         expected_rc = 0 if use_verify else 1
@@ -150,5 +158,6 @@ class LibcxxTestFormat(object):
             return lit.Test.PASS, ''
         else:
             report = libcxx.util.makeReport(cmd, out, err, rc)
-            return (lit.Test.FAIL,
-                    report + 'Expected compilation to fail!\n')
+            report_msg = ('Expected compilation to fail!' if not use_verify else
+                          'Expected compilation using verify to pass!')
+            return lit.Test.FAIL, report + report_msg + '\n'
