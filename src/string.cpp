@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#define _LIBCPP_EXTERN_TEMPLATE(...) extern template __VA_ARGS__;
-
 #include "string"
 #include "cstdlib"
 #include "cwchar"
@@ -41,7 +39,7 @@ void throw_helper( const string& msg )
 #ifndef _LIBCPP_NO_EXCEPTIONS
     throw T( msg );
 #else
-    printf("%s\n", msg.c_str());
+    fprintf(stderr, "%s\n", msg.c_str());
     abort();
 #endif
 }
