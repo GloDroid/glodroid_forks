@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: android
+
 // <locale>
 
 // class time_put<charT, OutputIterator>
