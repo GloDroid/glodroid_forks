@@ -80,6 +80,12 @@ cc_library_shared {
         },
         host: {
             ldflags: ["-nodefaultlibs"],
+            // Don't build for unbundled branches
+            product_variables: {
+                unbundled_build: {
+                    enabled: false,
+                },
+            },
         },
         darwin: {
             ldflags: [
@@ -100,10 +106,10 @@ cc_library_shared {
 }
 
 
-// Don't build for unbundled branches
 // ANDROIDMK TRANSLATION ERROR: unsupported conditional
-// ifeq (,$(TARGET_BUILD_APPS))
-// host dynamic lib
+// ifdef LIBCXX_TESTING
+// ANDROIDMK TRANSLATION ERROR: unsupported include
+// include $(LOCAL_PATH)/buildcmds/Android.mk
 
 // ANDROIDMK TRANSLATION ERROR: endif from unsupported contitional
 // endif
