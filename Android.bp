@@ -88,11 +88,9 @@ cc_library_shared {
             },
         },
         darwin: {
-            ldflags: [
-                "-Wl,-unexported_symbols_list,${SrcDir}/external/libcxx/lib/libc++unexp.exp",
-                "-Wl,-force_symbols_not_weak_list,${SrcDir}/external/libcxx/lib/notweak.exp",
-                "-Wl,-force_symbols_weak_list,${SrcDir}/external/libcxx/lib/weak.exp",
-            ],
+            unexported_symbols_list: "lib/libc++unexp.exp",
+            force_symbols_not_weak_list: "lib/notweak.exp",
+            force_symbols_weak_list: "lib/weak.exp",
         },
 
         linux: {
