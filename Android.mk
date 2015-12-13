@@ -94,9 +94,6 @@ LOCAL_MULTILIB := both
 LOCAL_CXX_STL := none
 include $(BUILD_HOST_STATIC_LIBRARY)
 
-# Don't build for unbundled branches
-ifeq (,$(TARGET_BUILD_APPS))
-
 # host dynamic lib
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
@@ -121,5 +118,3 @@ include $(BUILD_HOST_SHARED_LIBRARY)
 ifdef LIBCXX_TESTING
 include $(LOCAL_PATH)/buildcmds/Android.mk
 endif
-
-endif  # TARGET_BUILD_APPS
