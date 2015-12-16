@@ -80,12 +80,6 @@ cc_library_shared {
         },
         host: {
             ldflags: ["-nodefaultlibs"],
-            // Don't build for unbundled branches
-            product_variables: {
-                unbundled_build: {
-                    enabled: false,
-                },
-            },
         },
         darwin: {
             unexported_symbols_list: "lib/libc++unexp.exp",
