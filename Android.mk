@@ -22,7 +22,6 @@ LIBCXX_SRC_FILES := \
     src/bind.cpp \
     src/chrono.cpp \
     src/condition_variable.cpp \
-    src/config_elast.h \
     src/debug.cpp \
     src/exception.cpp \
     src/future.cpp \
@@ -40,7 +39,6 @@ LIBCXX_SRC_FILES := \
     src/stdexcept.cpp \
     src/string.cpp \
     src/strstream.cpp \
-    src/support \
     src/system_error.cpp \
     src/thread.cpp \
     src/typeinfo.cpp \
