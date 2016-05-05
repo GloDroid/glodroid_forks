@@ -14,8 +14,6 @@
 
 # IIO sensors HAL module implementation, compiled as hw/iio-sensors-hal.so
 
-ifeq ($(USE_IIO_SENSOR_HAL),true)
-
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -64,12 +62,8 @@ LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE_PATH := $(TARGET_OUT_VENDOR_EXECUTABLES)
 include $(BUILD_EXECUTABLE)
 
-endif
-
 
 # Activity HAL module implementation
-
-ifeq ($(USE_IIO_ACTIVITY_RECOGNITION_HAL),true)
 
 include $(CLEAR_VARS)
 
@@ -100,5 +94,3 @@ LOCAL_SRC_FILES := activity.c
 LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE_PATH := $(TARGET_OUT_VENDOR_EXECUTABLES)
 include $(BUILD_EXECUTABLE)
-
-endif
