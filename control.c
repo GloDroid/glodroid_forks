@@ -596,7 +596,7 @@ static void* acquisition_routine (void* param)
 			ret = write(sensor[s].thread_data_fd[1], &data, sizeof(sensors_event_t));
 
 			if (ret != sizeof(sensors_event_t))
-				ALOGE("S%d write failure: wrote %d, got %d\n", s, sizeof(sensors_event_t), ret);
+				ALOGE("S%d write failure: wrote %zd, got %d\n", s, sizeof(sensors_event_t), ret);
 		}
 
 		/* Check and honor termination requests */
@@ -1313,7 +1313,7 @@ static int integrate_device_report_from_dev(int dev_num, int fd)
 		return 0;
 	}
 
-	ALOGV("Driver timestamp on iio device %d: ts=%lld\n", dev_num, ts);
+	ALOGV("Driver timestamp on iio device %d: ts=%jd\n", dev_num, ts);
 
 	boot_to_rt_delta = get_timestamp_boot() - get_timestamp_realtime();
 
@@ -1347,7 +1347,7 @@ static int integrate_device_report_from_event(int dev_num, int fd)
 
 	ts = event.timestamp + boot_to_rt_delta;
 
-	ALOGV("Read event %lld from fd %d of iio device %d - ts %lld\n", event.id, fd, dev_num, ts);
+	ALOGV("Read event %lld from fd %d of iio device %d - ts %jd\n", event.id, fd, dev_num, ts);
 
 	/* Map device report to sensor reports */
 	for (s = 0; s < MAX_SENSORS; s++)
@@ -1681,7 +1681,7 @@ int sensor_set_delay (int s, int64_t ns)
 	float requested_sampling_rate;
 
 	if (ns <= 0) {
-		ALOGE("Invalid delay requested on sensor %d: %lld\n", s, ns);
+		ALOGE("Invalid delay requested on sensor %d: %jd\n", s, ns);
 		return -EINVAL;
 	}
 
