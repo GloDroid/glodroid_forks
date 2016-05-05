@@ -18,6 +18,7 @@
  * This file represents the entry point for the activity recognition HAL module.
  */
 
+#include <stdlib.h>
 #include <utils/Log.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
