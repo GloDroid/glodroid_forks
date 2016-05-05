@@ -35,7 +35,7 @@ src_files := $(src_path)/entry.c \
 ifeq ($(HAL_AUTODETECT),true)
 LOCAL_MODULE := iio-sensors-hal
 else
-LOCAL_MODULE := sensors.$(TARGET_BOARD_PLATFORM)
+LOCAL_MODULE := sensors.iio
 endif
 LOCAL_MODULE_OWNER := intel
 LOCAL_MODULE_RELATIVE_PATH := hw
@@ -70,7 +70,7 @@ activity_src_files := $(src_path)/activity_event_entry.c \
 		      $(src_path)/discovery.c \
 	              $(src_path)/utils.c \
 
-LOCAL_MODULE := activity_recognition.$(TARGET_BOARD_PLATFORM)
+LOCAL_MODULE := activity_recognition.iio
 LOCAL_MODULE_OWNER := intel
 LOCAL_MODULE_RELATIVE_PATH := hw
 LOCAL_MODULE_TAGS := optional
