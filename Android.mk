@@ -32,7 +32,6 @@ src_files := $(src_path)/entry.c \
 	     $(src_path)/discovery.c \
 	     $(src_path)/accel-calibration.c \
 
-LOCAL_C_INCLUDES += $(LOCAL_PATH) vendor/intel/hardware/iio-sensors
 ifeq ($(HAL_AUTODETECT),true)
 LOCAL_MODULE := iio-sensors-hal
 else
@@ -53,7 +52,6 @@ LOCAL_PROPRIETARY_MODULE := true
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_C_INCLUDES += $(LOCAL_PATH) vendor/intel/hardware/iio-sensors
 LOCAL_MODULE := sens
 LOCAL_CFLAGS := -DLOG_TAG=\"Sensors\" -fvisibility=hidden
 LOCAL_SHARED_LIBRARIES := liblog libcutils libdl
@@ -72,7 +70,6 @@ activity_src_files := $(src_path)/activity_event_entry.c \
 		      $(src_path)/discovery.c \
 	              $(src_path)/utils.c \
 
-LOCAL_C_INCLUDES += $(LOCAL_PATH) vendor/intel/hardware/iio-sensors
 LOCAL_MODULE := activity_recognition.$(TARGET_BOARD_PLATFORM)
 LOCAL_MODULE_OWNER := intel
 LOCAL_MODULE_RELATIVE_PATH := hw
@@ -86,7 +83,6 @@ LOCAL_PROPRIETARY_MODULE := true
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_C_INCLUDES += $(LOCAL_PATH) vendor/intel/hardware/iio-sensors
 LOCAL_MODULE := activity
 LOCAL_CFLAGS := -DLOG_TAG=\"Activity\" -fvisibility=hidden
 LOCAL_SHARED_LIBRARIES := liblog libcutils libdl
