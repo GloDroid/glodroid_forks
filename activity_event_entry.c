@@ -32,6 +32,7 @@
 #include "common.h"
 #include "activity_event_utils.h"
 #include <linux/iio/events.h>
+#include <linux/iio/types.h>
 
 #define MODULE_VERSION		1
 #define HAL_VERSION		0
