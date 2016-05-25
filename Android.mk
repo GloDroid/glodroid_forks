@@ -52,6 +52,7 @@ LIBCXX_CPPFLAGS := \
     -std=c++14 \
     -nostdinc++ \
     -fexceptions \
+    -DLIBCXX_BUILDING_LIBCXXABI \
 
 # target static lib
 include $(CLEAR_VARS)
