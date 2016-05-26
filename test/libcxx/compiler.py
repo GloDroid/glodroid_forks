@@ -1,3 +1,12 @@
+#===----------------------------------------------------------------------===##
+#
+#                     The LLVM Compiler Infrastructure
+#
+# This file is dual licensed under the MIT and the University of Illinois Open
+# Source Licenses. See LICENSE.TXT for details.
+#
+#===----------------------------------------------------------------------===##
+
 import os
 import lit.util
 import libcxx.util
@@ -161,3 +170,28 @@ class CXXCompiler(object):
             return True
         else:
             return False
+
+    def addWarningFlagIfSupported(self, flag):
+        """
+        addWarningFlagIfSupported - Add a warning flag if the compiler
+        supports it. Unlike addCompileFlagIfSupported, this function detects
+        when "-Wno-<warning>" flags are unsupported. If flag is a
+        "-Wno-<warning>" GCC will not emit an unknown option diagnostic unless
+        another error is triggered during compilation.
+        """
+        assert isinstance(flag, str)
+        if not flag.startswith('-Wno-'):
+            return self.addCompileFlagIfSupported(flag)
+        flags = ['-Werror', flag]
+        cmd = self.compileCmd('-', os.devnull, flags)
+        # Remove '-v' because it will cause the command line invocation
+        # to be printed as part of the error output.
+        # TODO(EricWF): Are there other flags we need to worry about?
+        if '-v' in cmd:
+            cmd.remove('-v')
+        out, err, rc = lit.util.executeCommand(cmd, input='#error\n')
+        assert rc != 0
+        if flag in err:
+            return False
+        self.compile_flags += [flag]
+        return True
