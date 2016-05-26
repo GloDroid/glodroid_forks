@@ -6,6 +6,9 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+//
+// UNSUPPORTED: libcpp-has-no-threads
+// UNSUPPORTED: c++98, c++03
 
 // <future>
 
@@ -25,5 +28,6 @@ typedef volatile std::packaged_task<A(int, char)> VPT;
 
 int main()
 {
-    PT p { VPT{} };
+    PT p { VPT{} }; // expected-error {{no matching constructor for initialization of 'PT' (aka 'packaged_task<A (int, char)>')}}
+    // expected-note@future:* 1 {{candidate template ignored: disabled by 'enable_if'}}
 }
