@@ -78,11 +78,8 @@
 
 #include <cstdarg>
 
-#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-zero-length"
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
 
 int main()
 {
@@ -91,11 +88,6 @@ int main()
     std::size_t s = 0;
     char* cp = 0;
     std::va_list va;
-    ((void)fp); // Prevent unused warning
-    ((void)fpos); // Prevent unused warning
-    ((void)s); // Prevent unused warning
-    ((void)cp); // Prevent unused warning
-    ((void)va); // Prevent unused warning
     static_assert((std::is_same<decltype(std::fclose(fp)), int>::value), "");
     static_assert((std::is_same<decltype(std::fflush(fp)), int>::value), "");
     static_assert((std::is_same<decltype(std::setbuf(fp,cp)), void>::value), "");

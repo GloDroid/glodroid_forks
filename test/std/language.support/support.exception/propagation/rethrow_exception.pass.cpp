@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <exception>
 
 // void rethrow_exception [[noreturn]] (exception_ptr p);

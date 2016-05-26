@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <string>
 
 // basic_string<charT,traits,Allocator>&
@@ -19,7 +18,6 @@
 #include <stdexcept>
 #include <cassert>
 
-#include "test_macros.h"
 #include "min_allocator.h"
 
 template <class S>
@@ -32,7 +30,7 @@ test(S s, typename S::size_type pos1, S str, typename S::size_type pos2,
     try
     {
         s.insert(pos1, str, pos2, n);
-        LIBCPP_ASSERT(s.__invariants());
+        assert(s.__invariants());
         assert(pos1 <= old_size && pos2 <= str.size());
         assert(s == expected);
     }
@@ -52,7 +50,7 @@ test_npos(S s, typename S::size_type pos1, S str, typename S::size_type pos2, S 
     try
     {
         s.insert(pos1, str, pos2);
-        LIBCPP_ASSERT(s.__invariants());
+        assert(s.__invariants());
         assert(pos1 <= old_size && pos2 <= str.size());
         assert(s == expected);
     }
@@ -1747,7 +1745,7 @@ int main()
     test29<S>();
     test30<S>();
     }
-#if TEST_STD_VER >= 11
+#if __cplusplus >= 201103L
     {
     typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
     test0<S>();

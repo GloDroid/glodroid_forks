@@ -15,7 +15,6 @@
 
 #include <regex>
 #include <cassert>
-#include "test_macros.h"
 
 void
 test(std::regex_constants::syntax_option_type syntax)

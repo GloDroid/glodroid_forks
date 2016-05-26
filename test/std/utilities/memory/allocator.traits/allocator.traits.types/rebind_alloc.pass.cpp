@@ -19,8 +19,6 @@
 #include <memory>
 #include <type_traits>
 
-#include "test_macros.h"
-
 template <class T>
 struct ReboundA {};
 
@@ -63,39 +61,19 @@ struct E
     template <class U> struct rebind {typedef ReboundA<U> otter;};
 };
 
-template <class T>
-struct F {
-    typedef T value_type;
-private:
-    template <class>
-    struct rebind { typedef void other; };
-};
-
-template <class T>
-struct G {
-    typedef T value_type;
-    template <class>
-    struct rebind {
-    private:
-        typedef void other;
-    };
-};
-
 int main()
 {
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
     static_assert((std::is_same<std::allocator_traits<A<char> >::rebind_alloc<double>, ReboundA<double> >::value), "");
     static_assert((std::is_same<std::allocator_traits<B<int, char> >::rebind_alloc<double>, ReboundB<double, char> >::value), "");
     static_assert((std::is_same<std::allocator_traits<C<char> >::rebind_alloc<double>, C<double> >::value), "");
     static_assert((std::is_same<std::allocator_traits<D<int, char> >::rebind_alloc<double>, D<double, char> >::value), "");
     static_assert((std::is_same<std::allocator_traits<E<char> >::rebind_alloc<double>, E<double> >::value), "");
-    static_assert((std::is_same<std::allocator_traits<F<char> >::rebind_alloc<double>, F<double> >::value), "");
-    static_assert((std::is_same<std::allocator_traits<G<char> >::rebind_alloc<double>, G<double> >::value), "");
-#else
+#else  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
     static_assert((std::is_same<std::allocator_traits<A<char> >::rebind_alloc<double>::other, ReboundA<double> >::value), "");
     static_assert((std::is_same<std::allocator_traits<B<int, char> >::rebind_alloc<double>::other, ReboundB<double, char> >::value), "");
     static_assert((std::is_same<std::allocator_traits<C<char> >::rebind_alloc<double>::other, C<double> >::value), "");
     static_assert((std::is_same<std::allocator_traits<D<int, char> >::rebind_alloc<double>::other, D<double, char> >::value), "");
     static_assert((std::is_same<std::allocator_traits<E<char> >::rebind_alloc<double>::other, E<double> >::value), "");
-#endif
+#endif  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
 }

@@ -14,20 +14,25 @@
 // Test unique_ptr move assignment
 
 #include <memory>
-
-#include "test_macros.h"
+#include <cassert>
 
 // Can't copy from const lvalue
 
+struct A
+{
+    static int count;
+    A() {++count;}
+    A(const A&) {++count;}
+    ~A() {--count;}
+};
+
+int A::count = 0;
+
 int main()
 {
-    const std::unique_ptr<int> s(new int);
-    std::unique_ptr<int> s2;
-#if TEST_STD_VER >= 11
-    s2 = s; // expected-error {{cannot be assigned because its copy assignment operator is implicitly deleted}}
-#else
-    // NOTE: The error says "constructor" because the assignment operator takes
-    // 's' by value and attempts to copy construct it.
-    s2 = s; // expected-error {{no matching constructor for initialization}}
-#endif
+    {
+    const std::unique_ptr<A> s(new A);
+    std::unique_ptr<A> s2;
+    s2 = s;
+    }
 }

@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <exception>
 
 // class nested_exception;
@@ -112,7 +111,7 @@ int main()
             std::throw_with_nested(Final());
             assert(false);
         }
-        catch (const Final &)
+        catch (const Final &f)
         {
         }
     }

@@ -18,13 +18,12 @@
 //                    regex_constants::match_flag_type = 
 //                      regex_constants::match_default) = delete;
 
+#if __cplusplus <= 201402L
+#error
+#else
+
 #include <regex>
 #include <cassert>
-#include "test_macros.h"
-
-#if TEST_STD_VER < 14
-#error
-#endif
 
 int main()
 {
@@ -34,3 +33,4 @@ int main()
         std::regex_match(std::string("abcde"), m, re);
     }
 }
+#endif

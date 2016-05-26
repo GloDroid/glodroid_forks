@@ -27,7 +27,6 @@
 
 #include <regex>
 #include <type_traits>
-#include "test_macros.h"
 
 template <class _Tp>
 void where(const _Tp &) {}

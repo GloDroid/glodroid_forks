@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // test operator new (nothrow)
 
 // asan and msan will not call the new handler.

@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <cassert>
 
-#include "test_macros.h"
 #include "min_allocator.h"
 
 template <class S>
@@ -26,8 +25,8 @@ test(S s1, S s2)
     S s1_ = s1;
     S s2_ = s2;
     s1.swap(s2);
-    LIBCPP_ASSERT(s1.__invariants());
-    LIBCPP_ASSERT(s2.__invariants());
+    assert(s1.__invariants());
+    assert(s2.__invariants());
     assert(s1 == s2_);
     assert(s2 == s1_);
 }
@@ -53,7 +52,7 @@ int main()
     test(S("abcdefghijklmnopqrst"), S("1234567890"));
     test(S("abcdefghijklmnopqrst"), S("12345678901234567890"));
     }
-#if TEST_STD_VER >= 11
+#if __cplusplus >= 201103L
     {
     typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
     test(S(""), S(""));

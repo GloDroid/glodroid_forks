@@ -6,8 +6,6 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-//
-// UNSUPPORTED: libcpp-has-no-threads
 
 // <future>
 
@@ -16,36 +14,53 @@
 // future(const future&) = delete;
 
 #include <future>
-
-#include "test_macros.h"
+#include <cassert>
 
 int main()
 {
-#if TEST_STD_VER >= 11
     {
-        std::future<int> f0;
-        std::future<int> f = f0; // expected-error {{call to deleted constructor of 'std::future<int>'}}
+        typedef int T;
+        std::promise<T> p;
+        std::future<T> f0 = p.get_future();
+        std::future<T> f = f0;
+        assert(!f0.valid());
+        assert(f.valid());
     }
     {
-        std::future<int &> f0;
-        std::future<int &> f = f0; // expected-error {{call to deleted constructor of 'std::future<int &>'}}
+        typedef int T;
+        std::future<T> f0;
+        std::future<T> f = f0;
+        assert(!f0.valid());
+        assert(!f.valid());
     }
     {
-        std::future<void> f0;
-        std::future<void> f = f0; // expected-error {{call to deleted constructor of 'std::future<void>'}}
-    }
-#else
-    {
-        std::future<int> f0;
-        std::future<int> f = f0; // expected-error {{calling a private constructor of class 'std::__1::future<int>'}}
-    }
-    {
-        std::future<int &> f0;
-        std::future<int &> f = f0; // expected-error {{calling a private constructor of class 'std::__1::future<int &>'}}
+        typedef int& T;
+        std::promise<T> p;
+        std::future<T> f0 = p.get_future();
+        std::future<T> f = f0;
+        assert(!f0.valid());
+        assert(f.valid());
     }
     {
-        std::future<void> f0;
-        std::future<void> f = f0; // expected-error {{calling a private constructor of class 'std::__1::future<void>'}}
+        typedef int& T;
+        std::future<T> f0;
+        std::future<T> f = std::move(f0);
+        assert(!f0.valid());
+        assert(!f.valid());
     }
-#endif
+    {
+        typedef void T;
+        std::promise<T> p;
+        std::future<T> f0 = p.get_future();
+        std::future<T> f = f0;
+        assert(!f0.valid());
+        assert(f.valid());
+    }
+    {
+        typedef void T;
+        std::future<T> f0;
+        std::future<T> f = f0;
+        assert(!f0.valid());
+        assert(!f.valid());
+    }
 }

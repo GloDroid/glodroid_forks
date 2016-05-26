@@ -16,7 +16,6 @@
 #include <regex>
 #include <cassert>
 
-#include "test_macros.h"
 #include "test_allocator.h"
 
 template <class CharT, class Allocator>

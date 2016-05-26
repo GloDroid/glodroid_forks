@@ -12,6 +12,10 @@
 #include "exception"
 #include "new"
 
+#ifndef __has_include
+#define __has_include(inc) 0
+#endif
+
 #if defined(__APPLE__) && !defined(LIBCXXRT)
   #include <cxxabi.h>
 
@@ -25,16 +29,16 @@
     #define __terminate_handler  __cxxabiapple::__cxa_terminate_handler
     #define __unexpected_handler __cxxabiapple::__cxa_unexpected_handler
   #endif  // _LIBCPPABI_VERSION
-#elif defined(LIBCXXRT) || defined(LIBCXX_BUILDING_LIBCXXABI)
+#elif defined(LIBCXXRT) || defined(LIBCXX_BUILDING_LIBCXXABI) || __has_include(<cxxabi.h>)
   #include <cxxabi.h>
   using namespace __cxxabiv1;
   #if defined(LIBCXXRT) || defined(_LIBCPPABI_VERSION)
     #define HAVE_DEPENDENT_EH_ABI 1
   #endif
-#elif !defined(__GLIBCXX__) // defined(LIBCXX_BUILDING_LIBCXXABI)
+#elif !defined(__GLIBCXX__) // __has_include(<cxxabi.h>)
   static std::terminate_handler  __terminate_handler;
   static std::unexpected_handler __unexpected_handler;
-#endif // defined(LIBCXX_BUILDING_LIBCXXABI)
+#endif // __has_include(<cxxabi.h>)
 
 namespace std
 {
