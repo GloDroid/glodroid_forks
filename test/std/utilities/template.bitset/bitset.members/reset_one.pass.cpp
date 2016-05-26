@@ -7,13 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: libcpp-no-exceptions
 // test bitset<N>& reset(size_t pos);
 
 #include <bitset>
 #include <cassert>
 
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wtautological-compare"
+#endif
 
 template <std::size_t N>
 void test_reset_one()

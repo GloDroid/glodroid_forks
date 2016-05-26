@@ -15,7 +15,8 @@
 #include <string>
 #include <cassert>
 
-#include "../../input_iterator.h"
+#include "test_macros.h"
+#include "test_iterators.h"
 #include "min_allocator.h"
 
 template <class S, class It>
@@ -23,9 +24,25 @@ void
 test(S s, It first, It last, S expected)
 {
     s.assign(first, last);
-    assert(s.__invariants());
+    LIBCPP_ASSERT(s.__invariants());
     assert(s == expected);
 }
+
+#ifndef TEST_HAS_NO_EXCEPTIONS
+template <class S, class It>
+void
+test_exceptions(S s, It first, It last)
+{
+	S aCopy = s;
+    try {
+   	    s.assign(first, last);
+    	assert(false);
+    }
+    catch (...) {}
+    LIBCPP_ASSERT(s.__invariants());
+    assert(s == aCopy);
+}
+#endif
 
 int main()
 {
@@ -87,7 +104,7 @@ int main()
     test(S("12345678901234567890"), input_iterator<const char*>(s), input_iterator<const char*>(s+52),
          S("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"));
     }
-#if __cplusplus >= 201103L
+#if TEST_STD_VER >= 11
     {
     typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
     const char* s = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -146,5 +163,20 @@ int main()
     test(S("12345678901234567890"), input_iterator<const char*>(s), input_iterator<const char*>(s+52),
          S("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"));
     }
+#endif
+#ifndef TEST_HAS_NO_EXCEPTIONS
+	{ // test iterator operations that throw
+    typedef std::string S;
+    typedef ThrowingIterator<char> TIter;
+    typedef input_iterator<TIter> IIter;
+    const char* s = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    test_exceptions(S(), IIter(TIter(s, s+10, 4, TIter::TAIncrement)), IIter());
+    test_exceptions(S(), IIter(TIter(s, s+10, 5, TIter::TADereference)), IIter());
+    test_exceptions(S(), IIter(TIter(s, s+10, 6, TIter::TAComparison)), IIter());
+
+    test_exceptions(S(), TIter(s, s+10, 4, TIter::TAIncrement), TIter());
+    test_exceptions(S(), TIter(s, s+10, 5, TIter::TADereference), TIter());
+    test_exceptions(S(), TIter(s, s+10, 6, TIter::TAComparison), TIter());
+	}
 #endif
 }
