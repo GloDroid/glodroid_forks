@@ -22,8 +22,6 @@
 #include <cstdlib>
 #include <cassert>
 
-#include "test_macros.h"
-
 std::shared_timed_mutex m;
 
 typedef std::chrono::system_clock Clock;
@@ -31,13 +29,6 @@ typedef Clock::time_point time_point;
 typedef Clock::duration duration;
 typedef std::chrono::milliseconds ms;
 typedef std::chrono::nanoseconds ns;
-
-
-#if !defined(TEST_HAS_SANITIZERS)
-ms Tolerance = ms(200);
-#else
-ms Tolerance = ms(200 * 5);
-#endif
 
 void f()
 {
@@ -50,7 +41,7 @@ void f()
     time_point t1 = Clock::now();
     m.unlock_shared();
     ns d = t1 - t0 - ms(250);
-    assert(d < Tolerance);  // within tolerance
+    assert(d < ms(200));  // within 200ms
 }
 
 int main()

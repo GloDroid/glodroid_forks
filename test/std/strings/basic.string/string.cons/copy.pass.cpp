@@ -14,7 +14,6 @@
 #include <string>
 #include <cassert>
 
-#include "test_macros.h"
 #include "test_allocator.h"
 #include "min_allocator.h"
 
@@ -23,7 +22,7 @@ void
 test(S s1)
 {
     S s2 = s1;
-    LIBCPP_ASSERT(s2.__invariants());
+    assert(s2.__invariants());
     assert(s2 == s1);
     assert(s2.capacity() >= s2.size());
     assert(s2.get_allocator() == s1.get_allocator());
@@ -38,7 +37,7 @@ int main()
     test(S("1", A(5)));
     test(S("1234567890123456789012345678901234567890123456789012345678901234567890", A(7)));
     }
-#if TEST_STD_VER >= 11
+#if __cplusplus >= 201103L
     {
     typedef min_allocator<char> A;
     typedef std::basic_string<char, std::char_traits<char>, A> S;

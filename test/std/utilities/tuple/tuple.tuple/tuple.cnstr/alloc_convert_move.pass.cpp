@@ -40,16 +40,6 @@ struct D
     explicit D(int i) : B(i) {}
 };
 
-struct Explicit {
-  int value;
-  explicit Explicit(int x) : value(x) {}
-};
-
-struct Implicit {
-  int value;
-  Implicit(int x) : value(x) {}
-};
-
 int main()
 {
     {
@@ -90,15 +80,5 @@ int main()
         assert(std::get<0>(t1) == 1);
         assert(std::get<1>(t1) == 2);
         assert(std::get<2>(t1)->id_ == 3);
-    }
-    {
-        std::tuple<int> t1(42);
-        std::tuple<Explicit> t2{std::allocator_arg, std::allocator<void>{}, std::move(t1)};
-        assert(std::get<0>(t2).value == 42);
-    }
-    {
-        std::tuple<int> t1(42);
-        std::tuple<Implicit> t2 = {std::allocator_arg, std::allocator<void>{}, std::move(t1)};
-        assert(std::get<0>(t2).value == 42);
     }
 }

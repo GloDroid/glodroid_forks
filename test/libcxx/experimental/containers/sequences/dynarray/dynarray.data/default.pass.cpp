@@ -7,13 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03, c++11
-
 // dynarray.data
 
 // T* data() noexcept;
 // const T* data() const noexcept;
 
+  
+#include <__config>
+
+#if _LIBCPP_STD_VER > 11
 
 #include <experimental/dynarray>
 #include <cassert>
@@ -25,44 +27,41 @@
 using std::experimental::dynarray;
 
 template <class T>
-void dyn_test_const(const dynarray<T> &dyn, bool CheckEquals = true) {
+void dyn_test_const ( const dynarray<T> &dyn ) {
     const T *data = dyn.data ();
     assert ( data != NULL );
-    if (CheckEquals) {
-        assert ( std::equal ( dyn.begin(), dyn.end(), data ));
+    assert ( std::equal ( dyn.begin(), dyn.end(), data ));
     }
-}
 
 template <class T>
-void dyn_test( dynarray<T> &dyn, bool CheckEquals = true) {
+void dyn_test ( dynarray<T> &dyn ) {
     T *data = dyn.data ();
     assert ( data != NULL );
-    if (CheckEquals) {
-        assert ( std::equal ( dyn.begin(), dyn.end(), data ));
+    assert ( std::equal ( dyn.begin(), dyn.end(), data ));
     }
-}
 
     
 
 template <class T>
-void test(const T &val, bool DefaultValueIsIndeterminate = false) {
+void test ( const T &val ) {
     typedef dynarray<T> dynA;
-
-    const bool CheckDefaultValues = !DefaultValueIsIndeterminate;
-
-    dynA d1(4);
-    dyn_test(d1, CheckDefaultValues);
-    dyn_test_const(d1, CheckDefaultValues);
     
-    dynA d2 (7, val);
+    dynA d1 ( 4 );
+    dyn_test ( d1 );
+    dyn_test_const ( d1 );
+    
+    dynA d2 ( 7, val );
     dyn_test ( d2 );
     dyn_test_const ( d2 );
-}
+    }
 
 int main()
 {
-    test<int>(14, /* DefaultValueIsIndeterminate */ true);
-    test<double>(14.0, true);
+    test<int> ( 14 );
+    test<double> ( 14.0 );
     test<std::complex<double>> ( std::complex<double> ( 14, 0 ));
     test<std::string> ( "fourteen" );
 }
+#else
+int main() {}
+#endif

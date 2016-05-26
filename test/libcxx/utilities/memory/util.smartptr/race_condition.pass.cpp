@@ -87,8 +87,7 @@ int main() {
   }
   {
     // Test with in-place shared_count.
-    int val = 42;
-    Ptr p = std::make_shared<int>(val);
+    Ptr p = std::make_shared<int>(42);
     run_test(p);
     assert(p.use_count() == 1);
   }

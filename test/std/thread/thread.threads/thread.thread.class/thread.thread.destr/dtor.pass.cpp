@@ -9,6 +9,8 @@
 //
 // UNSUPPORTED: libcpp-has-no-threads
 
+// NOTE: TSAN will report this test as leaking a thread.
+// XFAIL: tsan
 
 // <thread>
 
@@ -45,7 +47,7 @@ bool G::op_run = false;
 
 void f1()
 {
-    std::_Exit(0);
+    std::exit(0);
 }
 
 int main()

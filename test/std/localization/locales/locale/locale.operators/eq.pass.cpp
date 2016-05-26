@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// REQUIRES: locale.en_US.UTF-8
-
 // <locale>
 
 // basic_string<char> name() const;

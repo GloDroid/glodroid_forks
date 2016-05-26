@@ -12,13 +12,12 @@
 // integral
 
 #include <type_traits>
-#include "test_macros.h"
 
 template <class T>
 void test_integral_imp()
 {
     static_assert(!std::is_void<T>::value, "");
-#if TEST_STD_VER > 11
+#if _LIBCPP_STD_VER > 11
     static_assert(!std::is_null_pointer<T>::value, "");
 #endif
     static_assert( std::is_integral<T>::value, "");
@@ -44,8 +43,6 @@ void test_integral()
     test_integral_imp<const volatile T>();
 }
 
-struct incomplete_type;
-
 int main()
 {
     test_integral<bool>();
@@ -65,7 +62,4 @@ int main()
     test_integral<__int128_t>();
     test_integral<__uint128_t>();
 #endif
-
-//  LWG#2581
-    static_assert(!std::is_integral<incomplete_type>::value, "");
 }

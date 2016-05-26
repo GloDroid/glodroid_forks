@@ -17,7 +17,6 @@
 
 class MoveOnly
 {
-    friend class MoveOnly2;
     MoveOnly(const MoveOnly&);
     MoveOnly& operator=(const MoveOnly&);
 

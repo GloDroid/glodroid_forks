@@ -15,12 +15,6 @@
 // RUN: %cxx -o %t.exe %t.first.o %t.second.o %flags %link_flags
 // RUN: %run
 
-
-// Prevent <ext/hash_map> from generating deprecated warnings for this test.
-#if defined(__DEPRECATED)
-#undef __DEPRECATED
-#endif
-
 #include <algorithm>
 #include <array>
 #include <bitset>
@@ -56,7 +50,6 @@
 #include <deque>
 #include <exception>
 #include <experimental/algorithm>
-#include <experimental/any>
 #include <experimental/chrono>
 #include <experimental/dynarray>
 #include <experimental/optional>

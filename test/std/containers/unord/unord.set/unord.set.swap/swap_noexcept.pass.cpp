@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <unordered_set>
 
 // void swap(unordered_set& c)
@@ -28,7 +26,6 @@
 #include <unordered_set>
 #include <cassert>
 
-#include "test_macros.h"
 #include "MoveOnly.h"
 #include "test_allocator.h"
 
@@ -118,6 +115,7 @@ struct some_alloc3
 
 int main()
 {
+#if __has_feature(cxx_noexcept)
     {
         typedef std::unordered_set<MoveOnly> C;
         C c1, c2;
@@ -194,5 +192,7 @@ int main()
     C c1, c2;
     static_assert( noexcept(swap(c1, c2)), "");
     }
+#endif
+
 #endif
 }

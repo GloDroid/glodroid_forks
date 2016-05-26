@@ -18,7 +18,7 @@
 
 #include "__locale"
 #include "algorithm"
-#include "include/config_elast.h"
+#include "config_elast.h"
 #include "istream"
 #include "limits"
 #include "memory"
@@ -155,7 +155,7 @@ ios_base::getloc() const
 }
 
 // xalloc
-#if defined(_LIBCPP_HAS_C_ATOMIC_IMP) && !defined(_LIBCPP_HAS_NO_THREADS)
+#if __has_feature(cxx_atomic) && !defined(_LIBCPP_HAS_NO_THREADS)
 atomic<int> ios_base::__xindex_ = ATOMIC_VAR_INIT(0);
 #else
 int ios_base::__xindex_ = 0;

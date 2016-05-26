@@ -20,7 +20,6 @@
 #include <vector>
 #include <iterator>
 #include <numeric>
-#include <algorithm>   // for sort
 #include <cassert>
 
 template <class T>
