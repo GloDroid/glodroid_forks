@@ -24,8 +24,8 @@ extern "C" {
 }
 #endif
 
-#include <support/xlocale/__posix_l_fallback.h>
-#include <support/xlocale/__strtonum_fallback.h>
+// Share implementation with Newlib
+#include <support/xlocale/xlocale.h>
 
 #endif // defined(__ANDROID__)
 #endif // _LIBCPP_SUPPORT_ANDROID_LOCALE_BIONIC_H

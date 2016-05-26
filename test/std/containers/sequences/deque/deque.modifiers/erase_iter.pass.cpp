@@ -12,8 +12,6 @@
 // iterator erase(const_iterator p)
 
 #include <deque>
-#include <algorithm>
-#include <iterator>
 #include <cassert>
 
 #include "min_allocator.h"

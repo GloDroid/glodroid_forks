@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <unordered_map>
 
 // template <class Key, class T, class Hash = hash<Key>, class Pred = equal_to<Key>,

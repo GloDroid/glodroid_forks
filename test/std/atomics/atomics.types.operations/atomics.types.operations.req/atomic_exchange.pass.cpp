@@ -24,11 +24,10 @@
 #include <type_traits>
 #include <cassert>
 
-#include "atomic_helpers.h"
-
 template <class T>
-struct TestFn {
-  void operator()() const {
+void
+test()
+{
     typedef std::atomic<T> A;
     A t;
     std::atomic_init(&t, T(1));
@@ -38,11 +37,37 @@ struct TestFn {
     std::atomic_init(&vt, T(3));
     assert(std::atomic_exchange(&vt, T(4)) == T(3));
     assert(vt == T(4));
-  }
-};
+}
 
+struct A
+{
+    int i;
+
+    explicit A(int d = 0) noexcept {i=d;}
+
+    friend bool operator==(const A& x, const A& y)
+        {return x.i == y.i;}
+};
 
 int main()
 {
-    TestEachAtomicType<TestFn>()();
+    test<A>();
+    test<char>();
+    test<signed char>();
+    test<unsigned char>();
+    test<short>();
+    test<unsigned short>();
+    test<int>();
+    test<unsigned int>();
+    test<long>();
+    test<unsigned long>();
+    test<long long>();
+    test<unsigned long long>();
+    test<wchar_t>();
+#ifndef _LIBCPP_HAS_NO_UNICODE_CHARS
+    test<char16_t>();
+    test<char32_t>();
+#endif  // _LIBCPP_HAS_NO_UNICODE_CHARS
+    test<int*>();
+    test<const int*>();
 }

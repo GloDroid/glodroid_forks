@@ -12,13 +12,12 @@
 // union
 
 #include <type_traits>
-#include "test_macros.h"
 
 template <class T>
 void test_union_imp()
 {
     static_assert(!std::is_void<T>::value, "");
-#if TEST_STD_VER > 11
+#if _LIBCPP_STD_VER > 11
     static_assert(!std::is_null_pointer<T>::value, "");
 #endif
     static_assert(!std::is_integral<T>::value, "");
@@ -50,12 +49,7 @@ union Union
     double __;
 };
 
-struct incomplete_type;
-
 int main()
 {
     test_union<Union>();
-
-//  LWG#2581
-    static_assert(!std::is_union<incomplete_type>::value, "");
 }

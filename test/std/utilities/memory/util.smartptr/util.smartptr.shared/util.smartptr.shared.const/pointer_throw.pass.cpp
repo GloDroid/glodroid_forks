@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <memory>
 
 // template<class Y> explicit shared_ptr(Y* p);

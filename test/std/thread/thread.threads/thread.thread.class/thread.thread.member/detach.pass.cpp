@@ -19,7 +19,7 @@
 #include <atomic>
 #include <cassert>
 
-std::atomic_bool done(false);
+std::atomic_bool done = ATOMIC_VAR_INIT(false);
 
 class G
 {

@@ -35,8 +35,6 @@ public:
 
     A1(const A1& a) TEST_NOEXCEPT : id_(a.id()) {copy_called = true;}
     A1(A1&& a)      TEST_NOEXCEPT : id_(a.id()) {move_called = true;}
-    A1& operator=(const A1& a) TEST_NOEXCEPT { id_ = a.id(); copy_called = true; return *this;}
-    A1& operator=(A1&& a)      TEST_NOEXCEPT { id_ = a.id(); move_called = true; return *this;}
 
     template <class U>
         A1(const A1<U>& a) TEST_NOEXCEPT : id_(a.id()) {copy_called = true;}
@@ -98,10 +96,8 @@ public:
 
     A2(const A2& a) TEST_NOEXCEPT : id_(a.id()) {copy_called = true;}
     A2(A2&& a)      TEST_NOEXCEPT : id_(a.id()) {move_called = true;}
-    A2& operator=(const A2& a) TEST_NOEXCEPT { id_ = a.id(); copy_called = true; return *this;}
-    A2& operator=(A2&& a)      TEST_NOEXCEPT { id_ = a.id(); move_called = true; return *this;}
 
-    T* allocate(std::size_t, const void* hint)
+    T* allocate(std::size_t n, const void* hint)
     {
         allocate_called = true;
         return (T*)hint;
@@ -146,9 +142,7 @@ public:
     static bool destroy_called;
 
     A3(const A3& a) TEST_NOEXCEPT : id_(a.id()) {copy_called = true;}
-    A3(A3&& a)      TEST_NOEXCEPT : id_(a.id())  {move_called = true;}
-    A3& operator=(const A3& a) TEST_NOEXCEPT { id_ = a.id(); copy_called = true; return *this;}
-    A3& operator=(A3&& a)      TEST_NOEXCEPT { id_ = a.id(); move_called = true; return *this;}
+    A3(A3&& a)      TEST_NOEXCEPT: id_(a.id())  {move_called = true;}
 
     template <class U, class ...Args>
     void construct(U* p, Args&& ...args)

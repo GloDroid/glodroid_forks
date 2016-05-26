@@ -7,21 +7,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-// libc++ cannot safely provide the auto_ptr constructor without rvalue
-// references.
-// XFAIL: c++98, c++03
-
 // <memory>
 
 // unique_ptr
 
-// template <class U> unique_ptr(auto_ptr<U>&&) noexcept
+// Test unique_ptr(pointer) ctor
 
 #include <memory>
 #include <utility>
 #include <cassert>
 
-#include "test_macros.h"
+// template <class U> explicit unique_ptr(auto_ptr<U>&);
 
 struct A
 {
@@ -69,12 +65,4 @@ int main()
     }
     assert(A::count == 0);
     assert(B::count == 0);
-#if TEST_STD_VER >= 11
-    {
-        static_assert(std::is_nothrow_constructible<
-            std::unique_ptr<A>,
-            std::auto_ptr<B>&&
-        >::value, "");
-    }
-#endif
 }

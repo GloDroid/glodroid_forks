@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// REQUIRES: locale.en_US.UTF-8
-
 // <fstream>
 
 // int_type overflow(int_type c = traits::eof());

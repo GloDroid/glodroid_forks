@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <regex>
 
 // template <class charT, class traits = regex_traits<charT>> class basic_regex;
@@ -17,7 +16,6 @@
 
 #include <regex>
 #include <cassert>
-#include "test_macros.h"
 
 static bool error_badrepeat_thrown(const char *pat) 
 {

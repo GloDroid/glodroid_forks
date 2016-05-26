@@ -13,8 +13,6 @@
 
 #include <type_traits>
 
-#include "test_macros.h"
-
 template <class T, class U>
 void test_is_base_of()
 {
@@ -22,12 +20,6 @@ void test_is_base_of()
     static_assert((std::is_base_of<const T, U>::value), "");
     static_assert((std::is_base_of<T, const U>::value), "");
     static_assert((std::is_base_of<const T, const U>::value), "");
-#if TEST_STD_VER > 14
-    static_assert((std::is_base_of_v<T, U>), "");
-    static_assert((std::is_base_of_v<const T, U>), "");
-    static_assert((std::is_base_of_v<T, const U>), "");
-    static_assert((std::is_base_of_v<const T, const U>), "");
-#endif
 }
 
 template <class T, class U>

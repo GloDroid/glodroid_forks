@@ -25,7 +25,6 @@
 #include <regex>
 #include <cassert>
 
-#include "test_macros.h"
 #include "platform_support.h"
 
 int main()

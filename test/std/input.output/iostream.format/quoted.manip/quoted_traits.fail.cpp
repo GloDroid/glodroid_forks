@@ -16,11 +16,7 @@
 #include <string>
 #include <cassert>
 
-#include "test_macros.h"
-
-#if TEST_STD_VER > 11
-
-//	Test that mismatches in the traits between the quoted object and the dest string are diagnosed.
+#if _LIBCPP_STD_VER > 11
 
 template <class charT>
 struct test_traits

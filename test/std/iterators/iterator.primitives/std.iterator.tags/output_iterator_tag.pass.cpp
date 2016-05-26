@@ -17,7 +17,6 @@
 int main()
 {
     std::output_iterator_tag tag;
-    ((void)tag); // Prevent unused warning
     static_assert((!std::is_base_of<std::input_iterator_tag,
                                     std::output_iterator_tag>::value), "");
 }

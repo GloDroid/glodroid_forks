@@ -13,9 +13,7 @@
 #include <cstdlib>
 #include <cassert>
 
-#if defined(__clang__)
 #pragma clang diagnostic ignored "-Wtautological-compare"
-#endif
 
 template <std::size_t N>
 std::bitset<N>

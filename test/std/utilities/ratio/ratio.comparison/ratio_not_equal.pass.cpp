@@ -11,57 +11,46 @@
 
 #include <ratio>
 
-#include "test_macros.h"
-
-template <class Rat1, class Rat2, bool result>
-void test()
-{
-    static_assert((result == std::ratio_not_equal<Rat1, Rat2>::value), "");
-#if TEST_STD_VER > 14
-    static_assert((result == std::ratio_not_equal_v<Rat1, Rat2>), "");
-#endif
-}
-
 int main()
 {
     {
     typedef std::ratio<1, 1> R1;
     typedef std::ratio<1, 1> R2;
-    test<R1, R2, false>();
+    static_assert((!std::ratio_not_equal<R1, R2>::value), "");
     }
     {
     typedef std::ratio<0x7FFFFFFFFFFFFFFFLL, 1> R1;
     typedef std::ratio<0x7FFFFFFFFFFFFFFFLL, 1> R2;
-    test<R1, R2, false>();
+    static_assert((!std::ratio_not_equal<R1, R2>::value), "");
     }
     {
     typedef std::ratio<-0x7FFFFFFFFFFFFFFFLL, 1> R1;
     typedef std::ratio<-0x7FFFFFFFFFFFFFFFLL, 1> R2;
-    test<R1, R2, false>();
+    static_assert((!std::ratio_not_equal<R1, R2>::value), "");
     }
     {
     typedef std::ratio<1, 0x7FFFFFFFFFFFFFFFLL> R1;
     typedef std::ratio<1, 0x7FFFFFFFFFFFFFFFLL> R2;
-    test<R1, R2, false>();
+    static_assert((!std::ratio_not_equal<R1, R2>::value), "");
     }
     {
     typedef std::ratio<1, 1> R1;
     typedef std::ratio<1, -1> R2;
-    test<R1, R2, true>();
+    static_assert((std::ratio_not_equal<R1, R2>::value), "");
     }
     {
     typedef std::ratio<0x7FFFFFFFFFFFFFFFLL, 1> R1;
     typedef std::ratio<-0x7FFFFFFFFFFFFFFFLL, 1> R2;
-    test<R1, R2, true>();
+    static_assert((std::ratio_not_equal<R1, R2>::value), "");
     }
     {
     typedef std::ratio<-0x7FFFFFFFFFFFFFFFLL, 1> R1;
     typedef std::ratio<0x7FFFFFFFFFFFFFFFLL, 1> R2;
-    test<R1, R2, true>();
+    static_assert((std::ratio_not_equal<R1, R2>::value), "");
     }
     {
     typedef std::ratio<1, 0x7FFFFFFFFFFFFFFFLL> R1;
     typedef std::ratio<1, -0x7FFFFFFFFFFFFFFFLL> R2;
-    test<R1, R2, true>();
+    static_assert((std::ratio_not_equal<R1, R2>::value), "");
     }
 }

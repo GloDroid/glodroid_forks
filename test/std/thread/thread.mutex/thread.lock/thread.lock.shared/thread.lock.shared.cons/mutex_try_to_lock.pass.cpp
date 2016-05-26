@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 //
 // UNSUPPORTED: libcpp-has-no-threads
-// UNSUPPORTED: c++98, c++03, c++11
 
 // <shared_mutex>
 
@@ -21,6 +20,8 @@
 #include <vector>
 #include <cstdlib>
 #include <cassert>
+
+#if _LIBCPP_STD_VER > 11
 
 std::shared_timed_mutex m;
 
@@ -56,8 +57,11 @@ void f()
     assert(d < ms(200));  // within 200ms
 }
 
+#endif  // _LIBCPP_STD_VER > 11
+
 int main()
 {
+#if _LIBCPP_STD_VER > 11
     m.lock();
     std::vector<std::thread> v;
     for (int i = 0; i < 5; ++i)
@@ -66,4 +70,5 @@ int main()
     m.unlock();
     for (auto& t : v)
         t.join();
+#endif  // _LIBCPP_STD_VER > 11
 }

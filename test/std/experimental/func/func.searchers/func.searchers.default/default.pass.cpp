@@ -20,8 +20,7 @@
 //         : __first_(__f), __last_(__l), __pred_(__p) {}
 // 
 //     template <typename _ForwardIterator2>
-//     pair<_ForwardIterator2, _ForwardIterator2>
-//     operator () (_ForwardIterator2 __f, _ForwardIterator2 __l) const {
+//     _ForwardIterator2 operator () (_ForwardIterator2 __f, _ForwardIterator2 __l) const {
 //         return std::search(__f, __l, __first_, __last_, __pred_);
 //         }
 // 

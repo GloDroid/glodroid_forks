@@ -18,7 +18,6 @@
 #include <cassert>
 
 #include "test_iterators.h"
-#include "test_macros.h"
 
 template <class Iter>
 void

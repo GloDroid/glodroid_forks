@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // Test asan vector annotations with a class that throws in a CTOR.
 
 #include <vector>
