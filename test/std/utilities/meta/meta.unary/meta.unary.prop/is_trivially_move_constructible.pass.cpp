@@ -11,27 +11,18 @@
 
 // is_trivially_move_constructible
 
-// XFAIL: gcc-4.9
-
 #include <type_traits>
-#include "test_macros.h"
 
 template <class T>
 void test_is_trivially_move_constructible()
 {
     static_assert( std::is_trivially_move_constructible<T>::value, "");
-#if TEST_STD_VER > 14
-    static_assert( std::is_trivially_move_constructible_v<T>, "");
-#endif
 }
 
 template <class T>
 void test_has_not_trivial_move_constructor()
 {
     static_assert(!std::is_trivially_move_constructible<T>::value, "");
-#if TEST_STD_VER > 14
-    static_assert(!std::is_trivially_move_constructible_v<T>, "");
-#endif
 }
 
 class Empty
@@ -62,7 +53,7 @@ struct A
     A(const A&);
 };
 
-#if TEST_STD_VER >= 11
+#if __has_feature(cxx_defaulted_functions)
 
 struct MoveOnly1
 {
@@ -91,7 +82,7 @@ int main()
     test_is_trivially_move_constructible<const int*>();
     test_is_trivially_move_constructible<bit_zero>();
 
-#if TEST_STD_VER >= 11
+#if __has_feature(cxx_defaulted_functions)
     static_assert(!std::is_trivially_move_constructible<MoveOnly1>::value, "");
     static_assert( std::is_trivially_move_constructible<MoveOnly2>::value, "");
 #endif

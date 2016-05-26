@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <random>
 
 // class random_device;
@@ -30,7 +29,7 @@ int main()
         r();
         assert(false);
     }
-    catch (const std::system_error&)
+    catch (const std::system_error& e)
     {
     }
 }

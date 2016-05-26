@@ -22,8 +22,6 @@
 #include <cstdlib>
 #include <cassert>
 
-#include "test_macros.h"
-
 std::shared_timed_mutex m;
 
 typedef std::chrono::steady_clock Clock;
@@ -32,35 +30,23 @@ typedef Clock::duration duration;
 typedef std::chrono::milliseconds ms;
 typedef std::chrono::nanoseconds ns;
 
-
-ms WaitTime = ms(250);
-
-// Thread sanitizer causes more overhead and will sometimes cause this test
-// to fail. To prevent this we give Thread sanitizer more time to complete the
-// test.
-#if !defined(TEST_HAS_SANITIZERS)
-ms Tolerance = ms(50);
-#else
-ms Tolerance = ms(50 * 5);
-#endif
-
 void f1()
 {
     time_point t0 = Clock::now();
-    assert(m.try_lock_for(WaitTime + Tolerance) == true);
+    assert(m.try_lock_for(ms(300)) == true);
     time_point t1 = Clock::now();
     m.unlock();
-    ns d = t1 - t0 - WaitTime;
-    assert(d < Tolerance);  // within tolerance
+    ns d = t1 - t0 - ms(250);
+    assert(d < ms(50));  // within 50ms
 }
 
 void f2()
 {
     time_point t0 = Clock::now();
-    assert(m.try_lock_for(WaitTime) == false);
+    assert(m.try_lock_for(ms(250)) == false);
     time_point t1 = Clock::now();
-    ns d = t1 - t0 - WaitTime;
-    assert(d < Tolerance);  // within tolerance
+    ns d = t1 - t0 - ms(250);
+    assert(d < ms(50));  // within 50ms
 }
 
 int main()
@@ -68,14 +54,14 @@ int main()
     {
         m.lock();
         std::thread t(f1);
-        std::this_thread::sleep_for(WaitTime);
+        std::this_thread::sleep_for(ms(250));
         m.unlock();
         t.join();
     }
     {
         m.lock();
         std::thread t(f2);
-        std::this_thread::sleep_for(WaitTime + Tolerance);
+        std::this_thread::sleep_for(ms(300));
         m.unlock();
         t.join();
     }

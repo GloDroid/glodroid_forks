@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <string>
 
 // basic_string(initializer_list<charT> il, const Allocator& a = Allocator());
@@ -21,6 +19,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
     {
         std::string s = {'a', 'b', 'c'};
         assert(s == "abc");
@@ -30,6 +29,7 @@ int main()
         s = {L'a', L'b', L'c'};
         assert(s == L"abc");
     }
+#if __cplusplus >= 201103L
     {
         typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
         S s = {'a', 'b', 'c'};
@@ -41,4 +41,6 @@ int main()
         s = {L'a', L'b', L'c'};
         assert(s == L"abc");
     }
+#endif
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 }

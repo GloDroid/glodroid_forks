@@ -12,23 +12,19 @@
 // template<class T, T N>
 //   using make_integer_sequence = integer_sequence<T, 0, 1, ..., N-1>;
 
-// UNSUPPORTED: c++98, c++03, c++11
-
 #include <utility>
 #include <type_traits>
 #include <cassert>
 
-#include "test_macros.h"
-
 int main()
 {
-  typedef std::make_integer_sequence<int, -3> MakeSeqT;
+#if _LIBCPP_STD_VER > 11
 
-  // std::make_integer_sequence is implemented using a compiler builtin if available.
-  // this builtin has different diagnostic messages than the fallback implementation.
-#if TEST_HAS_BUILTIN(__make_integer_seq) && !defined(_LIBCPP_TESTING_FALLBACK_MAKE_INTEGER_SEQUENCE)
-    MakeSeqT i; // expected-error@utility:* {{integer sequences must have non-negative sequence length}}
+    std::make_integer_sequence<int, -3>::value_type i;
+
 #else
-    MakeSeqT i; // expected-error@utility:* {{static_assert failed "std::make_integer_sequence must have a non-negative sequence length"}}
-#endif
+
+X
+
+#endif  // _LIBCPP_STD_VER > 11
 }

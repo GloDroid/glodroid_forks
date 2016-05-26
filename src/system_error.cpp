@@ -12,7 +12,7 @@
 #define _LIBCPP_BUILDING_SYSTEM_ERROR
 #include "system_error"
 
-#include "include/config_elast.h"
+#include "config_elast.h"
 #include "cstring"
 #include "string"
 

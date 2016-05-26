@@ -57,12 +57,12 @@ struct NotTriviallyCopyable {
     NotTriviallyCopyable ( int i ) : i_(i) {}
     NotTriviallyCopyable ( const NotTriviallyCopyable &rhs) : i_(rhs.i_) {}
     int i_;
-};
+    };
 
-template <class T, class >
+template <class T>
 void test ( T t ) {
     std::atomic<T> t0(t);
-}
+    }
 
 int main()
 {

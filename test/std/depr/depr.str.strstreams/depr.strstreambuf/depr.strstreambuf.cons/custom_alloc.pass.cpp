@@ -18,7 +18,7 @@
 
 int called = 0;
 
-void* my_alloc(std::size_t)
+void* my_alloc(std::size_t n)
 {
     static char buf[10000];
     ++called;

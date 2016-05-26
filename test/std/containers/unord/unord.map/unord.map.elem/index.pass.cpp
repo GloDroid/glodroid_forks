@@ -14,20 +14,13 @@
 // class unordered_map
 
 // mapped_type& operator[](const key_type& k);
-// mapped_type& operator[](key_type&& k);
 
 #include <unordered_map>
 #include <string>
 #include <cassert>
 
-#include "test_macros.h"
 #include "MoveOnly.h"
 #include "min_allocator.h"
-#include "count_new.hpp"
-
-#if TEST_STD_VER >= 11
-#include "container_test_types.h"
-#endif
 
 int main()
 {
@@ -51,7 +44,7 @@ int main()
         assert(c.size() == 5);
         assert(c.at(11) == "eleven");
     }
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef std::unordered_map<MoveOnly, std::string> C;
         typedef std::pair<int, std::string> P;
@@ -72,6 +65,8 @@ int main()
         assert(c.size() == 5);
         assert(c.at(11) == "eleven");
     }
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#if __cplusplus >= 201103L
     {
         typedef std::unordered_map<int, std::string, std::hash<int>, std::equal_to<int>,
                             min_allocator<std::pair<const int, std::string>>> C;
@@ -93,7 +88,7 @@ int main()
         assert(c.size() == 5);
         assert(c.at(11) == "eleven");
     }
-
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef std::unordered_map<MoveOnly, std::string, std::hash<MoveOnly>, std::equal_to<MoveOnly>,
                             min_allocator<std::pair<const MoveOnly, std::string>>> C;
@@ -115,50 +110,6 @@ int main()
         assert(c.size() == 5);
         assert(c.at(11) == "eleven");
     }
-    {
-        using Container = TCT::unordered_map<>;
-        using Key = Container::key_type;
-        using MappedType = Container::mapped_type;
-        using ValueTp = Container::value_type;
-        ConstructController* cc = getConstructController();
-        cc->reset();
-        {
-            Container c;
-            const Key k(1);
-            cc->expect<std::piecewise_construct_t const&, std::tuple<Key const&>&&, std::tuple<>&&>();
-            MappedType& mref = c[k];
-            assert(!cc->unchecked());
-            {
-                DisableAllocationGuard g;
-                MappedType& mref2 = c[k];
-                assert(&mref == &mref2);
-            }
-        }
-        {
-            Container c;
-            Key k(1);
-            cc->expect<std::piecewise_construct_t const&, std::tuple<Key const&>&&, std::tuple<>&&>();
-            MappedType& mref = c[k];
-            assert(!cc->unchecked());
-            {
-                DisableAllocationGuard g;
-                MappedType& mref2 = c[k];
-                assert(&mref == &mref2);
-            }
-        }
-        {
-            Container c;
-            Key k(1);
-            cc->expect<std::piecewise_construct_t const&, std::tuple<Key &&>&&, std::tuple<>&&>();
-            MappedType& mref = c[std::move(k)];
-            assert(!cc->unchecked());
-            {
-                Key k2(1);
-                DisableAllocationGuard g;
-                MappedType& mref2 = c[std::move(k2)];
-                assert(&mref == &mref2);
-            }
-        }
-    }
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 #endif
 }

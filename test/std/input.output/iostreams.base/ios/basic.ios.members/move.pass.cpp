@@ -41,17 +41,17 @@ bool g1_called = false;
 bool g2_called = false;
 bool g3_called = false;
 
-void f1(std::ios_base::event, std::ios_base&, int)
+void f1(std::ios_base::event ev, std::ios_base& stream, int index)
 {
     f1_called = true;
 }
 
-void f2(std::ios_base::event, std::ios_base&, int)
+void f2(std::ios_base::event ev, std::ios_base& stream, int index)
 {
     f2_called = true;
 }
 
-void g1(std::ios_base::event ev, std::ios_base&, int index)
+void g1(std::ios_base::event ev, std::ios_base& stream, int index)
 {
     if (ev == std::ios_base::imbue_event)
     {
@@ -60,7 +60,7 @@ void g1(std::ios_base::event ev, std::ios_base&, int index)
     }
 }
 
-void g2(std::ios_base::event ev, std::ios_base&, int index)
+void g2(std::ios_base::event ev, std::ios_base& stream, int index)
 {
     if (ev == std::ios_base::imbue_event)
     {
@@ -69,7 +69,7 @@ void g2(std::ios_base::event ev, std::ios_base&, int index)
     }
 }
 
-void g3(std::ios_base::event ev, std::ios_base&, int index)
+void g3(std::ios_base::event ev, std::ios_base& stream, int index)
 {
     if (ev == std::ios_base::imbue_event)
     {

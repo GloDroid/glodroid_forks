@@ -29,7 +29,7 @@ test()
 	static_assert((noexcept(S()) == noexcept(typename S::allocator_type())), "" );
 #endif
     S s;
-    LIBCPP_ASSERT(s.__invariants());
+    assert(s.__invariants());
     assert(s.data());
     assert(s.size() == 0);
     assert(s.capacity() >= s.size());
@@ -42,7 +42,7 @@ test()
 	static_assert((noexcept(S(typename S::allocator_type())) == std::is_nothrow_copy_constructible<typename S::allocator_type>::value), "" );
 #endif
     S s(typename S::allocator_type(5));
-    LIBCPP_ASSERT(s.__invariants());
+    assert(s.__invariants());
     assert(s.data());
     assert(s.size() == 0);
     assert(s.capacity() >= s.size());
@@ -63,7 +63,7 @@ test2()
 	static_assert((noexcept(S()) == noexcept(typename S::allocator_type())), "" );
 #endif
     S s;
-    LIBCPP_ASSERT(s.__invariants());
+    assert(s.__invariants());
     assert(s.data());
     assert(s.size() == 0);
     assert(s.capacity() >= s.size());
@@ -76,7 +76,7 @@ test2()
 	static_assert((noexcept(S(typename S::allocator_type())) == std::is_nothrow_copy_constructible<typename S::allocator_type>::value), "" );
 #endif
     S s(typename S::allocator_type{});
-    LIBCPP_ASSERT(s.__invariants());
+    assert(s.__invariants());
     assert(s.data());
     assert(s.size() == 0);
     assert(s.capacity() >= s.size());
