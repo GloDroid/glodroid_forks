@@ -8,8 +8,13 @@
 //===----------------------------------------------------------------------===//
 #include <stdlib.h>
 
-#if defined(__APPLE__) || defined(LIBCXXRT) ||                                 \
-    defined(LIBCXX_BUILDING_LIBCXXABI)
+#ifndef __has_include
+#define __has_include(inc) 0
+#endif
+
+#ifdef __APPLE__
+#include <cxxabi.h>
+#elif defined(LIBCXXRT) || __has_include(<cxxabi.h>)
 #include <cxxabi.h>
 #endif
 

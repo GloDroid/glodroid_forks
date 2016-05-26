@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 //
 // UNSUPPORTED: libcpp-has-no-threads
-// UNSUPPORTED: c++98, c++03
 
 // <future>
 
@@ -21,6 +20,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef int T;
         std::promise<T> p;
@@ -72,4 +72,5 @@ int main()
         assert(!f0.valid());
         assert(!f.valid());
     }
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

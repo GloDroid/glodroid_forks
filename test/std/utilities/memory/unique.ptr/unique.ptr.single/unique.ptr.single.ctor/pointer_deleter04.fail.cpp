@@ -7,24 +7,49 @@
 //
 //===----------------------------------------------------------------------===//
 
-// Without rvalue references it is impossible to detect when a rvalue deleter
-// is given.
-// XFAIL: c++98, c++03
-
 // <memory>
 
 // unique_ptr
 
-// unique_ptr<T, const D&>(pointer, D()) should not compile
+// Test unique_ptr(pointer) ctor
 
 #include <memory>
+#include <cassert>
 
-struct Deleter {
-    void operator()(int* p) const {delete p;}
+// unique_ptr<T, const D&>(pointer, D()) should not compile
+
+struct A
+{
+    static int count;
+    A() {++count;}
+    A(const A&) {++count;}
+    ~A() {--count;}
+};
+
+int A::count = 0;
+
+class Deleter
+{
+    int state_;
+
+public:
+
+    Deleter() : state_(5) {}
+
+    int state() const {return state_;}
+    void set_state(int s) {state_ = s;}
+
+    void operator()(A* p) const {delete p;}
 };
 
 int main()
 {
-    // expected-error@memory:* {{static_assert failed "rvalue deleter bound to reference"}}
-    std::unique_ptr<int, const Deleter&> s((int*)nullptr, Deleter()); // expected-note {{requested here}}
+    {
+    A* p = new A;
+    assert(A::count == 1);
+    std::unique_ptr<A, const Deleter&> s(p, Deleter());
+    assert(s.get() == p);
+    assert(s.get_deleter().state() == 5);
+    }
+    assert(A::count == 0);
 }

@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <list>
 
 // iterator insert(const_iterator position, const value_type& x);

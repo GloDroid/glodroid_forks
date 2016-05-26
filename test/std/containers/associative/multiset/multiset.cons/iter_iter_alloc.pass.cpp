@@ -24,7 +24,6 @@
 
 int main()
 {
-    {
     typedef int V;
     V ar[] =
     {
@@ -56,7 +55,6 @@ int main()
     assert(*next(m.begin(), 6) == 3);
     assert(*next(m.begin(), 7) == 3);
     assert(*next(m.begin(), 8) == 3);
-    }
 #if _LIBCPP_STD_VER > 11
     {
     typedef int V;

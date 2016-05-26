@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <optional>
 
 // optional(optional<T>&& rhs) noexcept(is_nothrow_move_constructible<T>::value);

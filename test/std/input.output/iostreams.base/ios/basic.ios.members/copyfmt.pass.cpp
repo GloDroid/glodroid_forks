@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // REQUIRES: locale.en_US.UTF-8
 // REQUIRES: locale.fr_FR.UTF-8
 

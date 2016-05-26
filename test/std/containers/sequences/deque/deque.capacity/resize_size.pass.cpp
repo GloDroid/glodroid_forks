@@ -12,8 +12,6 @@
 // void resize(size_type n);
 
 #include <deque>
-#include <algorithm>
-#include <iterator>
 #include <cassert>
 
 #include "test_macros.h"

@@ -17,7 +17,6 @@
 #include <iterator>
 #include <cassert>
 
-#include "test_macros.h"
 #include "test_allocator.h"
 #include "../input_iterator.h"
 #include "min_allocator.h"
@@ -31,7 +30,7 @@ test(It first, It last)
     typedef typename S::traits_type T;
     typedef typename S::allocator_type A;
     S s2(first, last);
-    LIBCPP_ASSERT(s2.__invariants());
+    assert(s2.__invariants());
     assert(s2.size() == std::distance(first, last));
     unsigned i = 0;
     for (It it = first; it != last; ++it, ++i)
@@ -48,7 +47,7 @@ test(It first, It last, const A& a)
     typedef std::basic_string<charT, std::char_traits<charT>, A> S;
     typedef typename S::traits_type T;
     S s2(first, last, a);
-    LIBCPP_ASSERT(s2.__invariants());
+    assert(s2.__invariants());
     assert(s2.size() == std::distance(first, last));
     unsigned i = 0;
     for (It it = first; it != last; ++it, ++i)
@@ -87,7 +86,7 @@ int main()
     test(input_iterator<const char*>(s), input_iterator<const char*>(s+50));
     test(input_iterator<const char*>(s), input_iterator<const char*>(s+50), A(2));
     }
-#if TEST_STD_VER >= 11
+#if __cplusplus >= 201103L
     {
     typedef min_allocator<char> A;
     const char* s = "12345678901234567890123456789012345678901234567890";

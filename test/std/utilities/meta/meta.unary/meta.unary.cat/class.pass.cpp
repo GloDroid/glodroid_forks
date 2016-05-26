@@ -12,13 +12,12 @@
 // class
 
 #include <type_traits>
-#include "test_macros.h"
 
 template <class T>
 void test_class_imp()
 {
     static_assert(!std::is_void<T>::value, "");
-#if TEST_STD_VER > 11
+#if _LIBCPP_STD_VER > 11
     static_assert(!std::is_null_pointer<T>::value, "");
 #endif
     static_assert(!std::is_integral<T>::value, "");
@@ -48,12 +47,7 @@ class Class
 {
 };
 
-struct incomplete_type;
-
 int main()
 {
     test_class<Class>();
-
-//  LWG#2581
-    static_assert( std::is_class<incomplete_type>::value, "");
 }

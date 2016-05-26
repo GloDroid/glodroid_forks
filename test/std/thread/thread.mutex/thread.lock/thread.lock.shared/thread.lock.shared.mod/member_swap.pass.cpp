@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 //
 // UNSUPPORTED: libcpp-has-no-threads
-// UNSUPPORTED: c++98, c++03, c++11
 
 // <shared_mutex>
 
@@ -19,6 +18,8 @@
 #include <shared_mutex>
 #include <cassert>
 
+#if _LIBCPP_STD_VER > 11
+
 struct mutex
 {
     void lock_shared() {}
@@ -27,8 +28,11 @@ struct mutex
 
 mutex m;
 
+#endif  // _LIBCPP_STD_VER > 11
+
 int main()
 {
+#if _LIBCPP_STD_VER > 11
     std::shared_lock<mutex> lk1(m);
     std::shared_lock<mutex> lk2;
     lk1.swap(lk2);
@@ -37,4 +41,5 @@ int main()
     assert(lk2.mutex() == &m);
     assert(lk2.owns_lock() == true);
     static_assert(noexcept(lk1.swap(lk2)), "member swap must be noexcept");
+#endif  // _LIBCPP_STD_VER > 11
 }

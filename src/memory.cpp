@@ -13,7 +13,7 @@
 #include "mutex"
 #include "thread"
 #endif
-#include "include/atomic_support.h"
+#include "support/atomic_support.h"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -124,15 +124,15 @@ __shared_weak_count::__get_deleter(const type_info&) const _NOEXCEPT
 
 #endif  // _LIBCPP_NO_RTTI
 
-#if defined(_LIBCPP_HAS_C_ATOMIC_IMP) && !defined(_LIBCPP_HAS_NO_THREADS)
+#if __has_feature(cxx_atomic) && !defined(_LIBCPP_HAS_NO_THREADS)
 
 static const std::size_t __sp_mut_count = 16;
-static __libcpp_mutex_t mut_back_imp[__sp_mut_count] =
+static pthread_mutex_t mut_back_imp[__sp_mut_count] =
 {
-    _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER,
-    _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER,
-    _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER,
-    _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER
+    PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER,
+    PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER,
+    PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER,
+    PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER
 };
 
 static mutex* mut_back = reinterpret_cast<std::mutex*>(mut_back_imp);
@@ -177,7 +177,7 @@ __get_sp_mut(const void* p)
     return muts[hash<const void*>()(p) & (__sp_mut_count-1)];
 }
 
-#endif // defined(_LIBCPP_HAS_C_ATOMIC_IMP) && !defined(_LIBCPP_HAS_NO_THREADS)
+#endif // __has_feature(cxx_atomic) && !_LIBCPP_HAS_NO_THREADS
 
 void
 declare_reachable(void*)

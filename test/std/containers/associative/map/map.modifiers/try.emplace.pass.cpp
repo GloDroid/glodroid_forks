@@ -22,6 +22,7 @@
 // template <class... Args>
 //  iterator try_emplace(const_iterator hint, key_type&& k, Args&&... args);      // C++17
 
+#include <__config>
 #include <map>
 #include <cassert>
 #include <tuple>
@@ -57,6 +58,9 @@ public:
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#ifndef _LIBCPP_HAS_NO_VARIADICS
+
     { // pair<iterator, bool> try_emplace(const key_type& k, Args&&... args);
         typedef std::map<int, Moveable> M;
         typedef std::pair<M::iterator, bool> R;
@@ -179,4 +183,7 @@ int main()
         assert(r->first.get()  == 3); // key
         assert(r->second.get() == 4); // value
     }
+
+#endif  // _LIBCPP_HAS_NO_VARIADICS
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }
