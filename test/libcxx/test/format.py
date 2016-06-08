@@ -1,3 +1,12 @@
+#===----------------------------------------------------------------------===##
+#
+#                     The LLVM Compiler Infrastructure
+#
+# This file is dual licensed under the MIT and the University of Illinois Open
+# Source Licenses. See LICENSE.TXT for details.
+#
+#===----------------------------------------------------------------------===##
+
 import errno
 import os
 import time
@@ -64,19 +73,23 @@ class LibcxxTestFormat(object):
             return (lit.Test.UNSUPPORTED,
                     "A lit.local.cfg marked this unsupported")
 
-        res = lit.TestRunner.parseIntegratedTestScript(
+        script = lit.TestRunner.parseIntegratedTestScript(
             test, require_script=is_sh_test)
         # Check if a result for the test was returned. If so return that
         # result.
-        if isinstance(res, lit.Test.Result):
-            return res
+        if isinstance(script, lit.Test.Result):
+            return script
         if lit_config.noExecute:
             return lit.Test.Result(lit.Test.PASS)
-        # res is not an instance of lit.test.Result. Expand res into its parts.
-        script, tmpBase, execDir = res
+
         # Check that we don't have run lines on tests that don't support them.
         if not is_sh_test and len(script) != 0:
             lit_config.fatal('Unsupported RUN line found in test %s' % name)
+
+        tmpDir, tmpBase = lit.TestRunner.getTempPaths(test)
+        substitutions = lit.TestRunner.getDefaultSubstitutions(test, tmpDir,
+                                                               tmpBase)
+        script = lit.TestRunner.applySubstitutions(script, substitutions)
 
         # Dispatch the test based on its suffix.
         if is_sh_test:
@@ -86,11 +99,11 @@ class LibcxxTestFormat(object):
                 return lit.Test.UNSUPPORTED, 'ShTest format not yet supported'
             return lit.TestRunner._runShTest(test, lit_config,
                                              self.execute_external, script,
-                                             tmpBase, execDir)
+                                             tmpBase)
         elif is_fail_test:
             return self._evaluate_fail_test(test)
         elif is_pass_test:
-            return self._evaluate_pass_test(test, tmpBase, execDir, lit_config)
+            return self._evaluate_pass_test(test, tmpBase, lit_config)
         else:
             # No other test type is supported
             assert False
@@ -98,7 +111,8 @@ class LibcxxTestFormat(object):
     def _clean(self, exec_path):  # pylint: disable=no-self-use
         libcxx.util.cleanFile(exec_path)
 
-    def _evaluate_pass_test(self, test, tmpBase, execDir, lit_config):
+    def _evaluate_pass_test(self, test, tmpBase, lit_config):
+        execDir = os.path.dirname(test.getExecPath())
         source_path = test.getSourcePath()
         exec_path = tmpBase + '.exe'
         object_path = tmpBase + '.o'
@@ -147,7 +161,13 @@ class LibcxxTestFormat(object):
                        'expected-error', 'expected-no-diagnostics']
         use_verify = self.use_verify_for_fail and \
                      any([tag in contents for tag in verify_tags])
+        # FIXME(EricWF): GCC 5 does not evaluate static assertions that
+        # are dependant on a template parameter when '-fsyntax-only' is passed.
+        # This is fixed in GCC 6. However for now we only pass "-fsyntax-only"
+        # when using Clang.
         extra_flags = []
+        if self.cxx.type != 'gcc':
+            extra_flags += ['-fsyntax-only']
         if use_verify:
             extra_flags += ['-Xclang', '-verify',
                             '-Xclang', '-verify-ignore-unexpected=note']
