@@ -19,10 +19,12 @@
 #include <iostream>
 
 #include <random>
+#include <algorithm>
 #include <vector>
 #include <iterator>
 #include <numeric>
 #include <cassert>
+#include <limits>
 
 template <class T>
 inline
@@ -59,10 +61,10 @@ int main()
         }
         std::sort(u.begin(), u.end());
         int kp = -1;
-        double a;
-        double m;
-        double bk;
-        double c;
+        double a = std::numeric_limits<double>::quiet_NaN();
+        double m = std::numeric_limits<double>::quiet_NaN();
+        double bk = std::numeric_limits<double>::quiet_NaN();
+        double c = std::numeric_limits<double>::quiet_NaN();
         std::vector<double> areas(Np);
         double S = 0;
         for (int i = 0; i < areas.size(); ++i)
@@ -109,10 +111,10 @@ int main()
         }
         std::sort(u.begin(), u.end());
         int kp = -1;
-        double a;
-        double m;
-        double bk;
-        double c;
+        double a = std::numeric_limits<double>::quiet_NaN();
+        double m = std::numeric_limits<double>::quiet_NaN();
+        double bk = std::numeric_limits<double>::quiet_NaN();
+        double c = std::numeric_limits<double>::quiet_NaN();
         std::vector<double> areas(Np);
         double S = 0;
         for (int i = 0; i < areas.size(); ++i)
@@ -159,10 +161,10 @@ int main()
         }
         std::sort(u.begin(), u.end());
         int kp = -1;
-        double a;
-        double m;
-        double bk;
-        double c;
+        double a = std::numeric_limits<double>::quiet_NaN();
+        double m = std::numeric_limits<double>::quiet_NaN();
+        double bk = std::numeric_limits<double>::quiet_NaN();
+        double c = std::numeric_limits<double>::quiet_NaN();
         std::vector<double> areas(Np);
         double S = 0;
         for (int i = 0; i < areas.size(); ++i)
@@ -209,10 +211,10 @@ int main()
         }
         std::sort(u.begin(), u.end());
         int kp = -1;
-        double a;
-        double m;
-        double bk;
-        double c;
+        double a = std::numeric_limits<double>::quiet_NaN();
+        double m = std::numeric_limits<double>::quiet_NaN();
+        double bk = std::numeric_limits<double>::quiet_NaN();
+        double c = std::numeric_limits<double>::quiet_NaN();
         std::vector<double> areas(Np);
         double S = 0;
         for (int i = 0; i < areas.size(); ++i)
@@ -259,10 +261,10 @@ int main()
         }
         std::sort(u.begin(), u.end());
         int kp = -1;
-        double a;
-        double m;
-        double bk;
-        double c;
+        double a = std::numeric_limits<double>::quiet_NaN();
+        double m = std::numeric_limits<double>::quiet_NaN();
+        double bk = std::numeric_limits<double>::quiet_NaN();
+        double c = std::numeric_limits<double>::quiet_NaN();
         std::vector<double> areas(Np);
         double S = 0;
         for (int i = 0; i < areas.size(); ++i)
@@ -309,10 +311,10 @@ int main()
         }
         std::sort(u.begin(), u.end());
         int kp = -1;
-        double a;
-        double m;
-        double bk;
-        double c;
+        double a = std::numeric_limits<double>::quiet_NaN();
+        double m = std::numeric_limits<double>::quiet_NaN();
+        double bk = std::numeric_limits<double>::quiet_NaN();
+        double c = std::numeric_limits<double>::quiet_NaN();
         std::vector<double> areas(Np);
         double S = 0;
         for (int i = 0; i < areas.size(); ++i)

@@ -12,19 +12,31 @@ if(POLICY CMP0022)
   cmake_policy(SET CMP0022 NEW) # Required when interacting with LLVM and Clang
 endif()
 
-project(libcxx CXX C)
-
-set(PACKAGE_NAME libcxx)
-set(PACKAGE_VERSION trunk-svn)
-set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
-set(PACKAGE_BUGREPORT "llvm-bugs@lists.llvm.org")
-
 # Add path for custom modules
 set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules"
   ${CMAKE_MODULE_PATH}
   )
+
+# Find the LLVM sources and simulate LLVM CMake options.
+include(HandleOutOfTreeLLVM)
+
+if (LIBCXX_BUILT_STANDALONE)
+  project(libcxx CXX C)
+
+  set(PACKAGE_NAME libcxx)
+  set(PACKAGE_VERSION trunk-svn)
+  set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
+  set(PACKAGE_BUGREPORT "llvm-bugs@lists.llvm.org")
+endif ()
+
+if (LIBCXX_BUILT_STANDALONE AND NOT LLVM_FOUND)
+  message(WARNING "UNSUPPORTED LIBCXX CONFIGURATION DETECTED: "
+                  "llvm-config not found and LLVM_PATH not defined.\n"
+                  "Reconfigure with -DLLVM_CONFIG=path/to/llvm-config "
+                  "or -DLLVM_PATH=path/to/llvm-source-root.")
+endif()
 
 # Require out of source build.
 include(MacroEnsureOutOfSourceBuild)
@@ -33,16 +45,6 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
  build directory and run 'cmake /path/to/${PROJECT_NAME} [options]' there."
  )
 
-# Find the LLVM sources and simulate LLVM CMake options.
-include(HandleOutOfTreeLLVM)
-if (LIBCXX_BUILT_STANDALONE AND NOT LLVM_FOUND)
-  message(WARNING "UNSUPPORTED LIBCXX CONFIGURATION DETECTED: "
-                  "llvm-config not found and LLVM_PATH not defined.\n"
-                  "Reconfigure with -DLLVM_CONFIG=path/to/llvm-config "
-                  "or -DLLVM_PATH=path/to/llvm-source-root.")
-endif()
-
-
 #===============================================================================
 # Setup CMake Options
 #===============================================================================
@@ -50,12 +52,17 @@ endif()
 # Basic options ---------------------------------------------------------------
 option(LIBCXX_ENABLE_ASSERTIONS "Enable assertions independent of build mode." ON)
 option(LIBCXX_ENABLE_SHARED "Build libc++ as a shared library." ON)
-
+option(LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY "Build libc++experimental.a" ON)
 option(LIBCXX_INCLUDE_TESTS "Build the libc++ tests." ${LLVM_INCLUDE_TESTS})
+option(LIBCXX_INCLUDE_DOCS "Build the libc++ documentation." ${LLVM_INCLUDE_DOCS})
 set(LIBCXX_LIBDIR_SUFFIX "${LLVM_LIBDIR_SUFFIX}" CACHE STRING
     "Define suffix of library directory name (32/64)")
 option(LIBCXX_INSTALL_HEADERS "Install the libc++ headers." ON)
+option(LIBCXX_INSTALL_LIBRARY "Install the libc++ library." ON)
 option(LIBCXX_INSTALL_SUPPORT_HEADERS "Install libc++ support headers." ON)
+option(LIBCXX_INSTALL_EXPERIMENTAL_LIBRARY "Install libc++experimental.a" OFF)
+set(LIBCXX_ABI_VERSION 1 CACHE STRING "ABI version of libc++.")
+option(LIBCXX_ABI_UNSTABLE "Unstable ABI of libc++." OFF)
 
 # ABI Library options ---------------------------------------------------------
 set(LIBCXX_CXX_ABI "${LIBCXX_CXX_ABI}" CACHE STRING
@@ -63,7 +70,40 @@ set(LIBCXX_CXX_ABI "${LIBCXX_CXX_ABI}" CACHE STRING
 set(CXXABIS none libcxxabi libcxxrt libstdc++ libsupc++)
 set_property(CACHE LIBCXX_CXX_ABI PROPERTY STRINGS ;${CXXABIS})
 
+# Setup the default options if LIBCXX_CXX_ABI is not specified.
+if (NOT LIBCXX_CXX_ABI)
+  if (NOT DEFINED LIBCXX_BUILT_STANDALONE AND
+      IS_DIRECTORY "${CMAKE_SOURCE_DIR}/projects/libcxxabi")
+    set(LIBCXX_CXX_ABI_LIBNAME "libcxxabi")
+    set(LIBCXX_CXX_ABI_INCLUDE_PATHS "${CMAKE_SOURCE_DIR}/projects/libcxxabi/include")
+    set(LIBCXX_CXX_ABI_INTREE 1)
+  else ()
+    set(LIBCXX_CXX_ABI_LIBNAME "none")
+  endif ()
+else ()
+  set(LIBCXX_CXX_ABI_LIBNAME "${LIBCXX_CXX_ABI}")
+endif ()
+
+# Use a static copy of the ABI library when linking libc++. This option
+# cannot be used with LIBCXX_ENABLE_ABI_LINKER_SCRIPT.
 option(LIBCXX_ENABLE_STATIC_ABI_LIBRARY "Statically link the ABI library" OFF)
+
+# Generate and install a linker script inplace of libc++.so. The linker script
+# will link libc++ to the correct ABI library. This option is on by default
+# On UNIX platforms other than Apple unless 'LIBCXX_ENABLE_STATIC_ABI_LIBRARY'
+# is on. This option is also disabled when the ABI library is not specified
+# or is specified to be "none".
+set(ENABLE_LINKER_SCRIPT_DEFAULT_VALUE OFF)
+if (LLVM_HAVE_LINK_VERSION_SCRIPT AND NOT LIBCXX_ENABLE_STATIC_ABI_LIBRARY
+      AND NOT LIBCXX_CXX_ABI_LIBNAME STREQUAL "none"
+      AND PYTHONINTERP_FOUND
+      AND LIBCXX_ENABLE_SHARED)
+    set(ENABLE_LINKER_SCRIPT_DEFAULT_VALUE ON)
+endif()
+
+option(LIBCXX_ENABLE_ABI_LINKER_SCRIPT
+      "Use and install a linker script for the given ABI library"
+      ${ENABLE_LINKER_SCRIPT_DEFAULT_VALUE})
 
 # Build libc++abi with libunwind. We need this option to determine whether to
 # link with libunwind or libgcc_s while running the test cases.
@@ -84,15 +124,42 @@ option(LIBCXX_ENABLE_THREADS "Build libc++ with support for threads." ON)
 option(LIBCXX_ENABLE_THREAD_UNSAFE_C_FUNCTIONS "Build libc++ with support for thread-unsafe C functions" ON)
 option(LIBCXX_ENABLE_MONOTONIC_CLOCK
   "Build libc++ with support for a monotonic clock.
-   This option may only be used when LIBCXX_ENABLE_THREADS=OFF." ON)
+   This option may only be set to OFF when LIBCXX_ENABLE_THREADS=OFF." ON)
+option(LIBCXX_HAS_MUSL_LIBC "Build libc++ with support for the Musl C library" OFF)
 
 # Misc options ----------------------------------------------------------------
-option(LIBCXX_ENABLE_PEDANTIC "Compile with pedantic enabled." ON)
+# FIXME: Turn -pedantic back ON. It is currently off because it warns
+# about #include_next which is used everywhere.
+option(LIBCXX_ENABLE_PEDANTIC "Compile with pedantic enabled." OFF)
 option(LIBCXX_ENABLE_WERROR "Fail and stop if a warning is triggered." OFF)
 
 option(LIBCXX_GENERATE_COVERAGE "Enable generating code coverage." OFF)
 set(LIBCXX_COVERAGE_LIBRARY "" CACHE STRING
     "The Profile-rt library used to build with code coverage")
+
+# Don't allow a user to accidentally overwrite the system libc++ installation on Darwin.
+# If the user specifies -DCMAKE_INSTALL_PREFIX=/usr the install rules for libc++
+# will not be generated and a warning will be issued.
+option(LIBCXX_OVERRIDE_DARWIN_INSTALL "Enable overwriting darwins libc++ installation." OFF)
+mark_as_advanced(LIBCXX_OVERRIDE_DARWIN_INSTALL) # Don't show this option by default.
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT LIBCXX_OVERRIDE_DARWIN_INSTALL)
+  if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr")
+    message(WARNING "Disabling libc++ install rules because installation would "
+                    "overwrite the systems installation. Configure with "
+                    "-DLIBCXX_OVERRIDE_DARWIN_INSTALL=ON to suppress this behaviour.")
+    mark_as_advanced(CLEAR LIBCXX_OVERRIDE_DARWIN_INSTALL) # Show the override option.
+    set(LIBCXX_INSTALL_HEADERS OFF)
+    set(LIBCXX_INSTALL_LIBRARY OFF)
+  endif()
+endif()
+
+set(LIBCXX_CONFIGURE_IDE_DEFAULT OFF)
+if (XCODE OR MSVC_IDE)
+  set(LIBCXX_CONFIGURE_IDE_DEFAULT ON)
+endif()
+option(LIBCXX_CONFIGURE_IDE "Configure libcxx for use within an IDE"
+      ${LIBCXX_CONFIGURE_IDE_DEFAULT})
 
 #===============================================================================
 # Check option configurations
@@ -128,6 +195,29 @@ if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY)
   else()
     message(WARNING "LIBCXX_ENABLE_STATIC_ABI_LIBRARY is an experimental option")
   endif()
+endif()
+
+if (LIBCXX_ENABLE_ABI_LINKER_SCRIPT)
+    if (APPLE)
+      message(FATAL_ERROR "LIBCXX_ENABLE_ABI_LINKER_SCRIPT cannot be used on APPLE targets")
+    endif()
+    if (NOT PYTHONINTERP_FOUND)
+      message(FATAL_ERROR "LIBCXX_ENABLE_ABI_LINKER_SCRIPT requires python but it was not found.")
+    endif()
+    if (NOT LIBCXX_ENABLE_SHARED)
+      message(FATAL_ERROR "LIBCXX_ENABLE_ABI_LINKER_SCRIPT is only available for shared library builds.")
+    endif()
+endif()
+
+if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY AND LIBCXX_ENABLE_ABI_LINKER_SCRIPT)
+    message(FATAL_ERROR "Conflicting options given.
+        LIBCXX_ENABLE_STATIC_ABI_LIBRARY cannot be specified with
+        LIBCXX_ENABLE_ABI_LINKER_SCRIPT")
+endif()
+
+if (LIBCXX_HAS_MUSL_LIBC AND NOT LIBCXX_INSTALL_SUPPORT_HEADERS)
+  message(FATAL_ERROR "LIBCXX_INSTALL_SUPPORT_HEADERS can not be turned off"
+                      "when building for Musl with LIBCXX_HAS_MUSL_LIBC.")
 endif()
 
 #===============================================================================
@@ -166,7 +256,7 @@ string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
 # Setup Compiler Flags
 #===============================================================================
 
-include(HandleLibCXXABI) # Steup the ABI library flags
+include(HandleLibCXXABI) # Setup the ABI library flags
 
 # Include macros for adding and removing libc++ flags.
 include(HandleLibcxxFlags)
@@ -174,6 +264,11 @@ include(HandleLibcxxFlags)
 # Remove flags that may have snuck in.
 remove_flags(-DNDEBUG -UNDEBUG -D_DEBUG
              -stdlib=libc++ -stdlib=libstdc++ -lc++abi -m32)
+
+# FIXME(EricWF): See the FIXME on LIBCXX_ENABLE_PEDANTIC.
+# Remove the -pedantic flag and -Wno-pedantic and -pedantic-errors
+# so they don't get transformed into -Wno and -errors respectivly.
+remove_flags(-Wno-pedantic -pedantic-errors -pedantic)
 
 # Required flags ==============================================================
 add_compile_flags_if_supported(-std=c++11)
@@ -239,15 +334,8 @@ endif()
 
 # Feature flags ===============================================================
 define_if(MSVC -D_CRT_SECURE_NO_WARNINGS)
-define_if_not(LIBCXX_ENABLE_GLOBAL_FILESYSTEM_NAMESPACE -D_LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE)
-define_if_not(LIBCXX_ENABLE_STDIN -D_LIBCPP_HAS_NO_STDIN)
-define_if_not(LIBCXX_ENABLE_STDOUT -D_LIBCPP_HAS_NO_STDOUT)
-define_if_not(LIBCXX_ENABLE_THREADS -D_LIBCPP_HAS_NO_THREADS)
-define_if_not(LIBCXX_ENABLE_MONOTONIC_CLOCK -D_LIBCPP_HAS_NO_MONOTONIC_CLOCK)
-define_if_not(LIBCXX_ENABLE_THREAD_UNSAFE_C_FUNCTIONS -D_LIBCPP_HAS_NO_THREAD_UNSAFE_C_FUNCTIONS)
 
-
-# Sanitizer flags
+# Sanitizer flags =============================================================
 
 # Configure for sanitizers. If LIBCXX_BUILT_STANDALONE then we have to do
 # the flag translation ourselves. Othewise LLVM's CMakeList.txt will handle it.
@@ -282,12 +370,42 @@ if (LIBCXX_BUILT_STANDALONE)
     message(WARNING "LLVM_USE_SANITIZER is not supported on this platform.")
   endif()
 endif()
+
+# Configuration file flags =====================================================
+if (NOT LIBCXX_ABI_VERSION EQUAL "1")
+  config_define(${LIBCXX_ABI_VERSION} _LIBCPP_ABI_VERSION)
+endif()
+config_define_if(LIBCXX_ABI_UNSTABLE _LIBCPP_ABI_UNSTABLE)
+
+config_define_if_not(LIBCXX_ENABLE_GLOBAL_FILESYSTEM_NAMESPACE _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE)
+config_define_if_not(LIBCXX_ENABLE_STDIN _LIBCPP_HAS_NO_STDIN)
+config_define_if_not(LIBCXX_ENABLE_STDOUT _LIBCPP_HAS_NO_STDOUT)
+config_define_if_not(LIBCXX_ENABLE_THREADS _LIBCPP_HAS_NO_THREADS)
+config_define_if_not(LIBCXX_ENABLE_MONOTONIC_CLOCK _LIBCPP_HAS_NO_MONOTONIC_CLOCK)
+config_define_if_not(LIBCXX_ENABLE_THREAD_UNSAFE_C_FUNCTIONS _LIBCPP_HAS_NO_THREAD_UNSAFE_C_FUNCTIONS)
+
+config_define_if(LIBCXX_HAS_MUSL_LIBC _LIBCPP_HAS_MUSL_LIBC)
+
+if (LIBCXX_NEEDS_SITE_CONFIG)
+  configure_file(
+    include/__config_site.in
+    ${LIBCXX_BINARY_DIR}/__config_site
+    @ONLY)
+  # Provide the config definitions by included the generated __config_site
+  # file at compile time.
+  add_compile_flags("-include ${LIBCXX_BINARY_DIR}/__config_site")
+endif()
+
 #===============================================================================
 # Setup Source Code And Tests
 #===============================================================================
 include_directories(include)
 add_subdirectory(include)
 add_subdirectory(lib)
+
 if (LIBCXX_INCLUDE_TESTS)
   add_subdirectory(test)
+endif()
+if (LIBCXX_INCLUDE_DOCS)
+  add_subdirectory(docs)
 endif()
