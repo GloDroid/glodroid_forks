@@ -52,6 +52,28 @@ void test_comparisons()
     assert(!(nullptr > p));
 }
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnull-conversion"
+#endif
+void test_nullptr_conversions() {
+// GCC does not accept this due to CWG Defect #1423
+// http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1423
+#if defined(__clang__)
+    {
+        bool b = nullptr;
+        assert(!b);
+    }
+#endif
+    {
+        bool b(nullptr);
+        assert(!b);
+    }
+}
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+
 
 int main()
 {
@@ -72,8 +94,5 @@ int main()
         test_comparisons<A*>();
         test_comparisons<void(*)()>();
     }
-    {
-        bool b = nullptr;
-        assert(!b);
-    }
+    test_nullptr_conversions();
 }

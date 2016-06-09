@@ -762,6 +762,7 @@ typedef regex_token_iterator<wstring::const_iterator> wsregex_token_iterator;
 #include <memory>
 #include <vector>
 #include <deque>
+#include <cassert>
 
 #include <__undef_min_max>
 
@@ -960,7 +961,9 @@ _LIBCPP_ALWAYS_INLINE
 void __throw_regex_error()
 {
 #ifndef _LIBCPP_NO_EXCEPTIONS
-	throw regex_error(_Ev);
+    throw regex_error(_Ev);
+#else
+    assert(!"regex_error");
 #endif
 }
 
@@ -979,6 +982,8 @@ public:
 
 #ifdef __ANDROID__
     static const char_class_type __regex_word = 0x8000;
+#elif defined(__mips__) && defined(__GLIBC__)
+    static const char_class_type __regex_word = static_cast<char_class_type>(_ISbit(15));
 #else
     static const char_class_type __regex_word = 0x80;
 #endif
@@ -1054,6 +1059,7 @@ private:
     _LIBCPP_INLINE_VISIBILITY
     int __regex_traits_value(char __ch, int __radix) const
         {return __regex_traits_value(static_cast<unsigned char>(__ch), __radix);}
+    _LIBCPP_INLINE_VISIBILITY
     int __regex_traits_value(wchar_t __ch, int __radix) const;
 };
 
@@ -1276,7 +1282,7 @@ regex_traits<_CharT>::__regex_traits_value(unsigned char __ch, int __radix)
 }
 
 template <class _CharT>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 int
 regex_traits<_CharT>::__regex_traits_value(wchar_t __ch, int __radix) const
 {
@@ -1739,6 +1745,8 @@ template <class _CharT>
 void
 __back_ref<_CharT>::__exec(__state& __s) const
 {
+    if (__mexp_ > __s.__sub_matches_.size())
+        __throw_regex_error<regex_constants::error_backref>();
     sub_match<const _CharT*>& __sm = __s.__sub_matches_[__mexp_-1];
     if (__sm.matched)
     {
@@ -4268,6 +4276,9 @@ basic_regex<_CharT, _Traits>::__parse_atom_escape(_ForwardIterator __first,
     if (__first != __last && *__first == '\\')
     {
         _ForwardIterator __t1 = _VSTD::next(__first);
+        if (__t1 == __last)
+            __throw_regex_error<regex_constants::error_escape>();
+
         _ForwardIterator __t2 = __parse_decimal_escape(__t1, __last);
         if (__t2 != __t1)
             __first = __t2;
@@ -5387,8 +5398,8 @@ match_results<_BidirectionalIterator, _Allocator>::format(_OutputIter __out,
                 if ('0' <= *__fmt_first && *__fmt_first <= '9')
                 {
                     size_t __i = *__fmt_first - '0';
-                    __out = _VSTD::copy(__matches_[__i].first,
-                                       __matches_[__i].second, __out);
+                    __out = _VSTD::copy((*this)[__i].first,
+                                        (*this)[__i].second, __out);
                 }
                 else
                 {
@@ -5439,8 +5450,8 @@ match_results<_BidirectionalIterator, _Allocator>::format(_OutputIter __out,
                             ++__fmt_first;
                             __i = 10 * __i + *__fmt_first - '0';
                         }
-                        __out = _VSTD::copy(__matches_[__i].first,
-                                           __matches_[__i].second, __out);
+                        __out = _VSTD::copy((*this)[__i].first,
+                                            (*this)[__i].second, __out);
                     }
                     else
                     {
