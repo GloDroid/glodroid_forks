@@ -10,23 +10,28 @@ set(LIBCXX_LIT_VARIANT "libcxx" CACHE STRING
     "Configuration variant to use for LIT.")
 
 pythonize_bool(LIBCXX_ENABLE_EXCEPTIONS)
+pythonize_bool(LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY)
 pythonize_bool(LIBCXX_ENABLE_RTTI)
 pythonize_bool(LIBCXX_ENABLE_SHARED)
 pythonize_bool(LIBCXX_BUILD_32_BITS)
-pythonize_bool(LIBCXX_ENABLE_GLOBAL_FILESYSTEM_NAMESPACE)
-pythonize_bool(LIBCXX_ENABLE_STDIN)
-pythonize_bool(LIBCXX_ENABLE_STDOUT)
-pythonize_bool(LIBCXX_ENABLE_THREADS)
-pythonize_bool(LIBCXX_ENABLE_THREAD_UNSAFE_C_FUNCTIONS)
-pythonize_bool(LIBCXX_ENABLE_MONOTONIC_CLOCK)
 pythonize_bool(LIBCXX_GENERATE_COVERAGE)
+pythonize_bool(LIBCXXABI_ENABLE_SHARED)
 pythonize_bool(LIBCXXABI_USE_LLVM_UNWINDER)
+pythonize_bool(LIBCXX_HAS_ATOMIC_LIB)
 
 # The tests shouldn't link to any ABI library when it has been linked into
-# libc++ statically.
-if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY)
+# libc++ statically or via a linker script.
+if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY OR LIBCXX_ENABLE_ABI_LINKER_SCRIPT)
   set(LIBCXX_CXX_ABI_LIBNAME "none")
 endif()
+
+# By default, for non-standalone builds, libcxx and libcxxabi share a library
+# directory.
+if (NOT LIBCXX_CXX_ABI_LIBRARY_PATH)
+  set(LIBCXX_CXX_ABI_LIBRARY_PATH "${LIBCXX_LIBRARY_DIR}" CACHE PATH
+      "The path to libc++abi library.")
+endif()
+
 set(LIBCXX_TARGET_INFO "libcxx.test.target_info.LocalTI" CACHE STRING
     "TargetInfo to use when setting up test environment.")
 set(LIBCXX_EXECUTOR "None" CACHE STRING
@@ -39,15 +44,19 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
   @ONLY)
 
+if (LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY)
+  set(experimental_dep cxx_experimental)
+endif()
+
 add_lit_testsuite(check-libcxx
   "Running libcxx tests"
   ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS cxx)
+  DEPENDS cxx ${experimental_dep})
 
 if (LIBCXX_GENERATE_COVERAGE)
   include(CodeCoverage)
   set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/coverage")
-  set(capture_dirs "${LIBCXX_LIB_CMAKEFILES_DIR}/cxx.dir/;${CMAKE_CURRENT_BINARY_DIR}")
+  set(capture_dirs "${LIBCXX_LIB_CMAKEFILES_DIR}/cxx.dir/;${LIBCXX_LIB_CMAKEFILES_DIR}/cxx_experimental.dir/;${CMAKE_CURRENT_BINARY_DIR}")
   set(extract_dirs "${LIBCXX_SOURCE_DIR}/include;${LIBCXX_SOURCE_DIR}/src")
   setup_lcov_test_target_coverage("cxx" "${output_dir}" "${capture_dirs}" "${extract_dirs}")
 endif()

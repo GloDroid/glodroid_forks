@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: libcpp-no-exceptions
 // template <class charT>
 //     explicit bitset(const charT* str,
 //                     typename basic_string<charT>::size_type n = basic_string<charT>::npos,
@@ -17,7 +18,9 @@
 #include <algorithm> // for 'min' and 'max'
 #include <stdexcept> // for 'invalid_argument'
 
+#if defined(__clang__)
 #pragma clang diagnostic ignored "-Wtautological-compare"
+#endif
 
 template <std::size_t N>
 void test_char_pointer_ctor()

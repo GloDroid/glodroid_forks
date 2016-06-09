@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XFAIL: libcpp-no-exceptions
 // <string>
 
 // void resize(size_type n);
@@ -15,6 +16,7 @@
 #include <stdexcept>
 #include <cassert>
 
+#include "test_macros.h"
 #include "min_allocator.h"
 
 template <class S>
@@ -24,7 +26,7 @@ test(S s, typename S::size_type n, S expected)
     try
     {
         s.resize(n);
-        assert(s.__invariants());
+        LIBCPP_ASSERT(s.__invariants());
         assert(n <= s.max_size());
         assert(s == expected);
     }
@@ -55,7 +57,7 @@ int main()
          S("12345678901234567890123456789012345678901234567890\0\0\0\0\0\0\0\0\0\0", 60));
     test(S(), S::npos, S("not going to happen"));
     }
-#if __cplusplus >= 201103L
+#if TEST_STD_VER >= 11
     {
     typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
     test(S(), 0, S());
