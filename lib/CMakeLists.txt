@@ -11,7 +11,7 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "SunOS")
 endif()
 
 # Add all the headers to the project for IDEs.
-if (MSVC_IDE OR XCODE)
+if (LIBCXX_CONFIGURE_IDE)
   file(GLOB_RECURSE LIBCXX_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/../include/*)
   if(WIN32)
     file( GLOB LIBCXX_WIN32_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/../include/support/win32/*.h)
@@ -24,10 +24,14 @@ if (MSVC_IDE OR XCODE)
   endif()
 endif()
 
+if(NOT LIBCXX_INSTALL_LIBRARY)
+  set(exclude_from_all EXCLUDE_FROM_ALL)
+endif()
+
 if (LIBCXX_ENABLE_SHARED)
-  add_library(cxx SHARED ${LIBCXX_SOURCES} ${LIBCXX_HEADERS})
+  add_library(cxx SHARED ${exclude_from_all} ${LIBCXX_SOURCES} ${LIBCXX_HEADERS})
 else()
-  add_library(cxx STATIC ${LIBCXX_SOURCES} ${LIBCXX_HEADERS})
+  add_library(cxx STATIC ${exclude_from_all} ${LIBCXX_SOURCES} ${LIBCXX_HEADERS})
 endif()
 
 if (DEFINED LIBCXX_CXX_ABI_DEPS)
@@ -75,6 +79,7 @@ add_library_flags_if(LIBCXX_HAS_C_LIB c)
 add_library_flags_if(LIBCXX_HAS_M_LIB m)
 add_library_flags_if(LIBCXX_HAS_RT_LIB rt)
 add_library_flags_if(LIBCXX_HAS_GCC_S_LIB gcc_s)
+add_library_flags_if(LIBCXX_HAS_ATOMIC_LIB atomic)
 
 # Setup flags.
 add_flags_if_supported(-fPIC)
@@ -107,7 +112,7 @@ if ( APPLE AND (LIBCXX_CXX_ABI_LIBNAME STREQUAL "libcxxabi" OR
           "-Wl,-reexport_library,${CMAKE_OSX_SYSROOT}/usr/lib/libc++abi.dylib")
       endif()
     else()
-      set (OSX_RE_EXPORT_LINE "/usr/lib/libc++abi.dylib -Wl,-reexported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/libc++abi${LIBCXX_LIBCPPABI_VERSION}.exp")
+      set(OSX_RE_EXPORT_LINE "/usr/lib/libc++abi.dylib -Wl,-reexported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/libc++abi${LIBCXX_LIBCPPABI_VERSION}.exp")
     endif()
 
     add_link_flags(
@@ -129,11 +134,83 @@ set_target_properties(cxx
     COMPILE_FLAGS "${LIBCXX_COMPILE_FLAGS}"
     LINK_FLAGS    "${LIBCXX_LINK_FLAGS}"
     OUTPUT_NAME   "c++"
-    VERSION       "1.0"
-    SOVERSION     "1"
+    VERSION       "${LIBCXX_ABI_VERSION}.0"
+    SOVERSION     "${LIBCXX_ABI_VERSION}"
   )
 
-install(TARGETS cxx
-  LIBRARY DESTINATION lib${LIBCXX_LIBDIR_SUFFIX}
-  ARCHIVE DESTINATION lib${LIBCXX_LIBDIR_SUFFIX}
+if (LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY)
+  file(GLOB LIBCXX_EXPERIMENTAL_SOURCES ../src/experimental/*.cpp)
+  add_library(cxx_experimental STATIC ${LIBCXX_EXPERIMENTAL_SOURCES})
+  target_link_libraries(cxx_experimental cxx)
+
+  set(experimental_flags "${LIBCXX_COMPILE_FLAGS}")
+  check_flag_supported(-std=c++14)
+  if (NOT MSVC AND LIBCXX_SUPPORTS_STD_EQ_CXX14_FLAG)
+    string(REPLACE "-std=c++11" "-std=c++14" experimental_flags "${LIBCXX_COMPILE_FLAGS}")
+  endif()
+  set_target_properties(cxx_experimental
+    PROPERTIES
+      COMPILE_FLAGS "${experimental_flags}"
+      OUTPUT_NAME   "c++experimental"
   )
+endif()
+
+# Generate a linker script inplace of a libc++.so symlink. Rerun this command
+# after cxx builds.
+if (LIBCXX_ENABLE_ABI_LINKER_SCRIPT)
+  # Get the name of the ABI library and handle the case where CXXABI_LIBNAME
+  # is a target name and not a library. Ex cxxabi_shared.
+  set(SCRIPT_ABI_LIBNAME "${LIBCXX_CXX_ABI_LIBRARY}")
+  if (SCRIPT_ABI_LIBNAME STREQUAL "cxxabi_shared")
+    set(SCRIPT_ABI_LIBNAME "c++abi")
+  endif()
+  # Generate a linker script inplace of a libc++.so symlink. Rerun this command
+  # after cxx builds.
+  add_custom_command(TARGET cxx POST_BUILD
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${LIBCXX_SOURCE_DIR}/utils/gen_link_script/gen_link_script.py
+    ARGS
+      "$<TARGET_LINKER_FILE:cxx>"
+      "${SCRIPT_ABI_LIBNAME}"
+    WORKING_DIRECTORY ${LIBCXX_BUILD_DIR}
+  )
+endif()
+
+if (LIBCXX_INSTALL_LIBRARY)
+  if (LIBCXX_INSTALL_EXPERIMENTAL_LIBRARY)
+    set(experimental_lib cxx_experimental)
+  endif()
+  install(TARGETS cxx ${experimental_lib}
+    LIBRARY DESTINATION lib${LIBCXX_LIBDIR_SUFFIX} COMPONENT libcxx
+    ARCHIVE DESTINATION lib${LIBCXX_LIBDIR_SUFFIX} COMPONENT libcxx
+    )
+  # NOTE: This install command must go after the cxx install command otherwise
+  # it will not be executed after the library symlinks are installed.
+  if (LIBCXX_ENABLE_ABI_LINKER_SCRIPT)
+    # Replace the libc++ filename with $<TARGET_LINKER_FILE:cxx>
+    # after we required CMake 3.0.
+    install(FILES "${LIBCXX_LIBRARY_DIR}/libc++${CMAKE_SHARED_LIBRARY_SUFFIX}"
+      DESTINATION lib${LIBCXX_LIBDIR_SUFFIX}
+      COMPONENT libcxx)
+  endif()
+endif()
+
+if (NOT CMAKE_CONFIGURATION_TYPES AND (LIBCXX_INSTALL_LIBRARY OR
+                                       LIBCXX_INSTALL_HEADERS))
+    if(LIBCXX_INSTALL_LIBRARY)
+      set(lib_install_target cxx)
+    endif()
+    if (LIBCXX_INSTALL_EXPERIMENTAL_LIBRARY)
+      set(experimental_lib_install_target cxx_experimental)
+    endif()
+    if(LIBCXX_INSTALL_HEADERS)
+      set(header_install_target install-libcxx-headers)
+    endif()
+    add_custom_target(install-libcxx
+                      DEPENDS ${lib_install_target}
+                              ${experimental_lib_install_target}
+                              ${header_install_target}
+                      COMMAND "${CMAKE_COMMAND}"
+                      -DCMAKE_INSTALL_COMPONENT=libcxx
+                      -P "${LIBCXX_BINARY_DIR}/cmake_install.cmake")
+endif()
