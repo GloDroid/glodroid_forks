@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # Copyright (C) 2015 The Android Open Source Project
 #
@@ -79,7 +80,7 @@ def mmm(path):
 
 def gen_build_cmds(bitness, compiler, host):
     gen_test_config(bitness, compiler, host)
-    mmm(os.path.join(THIS_DIR, 'buildcmds'))
+    mmm('external/libcxx/buildcmds')
 
 
 def main():
