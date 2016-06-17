@@ -74,7 +74,7 @@ def mmm(path):
     env = dict(os.environ)
     env['ONE_SHOT_MAKEFILE'] = makefile
     env['LIBCXX_TESTING'] = 'true'
-    cmd = ['make', '-C', ANDROID_DIR, '-f', main_mk, 'all_modules']
+    cmd = ['make', '-j', '-C', ANDROID_DIR, '-f', main_mk, 'all_modules']
     subprocess.check_call(cmd, env=env)
 
 
