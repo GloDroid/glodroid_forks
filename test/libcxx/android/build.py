@@ -8,6 +8,6 @@ def mm(path, android_build_top):
 
     cmd = [
         'make', '-C', android_build_top, '-f', 'build/core/main.mk',
-        'all_modules', '-B'
+        'MODULES-IN-' + path.replace('/', '-'), '-B'
     ]
     return not subprocess.Popen(cmd, stdout=None, stderr=None, env=env).wait()
