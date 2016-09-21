@@ -974,13 +974,13 @@ public:
     typedef _CharT                  char_type;
     typedef basic_string<char_type> string_type;
     typedef locale                  locale_type;
-#ifdef __ANDROID__
+#ifdef __BIONIC__
     typedef uint16_t                char_class_type;
 #else
     typedef ctype_base::mask        char_class_type;
 #endif
 
-#ifdef __ANDROID__
+#ifdef __BIONIC__
     static const char_class_type __regex_word = 0x8000;
 #elif defined(__mips__) && defined(__GLIBC__)
     static const char_class_type __regex_word = static_cast<char_class_type>(_ISbit(15));
