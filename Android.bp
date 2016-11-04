@@ -61,6 +61,11 @@ cc_library_static {
         "libc++abi",
     ],
     stl: "none",
+    target: {
+        linux_bionic: {
+            enabled: true,
+        },
+    },
 }
 
 // host + device dynamic lib
@@ -79,21 +84,30 @@ cc_library_shared {
             static_libs: ["libunwind_llvm"],
             ldflags: ["-Wl,--exclude-libs,libunwind_llvm.a"],
         },
-        host: {
-            ldflags: ["-nodefaultlibs"],
-        },
         darwin: {
             unexported_symbols_list: "lib/libc++unexp.exp",
             force_symbols_not_weak_list: "lib/notweak.exp",
             force_symbols_weak_list: "lib/weak.exp",
-            ldflags: ["-Wl,-undefined,dynamic_lookup"],
+            ldflags: [
+                "-nodefaultlibs",
+                "-Wl,-undefined,dynamic_lookup",
+            ],
         },
 
         linux: {
+            ldflags: ["-nodefaultlibs"],
             host_ldlibs: [
                 "-lrt",
                 "-lpthread",
                 "-ldl",
+            ],
+        },
+        linux_bionic: {
+            enabled: true,
+            static_libs: ["libunwindbacktrace"],
+            shared_libs: [
+                "libdl",
+                "liblzma",
             ],
         },
     },
