@@ -90,10 +90,25 @@ def main():
 
     mode_str = 'host' if args.host else 'device'
     android_mode_arg = '--param=android_mode=' + mode_str
-    test_path = os.path.join(THIS_DIR, 'test')
+    default_test_path = os.path.join(THIS_DIR, 'test')
+
+    have_filter_args = False
+    for arg in lit_args:
+        # If the argument is a valid path with default_test_path, it is a test
+        # filter.
+        real_path = os.path.realpath(arg)
+        if not real_path.startswith(default_test_path):
+            continue
+        if not os.path.exists(real_path):
+            continue
+
+        have_filter_args = True
+        break  # No need to keep scanning.
 
     lit_args = ['-sv', android_mode_arg] + lit_args
-    cmd = ['python', lit_path] + lit_args + [test_path]
+    cmd = ['python', lit_path] + lit_args
+    if not have_filter_args:
+        cmd.append(default_test_path)
     sys.exit(subprocess.call(cmd))
 
 
