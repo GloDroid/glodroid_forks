@@ -12,11 +12,12 @@
 
 #include <iterator>
 #include <stdexcept>
+#include <cstddef>
 #include <cassert>
 
 #include "test_macros.h"
 
-#ifndef _LIBCPP_HAS_NO_DELETED_FUNCTIONS
+#if TEST_STD_VER >= 11
 #define DELETE_FUNCTION = delete
 #else
 #define DELETE_FUNCTION
@@ -52,25 +53,27 @@ public:
     void operator,(T const &) DELETE_FUNCTION;
 };
 
-template <class It>
+template <class It,
+    class ItTraits = It>
 class input_iterator
 {
+    typedef std::iterator_traits<ItTraits> Traits;
     It it_;
 
-    template <class U> friend class input_iterator;
+    template <class U, class T> friend class input_iterator;
 public:
     typedef          std::input_iterator_tag                   iterator_category;
-    typedef typename std::iterator_traits<It>::value_type      value_type;
-    typedef typename std::iterator_traits<It>::difference_type difference_type;
+    typedef typename Traits::value_type                        value_type;
+    typedef typename Traits::difference_type                   difference_type;
     typedef It                                                 pointer;
-    typedef typename std::iterator_traits<It>::reference       reference;
+    typedef typename Traits::reference                         reference;
 
     It base() const {return it_;}
 
     input_iterator() : it_() {}
     explicit input_iterator(It it) : it_(it) {}
-    template <class U>
-        input_iterator(const input_iterator<U>& u) :it_(u.it_) {}
+    template <class U, class T>
+        input_iterator(const input_iterator<U, T>& u) :it_(u.it_) {}
 
     reference operator*() const {return *it_;}
     pointer operator->() const {return it_;}
@@ -88,18 +91,18 @@ public:
     void operator,(T const &) DELETE_FUNCTION;
 };
 
-template <class T, class U>
+template <class T, class TV, class U, class UV>
 inline
 bool
-operator==(const input_iterator<T>& x, const input_iterator<U>& y)
+operator==(const input_iterator<T, TV>& x, const input_iterator<U, UV>& y)
 {
     return x.base() == y.base();
 }
 
-template <class T, class U>
+template <class T, class TV, class U, class UV>
 inline
 bool
-operator!=(const input_iterator<T>& x, const input_iterator<U>& y)
+operator!=(const input_iterator<T, TV>& x, const input_iterator<U, UV>& y)
 {
     return !(x == y);
 }
@@ -399,7 +402,7 @@ struct ThrowingIterator {
     ++current_;
     return *this;
     }
-    
+
     ThrowingIterator operator++(int)
     {
         ThrowingIterator temp = *this;
@@ -465,7 +468,7 @@ bool operator== (const ThrowingIterator<T>& a, const ThrowingIterator<T>& b)
 template <typename T>
 bool operator!= (const ThrowingIterator<T>& a, const ThrowingIterator<T>& b)
 {   return !a.operator==(b); }
-    
+
 template <typename T>
 struct NonThrowingIterator {
     typedef std::bidirectional_iterator_tag iterator_category;
@@ -500,7 +503,7 @@ struct NonThrowingIterator {
     ++current_;
     return *this;
     }
-    
+
     NonThrowingIterator operator++(int) TEST_NOEXCEPT
     {
         NonThrowingIterator temp = *this;

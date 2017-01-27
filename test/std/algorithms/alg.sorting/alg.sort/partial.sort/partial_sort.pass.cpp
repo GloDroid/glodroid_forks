@@ -19,21 +19,25 @@
 #include <cassert>
 
 void
-test_larger_sorts(unsigned N, unsigned M)
+test_larger_sorts(int N, int M)
 {
     assert(N != 0);
+    assert(N >= M);
     int* array = new int[N];
     for (int i = 0; i < N; ++i)
         array[i] = i;
     std::random_shuffle(array, array+N);
     std::partial_sort(array, array+M, array+N);
     for (int i = 0; i < M; ++i)
+    {
+        assert(i < N); // quiet analysis warnings
         assert(array[i] == i);
+    }
     delete [] array;
 }
 
 void
-test_larger_sorts(unsigned N)
+test_larger_sorts(int N)
 {
     test_larger_sorts(N, 0);
     test_larger_sorts(N, 1);

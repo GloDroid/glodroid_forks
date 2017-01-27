@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
 // <random>
 
 // class random_device;
@@ -17,20 +16,25 @@
 #include <random>
 #include <cassert>
 
+#include "test_macros.h"
+
 int main()
 {
     {
         std::random_device r;
         std::random_device::result_type e = r();
+        ((void)e); // Prevent unused warning
     }
 
+#ifndef TEST_HAS_NO_EXCEPTIONS
     try
     {
         std::random_device r("/dev/null");
         r();
-        assert(false);
+        LIBCPP_ASSERT(false);
     }
     catch (const std::system_error&)
     {
     }
+#endif
 }

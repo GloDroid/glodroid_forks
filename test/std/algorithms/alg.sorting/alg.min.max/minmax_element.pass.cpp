@@ -41,7 +41,7 @@ test(Iter first, Iter last)
 
 template <class Iter>
 void
-test(unsigned N)
+test(int N)
 {
     int* a = new int[N];
     for (int i = 0; i < N; ++i)
@@ -62,7 +62,7 @@ test()
     test<Iter>(10);
     test<Iter>(1000);
     {
-    const unsigned N = 100;
+    const int N = 100;
     int* a = new int[N];
     for (int i = 0; i < N; ++i)
         a[i] = 5;
@@ -74,13 +74,13 @@ test()
     }
 }
 
-#if __cplusplus >= 201402L
+#if TEST_STD_VER >= 14
 constexpr int il[] = { 2, 4, 6, 8, 7, 5, 3, 1 };
 #endif
 
 void constexpr_test()
 {
-#if __cplusplus >= 201402L
+#if TEST_STD_VER >= 14
     constexpr auto p = std::minmax_element(il, il+8);
     static_assert ( *(p.first)  == 1, "" );
     static_assert ( *(p.second) == 8, "" );
@@ -93,6 +93,6 @@ int main()
     test<bidirectional_iterator<const int*> >();
     test<random_access_iterator<const int*> >();
     test<const int*>();
-    
+
    constexpr_test();
 }

@@ -24,20 +24,20 @@
 struct S {
 	S() : i_(0) {}
 	S(int i) : i_(i) {}
-	
+
 	S(const S&  rhs) : i_(rhs.i_) {}
 	S(      S&& rhs) : i_(rhs.i_) { rhs.i_ = -1; }
-	
+
 	S& operator =(const S&  rhs) { i_ = rhs.i_;              return *this; }
 	S& operator =(      S&& rhs) { i_ = rhs.i_; rhs.i_ = -2; assert(this != &rhs); return *this; }
 	S& operator =(int i)         { i_ = i;                   return *this; }
-	
+
 	bool operator  <(const S&  rhs) const { return i_ < rhs.i_; }
 	bool operator ==(const S&  rhs) const { return i_ == rhs.i_; }
 	bool operator ==(int i)         const { return i_ == i; }
 
 	void set(int i) { i_ = i; }
-	
+
 	int i_;
 	};
 #endif
@@ -58,7 +58,7 @@ test_one(unsigned N, unsigned M)
     if(N > 0)
     {
         assert(ia[0] == 0);
-        assert(ia[N-1] == N-1);
+        assert(ia[N-1] == static_cast<value_type>(N-1));
         assert(std::is_sorted(ia, ia+N));
     }
     delete [] ia;
