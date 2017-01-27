@@ -1,3 +1,4 @@
+import copy
 import os
 import re
 import shlex
@@ -12,6 +13,9 @@ class AndroidCXXCompiler(libcxx.compiler.CXXCompiler):
         self.cxx_template = cxx_template
         self.link_template = link_template
         self.build_top = os.getenv('ANDROID_BUILD_TOP')
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     def get_triple(self):
         if 'clang' in self.path:
@@ -38,15 +42,15 @@ class AndroidCXXCompiler(libcxx.compiler.CXXCompiler):
                 return match.group(1)
         return None
 
-    def compile(self, source_files, out=None, flags=None, env=None, cwd=None):
+    def compile(self, source_files, out=None, flags=None, cwd=None):
         flags = [] if flags is None else flags
         return super(AndroidCXXCompiler, self).compile(source_files, out, flags,
-                                                       env, self.build_top)
+                                                       self.build_top)
 
-    def link(self, source_files, out=None, flags=None, env=None, cwd=None):
+    def link(self, source_files, out=None, flags=None, cwd=None):
         flags = [] if flags is None else flags
         return super(AndroidCXXCompiler, self).link(source_files, out, flags,
-                                                    env, self.build_top)
+                                                    self.build_top)
 
     def compileCmd(self, source_files, out=None, flags=None):
         if out is None:
