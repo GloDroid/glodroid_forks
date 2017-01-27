@@ -25,7 +25,7 @@ LOCAL_SRC_FILES := dummy.cpp
 LOCAL_CXX_STL := libc++
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../test/support
 LOCAL_CPPFLAGS := \
-    -std=c++14 \
+    -std=c++1z \
     -fsized-deallocation \
     -fexceptions \
     -UNDEBUG \
