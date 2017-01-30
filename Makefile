@@ -186,7 +186,7 @@ _HAL_INTFS_FILES :=	hal/hal_intf.o \
 			hal/hal_hci/hal_$(HCI_NAME).o \
 			hal/led/hal_$(HCI_NAME)_led.o
 
-			
+
 _OUTSRC_FILES := hal/phydm/phydm_debug.o	\
 		hal/phydm/phydm_antdiv.o\
 		hal/phydm/phydm_antdect.o\
@@ -457,7 +457,7 @@ _OUTSRC_FILES += hal/phydm/rtl8821a/halhwimg8821a_fw.o\
 		hal/phydm/rtl8821a/phydm_rtl8821a.o\
 		hal/phydm/rtl8821a/phydm_iqk_8821a_ce.o\
 		hal/phydm/txbf/haltxbfjaguar.o
-		
+
 endif
 
 
@@ -962,9 +962,14 @@ _PLATFORM_FILES += platform/platform_ARM_SUN50IW1P1_sdio.o
 endif
 
 ARCH := arm64
+
+CROSS_COMPILE ?=
+KVER  := $(shell uname -r)
+KSRC := /lib/modules/$(KVER)/build
+
 # ===Cross compile setting for Android 5.1(64) SDK ===
-CROSS_COMPILE := /home/android_sdk/Allwinner/a64/android-51/lichee/out/sun50iw1p1/android/common/buildroot/external-toolchain/bin/aarch64-linux-gnu-
-KSRC :=/home/android_sdk/Allwinner/a64/android-51/lichee/linux-3.10/
+#CROSS_COMPILE := /home/android_sdk/Allwinner/a64/android-51/lichee/out/sun50iw1p1/android/common/buildroot/external-toolchain/bin/aarch64-linux-gnu-
+#KSRC :=/home/android_sdk/Allwinner/a64/android-51/lichee/linux-3.10/
 endif
 
 ifeq ($(CONFIG_PLATFORM_TI_AM3517), y)
@@ -1632,7 +1637,7 @@ rtk_core :=	core/rtw_cmd.o \
 		core/rtw_btcoex.o \
 		core/rtw_beamforming.o \
 		core/rtw_odm.o \
-		core/efuse/rtw_efuse.o 
+		core/efuse/rtw_efuse.o
 
 $(MODULE_NAME)-y += $(rtk_core)
 
@@ -1698,4 +1703,3 @@ clean:
 	rm -fr *.mod.c *.mod *.o .*.cmd *.ko *~
 	rm -fr .tmp_versions
 endif
-
