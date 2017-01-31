@@ -30,7 +30,7 @@ int main()
         typedef std::move_iterator<T*> I;
         C c0(I(std::begin(t)), I(std::end(t)), A(10));
         C c = std::move(c0);
-        unsigned n = 0;
+        int n = 0;
         for (C::const_iterator i = c.begin(), e = c.end(); i != e; ++i, ++n)
             assert(*i == n);
         assert(n == std::end(t) - std::begin(t));
@@ -45,14 +45,14 @@ int main()
         typedef std::move_iterator<T*> I;
         C c0(I(std::begin(t)), I(std::end(t)), A(10));
         C c = std::move(c0);
-        unsigned n = 0;
+        int n = 0;
         for (C::const_iterator i = c.begin(), e = c.end(); i != e; ++i, ++n)
             assert(*i == n);
         assert(n == std::end(t) - std::begin(t));
         assert(c0.empty());
         assert(c.get_allocator() == A(10));
     }
-#if __cplusplus >= 201103L
+#if TEST_STD_VER >= 11
     {
         typedef MoveOnly T;
         typedef min_allocator<T> A;
@@ -61,7 +61,7 @@ int main()
         typedef std::move_iterator<T*> I;
         C c0(I(std::begin(t)), I(std::end(t)), A());
         C c = std::move(c0);
-        unsigned n = 0;
+        int n = 0;
         for (C::const_iterator i = c.begin(), e = c.end(); i != e; ++i, ++n)
             assert(*i == n);
         assert(n == std::end(t) - std::begin(t));
