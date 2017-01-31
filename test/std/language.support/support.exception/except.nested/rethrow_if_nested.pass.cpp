@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: libcpp-no-exceptions
+// UNSUPPORTED: libcpp-no-exceptions
 // <exception>
 
 // class nested_exception;
@@ -18,12 +18,14 @@
 #include <cstdlib>
 #include <cassert>
 
+#include "test_macros.h"
+
 class A
 {
     int data_;
 public:
     explicit A(int data) : data_(data) {}
-    virtual ~A() _NOEXCEPT {}
+    virtual ~A() TEST_NOEXCEPT {}
 
     friend bool operator==(const A& x, const A& y) {return x.data_ == y.data_;}
 };
@@ -76,9 +78,9 @@ int main()
                     std::rethrow_if_nested(a);
                     assert(false);
                 }
-                catch (const B& b)
+                catch (const B& b2)
                 {
-                    assert(b == B(5));
+                    assert(b2 == B(5));
                 }
             }
         }

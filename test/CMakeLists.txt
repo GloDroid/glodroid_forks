@@ -1,3 +1,5 @@
+include(AddLLVM) # for add_lit_testsuite
+
 macro(pythonize_bool var)
   if (${var})
     set(${var} True)
@@ -9,8 +11,21 @@ endmacro()
 set(LIBCXX_LIT_VARIANT "libcxx" CACHE STRING
     "Configuration variant to use for LIT.")
 
+# The tests shouldn't link to any ABI library when it has been linked into
+# libc++ statically or via a linker script.
+if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY OR LIBCXX_ENABLE_ABI_LINKER_SCRIPT)
+  set(LIBCXX_CXX_ABI_LIBNAME "none")
+endif()
+
+# The tests shouldn't link to libunwind if we have a linker script which
+# already does so.
+if (LIBCXX_ENABLE_ABI_LINKER_SCRIPT)
+  set(LIBCXXABI_USE_LLVM_UNWINDER OFF)
+endif()
+
 pythonize_bool(LIBCXX_ENABLE_EXCEPTIONS)
 pythonize_bool(LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY)
+pythonize_bool(LIBCXX_ENABLE_FILESYSTEM)
 pythonize_bool(LIBCXX_ENABLE_RTTI)
 pythonize_bool(LIBCXX_ENABLE_SHARED)
 pythonize_bool(LIBCXX_BUILD_32_BITS)
@@ -18,12 +33,9 @@ pythonize_bool(LIBCXX_GENERATE_COVERAGE)
 pythonize_bool(LIBCXXABI_ENABLE_SHARED)
 pythonize_bool(LIBCXXABI_USE_LLVM_UNWINDER)
 pythonize_bool(LIBCXX_HAS_ATOMIC_LIB)
-
-# The tests shouldn't link to any ABI library when it has been linked into
-# libc++ statically or via a linker script.
-if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY OR LIBCXX_ENABLE_ABI_LINKER_SCRIPT)
-  set(LIBCXX_CXX_ABI_LIBNAME "none")
-endif()
+pythonize_bool(LIBCXX_HAVE_CXX_ATOMICS_WITH_LIB)
+pythonize_bool(LIBCXX_BUILD_EXTERNAL_THREAD_LIBRARY)
+pythonize_bool(LIBCXX_DEBUG_BUILD)
 
 # By default, for non-standalone builds, libcxx and libcxxabi share a library
 # directory.
@@ -44,14 +56,22 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
   @ONLY)
 
+set(LIBCXX_TEST_DEPS "")
+
 if (LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY)
-  set(experimental_dep cxx_experimental)
+  set(LIBCXX_TEST_DEPS cxx_experimental)
 endif()
 
-add_lit_testsuite(check-libcxx
+if (LIBCXX_HAS_EXTERNAL_THREAD_API)
+  list(APPEND LIBCXX_TEST_DEPS cxx_external_threads)
+endif()
+
+add_lit_testsuite(check-cxx
   "Running libcxx tests"
   ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS cxx ${experimental_dep})
+  DEPENDS cxx ${LIBCXX_TEST_DEPS})
+
+add_custom_target(check-libcxx DEPENDS check-cxx)
 
 if (LIBCXX_GENERATE_COVERAGE)
   include(CodeCoverage)
