@@ -16,13 +16,13 @@
 //     size_t operator()(T val) const;
 // };
 
-// Not very portable
-
 #include <functional>
 #include <cassert>
 #include <type_traits>
 #include <cstddef>
 #include <limits>
+
+#include "test_macros.h"
 
 template <class T>
 void
@@ -35,9 +35,14 @@ test()
 
     for (int i = 0; i <= 5; ++i)
     {
-        T t(i);
-        if (sizeof(T) <= sizeof(std::size_t))
-            assert(h(t) == t);
+        T t(static_cast<T>(i));
+        const bool small = std::integral_constant<bool, sizeof(T) <= sizeof(std::size_t)>::value; // avoid compiler warnings
+        if (small)
+        {
+            const std::size_t result = h(t);
+            LIBCPP_ASSERT(result == static_cast<size_t>(t));
+            ((void)result); // Prevent unused warning
+        }
     }
 }
 

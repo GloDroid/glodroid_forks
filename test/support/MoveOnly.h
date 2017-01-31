@@ -10,6 +10,8 @@
 #ifndef MOVEONLY_H
 #define MOVEONLY_H
 
+#include "test_macros.h"
+
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 #include <cstddef>
@@ -39,8 +41,9 @@ namespace std {
 
 template <>
 struct hash<MoveOnly>
-    : public std::unary_function<MoveOnly, std::size_t>
 {
+    typedef MoveOnly argument_type;
+    typedef size_t result_type;
     std::size_t operator()(const MoveOnly& x) const {return x.get();}
 };
 
