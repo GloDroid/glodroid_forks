@@ -47,6 +47,7 @@ cc_library_static {
         "src/typeinfo.cpp",
         "src/utility.cpp",
         "src/valarray.cpp",
+        "src/variant.cpp",
     ],
     local_include_dirs: ["include"],
     export_include_dirs: ["include"],
@@ -55,6 +56,7 @@ cc_library_static {
         "-nostdinc++",
         "-fexceptions",
         "-DLIBCXX_BUILDING_LIBCXXABI",
+        "-D_LIBCPP_BUILDING_LIBRARY",
     ],
     rtti: true,
     whole_static_libs: [
