@@ -10316,7 +10316,7 @@ static int rtw_mp_efuse_set(struct net_device *dev,
 		/*step read efuse/eeprom data and get mac_addr*/
 		rtw_hal_read_chip_info(padapter);
 		/* set mac addr*/
-		rtw_macaddr_cfg(adapter_mac_addr(padapter), get_hal_mac_addr(padapter));
+		rtw_macaddr_cfg(&dev->dev,adapter_mac_addr(padapter), get_hal_mac_addr(padapter));
 		_rtw_memcpy(padapter->pnetdev->dev_addr, get_hal_mac_addr(padapter), ETH_ALEN); /* set mac addr to net_device */
 
 #ifdef CONFIG_P2P
