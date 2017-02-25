@@ -14,7 +14,7 @@ EXTRA_CFLAGS += -Wno-unused-parameter
 EXTRA_CFLAGS += -Wno-unused-function
 EXTRA_CFLAGS += -Wno-unused
 #EXTRA_CFLAGS += -Wno-uninitialized
-#EXTRA_CFLAGS += -Wno-error=date-time	# Fix compile error on gcc 4.9 and later
+EXTRA_CFLAGS += -Wno-error=date-time	# Fix compile error on gcc 4.9 and later
 
 EXTRA_CFLAGS += -I$(src)/include
 EXTRA_CFLAGS += -I$(src)/hal/phydm
@@ -63,8 +63,8 @@ CONFIG_ANTENNA_DIVERSITY = n
 CONFIG_TDLS = n
 CONFIG_WIFI_MONITOR = n
 ######################## Wake On Lan ##########################
-CONFIG_WOWLAN = y
-CONFIG_GPIO_WAKEUP = y
+CONFIG_WOWLAN = n
+CONFIG_GPIO_WAKEUP = n
 CONFIG_WAKEUP_GPIO_IDX = default
 CONFIG_HIGH_ACTIVE = n
 CONFIG_PNO_SUPPORT = n
@@ -73,7 +73,7 @@ CONFIG_AP_WOWLAN = n
 ######### Notify SDIO Host Keep Power During Syspend ##########
 CONFIG_RTW_SDIO_PM_KEEP_POWER = y
 ###################### Platform Related #######################
-CONFIG_PLATFORM_I386_PC = n
+CONFIG_PLATFORM_I386_PC = y
 CONFIG_PLATFORM_ANDROID_X86 = n
 CONFIG_PLATFORM_ANDROID_INTEL_X86 = n
 CONFIG_PLATFORM_JB_X86 = n
@@ -113,7 +113,7 @@ CONFIG_PLATFORM_ARM_SUN8I_W5P1 = n
 CONFIG_PLATFORM_ACTIONS_ATM702X = n
 CONFIG_PLATFORM_ACTIONS_ATV5201 = n
 CONFIG_PLATFORM_ACTIONS_ATM705X = n
-CONFIG_PLATFORM_ARM_SUN50IW1P1 = y
+CONFIG_PLATFORM_ARM_SUN50IW1P1 = n
 CONFIG_PLATFORM_ARM_RTD299X = n
 CONFIG_PLATFORM_ARM_SPREADTRUM_6820 = n
 CONFIG_PLATFORM_ARM_SPREADTRUM_8810 = n
