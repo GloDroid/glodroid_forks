@@ -57,6 +57,7 @@
 	#include <linux/kthread.h>
 	#include <linux/list.h>
 	#include <linux/vmalloc.h>
+	#include <linux/signal.h>
 
 #if (LINUX_VERSION_CODE <= KERNEL_VERSION(2,5,41))
 	#include <linux/tqueue.h>
@@ -66,6 +67,10 @@
 	#include <uapi/linux/limits.h>
 #else
 	#include <linux/limits.h>
+#endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0))
+	#include <linux/sched/signal.h>
 #endif
 
 #ifdef RTK_DMP_PLATFORM
