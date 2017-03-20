@@ -7,6 +7,7 @@
 #
 #===----------------------------------------------------------------------===##
 
+import copy
 import errno
 import os
 import time
@@ -16,8 +17,6 @@ import lit.Test        # pylint: disable=import-error
 import lit.TestRunner  # pylint: disable=import-error
 from lit.TestRunner import ParserKind, IntegratedTestKeywordParser  \
     # pylint: disable=import-error
-import lit.util        # pylint: disable=import-error
-
 
 from libcxx.test.executor import LocalExecutor as LocalExecutor
 import libcxx.util
@@ -36,7 +35,7 @@ class LibcxxTestFormat(object):
 
     def __init__(self, cxx, use_verify_for_fail, execute_external,
                  executor, exec_env):
-        self.cxx = cxx.copy()
+        self.cxx = copy.deepcopy(cxx)
         self.use_verify_for_fail = use_verify_for_fail
         self.execute_external = execute_external
         self.executor = executor
@@ -115,7 +114,7 @@ class LibcxxTestFormat(object):
                                                                tmpBase)
         script = lit.TestRunner.applySubstitutions(script, substitutions)
 
-        test_cxx = self.cxx.copy()
+        test_cxx = copy.deepcopy(self.cxx)
         if is_fail_test:
             test_cxx.useCCache(False)
             test_cxx.useWarnings(False)
@@ -163,7 +162,7 @@ class LibcxxTestFormat(object):
         exec_path = tmpBase + '.exe'
         object_path = tmpBase + '.o'
         # Create the output directory if it does not already exist.
-        lit.util.mkdir_p(os.path.dirname(tmpBase))
+        libcxx.util.mkdir_p(os.path.dirname(tmpBase))
         try:
             # Compile the test
             cmd, out, err, rc = test_cxx.compileLinkTwoSteps(

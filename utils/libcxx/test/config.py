@@ -17,14 +17,11 @@ import shlex
 import shutil
 import sys
 
-import lit.Test  # pylint: disable=import-error,no-name-in-module
-import lit.util  # pylint: disable=import-error,no-name-in-module
-
-from libcxx.test.format import LibcxxTestFormat
 from libcxx.compiler import CXXCompiler
 from libcxx.test.target_info import make_target_info
 from libcxx.test.executor import *
 from libcxx.test.tracing import *
+import libcxx.util
 
 def loadSiteConfig(lit_config, config, param_name, env_name):
     # We haven't loaded the site specific configuration (the user is
@@ -164,6 +161,7 @@ class Configuration(object):
         sys.stderr.flush()  # Force flushing to avoid broken output on Windows
 
     def get_test_format(self):
+        from libcxx.test.format import LibcxxTestFormat
         return LibcxxTestFormat(
             self.cxx,
             self.use_clang_verify,
@@ -200,8 +198,10 @@ class Configuration(object):
         # If no specific cxx_under_test was given, attempt to infer it as
         # clang++.
         if cxx is None or self.cxx_is_clang_cl:
-            clangxx = lit.util.which('clang++',
-                                     self.config.environment['PATH'])
+            search_paths = self.config.environment['PATH']
+            if cxx is not None and os.path.isabs(cxx):
+                search_paths = os.path.dirname(cxx)
+            clangxx = libcxx.util.which('clang++', search_paths)
             if clangxx:
                 cxx = clangxx
                 self.lit_config.note(
@@ -229,21 +229,19 @@ class Configuration(object):
         self.cxx.compile_env['CCACHE_CPP2'] = '1'
 
     def _configure_clang_cl(self, clang_path):
+        def _split_env_var(var):
+            return [p.strip() for p in os.environ.get(var, '').split(';') if p.strip()]
+
+        def _prefixed_env_list(var, prefix):
+            from itertools import chain
+            return list(chain.from_iterable((prefix, path) for path in _split_env_var(var)))
+
         assert self.cxx_is_clang_cl
         flags = []
-        compile_flags = []
-        link_flags = []
-        if 'INCLUDE' in os.environ:
-            compile_flags += ['-isystem %s' % p.strip()
-                              for p in os.environ['INCLUDE'].split(';')
-                              if p.strip()]
-        if 'LIB' in os.environ:
-            for p in os.environ['LIB'].split(';'):
-                p = p.strip()
-                if not p:
-                    continue
-                link_flags += ['-L%s' % p]
-                self.add_path(self.exec_env, p)
+        compile_flags = _prefixed_env_list('INCLUDE', '-isystem')
+        link_flags = _prefixed_env_list('LIB', '-L')
+        for path in _list_env_var('LIB'):
+            self.add_path(self.exec_env, path)
         return CXXCompiler(clang_path, flags=flags,
                            compile_flags=compile_flags,
                            link_flags=link_flags)
@@ -397,8 +395,20 @@ class Configuration(object):
         if '__cpp_structured_bindings' not in macros:
             self.config.available_features.add('libcpp-no-structured-bindings')
 
+        if '__cpp_deduction_guides' not in macros:
+            self.config.available_features.add('libcpp-no-deduction-guides')
+
         if self.is_windows:
             self.config.available_features.add('windows')
+
+        # Attempt to detect the glibc version by querying for __GLIBC__
+        # in 'features.h'.
+        macros = self.cxx.dumpMacros(flags=['-include', 'features.h'])
+        if macros is not None and '__GLIBC__' in macros:
+            maj_v, min_v = (macros['__GLIBC__'], macros['__GLIBC_MINOR__'])
+            self.config.available_features.add('glibc')
+            self.config.available_features.add('glibc-%s' % maj_v)
+            self.config.available_features.add('glibc-%s.%s' % (maj_v, min_v))
 
     def configure_compile_flags(self):
         no_default_flags = self.get_lit_bool('no_default_flags', False)
@@ -462,13 +472,17 @@ class Configuration(object):
         gcc_toolchain = self.get_lit_conf('gcc_toolchain')
         if gcc_toolchain:
             self.cxx.flags += ['-gcc-toolchain', gcc_toolchain]
+        # NOTE: the _DEBUG definition must preceed the triple check because for
+        # the Windows build of libc++, the forced inclusion of a header requires
+        # that _DEBUG is defined.  Incorrect ordering will result in -target
+        # being elided.
+        if self.is_windows and self.debug_build:
+            self.cxx.compile_flags += ['-D_DEBUG']
         if self.use_target:
             if not self.cxx.addFlagIfSupported(
                     ['-target', self.config.target_triple]):
                 self.lit_config.warning('use_target is true but -target is '\
                         'not supported by the compiler')
-        if self.is_windows and self.debug_build:
-            self.cxx.compile_flags += ['-D_DEBUG']
 
     def configure_compile_flags_header_includes(self):
         support_path = os.path.join(self.libcxx_src_root, 'test', 'support')
@@ -799,13 +813,13 @@ class Configuration(object):
             # Search for llvm-symbolizer along the compiler path first
             # and then along the PATH env variable.
             symbolizer_search_paths = os.environ.get('PATH', '')
-            cxx_path = lit.util.which(self.cxx.path)
+            cxx_path = libcxx.util.which(self.cxx.path)
             if cxx_path is not None:
                 symbolizer_search_paths = (
                     os.path.dirname(cxx_path) +
                     os.pathsep + symbolizer_search_paths)
-            llvm_symbolizer = lit.util.which('llvm-symbolizer',
-                                             symbolizer_search_paths)
+            llvm_symbolizer = libcxx.util.which('llvm-symbolizer',
+                                                symbolizer_search_paths)
 
             def add_ubsan():
                 self.cxx.flags += ['-fsanitize=undefined',
@@ -821,7 +835,7 @@ class Configuration(object):
                 if llvm_symbolizer is not None:
                     self.exec_env['ASAN_SYMBOLIZER_PATH'] = llvm_symbolizer
                 # FIXME: Turn ODR violation back on after PR28391 is resolved
-                # https://llvm.org/bugs/show_bug.cgi?id=28391
+                # https://bugs.llvm.org/show_bug.cgi?id=28391
                 self.exec_env['ASAN_OPTIONS'] = 'detect_odr_violation=0'
                 self.config.available_features.add('asan')
                 self.config.available_features.add('sanitizer-new-delete')
@@ -887,8 +901,9 @@ class Configuration(object):
 
     def configure_substitutions(self):
         sub = self.config.substitutions
+        cxx_path = pipes.quote(self.cxx.path)
         # Configure compiler substitutions
-        sub.append(('%cxx', self.cxx.path))
+        sub.append(('%cxx', cxx_path))
         # Configure flags substitutions
         flags_str = ' '.join([pipes.quote(f) for f in self.cxx.flags])
         compile_flags_str = ' '.join([pipes.quote(f) for f in self.cxx.compile_flags])
@@ -902,12 +917,12 @@ class Configuration(object):
             verify_str = ' ' + ' '.join(self.cxx.verify_flags) + ' '
             sub.append(('%verify', verify_str))
         # Add compile and link shortcuts
-        compile_str = (self.cxx.path + ' -o %t.o %s -c ' + flags_str
+        compile_str = (cxx_path + ' -o %t.o %s -c ' + flags_str
                        + ' ' + compile_flags_str)
-        link_str = (self.cxx.path + ' -o %t.exe %t.o ' + flags_str + ' '
+        link_str = (cxx_path + ' -o %t.exe %t.o ' + flags_str + ' '
                     + link_flags_str)
         assert type(link_str) is str
-        build_str = self.cxx.path + ' -o %t.exe %s ' + all_flags
+        build_str = cxx_path + ' -o %t.exe %s ' + all_flags
         if self.cxx.use_modules:
             sub.append(('%compile_module', compile_str))
             sub.append(('%build_module', build_str))
@@ -932,8 +947,8 @@ class Configuration(object):
         # Configure run shortcut
         sub.append(('%run', exec_str + ' %t.exe'))
         # Configure not program substitutions
-        not_py = os.path.join(self.libcxx_src_root, 'utils', 'not', 'not.py')
-        not_str = '%s %s ' % (sys.executable, not_py)
+        not_py = os.path.join(self.libcxx_src_root, 'utils', 'not.py')
+        not_str = '%s %s ' % (pipes.quote(sys.executable), pipes.quote(not_py))
         sub.append(('not ', not_str))
 
     def configure_triple(self):
