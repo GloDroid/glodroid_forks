@@ -9,10 +9,6 @@
 //
 // UNSUPPORTED: libcpp-has-no-threads
 //  ... assertion fails line 38
-//
-// http://b/33278386
-// https://llvm.org/bugs/show_bug.cgi?id=30445
-// XFAIL: arm-linux-androideabi
 
 // <atomic>
 
