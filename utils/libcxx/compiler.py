@@ -9,7 +9,6 @@
 
 import platform
 import os
-import lit.util
 import libcxx.util
 
 
@@ -48,18 +47,6 @@ class CXXCompiler(object):
         self.version = cxx_version
         if self.type is None or self.version is None:
             self._initTypeAndVersion()
-
-    def copy(self):
-        new_cxx = CXXCompiler(
-            self.path, flags=self.flags, compile_flags=self.compile_flags,
-            link_flags=self.link_flags, warning_flags=self.warning_flags,
-            verify_supported=self.verify_supported,
-            verify_flags=self.verify_flags, use_verify=self.use_verify,
-            modules_flags=self.modules_flags, use_modules=self.use_modules,
-            use_ccache=self.use_ccache, use_warnings=self.use_warnings,
-            compile_env=self.compile_env, cxx_type=self.type,
-            cxx_version=self.version)
-        return new_cxx
 
     def isVerifySupported(self):
         if self.verify_supported is None:
@@ -166,27 +153,27 @@ class CXXCompiler(object):
 
     def preprocess(self, source_files, out=None, flags=[], cwd=None):
         cmd = self.preprocessCmd(source_files, out, flags)
-        out, err, rc = lit.util.executeCommand(cmd, env=self.compile_env,
-                                               cwd=cwd)
+        out, err, rc = libcxx.util.executeCommand(cmd, env=self.compile_env,
+                                                  cwd=cwd)
         return cmd, out, err, rc
 
     def compile(self, source_files, out=None, flags=[], cwd=None):
         cmd = self.compileCmd(source_files, out, flags)
-        out, err, rc = lit.util.executeCommand(cmd, env=self.compile_env,
-                                               cwd=cwd)
+        out, err, rc = libcxx.util.executeCommand(cmd, env=self.compile_env,
+                                                  cwd=cwd)
         return cmd, out, err, rc
 
     def link(self, source_files, out=None, flags=[], cwd=None):
         cmd = self.linkCmd(source_files, out, flags)
-        out, err, rc = lit.util.executeCommand(cmd, env=self.compile_env,
-                                               cwd=cwd)
+        out, err, rc = libcxx.util.executeCommand(cmd, env=self.compile_env,
+                                                  cwd=cwd)
         return cmd, out, err, rc
 
     def compileLink(self, source_files, out=None, flags=[],
                     cwd=None):
         cmd = self.compileLinkCmd(source_files, out, flags)
-        out, err, rc = lit.util.executeCommand(cmd, env=self.compile_env,
-                                               cwd=cwd)
+        out, err, rc = libcxx.util.executeCommand(cmd, env=self.compile_env,
+                                                  cwd=cwd)
         return cmd, out, err, rc
 
     def compileLinkTwoSteps(self, source_file, out=None, object_file=None,
@@ -228,7 +215,7 @@ class CXXCompiler(object):
 
     def getTriple(self):
         cmd = [self.path] + self.flags + ['-dumpmachine']
-        return lit.util.capture(cmd).strip()
+        return libcxx.util.capture(cmd).strip()
 
     def hasCompileFlag(self, flag):
         if isinstance(flag, list):
@@ -287,8 +274,8 @@ class CXXCompiler(object):
         # TODO(EricWF): Are there other flags we need to worry about?
         if '-v' in cmd:
             cmd.remove('-v')
-        out, err, rc = lit.util.executeCommand(
-            cmd, input=lit.util.to_bytes('#error\n'))
+        out, err, rc = libcxx.util.executeCommand(
+            cmd, input=libcxx.util.to_bytes('#error\n'))
 
         assert rc != 0
         if flag in err:
