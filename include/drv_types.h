@@ -26,9 +26,6 @@
 
 #ifndef __DRV_TYPES_H__
 #define __DRV_TYPES_H__
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
-#include <linux/sched/signal.h>
-#endif
 #include <drv_conf.h>
 #include <basic_types.h>
 #include <osdep_service.h>
