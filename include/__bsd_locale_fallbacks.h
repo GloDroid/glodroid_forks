@@ -17,6 +17,10 @@
 #include <stdlib.h>
 #include <memory>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#pragma GCC system_header
+#endif
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 inline _LIBCPP_ALWAYS_INLINE
