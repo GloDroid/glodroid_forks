@@ -51,6 +51,7 @@ cc_library_static {
     ],
     local_include_dirs: ["include"],
     export_include_dirs: ["include"],
+    cflags: ["-Wall", "-Werror"],
     cppflags: [
         "-std=c++14",
         "-nostdinc++",
