@@ -83,9 +83,6 @@ cc_library_shared {
     stl: "none",
 
     target: {
-        android: {
-            shared_libs: ["libdl"],
-        },
         android_arm: {
             static_libs: ["libunwind_llvm"],
             ldflags: ["-Wl,--exclude-libs,libunwind_llvm.a"],
@@ -102,17 +99,11 @@ cc_library_shared {
 
         linux: {
             ldflags: ["-nodefaultlibs"],
-            host_ldlibs: [
-                "-lrt",
-                "-lpthread",
-                "-ldl",
-            ],
         },
         linux_bionic: {
             enabled: true,
             static_libs: ["libunwindbacktrace"],
             shared_libs: [
-                "libdl",
                 "liblzma",
             ],
         },
