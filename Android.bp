@@ -52,6 +52,14 @@ cc_library_static {
     local_include_dirs: ["include"],
     export_include_dirs: ["include"],
     cflags: ["-Wall", "-Werror"],
+    arch: {
+        mips: {
+            cflags: ["-Wno-#warnings"],
+        },
+        mips64: {
+            cflags: ["-Wno-#warnings"],
+        },
+    },
     cppflags: [
         "-std=c++14",
         "-nostdinc++",
