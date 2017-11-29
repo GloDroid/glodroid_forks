@@ -757,7 +757,6 @@ static float select_closest_available_rate(int s, float requested_rate)
 	int j;
 	float selected_rate = 0;
 	float max_rate_from_prop = sensor_get_max_freq(s);
-	int dev_num = sensor[s].dev_num;
 
 	if (!sensor[s].avail_freqs_count)
 		return requested_rate;

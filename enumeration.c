@@ -446,7 +446,7 @@ static void populate_descriptors (int s, int sensor_type)
 	sensor_desc[s].minDelay = sensor_get_min_delay(s);
 	sensor_desc[s].maxDelay = sensor_get_max_delay(s);
 
-	ALOGV("Sensor %d (%s) type(%d) minD(%d) maxD(%d) flags(%2.2x)\n",
+	ALOGV("Sensor %d (%s) type(%d) minD(%d) maxD(%zd) flags(%2.2zx)\n",
 		s, sensor[s].friendly_name, sensor_desc[s].type,
 		sensor_desc[s].minDelay, sensor_desc[s].maxDelay,
 		sensor_desc[s].flags);

@@ -598,7 +598,6 @@ uint64_t acquire_immediate_uint64_value (int s, int c)
 	const char* input_path = sensor_catalog[i].channel[c].input_path;
 	float scale = sensor[s].scale ? sensor[s].scale : sensor[s].channel[c].scale;
 	float offset = sensor[s].offset;
-	int sensor_type = sensor_catalog[i].type;
 	float correction;
 
 	/* In case correction has been requested using properties, apply it */

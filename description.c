@@ -660,7 +660,7 @@ static int get_cdd_freq (int s, int must)
  */
 max_delay_t sensor_get_max_delay (int s)
 {
-	int dev_num = sensor[s].dev_num, i;
+	int i;
 	float min_supported_rate;
 	float rate_cap;
 
@@ -738,7 +738,7 @@ float sensor_get_max_static_freq(int s)
 
 int32_t sensor_get_min_delay (int s)
 {
-	int dev_num = sensor[s].dev_num, i;
+	int i;
 	float max_supported_rate = 0;
 	float max_from_prop = sensor_get_max_freq(s);
 

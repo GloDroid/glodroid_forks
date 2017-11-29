@@ -202,7 +202,7 @@ int sysfs_read_str(const char path[PATH_MAX], char *buf, int buf_len)
 
 int64_t get_timestamp (clockid_t clock_id)
 {
-	struct timespec ts = {0};
+	struct timespec ts = {0, 0};
 
 	if (!clock_gettime(clock_id, &ts))
 		return 1000000000LL * ts.tv_sec + ts.tv_nsec;
