@@ -18,9 +18,6 @@
 
 // explicit shared_lock(mutex_type& m);
 
-// template<class _Mutex> shared_lock(shared_lock<_Mutex>)
-//     -> shared_lock<_Mutex>;  // C++17
-
 #include <shared_mutex>
 #include <thread>
 #include <vector>
@@ -95,9 +92,4 @@ int main()
             t.join();
         q.join();
     }
-
-#ifdef __cpp_deduction_guides
-    std::shared_lock sl(m);
-    static_assert((std::is_same<decltype(sl), std::shared_lock<decltype(m)>>::value), "" );
-#endif
 }

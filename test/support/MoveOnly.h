@@ -12,7 +12,7 @@
 
 #include "test_macros.h"
 
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 #include <cstddef>
 #include <functional>
@@ -49,6 +49,6 @@ struct hash<MoveOnly>
 
 }
 
-#endif  // TEST_STD_VER >= 11
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 #endif  // MOVEONLY_H

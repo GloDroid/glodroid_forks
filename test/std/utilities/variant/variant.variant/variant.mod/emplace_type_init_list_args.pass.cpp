@@ -10,19 +10,12 @@
 
 // UNSUPPORTED: c++98, c++03, c++11, c++14
 
-// XFAIL: with_system_cxx_lib=macosx10.12
-// XFAIL: with_system_cxx_lib=macosx10.11
-// XFAIL: with_system_cxx_lib=macosx10.10
-// XFAIL: with_system_cxx_lib=macosx10.9
-// XFAIL: with_system_cxx_lib=macosx10.7
-// XFAIL: with_system_cxx_lib=macosx10.8
-
 // <variant>
 
 // template <class ...Types> class variant;
 
 // template <class T, class U, class ...Args>
-//   T& emplace(initializer_list<U> il,Args&&... args);
+// void emplace(initializer_list<U> il,Args&&... args);
 
 #include <cassert>
 #include <string>
@@ -77,19 +70,13 @@ void test_emplace_sfinae() {
 void test_basic() {
   using V = std::variant<int, InitList, InitListArg, TestTypes::NoCtors>;
   V v;
-  auto& ref1 = v.emplace<InitList>({1, 2, 3});
-  static_assert(std::is_same_v<InitList&,decltype(ref1)>, "");
+  v.emplace<InitList>({1, 2, 3});
   assert(std::get<InitList>(v).size == 3);
-  assert(&ref1 == &std::get<InitList>(v));
-  auto& ref2 = v.emplace<InitListArg>({1, 2, 3, 4}, 42);
-  static_assert(std::is_same_v<InitListArg&,decltype(ref2)>, "");
+  v.emplace<InitListArg>({1, 2, 3, 4}, 42);
   assert(std::get<InitListArg>(v).size == 4);
   assert(std::get<InitListArg>(v).value == 42);
-  assert(&ref2 == &std::get<InitListArg>(v));
-  auto& ref3 = v.emplace<InitList>({1});
-  static_assert(std::is_same_v<InitList&,decltype(ref3)>, "");
+  v.emplace<InitList>({1});
   assert(std::get<InitList>(v).size == 1);
-  assert(&ref3 == &std::get<InitList>(v));
 }
 
 int main() {

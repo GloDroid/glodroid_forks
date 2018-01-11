@@ -7,10 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// This test fails on Windows because the underlying libc headers on Windows
-// are not modular
-// XFAIL: LIBCXX-WINDOWS-FIXME
-
 // REQUIRES: modules-support
 // UNSUPPORTED: c++98, c++03
 

@@ -1,11 +1,7 @@
 #include "benchmark/benchmark_api.h"
+
 #include <chrono>
 #include <thread>
-
-#if defined(NDEBUG)
-#undef NDEBUG
-#endif
-#include <cassert>
 
 void BM_basic(benchmark::State& state) {
   while (state.KeepRunning()) {
@@ -43,23 +39,5 @@ void CustomArgs(benchmark::internal::Benchmark* b) {
 }
 
 BENCHMARK(BM_basic)->Apply(CustomArgs);
-
-void BM_explicit_iteration_count(benchmark::State& st) {
-  // Test that benchmarks specified with an explicit iteration count are
-  // only run once.
-  static bool invoked_before = false;
-  assert(!invoked_before);
-  invoked_before = true;
-
-  // Test that the requested iteration count is respected.
-  assert(st.max_iterations == 42);
-  size_t actual_iterations = 0;
-  while (st.KeepRunning())
-    ++actual_iterations;
-  assert(st.iterations() == st.max_iterations);
-  assert(st.iterations() == 42);
-
-}
-BENCHMARK(BM_explicit_iteration_count)->Iterations(42);
 
 BENCHMARK_MAIN()

@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 // UNSUPPORTED: c++98, c++03, c++11
-// XFAIL: availability
-
 // dynarray.data
 
 // void fill(const T& v);

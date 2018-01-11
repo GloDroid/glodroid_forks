@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <vector>
 
 // void push_back(value_type&& x);
@@ -23,6 +21,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         std::vector<MoveOnly> c;
         c.push_back(MoveOnly(0));
@@ -82,6 +81,7 @@ int main()
         for (int j = 0; static_cast<std::size_t>(j) < c.size(); ++j)
             assert(c[j] == MoveOnly(j));
     }
+#if TEST_STD_VER >= 11
     {
         std::vector<MoveOnly, min_allocator<MoveOnly>> c;
         c.push_back(MoveOnly(0));
@@ -110,4 +110,6 @@ int main()
         for (int j = 0; static_cast<std::size_t>(j) < c.size(); ++j)
             assert(c[j] == MoveOnly(j));
     }
+#endif
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

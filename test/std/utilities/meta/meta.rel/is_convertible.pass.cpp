@@ -120,9 +120,7 @@ int main()
     static_assert((!std::is_convertible<ConstFunction, Function>::value), "");
     static_assert((!std::is_convertible<ConstFunction, Function*>::value), "");
     static_assert((!std::is_convertible<ConstFunction, Function&>::value), "");
-#if TEST_STD_VER >= 11
-    static_assert((!std::is_convertible<ConstFunction, Function&&>::value), "");
-#endif
+    static_assert((!std::is_convertible<ConstFunction, Function>::value), "");
     static_assert((!std::is_convertible<Function*, ConstFunction>::value), "");
     static_assert((!std::is_convertible<Function&, ConstFunction>::value), "");
     static_assert((!std::is_convertible<ConstFunction, ConstFunction>::value), "");

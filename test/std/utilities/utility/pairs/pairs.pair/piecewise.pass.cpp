@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <utility>
 
 // template <class T1, class T2> struct pair
@@ -23,6 +21,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_VARIADICS
     {
         typedef std::pair<int, int*> P1;
         typedef std::pair<int*, int> P2;
@@ -32,4 +31,5 @@ int main()
         assert(p3.first == P1(3, nullptr));
         assert(p3.second == P2(nullptr, 4));
     }
+#endif  // _LIBCPP_HAS_NO_VARIADICS
 }

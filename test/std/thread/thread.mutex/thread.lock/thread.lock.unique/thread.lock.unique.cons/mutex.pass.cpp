@@ -15,15 +15,10 @@
 
 // explicit unique_lock(mutex_type& m);
 
-// template<class _Mutex> unique_lock(unique_lock<_Mutex>)
-//     -> unique_lock<_Mutex>;  // C++17
-
 #include <mutex>
 #include <thread>
 #include <cstdlib>
 #include <cassert>
-
-#include "test_macros.h"
 
 std::mutex m;
 
@@ -52,9 +47,4 @@ int main()
     std::this_thread::sleep_for(ms(250));
     m.unlock();
     t.join();
-
-#ifdef __cpp_deduction_guides
-	std::unique_lock ul(m);
-    static_assert((std::is_same<decltype(ul), std::unique_lock<decltype(m)>>::value), "" );
-#endif
 }

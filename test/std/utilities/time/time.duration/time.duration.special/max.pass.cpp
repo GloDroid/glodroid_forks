@@ -17,7 +17,6 @@
 #include <limits>
 #include <cassert>
 
-#include "test_macros.h"
 #include "../../rep.h"
 
 template <class D>
@@ -28,7 +27,7 @@ void test()
     Rep max_rep = std::chrono::duration_values<Rep>::max();
     assert(D::max().count() == max_rep);
     }
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
     {
     typedef typename D::rep Rep;
     constexpr Rep max_rep = std::chrono::duration_values<Rep>::max();

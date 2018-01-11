@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <queue>
 
 // void push(value_type&& v);
@@ -20,6 +18,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     std::queue<MoveOnly> q;
     q.push(MoveOnly(1));
     assert(q.size() == 1);
@@ -33,4 +32,5 @@ int main()
     assert(q.size() == 3);
     assert(q.front() == MoveOnly(1));
     assert(q.back() == MoveOnly(3));
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

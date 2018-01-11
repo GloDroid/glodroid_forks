@@ -15,7 +15,6 @@
 #include <cstdlib>
 
 #include "test_macros.h"
-#include "test_workarounds.h"
 #include "type_id.h"
 
 // There are two forms of uses-allocator construction:

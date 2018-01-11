@@ -11,11 +11,10 @@
 
 // shared_ptr
 
-// template <class U> bool owner_before(shared_ptr<U> const& b) const noexcept;
+// template <class U> bool owner_before(shared_ptr<U> const& b) const;
 
 #include <memory>
 #include <cassert>
-#include "test_macros.h"
 
 int main()
 {
@@ -26,5 +25,4 @@ int main()
     assert(!p2.owner_before(p1));
     assert(p1.owner_before(p3) || p3.owner_before(p1));
     assert(p3.owner_before(p1) == p3.owner_before(p2));
-    ASSERT_NOEXCEPT(p1.owner_before(p2));
 }
