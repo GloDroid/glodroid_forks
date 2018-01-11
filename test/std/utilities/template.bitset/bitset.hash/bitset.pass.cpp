@@ -30,8 +30,6 @@ test()
     typedef std::hash<T> H;
     static_assert((std::is_same<typename H::argument_type, T>::value), "" );
     static_assert((std::is_same<typename H::result_type, std::size_t>::value), "" );
-    ASSERT_NOEXCEPT(H()(T()));
-
     H h;
     T bs(static_cast<unsigned long long>(N));
     const std::size_t result = h(bs);

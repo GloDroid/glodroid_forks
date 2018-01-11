@@ -24,8 +24,6 @@
 #include <type_traits>
 #include <cassert>
 
-#include "test_macros.h"
-
 void
 test1()
 {

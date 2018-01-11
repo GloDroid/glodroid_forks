@@ -7,9 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// Can't test the system lib because this test enables debug mode
-// UNSUPPORTED: with_system_cxx_lib
-
 // <list>
 
 // Call erase(const_iterator position) with end()

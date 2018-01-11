@@ -25,7 +25,6 @@
 #include "new"
 #include "streambuf"
 #include "string"
-#include "__undef_macros"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 

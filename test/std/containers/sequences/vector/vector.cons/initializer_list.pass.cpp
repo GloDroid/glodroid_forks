@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <vector>
 
 // vector(initializer_list<value_type> il);
@@ -20,6 +18,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
     {
     std::vector<int> d = {3, 4, 5, 6};
     assert(d.size() == 4);
@@ -29,6 +28,7 @@ int main()
     assert(d[2] == 5);
     assert(d[3] == 6);
     }
+#if TEST_STD_VER >= 11
     {
     std::vector<int, min_allocator<int>> d = {3, 4, 5, 6};
     assert(d.size() == 4);
@@ -38,4 +38,6 @@ int main()
     assert(d[2] == 5);
     assert(d[3] == 6);
     }
+#endif
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 }

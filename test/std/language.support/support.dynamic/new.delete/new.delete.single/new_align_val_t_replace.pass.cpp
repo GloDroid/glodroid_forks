@@ -10,8 +10,7 @@
 // UNSUPPORTED: c++98, c++03, c++11, c++14
 // UNSUPPORTED: sanitizer-new-delete
 
-// NOTE: GCC doesn't provide a -faligned-allocation flag
-// XFAIL: no-aligned-allocation && !gcc
+// XFAIL: no-aligned-allocation
 
 // test operator new replacement
 

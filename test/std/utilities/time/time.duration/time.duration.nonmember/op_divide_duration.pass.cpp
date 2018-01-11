@@ -19,8 +19,6 @@
 #include <chrono>
 #include <cassert>
 
-#include "test_macros.h"
-
 int main()
 {
     {
@@ -43,7 +41,7 @@ int main()
     std::chrono::duration<double, std::ratio<3, 5> > s2(5);
     assert(s1 / s2 == 20./3);
     }
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
     {
     constexpr std::chrono::nanoseconds ns1(15);
     constexpr std::chrono::nanoseconds ns2(5);

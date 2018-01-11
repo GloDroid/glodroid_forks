@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <set>
 
 // class multiset
@@ -24,6 +22,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef int V;
         typedef test_compare<std::less<int> > C;
@@ -77,6 +76,8 @@ int main()
         assert(mo.size() == 0);
         assert(distance(mo.begin(), mo.end()) == 0);
     }
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#if TEST_STD_VER >= 11
     {
         typedef int V;
         V ar[] =
@@ -114,4 +115,5 @@ int main()
         assert(mo.size() == 0);
         assert(distance(mo.begin(), mo.end()) == 0);
     }
+#endif
 }

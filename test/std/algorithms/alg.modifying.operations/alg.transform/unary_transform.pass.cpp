@@ -21,8 +21,6 @@
 
 #include "test_iterators.h"
 
-int plusOne(int v) { return v + 1; }
-
 template <class InIter, class OutIter>
 void
 test()
@@ -30,8 +28,8 @@ test()
     int ia[] = {0, 1, 2, 3, 4};
     const unsigned sa = sizeof(ia)/sizeof(ia[0]);
     int ib[sa] = {0};
-    OutIter r = std::transform(InIter(ia), InIter(ia+sa),
-                               OutIter(ib), plusOne);
+    OutIter r = std::transform(InIter(ia), InIter(ia+sa), OutIter(ib),
+                               std::bind2nd(std::plus<int>(), 1));
     assert(base(r) == ib + sa);
     assert(ib[0] == 1);
     assert(ib[1] == 2);

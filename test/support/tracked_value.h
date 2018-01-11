@@ -11,8 +11,6 @@
 
 #include <cassert>
 
-#include "test_macros.h"
-
 struct TrackedValue {
     enum State { CONSTRUCTED, MOVED_FROM, DESTROYED };
     State state;
@@ -24,7 +22,7 @@ struct TrackedValue {
         assert(t.state != State::DESTROYED  && "copying a destroyed object");
     }
 
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     TrackedValue(TrackedValue&& t) : state(State::CONSTRUCTED) {
         assert(t.state != State::MOVED_FROM && "double moving from an object");
         assert(t.state != State::DESTROYED  && "moving from a destroyed object");
@@ -40,7 +38,7 @@ struct TrackedValue {
         return *this;
     }
 
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     TrackedValue& operator=(TrackedValue&& t) {
         assert(state != State::DESTROYED && "move assigning into destroyed object");
         assert(t.state != State::MOVED_FROM && "double moving from an object");

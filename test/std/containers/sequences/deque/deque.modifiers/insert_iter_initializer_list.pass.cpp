@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <deque>
 
 // iterator insert(const_iterator p, initializer_list<value_type> il);
@@ -20,6 +18,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
     {
     std::deque<int> d(10, 1);
     std::deque<int>::iterator i = d.insert(d.cbegin() + 2, {3, 4, 5, 6});
@@ -60,4 +59,5 @@ int main()
     assert(d[12] == 1);
     assert(d[13] == 1);
     }
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 }

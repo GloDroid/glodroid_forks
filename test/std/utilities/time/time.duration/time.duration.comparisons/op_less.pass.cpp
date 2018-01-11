@@ -34,8 +34,6 @@
 #include <chrono>
 #include <cassert>
 
-#include "test_macros.h"
-
 int main()
 {
     {
@@ -94,7 +92,7 @@ int main()
     assert( (s1 <= s2));
     assert( (s1 >= s2));
     }
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
     {
     constexpr std::chrono::seconds s1(3);
     constexpr std::chrono::seconds s2(3);

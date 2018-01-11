@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <map>
 
 // class multimap
@@ -23,6 +21,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
     {
     typedef test_compare<std::less<int> > Cmp;
     typedef test_allocator<std::pair<const int, double> > A;
@@ -57,6 +56,8 @@ int main()
     assert(m.key_comp() == Cmp(4));
     assert(m.get_allocator() == A(5));
     }
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
+#if TEST_STD_VER >= 11
     {
     typedef test_compare<std::less<int> > Cmp;
     typedef min_allocator<std::pair<const int, double> > A;
@@ -91,6 +92,7 @@ int main()
     assert(m.key_comp() == Cmp(4));
     assert(m.get_allocator() == A());
     }
+#if TEST_STD_VER > 11
     {
     typedef test_compare<std::less<int> > C;
     typedef std::pair<const int, double> V;
@@ -122,6 +124,7 @@ int main()
     assert(*++i == V(3, 2));
     assert(m.get_allocator() == a);
     }
+#endif
     {
     typedef test_compare<std::less<int> > Cmp;
     typedef explicit_allocator<std::pair<const int, double> > A;
@@ -156,4 +159,5 @@ int main()
     assert(m.key_comp() == Cmp(4));
     assert(m.get_allocator() == A{});
     }
+#endif
 }

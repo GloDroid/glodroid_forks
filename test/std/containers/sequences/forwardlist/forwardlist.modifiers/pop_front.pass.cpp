@@ -32,7 +32,7 @@ int main()
         c.pop_front();
         assert(distance(c.begin(), c.end()) == 0);
     }
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef MoveOnly T;
         typedef std::forward_list<T> C;
@@ -45,6 +45,8 @@ int main()
         c.pop_front();
         assert(distance(c.begin(), c.end()) == 0);
     }
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#if TEST_STD_VER >= 11
     {
         typedef int T;
         typedef std::forward_list<T, min_allocator<T>> C;
@@ -58,6 +60,7 @@ int main()
         c.pop_front();
         assert(distance(c.begin(), c.end()) == 0);
     }
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef MoveOnly T;
         typedef std::forward_list<T, min_allocator<T>> C;
@@ -70,5 +73,6 @@ int main()
         c.pop_front();
         assert(distance(c.begin(), c.end()) == 0);
     }
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 #endif
 }

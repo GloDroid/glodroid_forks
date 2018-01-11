@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <stack>
 
 // stack()
@@ -16,6 +14,7 @@
 
 // This tests a conforming extension
 
+// UNSUPPORTED: c++98, c++03
 
 #include <stack>
 #include <cassert>
@@ -30,5 +29,5 @@ int main()
         typedef std::stack<MoveOnly> C;
         static_assert(std::is_nothrow_default_constructible<C>::value, "");
     }
-#endif
+#endif // _LIBCPP_VERSION
 }
