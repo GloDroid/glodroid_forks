@@ -23,8 +23,6 @@
 #include <cassert>
 #include <type_traits>
 
-#include "test_macros.h"
-
 using std::string_view;
 
 template <class SV>
@@ -38,7 +36,6 @@ test()
     typedef typename SV::value_type char_type;
     typedef std::basic_string<char_type> String;
     typedef std::hash<String> SH;
-    ASSERT_NOEXCEPT(H()(SV()));
 
     char_type g1 [ 10 ];
     char_type g2 [ 10 ];

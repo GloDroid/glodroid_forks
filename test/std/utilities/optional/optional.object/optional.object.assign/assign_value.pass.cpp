@@ -216,6 +216,7 @@ void test_throws()
 #ifndef TEST_HAS_NO_EXCEPTIONS
     using T = ThrowAssign;
     {
+        using T = ThrowAssign;
         optional<T> opt;
         try {
             opt = 42;

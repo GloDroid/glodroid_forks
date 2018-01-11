@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <fstream>
 
 // template <class charT, class traits = char_traits<charT> >
@@ -21,6 +19,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         std::ifstream fso("test.dat");
         std::ifstream fs;
@@ -37,4 +36,5 @@ int main()
         fs >> x;
         assert(x == 3.25);
     }
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

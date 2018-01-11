@@ -7,10 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// This test needs to be rewritten for the Windows exception_ptr semantics
-// which copy the exception each time the exception_ptr is copied.
-// XFAIL: LIBCXX-WINDOWS-FIXME
-
 // UNSUPPORTED: libcpp-no-exceptions
 // <exception>
 

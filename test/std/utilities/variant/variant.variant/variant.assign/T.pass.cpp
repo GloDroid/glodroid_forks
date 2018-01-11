@@ -10,13 +10,6 @@
 
 // UNSUPPORTED: c++98, c++03, c++11, c++14
 
-// XFAIL: with_system_cxx_lib=macosx10.12
-// XFAIL: with_system_cxx_lib=macosx10.11
-// XFAIL: with_system_cxx_lib=macosx10.10
-// XFAIL: with_system_cxx_lib=macosx10.9
-// XFAIL: with_system_cxx_lib=macosx10.7
-// XFAIL: with_system_cxx_lib=macosx10.8
-
 // <variant>
 
 // template <class ...Types> class variant;
@@ -63,28 +56,6 @@ struct ThrowsCtorT {
   ThrowsCtorT() : value(0) {}
   ThrowsCtorT(int) noexcept(false) { throw 42; }
   ThrowsCtorT &operator=(int v) noexcept {
-    value = v;
-    return *this;
-  }
-};
-
-struct MoveCrashes {
-  int value;
-  MoveCrashes(int v = 0) noexcept : value{v} {}
-  MoveCrashes(MoveCrashes &&) noexcept { assert(false); }
-  MoveCrashes &operator=(MoveCrashes &&) noexcept { assert(false); return *this; }
-  MoveCrashes &operator=(int v) noexcept {
-    value = v;
-    return *this;
-  }
-};
-
-struct ThrowsCtorTandMove {
-  int value;
-  ThrowsCtorTandMove() : value(0) {}
-  ThrowsCtorTandMove(int) noexcept(false) { throw 42; }
-  ThrowsCtorTandMove(ThrowsCtorTandMove &&) noexcept(false) { assert(false); }
-  ThrowsCtorTandMove &operator=(int v) noexcept {
     value = v;
     return *this;
   }
@@ -148,7 +119,7 @@ void test_T_assignment_sfinae() {
     using V = std::variant<int, const int &>;
     static_assert(!std::is_assignable<V, int>::value, "ambiguous");
   }
-#endif // TEST_VARIANT_HAS_NO_REFERENCES
+#endif
 }
 
 void test_T_assignment_basic() {
@@ -185,7 +156,7 @@ void test_T_assignment_basic() {
     assert(v.index() == 2);
     assert(std::get<2>(v) == 42);
   }
-#endif // TEST_VARIANT_HAS_NO_REFERENCES
+#endif
 }
 
 void test_T_assignment_performs_construction() {
@@ -196,11 +167,9 @@ void test_T_assignment_performs_construction() {
     V v(std::in_place_type<std::string>, "hello");
     try {
       v = 42;
-      assert(false);
     } catch (...) { /* ... */
     }
-    assert(v.index() == 0);
-    assert(std::get<0>(v) == "hello");
+    assert(v.valueless_by_exception());
   }
   {
     using V = std::variant<ThrowsAssignT, std::string>;
@@ -209,7 +178,7 @@ void test_T_assignment_performs_construction() {
     assert(v.index() == 0);
     assert(std::get<0>(v).value == 42);
   }
-#endif // TEST_HAS_NO_EXCEPTIONS
+#endif
 }
 
 void test_T_assignment_performs_assignment() {
@@ -251,7 +220,7 @@ void test_T_assignment_performs_assignment() {
     assert(v.index() == 1);
     assert(std::get<1>(v).value == 100);
   }
-#endif // TEST_HAS_NO_EXCEPTIONS
+#endif
 }
 
 int main() {

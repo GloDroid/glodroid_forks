@@ -18,9 +18,10 @@
 #include <algorithm>
 #include <functional>
 #include <cassert>
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 #include <memory>
+#endif
 
-#include "test_macros.h"
 #include "test_iterators.h"
 #include "counting_predicates.hpp"
 
@@ -45,7 +46,8 @@ test()
     assert(cp.count() == sa);
 }
 
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+
 struct pred
 {
     bool operator()(const std::unique_ptr<int>& i) {return *i == 2;}
@@ -75,7 +77,8 @@ test1()
     assert(*ia[4] == 3);
     assert(*ia[5] == 4);
 }
-#endif // TEST_STD_VER >= 11
+
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 int main()
 {
@@ -84,10 +87,12 @@ int main()
     test<random_access_iterator<int*> >();
     test<int*>();
 
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+
     test1<forward_iterator<std::unique_ptr<int>*> >();
     test1<bidirectional_iterator<std::unique_ptr<int>*> >();
     test1<random_access_iterator<std::unique_ptr<int>*> >();
     test1<std::unique_ptr<int>*>();
-#endif // TEST_STD_VER >= 11
+
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

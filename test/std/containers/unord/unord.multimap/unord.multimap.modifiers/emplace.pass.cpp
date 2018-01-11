@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <unordered_map>
 
 // template <class Key, class T, class Hash = hash<Key>, class Pred = equal_to<Key>,
@@ -26,6 +24,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef std::unordered_multimap<int, Emplaceable> C;
         typedef C::iterator R;
@@ -47,6 +46,7 @@ int main()
         assert(r->first == 5);
         assert(r->second == Emplaceable(6, 7));
     }
+#if TEST_STD_VER >= 11
     {
         typedef std::unordered_multimap<int, Emplaceable, std::hash<int>, std::equal_to<int>,
                             min_allocator<std::pair<const int, Emplaceable>>> C;
@@ -69,4 +69,6 @@ int main()
         assert(r->first == 5);
         assert(r->second == Emplaceable(6, 7));
     }
+#endif
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

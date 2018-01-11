@@ -25,30 +25,13 @@ using std::any_cast;
 int main()
 {
     any a(1);
-
-    // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
-    any_cast<int &>(&a); // expected-note {{requested here}}
-
-    // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
-    any_cast<int &&>(&a); // expected-note {{requested here}}
-
-    // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
-    any_cast<int const &>(&a); // expected-note {{requested here}}
-
-    // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
-    any_cast<int const&&>(&a); // expected-note {{requested here}}
-
+    any_cast<int &>(&a); // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
+    any_cast<int &&>(&a); // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
+    any_cast<int const &>(&a); // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
+    any_cast<int const&&>(&a); // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
     any const& a2 = a;
-
-    // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
-    any_cast<int &>(&a2); // expected-note {{requested here}}
-
-    // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
-    any_cast<int &&>(&a2); // expected-note {{requested here}}
-
-    // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
-    any_cast<int const &>(&a2); // expected-note {{requested here}}
-
-    // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
-    any_cast<int const &&>(&a2); // expected-note {{requested here}}
+    any_cast<int &>(&a2); // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
+    any_cast<int &&>(&a2); // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
+    any_cast<int const &>(&a2); // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
+    any_cast<int const &&>(&a2); // expected-error@any:* 1 {{static_assert failed "_ValueType may not be a reference."}}
 }

@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <set>
 
 // class set
@@ -23,6 +21,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef std::set<MoveOnly> M;
         typedef M::iterator R;
@@ -47,6 +46,7 @@ int main()
         assert(m.size() == 3);
         assert(*r == 3);
     }
+#if TEST_STD_VER >= 11
     {
         typedef std::set<MoveOnly, std::less<MoveOnly>, min_allocator<MoveOnly>> M;
         typedef M::iterator R;
@@ -71,4 +71,6 @@ int main()
         assert(m.size() == 3);
         assert(*r == 3);
     }
+#endif
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

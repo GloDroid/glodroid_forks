@@ -24,7 +24,6 @@ class CXXCompiler(object):
                  modules_flags=None, use_modules=False,
                  use_ccache=False, use_warnings=False, compile_env=None,
                  cxx_type=None, cxx_version=None):
-        self.source_lang = 'c++'
         self.path = path
         self.flags = list(flags or [])
         self.compile_flags = list(compile_flags or [])
@@ -109,7 +108,7 @@ class CXXCompiler(object):
         if out is not None:
             cmd += ['-o', out]
         if input_is_cxx:
-            cmd += ['-x', self.source_lang]
+            cmd += ['-x', 'c++']
         if isinstance(source_files, list):
             cmd += source_files
         elif isinstance(source_files, str):

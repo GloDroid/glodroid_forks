@@ -16,10 +16,8 @@
 // mutex();
 
 #include <mutex>
-#include <type_traits>
 
 int main()
 {
-    static_assert(std::is_nothrow_default_constructible<std::mutex>::value, "");
     std::mutex m;
 }

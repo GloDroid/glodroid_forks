@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 // UNSUPPORTED: c++98, c++03, c++11
-// XFAIL: availability
 // dynarray.zero
 
 // dynarray shall provide support for the special case of construction with a size of zero.

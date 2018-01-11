@@ -126,7 +126,7 @@ int main()
         }
     }
 #endif
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_VARIADICS
     {
         L0 l0;
         L0 l1;
@@ -522,5 +522,5 @@ int main()
         assert(!l2.locked());
         assert(!l3.locked());
     }
-#endif  // TEST_STD_VER >= 11
+#endif  // _LIBCPP_HAS_NO_VARIADICS
 }

@@ -14,12 +14,9 @@
 #include <type_traits>
 #include "test_macros.h"
 
-// NOTE: On Windows the function `test_is_member_function<void()>` and
-// `test_is_member_function<void() noexcept> has the same mangled despite being
-// a distinct instantiation. This causes Clang to emit an error. However
-// structs do not have this problem.
 template <class T>
-struct test_member_function_pointer_imp {
+void test_member_function_pointer_imp()
+{
     static_assert(!std::is_void<T>::value, "");
 #if TEST_STD_VER > 11
     static_assert(!std::is_null_pointer<T>::value, "");
@@ -36,16 +33,16 @@ struct test_member_function_pointer_imp {
     static_assert(!std::is_union<T>::value, "");
     static_assert(!std::is_class<T>::value, "");
     static_assert(!std::is_function<T>::value, "");
-};
+}
 
 template <class T>
-struct test_member_function_pointer :
-    test_member_function_pointer_imp<T>,
-    test_member_function_pointer_imp<const T>,
-    test_member_function_pointer_imp<volatile T>,
-    test_member_function_pointer_imp<const volatile T>
+void test_member_function_pointer()
 {
-};
+    test_member_function_pointer_imp<T>();
+    test_member_function_pointer_imp<const T>();
+    test_member_function_pointer_imp<volatile T>();
+    test_member_function_pointer_imp<const volatile T>();
+}
 
 class Class
 {

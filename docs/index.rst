@@ -128,7 +128,6 @@ Design Documents
 .. toctree::
    :maxdepth: 1
 
-   DesignDocs/AvailabilityMarkup
    DesignDocs/DebugMode
    DesignDocs/CapturingConfigInfo
    DesignDocs/ABIVersioning
@@ -146,7 +145,7 @@ Build Bots and Test Coverage
 
 * `LLVM Buildbot Builders <http://lab.llvm.org:8011/console>`_
 * `Apple Jenkins Builders <http://lab.llvm.org:8080/green/view/Libcxx/>`_
-* `Windows Appveyor Builders <https://ci.appveyor.com/project/llvm-mirror/libcxx>`_
+* `EricWF's Nightly Builders <http://ds2.efcs.ca:8080/console>`_
 * `Code Coverage Results <http://efcs.ca/libcxx-coverage>`_
 
 Getting Involved

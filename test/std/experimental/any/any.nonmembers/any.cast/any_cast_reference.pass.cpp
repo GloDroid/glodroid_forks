@@ -9,8 +9,6 @@
 
 // UNSUPPORTED: c++98, c++03, c++11
 
-// XFAIL: availability=macosx
-
 // <experimental/any>
 
 // template <class ValueType>

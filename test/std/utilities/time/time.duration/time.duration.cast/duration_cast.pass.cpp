@@ -20,8 +20,6 @@
 #include <type_traits>
 #include <cassert>
 
-#include "test_macros.h"
-
 template <class ToDuration, class FromDuration>
 void
 test(const FromDuration& f, const ToDuration& d)
@@ -45,7 +43,7 @@ int main()
          std::chrono::duration<double, std::ratio<3600> >(7265./3600));
     test(std::chrono::duration<int, std::ratio<2, 3> >(9),
          std::chrono::duration<int, std::ratio<3, 5> >(10));
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
     {
     constexpr std::chrono::hours h = std::chrono::duration_cast<std::chrono::hours>(std::chrono::milliseconds(7265000));
     static_assert(h.count() == 2, "");

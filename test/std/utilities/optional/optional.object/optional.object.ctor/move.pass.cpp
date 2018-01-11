@@ -8,17 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 // UNSUPPORTED: c++98, c++03, c++11, c++14
-
-// XFAIL: with_system_cxx_lib=macosx10.12
-// XFAIL: with_system_cxx_lib=macosx10.11
-// XFAIL: with_system_cxx_lib=macosx10.10
-// XFAIL: with_system_cxx_lib=macosx10.9
-// XFAIL: with_system_cxx_lib=macosx10.7
-// XFAIL: with_system_cxx_lib=macosx10.8
-
 // <optional>
 
-// constexpr optional(optional<T>&& rhs);
+// optional(optional<T>&& rhs);
 
 #include <optional>
 #include <type_traits>
@@ -39,17 +31,6 @@ void test(InitArgs&&... args)
     assert(static_cast<bool>(lhs) == rhs_engaged);
     if (rhs_engaged)
         assert(*lhs == *orig);
-}
-
-template <class T, class ...InitArgs>
-constexpr bool constexpr_test(InitArgs&&... args)
-{
-    static_assert( std::is_trivially_copy_constructible_v<T>, ""); // requirement
-    const optional<T> orig(std::forward<InitArgs>(args)...);
-    optional<T> rhs(orig);
-    optional<T> lhs = std::move(rhs);
-    return (lhs.has_value() == orig.has_value()) &&
-           (lhs.has_value() ? *lhs == *orig : true);
 }
 
 void test_throwing_ctor() {
@@ -155,9 +136,6 @@ int main()
 {
     test<int>();
     test<int>(3);
-    static_assert(constexpr_test<int>(), "" );
-    static_assert(constexpr_test<int>(3), "" );
-	
     {
         optional<const int> o(42);
         optional<const int> o2(std::move(o));
@@ -219,10 +197,5 @@ int main()
     }
     {
         test_reference_extension();
-    }
-    {
-    constexpr std::optional<int> o1{4};
-    constexpr std::optional<int> o2 = std::move(o1);
-    static_assert( *o2 == 4, "" );
     }
 }

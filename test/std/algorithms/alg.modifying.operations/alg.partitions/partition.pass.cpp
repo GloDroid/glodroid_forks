@@ -17,7 +17,9 @@
 
 #include <algorithm>
 #include <cassert>
-
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#include <memory>
+#endif
 
 #include "test_iterators.h"
 

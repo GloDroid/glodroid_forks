@@ -86,6 +86,7 @@ int main()
         static_assert(!noexcept(std::tuple<NoExceptDefault, ThrowingDefault>()), "");
         static_assert(!noexcept(std::tuple<ThrowingDefault, ThrowingDefault>()), "");
     }
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
     {
         constexpr std::tuple<> t;
     }
@@ -105,4 +106,5 @@ int main()
         IllFormedDefault v(0);
         std::tuple<IllFormedDefault> t(v);
     }
+#endif
 }

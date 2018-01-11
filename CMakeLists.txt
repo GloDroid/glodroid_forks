@@ -23,7 +23,7 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   project(libcxx CXX C)
 
   set(PACKAGE_NAME libcxx)
-  set(PACKAGE_VERSION 5.0.0svn)
+  set(PACKAGE_VERSION 4.0.0svn)
   set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
   set(PACKAGE_BUGREPORT "llvm-bugs@lists.llvm.org")
 
@@ -64,12 +64,8 @@ option(LIBCXX_ENABLE_ASSERTIONS "Enable assertions independent of build mode." O
 option(LIBCXX_ENABLE_SHARED "Build libc++ as a shared library." ON)
 option(LIBCXX_ENABLE_STATIC "Build libc++ as a static library." ON)
 option(LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY "Build libc++experimental.a" ON)
-set(ENABLE_FILESYSTEM_DEFAULT ${LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY})
-if (WIN32)
-  set(ENABLE_FILESYSTEM_DEFAULT OFF)
-endif()
-option(LIBCXX_ENABLE_FILESYSTEM "Build filesystem as part of libc++experimental.a"
-    ${ENABLE_FILESYSTEM_DEFAULT})
+option(LIBCXX_ENABLE_FILESYSTEM
+        "Build filesystem as part of libc++experimental.a" ${LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY})
 option(LIBCXX_INCLUDE_TESTS "Build the libc++ tests." ${LLVM_INCLUDE_TESTS})
 
 # Benchmark options -----------------------------------------------------------
@@ -120,19 +116,21 @@ if (LIBCXX_CXX_ABI STREQUAL "default")
           ${LLVM_MAIN_SRC_DIR}/runtimes/libcxxabi/include
     NO_DEFAULT_PATH
   )
-  if (LIBCXX_TARGETING_MSVC)
-    # FIXME: Figure out how to configure the ABI library on Windows.
-    set(LIBCXX_CXX_ABI_LIBNAME "vcruntime")
-  elseif ((NOT LIBCXX_STANDALONE_BUILD OR HAVE_LIBCXXABI) AND
-          IS_DIRECTORY "${LIBCXX_LIBCXXABI_INCLUDES_INTERNAL}")
+  if ((NOT LIBCXX_STANDALONE_BUILD OR HAVE_LIBCXXABI) AND
+      IS_DIRECTORY "${LIBCXX_LIBCXXABI_INCLUDES_INTERNAL}")
     set(LIBCXX_CXX_ABI_LIBNAME "libcxxabi")
     set(LIBCXX_CXX_ABI_INCLUDE_PATHS "${LIBCXX_LIBCXXABI_INCLUDES_INTERNAL}")
     set(LIBCXX_CXX_ABI_INTREE 1)
-  elseif (APPLE)
-    set(LIBCXX_CXX_ABI_LIBNAME "libcxxabi")
-    set(LIBCXX_CXX_ABI_SYSTEM 1)
   else()
-    set(LIBCXX_CXX_ABI_LIBNAME "default")
+    if (LIBCXX_TARGETING_MSVC)
+      # FIXME: Figure out how to configure the ABI library on Windows.
+      set(LIBCXX_CXX_ABI_LIBNAME "vcruntime")
+    elseif(APPLE)
+      set(LIBCXX_CXX_ABI_LIBNAME "libcxxabi")
+      set(LIBCXX_CXX_ABI_SYSTEM 1)
+    else()
+      set(LIBCXX_CXX_ABI_LIBNAME "default")
+    endif()
   endif()
 else()
   set(LIBCXX_CXX_ABI_LIBNAME "${LIBCXX_CXX_ABI}")
@@ -144,7 +142,7 @@ option(LIBCXX_ENABLE_STATIC_ABI_LIBRARY "Statically link the ABI library" OFF)
 
 # Generate and install a linker script inplace of libc++.so. The linker script
 # will link libc++ to the correct ABI library. This option is on by default
-# on UNIX platforms other than Apple unless 'LIBCXX_ENABLE_STATIC_ABI_LIBRARY'
+# On UNIX platforms other than Apple unless 'LIBCXX_ENABLE_STATIC_ABI_LIBRARY'
 # is on. This option is also disabled when the ABI library is not specified
 # or is specified to be "none".
 set(ENABLE_LINKER_SCRIPT_DEFAULT_VALUE OFF)
@@ -163,7 +161,7 @@ option(LIBCXX_ENABLE_ABI_LINKER_SCRIPT
 set(ENABLE_NEW_DELETE_DEFAULT ON)
 if (LIBCXXABI_ENABLE_NEW_DELETE_DEFINITIONS)
 # FIXME: This option should default to off. Unfortunatly GCC 4.9 fails to link
-# programs due to undefined references to new/delete in libc++abi so to work
+# programs to due undefined references to new/delete in libc++abi so to work
 # around this libc++abi currently defaults LIBCXXABI_ENABLE_NEW_DELETE_DEFINITIONS
 # to ON. Once the GCC bug has been worked around this option should be changed
 # back to OFF.
@@ -344,16 +342,11 @@ set(LIBCXX_COMPILER    ${CMAKE_CXX_COMPILER})
 set(LIBCXX_SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR})
 set(LIBCXX_BINARY_DIR  ${CMAKE_CURRENT_BINARY_DIR})
 set(LIBCXX_BINARY_INCLUDE_DIR "${LIBCXX_BINARY_DIR}/include/c++build")
-if (LLVM_LIBRARY_OUTPUT_INTDIR)
-  set(LIBCXX_LIBRARY_DIR ${LLVM_LIBRARY_OUTPUT_INTDIR})
-else()
-  set(LIBCXX_LIBRARY_DIR ${CMAKE_BINARY_DIR}/lib${LIBCXX_LIBDIR_SUFFIX})
-endif()
+set(LIBCXX_LIBRARY_DIR ${CMAKE_BINARY_DIR}/lib${LIBCXX_LIBDIR_SUFFIX})
 file(MAKE_DIRECTORY "${LIBCXX_BINARY_INCLUDE_DIR}")
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIBCXX_LIBRARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIBCXX_LIBRARY_DIR})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${LIBCXX_LIBRARY_DIR})
 
 # Declare libc++ configuration variables.
 # They are intended for use as follows:
@@ -376,9 +369,9 @@ include(HandleLibcxxFlags)
 # 'config-ix' use them during feature checks. It also adds them to both
 # 'LIBCXX_COMPILE_FLAGS' and 'LIBCXX_LINK_FLAGS'
 add_target_flags_if(LIBCXX_BUILD_32_BITS "-m32")
-add_target_flags_if(LIBCXX_TARGET_TRIPLE "--target=${LIBCXX_TARGET_TRIPLE}")
+add_target_flags_if(LIBCXX_TARGET_TRIPLE "-target ${LIBCXX_TARGET_TRIPLE}")
 add_target_flags_if(LIBCXX_SYSROOT "--sysroot=${LIBCXX_SYSROOT}")
-add_target_flags_if(LIBCXX_GCC_TOOLCHAIN "--gcc-toolchain=${LIBCXX_GCC_TOOLCHAIN}")
+add_target_flags_if(LIBCXX_GCC_TOOLCHAIN "-gcc-toolchain ${LIBCXX_GCC_TOOLCHAIN}")
 if (LIBCXX_TARGET_TRIPLE)
   set(TARGET_TRIPLE "${LIBCXX_TARGET_TRIPLE}")
 endif()
@@ -421,9 +414,9 @@ remove_flags(-stdlib=libc++ -stdlib=libstdc++)
 # non-debug DLLs
 remove_flags("/D_DEBUG" "/MTd" "/MDd" "/MT" "/Md")
 
-# FIXME(EricWF): See the FIXME on LIBCXX_ENABLE_PEDANTIC.
+# FIXME(EricWF): See the FIXME on LIBCXX_ENABLE_PEqDANTIC.
 # Remove the -pedantic flag and -Wno-pedantic and -pedantic-errors
-# so they don't get transformed into -Wno and -errors respectively.
+# so they don't get transformed into -Wno and -errors respectivly.
 remove_flags(-Wno-pedantic -pedantic-errors -pedantic)
 
 # Required flags ==============================================================
@@ -452,11 +445,6 @@ add_compile_flags_if_supported(-nostdinc++)
 # the dylib when get ODR used by another function.
 add_compile_flags_if_supported(-fvisibility-inlines-hidden)
 
-if (LIBCXX_CONFIGURE_IDE)
-  # This simply allows IDE to process <experimental/coroutine>
-  add_compile_flags_if_supported(-fcoroutines-ts)
-endif()
-
 # Let the library headers know they are currently being used to build the
 # library.
 add_definitions(-D_LIBCPP_BUILDING_LIBRARY)
@@ -478,8 +466,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     add_compile_flags_if_supported(
         -Wno-literal-suffix
-        -Wno-c++14-compat
-        -Wno-noexcept-type)
+        -Wno-c++14-compat)
 endif()
 if (LIBCXX_ENABLE_WERROR)
   add_compile_flags_if_supported(-Werror)
@@ -636,12 +623,7 @@ endif()
 # Create the lit.site.cfg file even when LIBCXX_INCLUDE_TESTS is OFF or
 # LLVM_FOUND is OFF. This allows users to run the tests manually using
 # LIT without requiring a full LLVM checkout.
-#
-# However, since some submission systems strip test/ subdirectories, check for
-# it before adding it.
-if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/test")
-  add_subdirectory(test)
-endif()
+add_subdirectory(test)
 if (LIBCXX_INCLUDE_TESTS)
   add_subdirectory(lib/abi)
 endif()
