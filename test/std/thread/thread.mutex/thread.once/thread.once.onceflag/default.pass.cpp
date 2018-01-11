@@ -14,14 +14,13 @@
 // constexpr once_flag() noexcept;
 
 #include <mutex>
-#include "test_macros.h"
 
 int main()
 {
     {
     std::once_flag f;
     }
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
     {
     constexpr std::once_flag f;
     }

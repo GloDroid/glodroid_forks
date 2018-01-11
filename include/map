@@ -480,8 +480,8 @@ public:
     void swap(__map_value_compare&__y)
         _NOEXCEPT_(__is_nothrow_swappable<_Compare>::value)
     {
-      using _VSTD::swap;
-      swap(static_cast<_Compare&>(*this), static_cast<_Compare&>(__y));
+        using _VSTD::swap;
+        swap(static_cast<const _Compare&>(*this), static_cast<const _Compare&>(__y));
     }
 
 #if _LIBCPP_STD_VER > 11
@@ -582,7 +582,7 @@ public:
           __second_constructed(false)
         {}
 
-#ifndef _LIBCPP_CXX03_LANG
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     _LIBCPP_INLINE_VISIBILITY
     __map_node_destructor(__tree_node_destructor<allocator_type>&& __x) _NOEXCEPT
         : __na_(__x.__na_),
@@ -591,7 +591,7 @@ public:
         {
             __x.__value_constructed = false;
         }
-#endif  // _LIBCPP_CXX03_LANG
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
     _LIBCPP_INLINE_VISIBILITY
     void operator()(pointer __p) _NOEXCEPT
@@ -667,7 +667,7 @@ private:
    ~__value_type();
 };
 
-#endif // _LIBCPP_CXX03_LANG
+#endif
 
 template <class _Tp>
 struct __extract_key_value_types;
@@ -921,7 +921,7 @@ public:
             return *this;
         }
 
-#ifndef _LIBCPP_CXX03_LANG
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
     _LIBCPP_INLINE_VISIBILITY
     map(map&& __m)
@@ -939,6 +939,10 @@ public:
             __tree_ = _VSTD::move(__m.__tree_);
             return *this;
         }
+
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
+
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 
     _LIBCPP_INLINE_VISIBILITY
     map(initializer_list<value_type> __il, const key_compare& __comp = key_compare())
@@ -967,7 +971,7 @@ public:
             return *this;
         }
 
-#endif  // _LIBCPP_CXX03_LANG
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 
     _LIBCPP_INLINE_VISIBILITY
     explicit map(const allocator_type& __a)
@@ -1078,10 +1082,6 @@ public:
     _LIBCPP_INLINE_VISIBILITY
     iterator insert(const_iterator __p,  value_type&& __v)
     {return __tree_.__insert_unique(__p.__i_, _VSTD::move(__v));}
-
-    _LIBCPP_INLINE_VISIBILITY
-    void insert(initializer_list<value_type> __il)
-        {insert(__il.begin(), __il.end());}
 #endif
 
     template <class _InputIterator>
@@ -1091,6 +1091,14 @@ public:
             for (const_iterator __e = cend(); __f != __l; ++__f)
                 insert(__e.__i_, *__f);
         }
+
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
+
+    _LIBCPP_INLINE_VISIBILITY
+    void insert(initializer_list<value_type> __il)
+        {insert(__il.begin(), __il.end());}
+
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 
 #if _LIBCPP_STD_VER > 14
 
@@ -1186,7 +1194,7 @@ public:
         return emplace_hint(__h, _VSTD::move(__k), _VSTD::forward<_Vp>(__v));
      }
 
-#endif // _LIBCPP_STD_VER > 14
+#endif
 
     _LIBCPP_INLINE_VISIBILITY
     iterator erase(const_iterator __p) {return __tree_.erase(__p.__i_);}
@@ -1299,6 +1307,7 @@ private:
 
 
 #ifndef _LIBCPP_CXX03_LANG
+
 template <class _Key, class _Tp, class _Compare, class _Allocator>
 map<_Key, _Tp, _Compare, _Allocator>::map(map&& __m, const allocator_type& __a)
     : __tree_(_VSTD::move(__m.__tree_), typename __base::allocator_type(__a))
@@ -1312,27 +1321,10 @@ map<_Key, _Tp, _Compare, _Allocator>::map(map&& __m, const allocator_type& __a)
     }
 }
 
-template <class _Key, class _Tp, class _Compare, class _Allocator>
-_Tp&
-map<_Key, _Tp, _Compare, _Allocator>::operator[](const key_type& __k)
-{
-    return __tree_.__emplace_unique_key_args(__k,
-        _VSTD::piecewise_construct,
-        _VSTD::forward_as_tuple(__k),
-        _VSTD::forward_as_tuple()).first->__cc.second;
-}
+#endif  // !_LIBCPP_CXX03_LANG
 
-template <class _Key, class _Tp, class _Compare, class _Allocator>
-_Tp&
-map<_Key, _Tp, _Compare, _Allocator>::operator[](key_type&& __k)
-{
-    return __tree_.__emplace_unique_key_args(__k,
-        _VSTD::piecewise_construct,
-        _VSTD::forward_as_tuple(_VSTD::move(__k)),
-        _VSTD::forward_as_tuple()).first->__cc.second;
-}
 
-#else // _LIBCPP_CXX03_LANG
+#ifdef _LIBCPP_CXX03_LANG
 
 template <class _Key, class _Tp, class _Compare, class _Allocator>
 typename map<_Key, _Tp, _Compare, _Allocator>::__node_holder
@@ -1363,7 +1355,29 @@ map<_Key, _Tp, _Compare, _Allocator>::operator[](const key_type& __k)
     return __r->__value_.__cc.second;
 }
 
-#endif  // _LIBCPP_CXX03_LANG
+#else
+
+template <class _Key, class _Tp, class _Compare, class _Allocator>
+_Tp&
+map<_Key, _Tp, _Compare, _Allocator>::operator[](const key_type& __k)
+{
+    return __tree_.__emplace_unique_key_args(__k,
+        _VSTD::piecewise_construct,
+        _VSTD::forward_as_tuple(__k),
+        _VSTD::forward_as_tuple()).first->__cc.second;
+}
+
+template <class _Key, class _Tp, class _Compare, class _Allocator>
+_Tp&
+map<_Key, _Tp, _Compare, _Allocator>::operator[](key_type&& __k)
+{
+    return __tree_.__emplace_unique_key_args(__k,
+        _VSTD::piecewise_construct,
+        _VSTD::forward_as_tuple(_VSTD::move(__k)),
+        _VSTD::forward_as_tuple()).first->__cc.second;
+}
+
+#endif  // !_LIBCPP_CXX03_LANG
 
 template <class _Key, class _Tp, class _Compare, class _Allocator>
 _Tp&
@@ -1579,7 +1593,7 @@ public:
             return *this;
         }
 
-#ifndef _LIBCPP_CXX03_LANG
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
     _LIBCPP_INLINE_VISIBILITY
     multimap(multimap&& __m)
@@ -1597,6 +1611,10 @@ public:
             __tree_ = _VSTD::move(__m.__tree_);
             return *this;
         }
+
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
+
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 
     _LIBCPP_INLINE_VISIBILITY
     multimap(initializer_list<value_type> __il, const key_compare& __comp = key_compare())
@@ -1625,7 +1643,7 @@ public:
             return *this;
         }
 
-#endif  // _LIBCPP_CXX03_LANG
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 
     _LIBCPP_INLINE_VISIBILITY
     explicit multimap(const allocator_type& __a)
@@ -1718,11 +1736,6 @@ public:
     iterator insert(const_iterator __p, value_type&& __v)
         {return __tree_.__insert_multi(__p.__i_, _VSTD::move(__v));}
 
-
-    _LIBCPP_INLINE_VISIBILITY
-    void insert(initializer_list<value_type> __il)
-        {insert(__il.begin(), __il.end());}
-
 #endif  // _LIBCPP_CXX03_LANG
 
     _LIBCPP_INLINE_VISIBILITY
@@ -1739,6 +1752,14 @@ public:
             for (const_iterator __e = cend(); __f != __l; ++__f)
                 __tree_.__insert_multi(__e.__i_, *__f);
         }
+
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
+
+    _LIBCPP_INLINE_VISIBILITY
+    void insert(initializer_list<value_type> __il)
+        {insert(__il.begin(), __il.end());}
+
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 
     _LIBCPP_INLINE_VISIBILITY
     iterator erase(const_iterator __p) {return __tree_.erase(__p.__i_);}

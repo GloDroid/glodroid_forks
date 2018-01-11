@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <random>
 
 // template<class IntType = int>
@@ -21,6 +19,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
     {
         typedef std::discrete_distribution<> D;
         D d = {};
@@ -78,4 +77,5 @@ int main()
         assert(p[1] == 0);
         assert(p[2] == 1);
     }
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 }

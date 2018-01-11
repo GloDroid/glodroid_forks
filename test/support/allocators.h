@@ -15,7 +15,7 @@
 
 #include "test_macros.h"
 
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class T>
 class A1
@@ -186,6 +186,6 @@ bool operator!=(const A3<T>& x, const A3<U>& y)
     return !(x == y);
 }
 
-#endif  // TEST_STD_VER >= 11
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 #endif  // ALLOCATORS_H

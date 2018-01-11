@@ -35,10 +35,6 @@
 #endif
 #endif
 
-#ifdef BENCHMARK_OS_EMSCRIPTEN
-#include <emscripten.h>
-#endif
-
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
@@ -104,7 +100,14 @@ BENCHMARK_NORETURN static void DiagnoseAndExit(const char* msg) {
 }  // end namespace
 
 double ProcessCPUUsage() {
-#if defined(BENCHMARK_OS_WINDOWS)
+// FIXME We want to use clock_gettime, but its not available in MacOS 10.11. See
+// https://github.com/google/benchmark/pull/292
+#if defined(CLOCK_PROCESS_CPUTIME_ID) && !defined(BENCHMARK_OS_MACOSX)
+  struct timespec spec;
+  if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &spec) == 0)
+    return MakeTime(spec);
+  DiagnoseAndExit("clock_gettime(CLOCK_PROCESS_CPUTIME_ID, ...) failed");
+#elif defined(BENCHMARK_OS_WINDOWS)
   HANDLE proc = GetCurrentProcess();
   FILETIME creation_time;
   FILETIME exit_time;
@@ -114,28 +117,21 @@ double ProcessCPUUsage() {
                       &user_time))
     return MakeTime(kernel_time, user_time);
   DiagnoseAndExit("GetProccessTimes() failed");
-#elif defined(BENCHMARK_OS_EMSCRIPTEN)
-  // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, ...) returns 0 on Emscripten.
-  // Use Emscripten-specific API. Reported CPU time would be exactly the
-  // same as total time, but this is ok because there aren't long-latency
-  // syncronous system calls in Emscripten.
-  return emscripten_get_now() * 1e-3;
-#elif defined(CLOCK_PROCESS_CPUTIME_ID) && !defined(BENCHMARK_OS_MACOSX)
-  // FIXME We want to use clock_gettime, but its not available in MacOS 10.11. See
-  // https://github.com/google/benchmark/pull/292
-  struct timespec spec;
-  if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &spec) == 0)
-    return MakeTime(spec);
-  DiagnoseAndExit("clock_gettime(CLOCK_PROCESS_CPUTIME_ID, ...) failed");
 #else
   struct rusage ru;
   if (getrusage(RUSAGE_SELF, &ru) == 0) return MakeTime(ru);
-  DiagnoseAndExit("getrusage(RUSAGE_SELF, ...) failed");
+  DiagnoseAndExit("clock_gettime(CLOCK_PROCESS_CPUTIME_ID, ...) failed");
 #endif
 }
 
 double ThreadCPUUsage() {
-#if defined(BENCHMARK_OS_WINDOWS)
+// FIXME We want to use clock_gettime, but its not available in MacOS 10.11. See
+// https://github.com/google/benchmark/pull/292
+#if defined(CLOCK_THREAD_CPUTIME_ID) && !defined(BENCHMARK_OS_MACOSX)
+  struct timespec ts;
+  if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0) return MakeTime(ts);
+  DiagnoseAndExit("clock_gettime(CLOCK_THREAD_CPUTIME_ID, ...) failed");
+#elif defined(BENCHMARK_OS_WINDOWS)
   HANDLE this_thread = GetCurrentThread();
   FILETIME creation_time;
   FILETIME exit_time;
@@ -145,8 +141,6 @@ double ThreadCPUUsage() {
                  &user_time);
   return MakeTime(kernel_time, user_time);
 #elif defined(BENCHMARK_OS_MACOSX)
-  // FIXME We want to use clock_gettime, but its not available in MacOS 10.11. See
-  // https://github.com/google/benchmark/pull/292
   mach_msg_type_number_t count = THREAD_BASIC_INFO_COUNT;
   thread_basic_info_data_t info;
   mach_port_t thread = pthread_mach_thread_np(pthread_self());
@@ -155,13 +149,6 @@ double ThreadCPUUsage() {
     return MakeTime(info);
   }
   DiagnoseAndExit("ThreadCPUUsage() failed when evaluating thread_info");
-#elif defined(BENCHMARK_OS_EMSCRIPTEN)
-  // Emscripten doesn't support traditional threads
-  return ProcessCPUUsage();
-#elif defined(CLOCK_THREAD_CPUTIME_ID)
-  struct timespec ts;
-  if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0) return MakeTime(ts);
-  DiagnoseAndExit("clock_gettime(CLOCK_THREAD_CPUTIME_ID, ...) failed");
 #else
 #error Per-thread timing is not available on your system.
 #endif

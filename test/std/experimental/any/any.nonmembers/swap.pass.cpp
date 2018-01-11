@@ -34,8 +34,7 @@ int main()
 
         swap(a1, a2);
 
-        // Support testing against system dylibs that don't have bad_any_cast.
-        assert(*any_cast<int>(&a1) == 2);
-        assert(*any_cast<int>(&a2) == 1);
+        assert(any_cast<int>(a1) == 2);
+        assert(any_cast<int>(a2) == 1);
     }
 }

@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <set>
 
 // class set
@@ -25,6 +23,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef MoveOnly V;
         typedef test_compare<std::less<MoveOnly> > C;
@@ -185,4 +184,5 @@ int main()
         assert(Counter_base::gConstructed == 0);
     }
 
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

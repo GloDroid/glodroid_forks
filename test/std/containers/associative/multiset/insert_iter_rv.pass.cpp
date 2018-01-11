@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <set>
 
 // class multiset
@@ -23,6 +21,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef std::multiset<MoveOnly> M;
         typedef M::iterator R;
@@ -47,6 +46,8 @@ int main()
         assert(m.size() == 4);
         assert(*r == 3);
     }
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#if TEST_STD_VER >= 11
     {
         typedef std::multiset<MoveOnly, std::less<MoveOnly>, min_allocator<MoveOnly>> M;
         typedef M::iterator R;
@@ -71,4 +72,5 @@ int main()
         assert(m.size() == 4);
         assert(*r == 3);
     }
+#endif
 }

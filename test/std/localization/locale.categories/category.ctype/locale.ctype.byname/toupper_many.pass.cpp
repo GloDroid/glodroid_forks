@@ -15,6 +15,9 @@
 
 // const charT* toupper(charT* low, const charT* high) const;
 
+// XFAIL: with_system_cxx_lib=x86_64-apple-darwin11
+// XFAIL: with_system_cxx_lib=x86_64-apple-darwin12
+
 #include <locale>
 #include <string>
 #include <cassert>

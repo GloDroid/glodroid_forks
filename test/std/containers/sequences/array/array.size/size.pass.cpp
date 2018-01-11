@@ -14,8 +14,6 @@
 #include <array>
 #include <cassert>
 
-#include "test_macros.h"
-
 // std::array is explicitly allowed to be initialized with A a = { init-list };.
 // Disable the missing braces warning for this reason.
 #include "disable_missing_braces_warning.h"
@@ -38,7 +36,7 @@ int main()
         assert(c.max_size() == 0);
         assert(c.empty());
     }
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
     {
         typedef double T;
         typedef std::array<T, 3> C;

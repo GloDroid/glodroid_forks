@@ -18,7 +18,6 @@
 #include <chrono>
 #include <cassert>
 
-#include "test_macros.h"
 #include "../../rep.h"
 
 template <class D>
@@ -27,7 +26,7 @@ test()
 {
     D d;
     assert(d.count() == typename D::rep());
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
     constexpr D d2 = D();
     static_assert(d2.count() == typename D::rep(), "");
 #endif

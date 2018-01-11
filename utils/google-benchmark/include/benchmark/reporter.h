@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
 
 #include "benchmark_api.h"  // For forward declaration of BenchmarkReporter
 
@@ -55,8 +54,7 @@ class BenchmarkReporter {
           complexity_lambda(),
           complexity_n(0),
           report_big_o(false),
-          report_rms(false),
-          counters() {}
+          report_rms(false) {}
 
     std::string benchmark_name;
     std::string report_label;  // Empty if not set by benchmark.
@@ -95,8 +93,6 @@ class BenchmarkReporter {
     // Inform print function whether the current run is a complexity report
     bool report_big_o;
     bool report_rms;
-
-    UserCounters counters;
   };
 
   // Construct a BenchmarkReporter with the output stream set to 'std::cout'
@@ -167,10 +163,7 @@ class ConsoleReporter : public BenchmarkReporter {
 
  protected:
   virtual void PrintRunData(const Run& report);
-  virtual void PrintHeader(const Run& report);
-
   size_t name_field_width_;
-  bool printed_header_;
 
  private:
   bool color_output_;
@@ -191,15 +184,11 @@ class JSONReporter : public BenchmarkReporter {
 
 class CSVReporter : public BenchmarkReporter {
  public:
-  CSVReporter() : printed_header_(false) {}
   virtual bool ReportContext(const Context& context);
   virtual void ReportRuns(const std::vector<Run>& reports);
 
  private:
   void PrintRunData(const Run& report);
-
-  bool printed_header_;
-  std::set< std::string > user_counter_names_;
 };
 
 inline const char* GetTimeUnitString(TimeUnit unit) {

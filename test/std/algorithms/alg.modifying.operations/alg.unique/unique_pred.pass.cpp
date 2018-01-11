@@ -17,9 +17,10 @@
 
 #include <algorithm>
 #include <cassert>
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 #include <memory>
+#endif
 
-#include "test_macros.h"
 #include "test_iterators.h"
 
 struct count_equal
@@ -109,7 +110,7 @@ test()
     assert(count_equal::count == si-1);
 }
 
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 struct do_nothing
 {
@@ -209,7 +210,8 @@ test1()
     assert(*ii[2] == 2);
     assert(count_equal::count == si-1);
 }
-#endif // TEST_STD_VER >= 11
+
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 int main()
 {
@@ -218,10 +220,12 @@ int main()
     test<random_access_iterator<int*> >();
     test<int*>();
 
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+
     test1<forward_iterator<Ptr*> >();
     test1<bidirectional_iterator<Ptr*> >();
     test1<random_access_iterator<Ptr*> >();
     test1<Ptr*>();
-#endif
+
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <stack>
 
 // stack& operator=(stack&& q);
@@ -18,6 +16,7 @@
 
 #include "MoveOnly.h"
 
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class C>
 C
@@ -29,12 +28,15 @@ make(int n)
     return c;
 }
 
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     std::stack<MoveOnly> q(make<std::deque<MoveOnly> >(5));
     std::stack<MoveOnly> q2;
     q2 = std::move(q);
     assert(q2.size() == 5);
     assert(q.empty());
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

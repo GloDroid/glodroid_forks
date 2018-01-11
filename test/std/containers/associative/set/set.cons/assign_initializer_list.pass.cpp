@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <set>
 
 // class set
@@ -22,6 +20,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
     {
     typedef std::set<int> C;
     typedef C::value_type V;
@@ -37,6 +36,7 @@ int main()
     assert(*++i == V(5));
     assert(*++i == V(6));
     }
+#if TEST_STD_VER >= 11
     {
     typedef std::set<int, std::less<int>, min_allocator<int>> C;
     typedef C::value_type V;
@@ -52,4 +52,6 @@ int main()
     assert(*++i == V(5));
     assert(*++i == V(6));
     }
+#endif
+#endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
 }

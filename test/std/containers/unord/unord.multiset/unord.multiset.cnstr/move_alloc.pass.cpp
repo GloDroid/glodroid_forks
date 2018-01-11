@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <unordered_set>
 
 // template <class Value, class Hash = hash<Value>, class Pred = equal_to<Value>,
@@ -31,6 +29,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         typedef int P;
         typedef test_allocator<int> A;
@@ -121,6 +120,7 @@ int main()
 
         assert(c0.empty());
     }
+#if TEST_STD_VER >= 11
     {
         typedef int P;
         typedef min_allocator<int> A;
@@ -203,4 +203,6 @@ int main()
 
         assert(c0.empty());
     }
+#endif
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

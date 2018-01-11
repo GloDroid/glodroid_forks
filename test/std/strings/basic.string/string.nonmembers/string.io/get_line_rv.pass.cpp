@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // <string>
 
 // template<class charT, class traits, class Allocator>
@@ -24,6 +22,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     {
         std::string s("initial text");
         getline(std::istringstream(" abc\n  def\n   ghij"), s);
@@ -34,6 +33,7 @@ int main()
         getline(std::wistringstream(L" abc\n  def\n   ghij"), s);
         assert(s == L" abc");
     }
+#if TEST_STD_VER >= 11
     {
         typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
         S s("initial text");
@@ -46,4 +46,6 @@ int main()
         getline(std::wistringstream(L" abc\n  def\n   ghij"), s);
         assert(s == L" abc");
     }
+#endif
+#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 }

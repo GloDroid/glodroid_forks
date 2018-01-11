@@ -18,8 +18,6 @@
 #include <complex>
 #include <cassert>
 
-#include "test_macros.h"
-
 int main()
 {
     {
@@ -28,7 +26,7 @@ int main()
     assert(cf.real() == cd.real());
     assert(cf.imag() == cd.imag());
     }
-#if TEST_STD_VER >= 11
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
     {
     constexpr std::complex<long double> cd(2.5, 3.5);
     constexpr std::complex<float> cf(cd);

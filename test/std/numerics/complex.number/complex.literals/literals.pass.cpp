@@ -14,8 +14,6 @@
 #include <type_traits>
 #include <cassert>
 
-#include "test_macros.h"
-
 int main()
 {
     using namespace std::literals::complex_literals;

@@ -38,12 +38,7 @@ int main()
         }
         catch (const A& a)
         {
-#ifndef _LIBCPP_ABI_MICROSOFT
             assert(A::constructed == 1);
-#else
-            // On Windows exception_ptr copies the exception
-            assert(A::constructed == 2);
-#endif
             assert(p != nullptr);
             p = nullptr;
             assert(p == nullptr);
@@ -52,5 +47,4 @@ int main()
         }
         assert(A::constructed == 0);
     }
-    assert(A::constructed == 0);
 }

@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++98, c++03
-
 // type_traits
 
 // aligned_union<size_t Len, class ...Types>
@@ -19,6 +17,7 @@
 
 int main()
 {
+#ifndef _LIBCPP_HAS_NO_VARIADICS
     {
     typedef std::aligned_union<10, char >::type T1;
 #if TEST_STD_VER > 11
@@ -91,4 +90,5 @@ int main()
     static_assert(std::alignment_of<T1>::value == 4, "");
     static_assert(sizeof(T1) == 4, "");
     }
+#endif
 }

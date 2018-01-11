@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: with_system_cxx_lib=macosx10.12
-
 // <ostream>
 
 // template <class charT, class traits = char_traits<charT> >
