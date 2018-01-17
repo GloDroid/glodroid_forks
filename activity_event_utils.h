@@ -24,7 +24,7 @@
 #define MAX_ACTIVITIES		6
 #define MAX_EVENTS_PER_ACTIVITY	2
 
-typedef unsigned bool;
+typedef _Bool bool;
 #define true	1
 #define false	0
 
