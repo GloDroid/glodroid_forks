@@ -24,10 +24,6 @@
 #define MAX_ACTIVITIES		6
 #define MAX_EVENTS_PER_ACTIVITY	2
 
-typedef _Bool bool;
-#define true	1
-#define false	0
-
 /* For each activity in activity_recognition.h we can monitor 2 events at most :
  * ENTER and EXIT */
 struct activity_event_info {
