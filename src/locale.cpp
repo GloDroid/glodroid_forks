@@ -39,6 +39,7 @@
 #endif
 #include <stdlib.h>
 #include <stdio.h>
+#include "include/atomic_support.h"
 #include "__undef_macros"
 
 // On Linux, wint_t and wchar_t have different signed-ness, and this causes
@@ -670,7 +671,7 @@ locale::id::__get()
 void
 locale::id::__init()
 {
-    __id_ = __sync_add_and_fetch(&__next_id, 1);
+    __id_ = __libcpp_atomic_add(&__next_id, 1);
 }
 
 // template <> class collate_byname<char>
@@ -4661,7 +4662,7 @@ static
 string*
 init_am_pm()
 {
-    static string am_pm[24];
+    static string am_pm[2];
     am_pm[0]  = "AM";
     am_pm[1]  = "PM";
     return am_pm;
@@ -4671,7 +4672,7 @@ static
 wstring*
 init_wam_pm()
 {
-    static wstring am_pm[24];
+    static wstring am_pm[2];
     am_pm[0]  = L"AM";
     am_pm[1]  = L"PM";
     return am_pm;
@@ -6160,7 +6161,5 @@ template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS codecvt_byname<char, cha
 template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS codecvt_byname<wchar_t, char, mbstate_t>;
 template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS codecvt_byname<char16_t, char, mbstate_t>;
 template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS codecvt_byname<char32_t, char, mbstate_t>;
-
-template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __vector_base_common<true>;
 
 _LIBCPP_END_NAMESPACE_STD
