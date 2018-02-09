@@ -16,6 +16,10 @@
 //
 // REQUIRES: long_tests
 
+// This test allocates 4GiB of 'a', which is not possible on a typical mobile
+// device.
+// UNSUPPORTED: android
+
 #include <sstream>
 #include <cassert>
 #include "test_macros.h"
