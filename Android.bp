@@ -48,10 +48,11 @@ cc_library_static {
         "src/utility.cpp",
         "src/valarray.cpp",
         "src/variant.cpp",
+        "src/vector.cpp",
     ],
     local_include_dirs: ["include"],
     export_include_dirs: ["include"],
-    cflags: ["-Wall", "-Werror"],
+    cflags: ["-Wall", "-Werror", "-Wno-unused-parameter"],
     cppflags: [
         "-std=c++14",
         "-nostdinc++",
