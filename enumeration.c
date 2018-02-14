@@ -652,10 +652,10 @@ static int add_sensor (int dev_num, int catalog_index, int mode)
 
         /* Set default scaling - if num_channels is zero, we have one channel */
 
-	sensor[s].channel[0].opt_scale = 1;
+	sensor[s].channel[0].opt_scale = (sensor_type == SENSOR_TYPE_ACCELEROMETER) ? -1 : 1;
 
 	for (c = 1; c < num_channels; c++)
-		sensor[s].channel[c].opt_scale = 1;
+		sensor[s].channel[c].opt_scale = sensor[s].channel[0].opt_scale;
 
 	for (c = 0; c < num_channels; c++) {
 		/* Check the presence of the channel's input_path */
@@ -690,7 +690,7 @@ static int add_sensor (int dev_num, int catalog_index, int mode)
 			ch_name = sensor_catalog[catalog_index].channel[c].name;
 			sprintf(suffix, "%s.opt_scale", ch_name);
 			if (!sensor_get_fl_prop(s, suffix, &opt_scale))
-				sensor[s].channel[c].opt_scale = opt_scale;
+				sensor[s].channel[c].opt_scale *= opt_scale;
 		}
         } else {
 		if (!sensor_get_fl_prop(s, "opt_scale", &opt_scale))
