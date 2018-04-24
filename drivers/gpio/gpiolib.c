@@ -55,6 +55,8 @@
 #define	extra_checks	0
 #endif
 
+#define dont_test_bit(b,d) (0)
+
 /* Device and char device-related information */
 static DEFINE_IDA(gpio_ida);
 static dev_t gpio_devt;
@@ -3413,8 +3415,8 @@ int gpiod_direction_output(struct gpio_desc *desc, int value)
 		value = !!value;
 
 	/* GPIOs used for enabled IRQs shall not be set as output */
-	if (test_bit(FLAG_USED_AS_IRQ, &desc->flags) &&
-	    test_bit(FLAG_IRQ_IS_ENABLED, &desc->flags)) {
+	if (dont_test_bit(FLAG_USED_AS_IRQ, &desc->flags) &&
+	    dont_test_bit(FLAG_IRQ_IS_ENABLED, &desc->flags)) {
 		gpiod_err(desc,
 			  "%s: tried to set a GPIO tied to an IRQ as output\n",
 			  __func__);
