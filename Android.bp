@@ -19,6 +19,7 @@ cc_library_static {
     name: "libc++_static",
     host_supported: true,
     vendor_available: true,
+    recovery_available: true,
     srcs: [
         "src/algorithm.cpp",
         "src/any.cpp",
@@ -81,6 +82,7 @@ cc_library_shared {
         enabled: true,
         support_system_process: true,
     },
+    recovery_available: true,
     whole_static_libs: ["libc++_static"],
     stl: "none",
 
