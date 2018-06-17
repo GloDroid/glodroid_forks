@@ -71,7 +71,7 @@ CONFIG_PNO_SUPPORT = n
 CONFIG_PNO_SET_DEBUG = n
 CONFIG_AP_WOWLAN = n
 ######### Notify SDIO Host Keep Power During Syspend ##########
-CONFIG_RTW_SDIO_PM_KEEP_POWER = y
+CONFIG_RTW_SDIO_PM_KEEP_POWER = n
 ###################### Platform Related #######################
 CONFIG_PLATFORM_I386_PC = y
 CONFIG_PLATFORM_ANDROID_X86 = n
