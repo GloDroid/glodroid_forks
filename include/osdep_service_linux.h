@@ -279,11 +279,13 @@ __inline static void rtw_list_delete(_list *plist)
 
 #define RTW_TIMER_HDL_ARGS void *FunctionContext
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
 static void legacy_timer_emu_func(struct timer_list *t)
 {
 	_timer *lt = from_timer(lt, t, t);
 	lt->function(lt->data);
 }
+#endif
 
 __inline static void _init_timer(_timer *ptimer,_nic_hdl nic_hdl,void *pfunc,void* cntx)
 {
