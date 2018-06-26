@@ -1818,11 +1818,7 @@ template<class _Rp, class ..._ArgTypes>
 function<_Rp(_ArgTypes...)>&
 function<_Rp(_ArgTypes...)>::operator=(function&& __f) _NOEXCEPT
 {
-    if ((void *)__f_ == &__buf_)
-        __f_->destroy();
-    else if (__f_)
-        __f_->destroy_deallocate();
-    __f_ = 0;
+    *this = nullptr;
     if (__f.__f_ == 0)
         __f_ = 0;
     else if ((void *)__f.__f_ == &__f.__buf_)
@@ -1842,11 +1838,12 @@ template<class _Rp, class ..._ArgTypes>
 function<_Rp(_ArgTypes...)>&
 function<_Rp(_ArgTypes...)>::operator=(nullptr_t) _NOEXCEPT
 {
-    if ((void *)__f_ == &__buf_)
-        __f_->destroy();
-    else if (__f_)
-        __f_->destroy_deallocate();
+    __base* __t = __f_;
     __f_ = 0;
+    if ((void *)__t == &__buf_)
+        __t->destroy();
+    else if (__t)
+        __t->destroy_deallocate();
     return *this;
 }
 
@@ -2497,8 +2494,7 @@ __search(_RandomAccessIterator1 __first1, _RandomAccessIterator1 __last1,
 
 // default searcher
 template<class _ForwardIterator, class _BinaryPredicate = equal_to<>>
-_LIBCPP_TYPE_VIS
-class default_searcher {
+class _LIBCPP_TYPE_VIS default_searcher {
 public:
     _LIBCPP_INLINE_VISIBILITY
     default_searcher(_ForwardIterator __f, _ForwardIterator __l, 
