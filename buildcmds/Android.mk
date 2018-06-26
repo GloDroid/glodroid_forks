@@ -29,8 +29,8 @@ LOCAL_CPPFLAGS := \
     -fsized-deallocation \
     -fexceptions \
     -UNDEBUG \
-    -w \
     -Wno-error=non-virtual-dtor \
+    -Wno-format-zero-length \
     -Wno-reserved-user-defined-literal \
     -Wno-unused-local-typedef \
     -Wno-unused-variable \
