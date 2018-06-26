@@ -8,16 +8,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// This include lives outside the header guard in order to support an MSVC
-// extension which allows users to do:
-//
-// #define _USE_MATH_DEFINES
-// #include <math.h>
-//
-// and receive the definitions of mathematical constants, even if <math.h>
-// has previously been included.
-#include_next <math.h>
-
 #ifndef _LIBCPP_MATH_H
 #define _LIBCPP_MATH_H
 
@@ -308,6 +298,8 @@ long double    truncl(long double x);
 #pragma GCC system_header
 #endif
 
+#include_next <math.h>
+
 #ifdef __cplusplus
 
 // We support including .h headers inside 'extern "C"' contexts, so switch
@@ -491,6 +483,20 @@ typename std::enable_if<
 isinf(_A1) _NOEXCEPT
 { return false; }
 
+#ifdef _LIBCPP_PREFERRED_OVERLOAD
+inline _LIBCPP_INLINE_VISIBILITY
+bool
+isinf(float __lcpp_x) _NOEXCEPT { return __libcpp_isinf(__lcpp_x); }
+
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_PREFERRED_OVERLOAD
+bool
+isinf(double __lcpp_x) _NOEXCEPT { return __libcpp_isinf(__lcpp_x); }
+
+inline _LIBCPP_INLINE_VISIBILITY
+bool
+isinf(long double __lcpp_x) _NOEXCEPT { return __libcpp_isinf(__lcpp_x); }
+#endif
+
 #endif  // isinf
 
 // isnan
@@ -520,6 +526,20 @@ inline _LIBCPP_INLINE_VISIBILITY
 typename std::enable_if<std::is_integral<_A1>::value, bool>::type
 isnan(_A1) _NOEXCEPT
 { return false; }
+
+#ifdef _LIBCPP_PREFERRED_OVERLOAD
+inline _LIBCPP_INLINE_VISIBILITY
+bool
+isnan(float __lcpp_x) _NOEXCEPT { return __libcpp_isnan(__lcpp_x); }
+
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_PREFERRED_OVERLOAD
+bool
+isnan(double __lcpp_x) _NOEXCEPT { return __libcpp_isnan(__lcpp_x); }
+
+inline _LIBCPP_INLINE_VISIBILITY
+bool
+isnan(long double __lcpp_x) _NOEXCEPT { return __libcpp_isnan(__lcpp_x); }
+#endif
 
 #endif  // isnan
 
@@ -1493,5 +1513,19 @@ trunc(_A1 __lcpp_x) _NOEXCEPT {return ::trunc((double)__lcpp_x);}
 } // extern "C++"
 
 #endif // __cplusplus
+
+#else // _LIBCPP_MATH_H
+
+// This include lives outside the header guard in order to support an MSVC
+// extension which allows users to do:
+//
+// #define _USE_MATH_DEFINES
+// #include <math.h>
+//
+// and receive the definitions of mathematical constants, even if <math.h>
+// has previously been included.
+#if defined(_LIBCPP_MSVCRT) && defined(_USE_MATH_DEFINES)
+#include_next <math.h>
+#endif
 
 #endif  // _LIBCPP_MATH_H
