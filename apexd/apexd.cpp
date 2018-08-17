@@ -17,12 +17,18 @@
 #define LOG_TAG "apexd"
 
 #include "apex_file.h"
+#include "apexservice.h"
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 #include <android-base/unique_fd.h>
+#include <binder/IPCThreadState.h>
+#include <binder/IServiceManager.h>
+#include <binder/ProcessState.h>
+#include <utils/String16.h>
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <linux/loop.h>
@@ -35,10 +41,17 @@
 
 #include <utils/Errors.h>
 
+using android::apex::ApexService;
 using android::base::Basename;
 using android::base::EndsWith;
 using android::base::StringPrintf;
 using android::base::unique_fd;
+using android::defaultServiceManager;
+using android::IPCThreadState;
+using android::ProcessState;
+using android::sp;
+using android::String16;
+
 using std::string;
 
 namespace android {
@@ -140,6 +153,8 @@ void destroyAllLoopDevices() {
 }
 
 static constexpr int kLoopDeviceSetupRetries = 3;
+
+static constexpr const char* kApexServiceName = "apexservice";
 
 void installPackage(const string& full_path) {
   LOG(INFO) << "Installing " << full_path;
@@ -254,11 +269,22 @@ void scanPackagesDirAndMount() {
 }  // namespace android
 
 int main(int /*argc*/, char** /*argv*/) {
+  sp<ProcessState> ps(ProcessState::self());
+
   // TODO: add a -v flag or an external setting to change LogSeverity.
   android::base::SetMinimumLogSeverity(android::base::VERBOSE);
+
+  // Create binder service and register with servicemanager
+  sp<ApexService> apexService = new ApexService();
+  defaultServiceManager()->addService(String16(android::apex::kApexServiceName), apexService);
+
   android::apex::unmountAndDetachExistingImages();
   android::apex::setupApexRoot();
   android::apex::scanPackagesDirAndMount();
-  // TODO: start accepting IPC commands and become a daemon.
-  return 0;
+
+  // Start threadpool, wait for IPC
+  ps->startThreadPool();
+  IPCThreadState::self()->joinThreadPool(); // should not return
+
+  return 1;
 }
