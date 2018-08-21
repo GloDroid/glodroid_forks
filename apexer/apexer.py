@@ -39,6 +39,8 @@ def ParseArgs(argv):
                       help='verbose execution')
   parser.add_argument('--manifest', default='manifest.json',
                       help='path to the APEX manifest file')
+  parser.add_argument('--file_contexts',
+                      help='selinux file contexts file')
   parser.add_argument('input_dir', metavar='INPUT_DIR',
                       help='the directory having files to be packaged')
   parser.add_argument('output', metavar='OUTPUT',
@@ -124,7 +126,7 @@ def CreateApex(args, work_dir):
     return False
   package_name = manifest['name']
 
-  # Step 1: create an empty ext4 image that is sufficiently big
+  # create an empty ext4 image that is sufficiently big
   # Sufficiently big = twice the size of the input directory
   # For the case when the input directory is really small, the minimum of the
   # size is set to 10MB that is sufficiently large for filesystem metadata
@@ -144,10 +146,19 @@ def CreateApex(args, work_dir):
   cmd.append(str(size_in_mb) + 'M')
   RunCommand(cmd, args.verbose)
 
-  # Step 2: Add files to the image file
+  # Compile the file context into the binary form
+  compiled_file_contexts = os.path.join(work_dir, 'file_contexts.bin')
+  cmd = ['sefcontext_compile']
+  cmd.extend(['-o', compiled_file_contexts])
+  cmd.append(args.file_contexts)
+  RunCommand(cmd, args.verbose)
+
+  # Add files to the image file
   cmd = ['e2fsdroid']
   cmd.append('-e') # input is not android_sparse_file
   cmd.extend(['-f', args.input_dir])
+  cmd.extend(['-T', '0']) # time is set to epoch
+  cmd.extend(['-S', compiled_file_contexts])
   cmd.append(img_file)
   RunCommand(cmd, args.verbose)
 
@@ -164,16 +175,18 @@ def CreateApex(args, work_dir):
   cmd = ['e2fsdroid']
   cmd.append('-e') # input is not android_sparse_file
   cmd.extend(['-f', manifests_dir])
+  cmd.extend(['-T', '0']) # time is set to epoch
+  cmd.extend(['-S', compiled_file_contexts])
   cmd.append(img_file)
   RunCommand(cmd, args.verbose)
 
-  # Step 3: Resize the image file to save space
+  # Resize the image file to save space
   cmd = ['resize2fs']
   cmd.append('-M') # shrink as small as possible
   cmd.append(img_file)
   RunCommand(cmd, args.verbose)
 
-  # Step 4: package the image file and APEX manifest as an APK.
+  # package the image file and APEX manifest as an APK.
   # The AndroidManifest file is automatically generated.
   android_manifest_file = os.path.join(work_dir, 'AndroidManifest.xml')
   if args.verbose:
@@ -209,7 +222,7 @@ def CreateApex(args, work_dir):
   cmd.append(zip_file) # input
   RunCommand(cmd, args.verbose)
 
-  # Step 5: Align the files at page boundary for efficient access
+  # Align the files at page boundary for efficient access
   cmd = ['zipalign']
   cmd.append('-f')
   cmd.append('4096') # 4k alignment
