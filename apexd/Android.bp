@@ -10,11 +10,26 @@ cc_defaults {
   ],
 }
 
+aidl_interface {
+  name: "apex_aidl_interface",
+  srcs: [
+    "aidl/android/apex/IApexService.aidl",
+  ],
+  local_include_dir: "aidl",
+  api_dir: "aidl/api",
+}
+
 cc_binary {
   name: "apexd",
   defaults: ["apex_defaults"],
   srcs: [
     "apexd.cpp",
+    "apexservice.cpp",
+  ],
+  shared_libs: [
+    "libbinder",
+    "libutils",
+    "apex_aidl_interface-cpp",
   ],
   static_libs: [
     "libapex",
