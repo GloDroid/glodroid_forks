@@ -1,23 +1,50 @@
+cc_defaults {
+  name: "apex_defaults",
+  cflags: [
+    "-Wunused",
+    "-Wunreachable-code",
+  ],
+  shared_libs: [
+    "libbase",
+    "libziparchive",
+  ],
+}
+
 cc_binary {
-name:
-  "apexd",
+  name: "apexd",
+  defaults: ["apex_defaults"],
+  srcs: [
+    "apexd.cpp",
+  ],
+  static_libs: [
+    "libapex",
+  ],
+}
 
-    srcs: [
-        "apexd.cpp",
-    ],
+cc_library_static {
+  name: "libapex",
+  defaults: ["apex_defaults"],
+  srcs: [
+    "apex_file.cpp",
+  ],
+  host_supported: true,
+  header_libs: [
+    "libutils_headers",
+  ],
+  export_header_lib_headers: [
+    "libutils_headers",
+  ],
+}
 
-    shared_libs: [
-        "libbase",
-        // TODO: needed by libvold, see below.
-        "libcutils",
-    ],
-
-    static_libs: [
-        // TODO: libvold is supposed to be for testing only. Factor out necessary parts or re-implement.
-        "libvold",
-    ],
-    cflags: [
-        "-Wunused",
-        "-Wunreachable-code",
-    ],
+cc_test {
+  name: "apex_file_test",
+  defaults: ["apex_defaults"],
+  data: [
+    "testdata/*",
+  ],
+  srcs: [
+    "apex_file_test.cpp",
+  ],
+  host_supported: true,
+  static_libs: ["libapex"],
 }
