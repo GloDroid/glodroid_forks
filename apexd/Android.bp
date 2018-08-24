@@ -34,6 +34,7 @@ cc_binary {
   static_libs: [
     "libapex",
   ],
+  init_rc: ["apexd.rc"],
 }
 
 cc_library_static {
