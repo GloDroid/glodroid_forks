@@ -59,6 +59,14 @@ echo '
 /sub/file3       u:object_r:file3_file:s0
 ' > ${file_contexts_file}
 
+canned_fs_config_file=$(mktemp)
+echo '/ 1000 1000 0644
+/manifest.json 1000 1000 0644
+/file1 1001 1001 0644
+/file2 1001 1001 0644
+/sub 1002 1002 0644
+/sub/file3 1003 1003 0644' > ${canned_fs_config_file}
+
 output_file=${output_dir}/test.apex
 
 #############################################
@@ -66,6 +74,7 @@ output_file=${output_dir}/test.apex
 #############################################
 ${ANDROID_HOST_OUT}/bin/apexer --verbose --manifest ${manifest_file} \
   --file_contexts ${file_contexts_file} \
+  --canned_fs_config ${canned_fs_config_file} \
   ${input_dir} ${output_file}
 
 #############################################
@@ -81,17 +90,24 @@ unzip ${output_file} manifest.json -d ${output_dir}
 
 # check the contents
 sudo diff ${manifest_file} ${output_dir}/mnt/manifest.json
-diff ${manifest_file} ${output_dir}/manifest.json
+sudo diff ${manifest_file} ${output_dir}/manifest.json
 sudo diff ${input_dir}/file1 ${output_dir}/mnt/file1
 sudo diff ${input_dir}/file2 ${output_dir}/mnt/file2
 sudo diff ${input_dir}/sub/file3 ${output_dir}/mnt/sub/file3
 
+# check the uid/gid/mod
+[ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/file1` = "1001,1001,644" ]
+[ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/file2` = "1001,1001,644" ]
+[ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/sub` = "1002,1002,644" ]
+[ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/sub/file3` = "1003,1003,644" ]
+[ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/manifest.json` = "1000,1000,644" ]
+
 # check the selinux labels
-[ `ls -Z ${output_dir}/mnt/file1 | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
-[ `ls -Z ${output_dir}/mnt/file2 | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
-[ `ls -d -Z ${output_dir}/mnt/sub/ | cut -d ' ' -f 1` = "u:object_r:sub_file:s0" ]
-[ `ls -Z ${output_dir}/mnt/sub/file3 | cut -d ' ' -f 1` = "u:object_r:file3_file:s0" ]
-[ `ls -Z ${output_dir}/mnt/manifest.json | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
+[ `sudo ls -Z ${output_dir}/mnt/file1 | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
+[ `sudo ls -Z ${output_dir}/mnt/file2 | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
+[ `sudo ls -d -Z ${output_dir}/mnt/sub/ | cut -d ' ' -f 1` = "u:object_r:sub_file:s0" ]
+[ `sudo ls -Z ${output_dir}/mnt/sub/file3 | cut -d ' ' -f 1` = "u:object_r:file3_file:s0" ]
+[ `sudo ls -Z ${output_dir}/mnt/manifest.json | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
 
 # check the android manifest
 aapt dump xmltree ${output_file} AndroidManifest.xml | grep com.android.example.apex
