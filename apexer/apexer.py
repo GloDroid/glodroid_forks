@@ -185,22 +185,29 @@ def CreateApex(args, work_dir):
   # without mounting the image
   shutil.copyfile(args.manifest, os.path.join(content_dir, 'manifest.json'))
 
-  unaligned_apex_file = os.path.join(work_dir, 'unaligned.apex')
+  apk_file = os.path.join(work_dir, 'apex.apk')
   cmd = ['aapt2']
   cmd.append('link')
   cmd.extend(['--manifest', android_manifest_file])
-  cmd.extend(['-o', unaligned_apex_file])
+  cmd.extend(['-o', apk_file])
   RunCommand(cmd, args.verbose)
 
-  cwd = os.getcwd()
-  os.chdir(content_dir)
-  cmd = ['zip']
-  cmd.append('-qrX')
-  cmd.append('-0') # don't compress
-  cmd.append(unaligned_apex_file)
-  cmd.append('.')
+  zip_file = os.path.join(work_dir, 'apex.zip')
+  cmd = ['soong_zip']
+  cmd.append('-d') # include directories
+  cmd.extend(['-C', content_dir]) # relative root
+  cmd.extend(['-D', content_dir]) # input dir
+  cmd.extend(['-L', '0']) # don't compress
+  cmd.extend(['-o', zip_file])
   RunCommand(cmd, args.verbose)
-  os.chdir(cwd)
+
+  unaligned_apex_file = os.path.join(work_dir, 'unaligned.apex')
+  cmd = ['merge_zips']
+  cmd.append('-j') # sort
+  cmd.append(unaligned_apex_file) # output
+  cmd.append(apk_file) # input
+  cmd.append(zip_file) # input
+  RunCommand(cmd, args.verbose)
 
   # Step 5: Align the files at page boundary for efficient access
   cmd = ['zipalign']
