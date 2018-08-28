@@ -27,6 +27,7 @@ python_binary_host {
     },
     required: [
         "aapt2",
+        "avbtool",
         "e2fsdroid",
         "merge_zips",
         "mke2fs",
