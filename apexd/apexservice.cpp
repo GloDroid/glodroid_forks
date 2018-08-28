@@ -25,5 +25,5 @@ namespace apex {
   return binder::Status::ok();
 }
 
-}; //namespace apex
-}; //namespace android
+};  // namespace apex
+};  // namespace android
