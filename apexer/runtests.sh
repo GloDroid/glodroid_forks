@@ -75,6 +75,7 @@ output_file=${output_dir}/test.apex
 ${ANDROID_HOST_OUT}/bin/apexer --verbose --manifest ${manifest_file} \
   --file_contexts ${file_contexts_file} \
   --canned_fs_config ${canned_fs_config_file} \
+  --key testdata/testkey.pem \
   ${input_dir} ${output_file}
 
 #############################################
@@ -82,11 +83,18 @@ ${ANDROID_HOST_OUT}/bin/apexer --verbose --manifest ${manifest_file} \
 #############################################
 offset=$(zipalign -v -c 4096 ${output_file} | grep image.img | tr -s ' ' | cut -d ' ' -f 2)
 
+unzip ${output_file} image.img -d ${output_dir}
+size=$(avbtool info_image --image ${output_dir}/image.img | awk '/Image size:/{print $3}')
+
+
 # test if it is mountable
 mkdir ${output_dir}/mnt
-sudo losetup -o ${offset} /dev/loop10 ${output_file}
+sudo losetup -o ${offset} --sizelimit ${size} /dev/loop10 ${output_file}
 sudo mount -o ro /dev/loop10 ${output_dir}/mnt
 unzip ${output_file} manifest.json -d ${output_dir}
+
+# verify vbmeta
+avbtool verify_image --image ${output_dir}/image.img --key testdata/testkey.pem
 
 # check the contents
 sudo diff ${manifest_file} ${output_dir}/mnt/manifest.json
