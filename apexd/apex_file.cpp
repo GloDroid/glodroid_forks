@@ -39,6 +39,7 @@ ApexFile::~ApexFile() {
 }
 
 static constexpr const char* kImageFilename = "image.img";
+static constexpr const char* kManifestFilename = "manifest.json";
 
 int ApexFile::OpenInternal() {
   if (handle_ != nullptr) {
@@ -63,6 +64,24 @@ int ApexFile::OpenInternal() {
   }
   image_offset_ = entry.offset;
   image_size_ = entry.uncompressed_length;
+
+  ret = FindEntry(handle_, ZipString(kManifestFilename), &entry);
+  if (ret < 0) {
+    LOG(ERROR) << "Could not find entry \"" << kManifestFilename
+               << "\" in package " << apex_filename_ << ": "
+               << ErrorCodeString(ret);
+    return ret;
+  }
+
+  uint32_t length = entry.uncompressed_length;
+  manifest_.resize(length, '\0');
+  ret = ExtractToMemory(handle_, &entry,
+                        reinterpret_cast<uint8_t*>(&(manifest_)[0]), length);
+  if (ret != 0) {
+    LOG(ERROR) << "Failed to extract manifest from package " << apex_filename_
+               << ": " << ErrorCodeString(ret);
+    return ret;
+  }
   return 0;
 }
 

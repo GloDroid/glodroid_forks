@@ -6,6 +6,7 @@ cc_defaults {
   ],
   shared_libs: [
     "libbase",
+    "libjsoncpp",
     "libziparchive",
   ],
 }
@@ -42,6 +43,7 @@ cc_library_static {
   defaults: ["apex_defaults"],
   srcs: [
     "apex_file.cpp",
+    "apex_manifest.cpp",
   ],
   host_supported: true,
   header_libs: [
@@ -60,6 +62,16 @@ cc_test {
   ],
   srcs: [
     "apex_file_test.cpp",
+  ],
+  host_supported: true,
+  static_libs: ["libapex"],
+}
+
+cc_test {
+  name: "apex_manifest_test",
+  defaults: ["apex_defaults"],
+  srcs: [
+    "apex_manifest_test.cpp",
   ],
   host_supported: true,
   static_libs: ["libapex"],

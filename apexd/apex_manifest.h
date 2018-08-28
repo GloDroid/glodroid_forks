@@ -14,41 +14,32 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_APEXD_APEX_FILE_H_
-#define ANDROID_APEXD_APEX_FILE_H_
+#ifndef ANDROID_APEXD_APEX_MANIFEST_H_
+#define ANDROID_APEXD_APEX_MANIFEST_H_
 
-#include <ziparchive/zip_archive.h>
-#include <memory>
 #include <string>
 
 namespace android {
 namespace apex {
 
-// Manages the content of an APEX package and provides utilities to navigate
-// the content.
-class ApexFile {
+// Parses an APEX manifest on construction and exposes its fields.
+class ApexManifest {
  public:
-  static std::unique_ptr<ApexFile> Open(const std::string& apex_filename);
-  ~ApexFile();
+  static std::unique_ptr<ApexManifest> Open(const std::string& apex_manifest);
 
-  int32_t GetImageOffset() const { return image_offset_; }
-  size_t GetImageSize() const { return image_size_; }
-
-  std::string GetManifest() const { return manifest_; }
+  std::string GetName() const { return name_; }
+  uint64_t GetVersion() const { return version_; }
 
  private:
-  ApexFile(const std::string& apex_filename)
-      : apex_filename_(apex_filename), handle_(nullptr){};
+  ApexManifest(const std::string& apex_manifest) : manifest_(apex_manifest){};
   int OpenInternal();
 
-  const std::string apex_filename_;
-  int32_t image_offset_;
-  size_t image_size_;
   std::string manifest_;
-  ZipArchiveHandle handle_;
+  std::string name_;
+  uint64_t version_;
 };
 
 }  // namespace apex
 }  // namespace android
 
-#endif  // ANDROID_APEXD_APEX_FILE_H_
+#endif  // ANDROID_APEXD_APEX_MANIFEST_H_
