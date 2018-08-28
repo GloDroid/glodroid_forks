@@ -23,12 +23,12 @@ namespace android {
 namespace apex {
 
 class ApexService : public BnApexService {
-public:
-  ApexService() {};
+ public:
+  ApexService(){};
   ::android::binder::Status ping(bool* aidl_return);
 };
 
-}; //namespace apex
-}; //namespace android
+};  // namespace apex
+};  // namespace android
 
-#endif // ANDROID_APEX_APEX_SERVICE_H
+#endif  // ANDROID_APEX_APEX_SERVICE_H
