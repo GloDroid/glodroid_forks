@@ -17,6 +17,7 @@
 #define LOG_TAG "apexd"
 
 #include "apex_file.h"
+#include "apex_manifest.h"
 #include "apexservice.h"
 
 #include <android-base/file.h>
@@ -41,16 +42,16 @@
 
 #include <utils/Errors.h>
 
-using android::apex::ApexService;
-using android::base::Basename;
-using android::base::EndsWith;
-using android::base::StringPrintf;
-using android::base::unique_fd;
 using android::defaultServiceManager;
 using android::IPCThreadState;
 using android::ProcessState;
 using android::sp;
 using android::String16;
+using android::apex::ApexService;
+using android::base::Basename;
+using android::base::EndsWith;
+using android::base::StringPrintf;
+using android::base::unique_fd;
 
 using std::string;
 
@@ -159,16 +160,20 @@ static constexpr const char* kApexServiceName = "apexservice";
 void installPackage(const string& full_path) {
   LOG(INFO) << "Installing " << full_path;
 
-  // TODO: open file and read manifest. For now we simply parse the basename
-  // looking for an identifier which we'll use as mount point.
-  string packageId = Basename(
-      full_path.substr(0, full_path.length() - strlen(kApexPackageSuffix)));
-
   std::unique_ptr<ApexFile> apex = ApexFile::Open(full_path);
   if (apex.get() == nullptr) {
     // Error opening the file.
     return;
   }
+
+  std::unique_ptr<ApexManifest> manifest =
+      ApexManifest::Open(apex->GetManifest());
+  if (manifest.get() == nullptr) {
+    // Error parsing manifest.
+    return;
+  }
+  string packageId = manifest->GetName() + "@" +
+                     std::to_string(manifest->GetVersion());
 
   string loopback;
   status_t ret;
@@ -276,7 +281,8 @@ int main(int /*argc*/, char** /*argv*/) {
 
   // Create binder service and register with servicemanager
   sp<ApexService> apexService = new ApexService();
-  defaultServiceManager()->addService(String16(android::apex::kApexServiceName), apexService);
+  defaultServiceManager()->addService(String16(android::apex::kApexServiceName),
+                                      apexService);
 
   android::apex::unmountAndDetachExistingImages();
   android::apex::setupApexRoot();
@@ -284,7 +290,7 @@ int main(int /*argc*/, char** /*argv*/) {
 
   // Start threadpool, wait for IPC
   ps->startThreadPool();
-  IPCThreadState::self()->joinThreadPool(); // should not return
+  IPCThreadState::self()->joinThreadPool();  // should not return
 
   return 1;
 }
