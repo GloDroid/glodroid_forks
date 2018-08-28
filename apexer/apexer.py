@@ -25,6 +25,7 @@ Typical usage: apexer input_dir output.apex
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -43,6 +44,8 @@ def ParseArgs(argv):
                       help='selinux file contexts file')
   parser.add_argument('--canned_fs_config', required=True,
                       help='canned_fs_config specifies uid/gid/mode of files')
+  parser.add_argument('--key', required=True,
+                      help='path to the private key file')
   parser.add_argument('input_dir', metavar='INPUT_DIR',
                       help='the directory having files to be packaged')
   parser.add_argument('output', metavar='OUTPUT',
@@ -73,6 +76,10 @@ def GetDirSize(dir_name):
     for f in filenames:
       size += os.path.getsize(os.path.join(dirpath, f))
   return size
+
+def RoundUp(size, unit):
+  assert unit & (unit - 1) == 0
+  return (size + unit - 1) & (~(unit - 1))
 
 
 def PrepareAndroidManifest(packagename):
@@ -188,6 +195,37 @@ def CreateApex(args, work_dir):
   cmd = ['resize2fs']
   cmd.append('-M') # shrink as small as possible
   cmd.append(img_file)
+  RunCommand(cmd, args.verbose)
+
+  # partition size should be bigger than file system size + size of the hash
+  # tree + size of the vbmeta and the footer.
+  # However, since we don't know the size of the last three before running
+  # avbtool, use an arbitrary big (+100MB) here.
+  # TODO(b/113320014) eliminate this heuristic
+  partition_size = os.stat(img_file).st_size + (100 * 1024 * 1024)
+  cmd = ['avbtool']
+  cmd.append('add_hashtree_footer')
+  cmd.append('--do_not_generate_fec')
+  cmd.extend(['--partition_size', str(partition_size)])
+  cmd.extend(['--partition_name', 'image'])
+  cmd.extend(['--algorithm', 'SHA256_RSA4096'])
+  cmd.extend(['--key', args.key])
+  cmd.extend(['--image', img_file])
+  RunCommand(cmd, args.verbose)
+
+  # Get the minimum size of the partition required.
+  # TODO(b/113320014) eliminate this step
+  info, _ = RunCommand(['avbtool', 'info_image', '--image', img_file], args.verbose)
+  vbmeta_offset = int(re.search('VBMeta\ offset:\ *([0-9]+)', info).group(1))
+  vbmeta_size = int(re.search('VBMeta\ size:\ *([0-9]+)', info).group(1))
+  partition_size = RoundUp(vbmeta_offset + vbmeta_size, 4096) + 4096
+
+  # Resize to the minimum size
+  # TODO(b/113320014) eliminate this step
+  cmd = ['avbtool']
+  cmd.append('resize_image')
+  cmd.extend(['--image', img_file])
+  cmd.extend(['--partition_size', str(partition_size)])
   RunCommand(cmd, args.verbose)
 
   # package the image file and APEX manifest as an APK.
