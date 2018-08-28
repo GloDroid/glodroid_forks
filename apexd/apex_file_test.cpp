@@ -38,5 +38,13 @@ TEST(ApexFileTest, GetOffsetMissingFile) {
   std::unique_ptr<ApexFile> apexFile = ApexFile::Open(filePath);
   EXPECT_EQ(nullptr, apexFile.get());
 }
+
+TEST(ApexFileTest, GetApexManifest) {
+  const std::string filePath = testDataDir + "/test.apex";
+  std::unique_ptr<ApexFile> apexFile = ApexFile::Open(filePath);
+  ASSERT_NE(nullptr, apexFile.get());
+  EXPECT_EQ("{\"name\": \"com.android.example.apex\", \"version\": 1}\n",
+            std::string(apexFile->GetManifest()));
+}
 }  // namespace apex
 }  // namespace android
