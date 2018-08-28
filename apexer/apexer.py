@@ -39,8 +39,10 @@ def ParseArgs(argv):
                       help='verbose execution')
   parser.add_argument('--manifest', default='manifest.json',
                       help='path to the APEX manifest file')
-  parser.add_argument('--file_contexts',
+  parser.add_argument('--file_contexts', required=True,
                       help='selinux file contexts file')
+  parser.add_argument('--canned_fs_config', required=True,
+                      help='canned_fs_config specifies uid/gid/mode of files')
   parser.add_argument('input_dir', metavar='INPUT_DIR',
                       help='the directory having files to be packaged')
   parser.add_argument('output', metavar='OUTPUT',
@@ -159,6 +161,7 @@ def CreateApex(args, work_dir):
   cmd.extend(['-f', args.input_dir])
   cmd.extend(['-T', '0']) # time is set to epoch
   cmd.extend(['-S', compiled_file_contexts])
+  cmd.extend(['-C', args.canned_fs_config])
   cmd.append(img_file)
   RunCommand(cmd, args.verbose)
 
@@ -177,6 +180,7 @@ def CreateApex(args, work_dir):
   cmd.extend(['-f', manifests_dir])
   cmd.extend(['-T', '0']) # time is set to epoch
   cmd.extend(['-S', compiled_file_contexts])
+  cmd.extend(['-C', args.canned_fs_config])
   cmd.append(img_file)
   RunCommand(cmd, args.verbose)
 
