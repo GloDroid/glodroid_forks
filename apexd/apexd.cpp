@@ -182,7 +182,7 @@ void installPackage(const string& full_path) {
     ret = createLoopDevice(full_path, apex->GetImageOffset(),
                            apex->GetImageSize(), loopback);
     ++retries;
-  } while (ret != NO_ERROR || retries < kLoopDeviceSetupRetries);
+  } while (ret != NO_ERROR && retries < kLoopDeviceSetupRetries);
   if (ret != NO_ERROR) {
     return;
   }
