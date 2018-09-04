@@ -118,6 +118,6 @@ sudo diff ${input_dir}/sub/file3 ${output_dir}/mnt/sub/file3
 [ `sudo ls -Z ${output_dir}/mnt/manifest.json | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
 
 # check the android manifest
-aapt dump xmltree ${output_file} AndroidManifest.xml | grep com.android.example.apex
+aapt dump xmltree ${output_file} AndroidManifest.xml
 
 echo Passed
