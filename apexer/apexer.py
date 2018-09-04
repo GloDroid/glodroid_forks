@@ -30,7 +30,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import traceback
 
 def ParseArgs(argv):
   parser = argparse.ArgumentParser(description='Create an APEX file')
@@ -72,7 +71,7 @@ def RunCommand(cmd, verbose=False, env=None):
 
 def GetDirSize(dir_name):
   size = 0
-  for dirpath, dirnames, filenames in os.walk(dir_name):
+  for dirpath, _, filenames in os.walk(dir_name):
     for f in filenames:
       size += os.path.getsize(os.path.join(dirpath, f))
   return size
@@ -283,7 +282,7 @@ class TempDirectory(object):
     self.name = tempfile.mkdtemp()
     return self.name
 
-  def __exit__(self, exc_type, exc_value, traceback):
+  def __exit__(self, *unused):
     shutil.rmtree(self.name)
 
 
