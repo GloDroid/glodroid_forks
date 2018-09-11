@@ -253,7 +253,9 @@ def CreateApex(args, work_dir):
   cmd.append('-d') # include directories
   cmd.extend(['-C', content_dir]) # relative root
   cmd.extend(['-D', content_dir]) # input dir
-  cmd.extend(['-L', '0']) # don't compress
+  for file_ in os.listdir(content_dir):
+    if os.path.isfile(os.path.join(content_dir, file_)):
+      cmd.extend(['-s', file_]) # don't compress any files
   cmd.extend(['-o', zip_file])
   RunCommand(cmd, args.verbose)
 
