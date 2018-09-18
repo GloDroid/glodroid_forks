@@ -31,8 +31,6 @@ import subprocess
 import sys
 import tempfile
 
-tool_path = os.environ['APEXER_TOOL_PATH']
-
 def ParseArgs(argv):
   parser = argparse.ArgumentParser(description='Create an APEX file')
   parser.add_argument('-f', '--force', action='store_true',
@@ -57,9 +55,6 @@ def ParseArgs(argv):
 def RunCommand(cmd, verbose=False, env=None):
   env = env or {}
   env.update(os.environ.copy())
-
-  cmd[0] = os.path.join(tool_path, cmd[0])
-
   if verbose:
     print("Running: " + " ".join(cmd))
   p = subprocess.Popen(
