@@ -44,14 +44,9 @@ var (
 	// against the binary policy using sefcontext_compiler -p <policy>.
 
 	// TODO(b/114327326): automate the generation of file_contexts
-
-	// copy_pairs: a space separated list of <src>:<dst>, where <dst>
-	// is relative to image_dir.
 	apexRule = pctx.StaticRule("apexRule", blueprint.RuleParams{
 		Command: `rm -rf ${image_dir} && mkdir -p ${image_dir} && ` +
-			`echo ${copy_pairs} | tr ' ' '\n' ` +
-			`| awk -F ':' '{src=$$1; dest="${image_dir}/"$$2; printf("mkdir -p $$(dirname %s); cp %s %s\n", dest, src, dest)}' ` +
-			`| xargs -n 1 -I cmd bash -c 'cmd' && ` +
+			`(${copy_commands}) && ` +
 			`APEXER_TOOL_PATH=${tool_path} ` +
 			`${apexer} --verbose --force --manifest ${manifest} ` +
 			`--file_contexts ${file_contexts} ` +
@@ -59,7 +54,7 @@ var (
 			`--key ${key} ${image_dir} ${out} `,
 		CommandDeps: []string{"${apexer}"},
 		Description: "APEX ${image_dir} => ${out}",
-	}, "tool_path", "image_dir", "copy_pairs", "manifest", "file_contexts", "canned_fs_config", "key")
+	}, "tool_path", "image_dir", "copy_commands", "manifest", "file_contexts", "canned_fs_config", "key")
 )
 
 var apexSuffix = ".apex"
@@ -177,9 +172,11 @@ func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 	for file := range copyManifest {
 		implicitInputs = append(implicitInputs, file)
 	}
-	copyPairs := []string{}
+	copyCommands := []string{}
 	for src, dest := range copyManifest {
-		copyPairs = append(copyPairs, src.String()+":"+dest)
+		dest_path := filepath.Join(android.PathForModuleOut(ctx, "image").String(), dest)
+		copyCommands = append(copyCommands, "mkdir -p "+filepath.Dir(dest_path))
+		copyCommands = append(copyCommands, "cp "+src.String()+" "+dest_path)
 	}
 	implicitInputs = append(implicitInputs, cannedFsConfig, manifest, fileContexts, key)
 	ctx.ModuleBuild(pctx, android.ModuleBuildParams{
@@ -189,7 +186,7 @@ func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 		Args: map[string]string{
 			"tool_path":        android.PathForOutput(ctx, "host", ctx.Config().PrebuiltOS(), "bin").String(),
 			"image_dir":        android.PathForModuleOut(ctx, "image").String(),
-			"copy_pairs":       strings.Join(copyPairs, " "),
+			"copy_commands":    strings.Join(copyCommands, " && "),
 			"manifest":         manifest.String(),
 			"file_contexts":    fileContexts.String(),
 			"canned_fs_config": cannedFsConfig.String(),
