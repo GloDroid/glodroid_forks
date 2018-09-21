@@ -22,6 +22,7 @@ import (
 
 	"android/soong/android"
 	"android/soong/cc"
+	"android/soong/java"
 
 	"github.com/google/blueprint"
 	"github.com/google/blueprint/proptools"
@@ -65,7 +66,9 @@ type dependencyTag struct {
 }
 
 var (
-	sharedLibTag = dependencyTag{name: "sharedLib"}
+	sharedLibTag  = dependencyTag{name: "sharedLib"}
+	executableTag = dependencyTag{name: "executable"}
+	javaLibTag    = dependencyTag{name: "javaLib"}
 )
 
 func init() {
@@ -85,6 +88,12 @@ type apexBundleProperties struct {
 
 	// List of native shared libs that are embedded inside this APEX bundle
 	Native_shared_lib_modules []string
+
+	// List of native executables that are embedded inside this APEX bundle
+	Executable_modules []string
+
+	// List of java libraries that are embedded inside this APEX bundle
+	Java_modules []string
 }
 
 type apexBundle struct {
@@ -111,12 +120,20 @@ func (a *apexBundle) DepsMutator(ctx android.BottomUpMutatorContext) {
 		// conflicting variations with this module. This is required since
 		// arch variant of an APEX bundle is 'common' but it is 'arm' or 'arm64'
 		// for native shared libs.
+		//
+		// TODO(b/115717630) support modules having single arch variant (e.g. 32-bit only)
 		ctx.AddFarVariationDependencies([]blueprint.Variation{
 			{Mutator: "arch", Variation: ctx.Os().String() + "_" + arch.String()},
 			{Mutator: "image", Variation: "core"},
 			{Mutator: "link", Variation: "shared"},
 		}, sharedLibTag, a.properties.Native_shared_lib_modules...)
 	}
+
+	ctx.AddFarVariationDependencies([]blueprint.Variation{
+		{Mutator: "image", Variation: "core"},
+	}, executableTag, a.properties.Executable_modules...)
+
+	ctx.AddFarVariationDependencies([]blueprint.Variation{}, javaLibTag, a.properties.Java_modules...)
 }
 
 func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
@@ -148,6 +165,24 @@ func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 					pathsInApex = append(pathsInApex, libdir)
 				}
 				copyManifest[cc.OutputFile().Path()] = filepath.Join(libdir, cc.OutputFile().Path().Base())
+			}
+		case executableTag:
+			if cc, ok := dep.(*cc.Module); ok {
+				dir := "bin"
+				pathsInApex = append(pathsInApex, filepath.Join(dir, cc.OutputFile().Path().Base()))
+				if !android.InList(dir, pathsInApex) {
+					pathsInApex = append(pathsInApex, dir)
+				}
+				copyManifest[cc.OutputFile().Path()] = filepath.Join(dir, cc.OutputFile().Path().Base())
+			}
+		case javaLibTag:
+			if java, ok := dep.(*java.Library); ok {
+				dir := "javalib"
+				pathsInApex = append(pathsInApex, filepath.Join(dir, java.Srcs()[0].Base()))
+				if !android.InList(dir, pathsInApex) {
+					pathsInApex = append(pathsInApex, dir)
+				}
+				copyManifest[java.Srcs()[0]] = filepath.Join(dir, java.Srcs()[0].Base())
 			}
 		}
 	})

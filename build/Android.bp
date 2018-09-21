@@ -20,6 +20,7 @@ bootstrap_go_package {
         "soong",
         "soong-android",
         "soong-cc",
+        "soong-java",
     ],
     srcs: [
         "apex.go",
@@ -31,5 +32,7 @@ apex {
     name: "apex.test",
     manifest: "testdata/manifest.json",
     file_contexts: "testdata/file_contexts",
+    executable_modules: ["vold", "surfaceflinger"],
     native_shared_lib_modules: ["libc", "libcutils"],
+    java_modules: ["core-all"],
 }
