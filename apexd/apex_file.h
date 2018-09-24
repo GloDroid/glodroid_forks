@@ -31,6 +31,7 @@ class ApexFile {
   static std::unique_ptr<ApexFile> Open(const std::string& apex_filename);
   ~ApexFile();
 
+  std::string GetPath() const { return apex_filename_; }
   int32_t GetImageOffset() const { return image_offset_; }
   size_t GetImageSize() const { return image_size_; }
 
