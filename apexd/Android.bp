@@ -34,8 +34,17 @@ cc_binary {
   ],
   static_libs: [
     "libapex",
+    "libavb",
+    "libdm",
   ],
   init_rc: ["apexd.rc"],
+  product_variables: {
+    debuggable: {
+      cflags: [
+        "-DALLOW_DEBUG_KEY",
+      ],
+    },
+  },
 }
 
 cc_library_static {
