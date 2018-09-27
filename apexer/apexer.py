@@ -203,17 +203,9 @@ def CreateApex(args, work_dir):
   cmd.append(img_file)
   RunCommand(cmd, args.verbose)
 
-  # partition size should be bigger than file system size + size of the hash
-  # tree + size of the vbmeta and the footer.
-  # However, since we don't know the size of the last three before running
-  # avbtool, use an arbitrary big (+100MB) here.
-  # TODO(b/113320014) eliminate this heuristic
-  partition_size = os.stat(img_file).st_size + (100 * 1024 * 1024)
   cmd = ['avbtool']
   cmd.append('add_hashtree_footer')
   cmd.append('--do_not_generate_fec')
-  cmd.extend(['--partition_size', str(partition_size)])
-  cmd.extend(['--partition_name', 'image'])
   cmd.extend(['--algorithm', 'SHA256_RSA4096'])
   cmd.extend(['--key', args.key])
   cmd.extend(['--image', img_file])
