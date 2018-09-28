@@ -100,7 +100,7 @@ status_t createLoopDevice(const std::string& target, const int32_t imageOffset,
     PLOG(ERROR) << "Failed to open " << target;
     return -errno;
   }
-  unique_fd device_fd(open(out_device.c_str(), O_RDONLY | O_CLOEXEC));
+  unique_fd device_fd(open(out_device.c_str(), O_RDWR | O_CLOEXEC));
   if (device_fd.get() == -1) {
     PLOG(ERROR) << "Failed to open " << out_device;
     return -errno;
