@@ -29,8 +29,8 @@ TEST(ApexFileTest, GetOffsetOfSimplePackage) {
   const std::string filePath = testDataDir + "/test.apex";
   std::unique_ptr<ApexFile> apexFile = ApexFile::Open(filePath);
   ASSERT_NE(nullptr, apexFile.get());
-  EXPECT_EQ(8192, apexFile->GetImageOffset());
-  EXPECT_EQ(569344, apexFile->GetImageSize());
+  EXPECT_EQ(4096, apexFile->GetImageOffset());
+  EXPECT_EQ(3608576, apexFile->GetImageSize());
 }
 
 TEST(ApexFileTest, GetOffsetMissingFile) {
