@@ -1,6 +1,6 @@
 service apexd /system/bin/apexd
     class core
     critical
-    user system
-    group system
+    user root
+    group root
     shutdown critical
