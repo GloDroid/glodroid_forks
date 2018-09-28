@@ -31,6 +31,18 @@ import subprocess
 import sys
 import tempfile
 
+if 'APEXER_TOOL_PATH' not in os.environ:
+  sys.stderr.write("""
+Error. The APEXER_TOOL_PATH environment variable needs to be set, and point to
+the directory containing all the tools used by apexer (e.g. mke2fs, avbtool,
+etc.). Typically this can be set as:
+
+export APEXER_TOOL_PATH=${ANDROID_BUILD_TOP}/out/soong/host/linux-x86/bin
+
+Aborting.
+""")
+  sys.exit(1)
+
 tool_path = os.environ['APEXER_TOOL_PATH']
 
 def ParseArgs(argv):

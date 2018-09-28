@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-if [ -z $ANDROID_BUILD_TOP ]; then
+if [[ -z ${ANDROID_BUILD_TOP} ]]; then
   echo "You need to source and lunch before you can use this script"
   exit 1
 fi
@@ -23,8 +23,9 @@ fi
 echo "Running test"
 set -e # fail early
 
-source $ANDROID_BUILD_TOP/build/envsetup.sh
+source ${ANDROID_BUILD_TOP}/build/envsetup.sh
 m -j apexer
+export APEXER_TOOL_PATH=${ANDROID_BUILD_TOP}/out/soong/host/linux-x86/bin
 
 input_dir=$(mktemp -d)
 output_dir=$(mktemp -d)
@@ -75,7 +76,7 @@ output_file=${output_dir}/test.apex
 ${ANDROID_HOST_OUT}/bin/apexer --verbose --manifest ${manifest_file} \
   --file_contexts ${file_contexts_file} \
   --canned_fs_config ${canned_fs_config_file} \
-  --key testdata/testkey.pem \
+  --key ${ANDROID_BUILD_TOP}/system/apex/apexer/testdata/testkey.pem \
   ${input_dir} ${output_file}
 
 #############################################
@@ -94,7 +95,8 @@ sudo mount -o ro /dev/loop10 ${output_dir}/mnt
 unzip ${output_file} manifest.json -d ${output_dir}
 
 # verify vbmeta
-avbtool verify_image --image ${output_dir}/image.img --key testdata/testkey.pem
+avbtool verify_image --image ${output_dir}/image.img \
+--key ${ANDROID_BUILD_TOP}/system/apex/apexer/testdata/testkey.pem
 
 # check the contents
 sudo diff ${manifest_file} ${output_dir}/mnt/manifest.json
