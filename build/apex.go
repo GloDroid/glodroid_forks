@@ -53,7 +53,9 @@ var (
 			`--file_contexts ${file_contexts} ` +
 			`--canned_fs_config ${canned_fs_config} ` +
 			`--key ${key} ${image_dir} ${out} `,
-		CommandDeps: []string{"${apexer}"},
+		CommandDeps: []string{"${apexer}", "${avbtool}", "${e2fsdroid}", "${merge_zips}",
+			"${mke2fs}", "${resize2fs}", "${sefcontext_compile}",
+			"${soong_zip}", "${zipalign}", "${aapt2}"},
 		Description: "APEX ${image_dir} => ${out}",
 	}, "tool_path", "image_dir", "copy_commands", "manifest", "file_contexts", "canned_fs_config", "key")
 )
@@ -74,6 +76,16 @@ var (
 func init() {
 	pctx.Import("android/soong/common")
 	pctx.HostBinToolVariable("apexer", "apexer")
+	pctx.HostBinToolVariable("aapt2", "aapt2")
+	pctx.HostBinToolVariable("avbtool", "avbtool")
+	pctx.HostBinToolVariable("e2fsdroid", "e2fsdroid")
+	pctx.HostBinToolVariable("merge_zips", "merge_zips")
+	pctx.HostBinToolVariable("mke2fs", "mke2fs")
+	pctx.HostBinToolVariable("resize2fs", "resize2fs")
+	pctx.HostBinToolVariable("sefcontext_compile", "sefcontext_compile")
+	pctx.HostBinToolVariable("soong_zip", "soong_zip")
+	pctx.HostBinToolVariable("zipalign", "zipalign")
+
 	android.RegisterModuleType("apex", apexBundleFactory)
 }
 
