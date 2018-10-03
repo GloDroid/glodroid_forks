@@ -25,7 +25,8 @@ set -e # fail early
 
 source ${ANDROID_BUILD_TOP}/build/envsetup.sh
 m -j apexer
-export APEXER_TOOL_PATH=${ANDROID_BUILD_TOP}/out/soong/host/linux-x86/bin
+export APEXER_TOOL_PATH="${ANDROID_BUILD_TOP}/out/soong/host/linux-x86/bin:${ANDROID_BUILD_TOP}/prebuilts/sdk/tools/linux/bin"
+PATH+=":${ANDROID_BUILD_TOP}/prebuilts/sdk/tools/linux/bin"
 
 input_dir=$(mktemp -d)
 output_dir=$(mktemp -d)
