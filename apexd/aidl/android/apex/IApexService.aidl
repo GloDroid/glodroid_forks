@@ -17,5 +17,5 @@
 package android.apex;
 
 interface IApexService {
-   boolean ping();
+   boolean installPackage(in @utf8InCpp String package_tmp_path);
 }

@@ -25,7 +25,7 @@ namespace apex {
 class ApexService : public BnApexService {
  public:
   ApexService(){};
-  ::android::binder::Status ping(bool* aidl_return);
+  ::android::binder::Status installPackage(const std::string& packageTmpPath, bool* aidl_return);
 };
 
 };  // namespace apex
