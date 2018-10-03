@@ -214,12 +214,14 @@ func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 		copyCommands = append(copyCommands, "cp "+src.String()+" "+dest_path)
 	}
 	implicitInputs = append(implicitInputs, cannedFsConfig, manifest, fileContexts, key)
+	outHostBinDir := android.PathForOutput(ctx, "host", ctx.Config().PrebuiltOS(), "bin").String()
+	prebuiltSdkToolsBinDir := filepath.Join("prebuilts", "sdk", "tools", ctx.Config().PrebuiltOS(), "bin")
 	ctx.ModuleBuild(pctx, android.ModuleBuildParams{
 		Rule:      apexRule,
 		Implicits: implicitInputs,
 		Output:    a.outputFile,
 		Args: map[string]string{
-			"tool_path":        android.PathForOutput(ctx, "host", ctx.Config().PrebuiltOS(), "bin").String(),
+			"tool_path":        outHostBinDir + ":" + prebuiltSdkToolsBinDir,
 			"image_dir":        android.PathForModuleOut(ctx, "image").String(),
 			"copy_commands":    strings.Join(copyCommands, " && "),
 			"manifest":         manifest.String(),
