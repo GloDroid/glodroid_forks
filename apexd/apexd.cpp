@@ -121,11 +121,18 @@ status_t createLoopDevice(const std::string& target, const int32_t imageOffset,
     return -errno;
   }
 
-  int use_dio = 1;
-  if (ioctl(device_fd.get(), LOOP_SET_DIRECT_IO, &use_dio) == -1) {
-    PLOG(WARNING) << "Failed to LOOP_SET_DIRECT_IO";
-    // TODO decide if we want to fail on this or not.
+  // Direct-IO requires the loop device to have the same block size as the
+  // underlying filesystem.
+  if (ioctl(device_fd.get(), LOOP_SET_BLOCK_SIZE, 4096) == -1) {
+    PLOG(WARNING) << "Failed to LOOP_SET_BLOCK_SIZE";
+  } else {
+    if (ioctl(device_fd.get(), LOOP_SET_DIRECT_IO, 1) == -1) {
+      PLOG(WARNING) << "Failed to LOOP_SET_DIRECT_IO";
+      // TODO Eventually we'll want to fail on this; right now we can't because
+      // not all devices have the necessary kernel patches.
+    }
   }
+
 
   return 0;
 }
