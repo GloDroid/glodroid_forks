@@ -70,7 +70,7 @@ namespace apex {
 
 static constexpr const char* kApexPackageDir = "/data/apex";
 static constexpr const char* kApexPackageSuffix = ".apex";
-static constexpr const char* kApexRoot = "/mnt/apex";
+static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kApexLoopIdPrefix = "apex:";
 
 // For now, we assume a single key in a known location
