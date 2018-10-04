@@ -590,11 +590,6 @@ void unmountAndDetachExistingImages() {
   destroyAllLoopDevices();
 }
 
-void setupApexRoot() {
-  LOG(INFO) << "Creating APEX mount point at " << kApexRoot;
-  mkdir(kApexRoot, 0755);
-}
-
 void scanPackagesDirAndMount() {
   LOG(INFO) << "Scanning " << kApexPackageDir << " looking for APEX packages.";
   auto d =
@@ -630,7 +625,6 @@ int main(int /*argc*/, char** /*argv*/) {
                                       apexService);
 
   android::apex::unmountAndDetachExistingImages();
-  android::apex::setupApexRoot();
   android::apex::scanPackagesDirAndMount();
 
   // Start threadpool, wait for IPC
