@@ -17,7 +17,6 @@ aidl_interface {
     "aidl/android/apex/IApexService.aidl",
   ],
   local_include_dir: "aidl",
-  api_dir: "aidl/api",
 }
 
 cc_binary {
