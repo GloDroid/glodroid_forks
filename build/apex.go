@@ -71,6 +71,7 @@ var (
 	sharedLibTag  = dependencyTag{name: "sharedLib"}
 	executableTag = dependencyTag{name: "executable"}
 	javaLibTag    = dependencyTag{name: "javaLib"}
+	prebuiltTag   = dependencyTag{name: "prebuilt"}
 )
 
 func init() {
@@ -106,6 +107,9 @@ type apexBundleProperties struct {
 
 	// List of java libraries that are embedded inside this APEX bundle
 	Java_modules []string
+
+	// List of prebuilt files that are embedded inside this APEX bundle
+	Prebuilt_modules []string
 }
 
 type apexBundle struct {
@@ -146,6 +150,8 @@ func (a *apexBundle) DepsMutator(ctx android.BottomUpMutatorContext) {
 	}, executableTag, a.properties.Executable_modules...)
 
 	ctx.AddFarVariationDependencies([]blueprint.Variation{}, javaLibTag, a.properties.Java_modules...)
+
+	ctx.AddFarVariationDependencies([]blueprint.Variation{}, prebuiltTag, a.properties.Prebuilt_modules...)
 }
 
 func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
@@ -195,6 +201,15 @@ func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 					pathsInApex = append(pathsInApex, dir)
 				}
 				copyManifest[java.Srcs()[0]] = filepath.Join(dir, java.Srcs()[0].Base())
+			}
+		case prebuiltTag:
+			if prebuilt, ok := dep.(*android.PrebuiltEtc); ok {
+				dir := filepath.Join("etc", prebuilt.SubDir())
+				pathsInApex = append(pathsInApex, filepath.Join(dir, prebuilt.OutputFile().Base()))
+				if !android.InList(dir, pathsInApex) {
+					pathsInApex = append(pathsInApex, dir)
+				}
+				copyManifest[prebuilt.OutputFile()] = filepath.Join(dir, prebuilt.OutputFile().Base())
 			}
 		}
 	})
