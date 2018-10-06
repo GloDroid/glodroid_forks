@@ -35,4 +35,10 @@ apex {
     executable_modules: ["vold", "surfaceflinger"],
     native_shared_lib_modules: ["libc", "libcutils"],
     java_modules: ["core-all"],
+    prebuilt_modules: ["sample_prebuilt_file"],
+}
+
+prebuilt_etc {
+    name: "sample_prebuilt_file",
+    src: "testdata/sample_prebuilt_file",
 }
