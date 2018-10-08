@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"android/soong/android"
@@ -242,7 +243,7 @@ func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 	}
 	implicitInputs = append(implicitInputs, cannedFsConfig, manifest, fileContexts, key)
 	outHostBinDir := android.PathForOutput(ctx, "host", ctx.Config().PrebuiltOS(), "bin").String()
-	prebuiltSdkToolsBinDir := filepath.Join("prebuilts", "sdk", "tools", ctx.Config().PrebuiltOS(), "bin")
+	prebuiltSdkToolsBinDir := filepath.Join("prebuilts", "sdk", "tools", runtime.GOOS, "bin")
 	ctx.ModuleBuild(pctx, android.ModuleBuildParams{
 		Rule:      apexRule,
 		Implicits: implicitInputs,
