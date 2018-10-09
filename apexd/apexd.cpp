@@ -68,7 +68,8 @@ using android::dm::DmTargetVerity;
 namespace android {
 namespace apex {
 
-static constexpr const char* kApexPackageDir = "/data/apex";
+static constexpr const char* kApexPackageSystemDir = "/system/apex";
+static constexpr const char* kApexPackageDataDir = "/data/apex";
 static constexpr const char* kApexPackageSuffix = ".apex";
 static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kApexLoopIdPrefix = "apex:";
@@ -492,7 +493,7 @@ std::unique_ptr<ApexVerityData> verifyApexVerity(const ApexFile& apex) {
 }
 
 void installPackage(const std::string& full_path) {
-  LOG(INFO) << "Installing " << full_path;
+  LOG(INFO) << "Trying to install " << full_path;
 
   std::unique_ptr<ApexFile> apex = ApexFile::Open(full_path);
   if (apex.get() == nullptr) {
@@ -590,13 +591,13 @@ void unmountAndDetachExistingImages() {
   destroyAllLoopDevices();
 }
 
-void scanPackagesDirAndMount() {
-  LOG(INFO) << "Scanning " << kApexPackageDir << " looking for APEX packages.";
+void scanPackagesDirAndMount(const char* apex_package_dir) {
+  LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
   auto d =
-      std::unique_ptr<DIR, int (*)(DIR*)>(opendir(kApexPackageDir), closedir);
+      std::unique_ptr<DIR, int (*)(DIR*)>(opendir(apex_package_dir), closedir);
 
   if (!d) {
-    LOG(WARNING) << "Package directory " << kApexPackageDir
+    LOG(WARNING) << "Package directory " << apex_package_dir
                  << " not found, nothing to do.";
     return;
   }
@@ -607,7 +608,7 @@ void scanPackagesDirAndMount() {
     }
     LOG(INFO) << "Found " << dp->d_name;
 
-    installPackage(StringPrintf("%s/%s", kApexPackageDir, dp->d_name));
+    installPackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
   }
 }
 }  // namespace apex
@@ -625,7 +626,11 @@ int main(int /*argc*/, char** /*argv*/) {
                                       apexService);
 
   android::apex::unmountAndDetachExistingImages();
-  android::apex::scanPackagesDirAndMount();
+  // Scan the directory under /data first, as it may contain updates of APEX
+  // packages living in the directory under /system, and we want the former ones
+  // to be used over the latter ones.
+  android::apex::scanPackagesDirAndMount(android::apex::kApexPackageDataDir);
+  android::apex::scanPackagesDirAndMount(android::apex::kApexPackageSystemDir);
 
   // Start threadpool, wait for IPC
   ps->startThreadPool();
