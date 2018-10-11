@@ -12,30 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-bootstrap_go_package {
-    name: "apex-soong-rules",
-    pkgPath: "android/soong/apex",
-    deps: [
-        "blueprint",
-        "soong",
-        "soong-android",
-        "soong-cc",
-        "soong-java",
-    ],
-    srcs: [
-        "apex.go",
-    ],
-    pluginFor: ["soong_build"],
-}
-
 apex {
     name: "apex.test",
     manifest: "testdata/manifest.json",
     file_contexts: "testdata/file_contexts",
-    executable_modules: ["vold", "surfaceflinger"],
-    native_shared_lib_modules: ["libc", "libcutils"],
-    java_modules: ["core-all"],
-    prebuilt_modules: ["sample_prebuilt_file"],
+    binaries: ["vold", "surfaceflinger"],
+    native_shared_libs: ["libc", "libcutils"],
+    java_libs: ["core-all"],
+    prebuilts: ["sample_prebuilt_file"],
 }
 
 prebuilt_etc {
