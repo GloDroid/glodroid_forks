@@ -38,6 +38,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <linux/loop.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -74,10 +75,8 @@ static constexpr const char* kApexPackageDataDir = "/data/apex";
 static constexpr const char* kApexPackageSuffix = ".apex";
 static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kApexLoopIdPrefix = "apex:";
-
-// For now, we assume a single key in a known location
-static constexpr const char* kApexDebugKeyFile =
-    "/system/etc/security/apex/apex_debug_key";
+static constexpr const char* kApexKeyDirectory = "/system/etc/security/apex/";
+static constexpr const char* kApexKeyProp = "apex.key";
 
 static constexpr int kVbMetaMaxSize = 64 * 1024;
 
@@ -307,16 +306,33 @@ bool verifyPublicKey(const uint8_t* key, size_t length,
   return (memcmp(&verifiedKey[0], key, length) == 0);
 }
 
-bool verifyPublicKey(const uint8_t* key, size_t length) {
-#ifdef ALLOW_DEBUG_KEY
-  return verifyPublicKey(key, length, kApexDebugKeyFile);
-#else
-  // This code will be changed significantly; for now, play it safe.
-  (void) key;
-  (void) length;
-  (void) kApexDebugKeyFile;
-  return false;
-#endif
+std::string getPublicKeyFilePath(const ApexFile& apex, const uint8_t* data,
+                                 size_t length) {
+  size_t keyNameLen;
+  const char* keyName = avb_property_lookup(data, length, kApexKeyProp,
+      strlen(kApexKeyProp), &keyNameLen);
+  if (keyName == nullptr || keyNameLen == 0) {
+    LOG(ERROR) << "Cannot find prop \"" << kApexKeyProp << "\" from "
+               << apex.GetPath();
+    return "";
+  }
+
+  std::string keyFilePath(kApexKeyDirectory);
+  keyFilePath.append(keyName, keyNameLen);
+  std::string canonicalKeyFilePath;
+  if (!android::base::Realpath(keyFilePath, &canonicalKeyFilePath)) {
+    LOG(ERROR) << "Failed to get realpath of " << keyFilePath << " error: "
+               << strerror(errno);
+    return "";
+  }
+
+  if (!android::base::StartsWith(canonicalKeyFilePath, kApexKeyDirectory)) {
+    LOG(ERROR) << "Key file " << canonicalKeyFilePath << " is not under "
+               << kApexKeyDirectory;
+    return "";
+  }
+
+  return canonicalKeyFilePath;
 }
 
 bool verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
@@ -347,10 +363,15 @@ bool verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
       return false;
   }
 
+  std::string keyFilePath = getPublicKeyFilePath(apex, data, length);
+  if (keyFilePath == "") {
+    return false;
+  }
+
   // TODO(b/115718846)
   // We need to decide whether we need rollback protection, and whether
   // we can use the rollback protection provided by libavb.
-  if (verifyPublicKey(pk, pk_len)) {
+  if (verifyPublicKey(pk, pk_len, keyFilePath)) {
     LOG(VERBOSE) << apex.GetPath() << ": public key matches.";
     return true;
   } else {
