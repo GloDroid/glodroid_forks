@@ -124,10 +124,6 @@ cc_library_shared {
         },
         linux_bionic: {
             enabled: true,
-            static_libs: ["libunwindbacktrace"],
-            shared_libs: [
-                "liblzma",
-            ],
         },
     },
 }
