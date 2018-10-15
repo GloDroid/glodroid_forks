@@ -492,6 +492,14 @@ std::unique_ptr<ApexVerityData> verifyApexVerity(const ApexFile& apex) {
   return verityData;
 }
 
+void updateSymlink(const std::string& package_name, const std::string& mount_point) {
+  std::string link_path = StringPrintf("%s/%s", kApexRoot, package_name.c_str());
+  LOG(VERBOSE) << "Creating symlink " << link_path << " with target " << mount_point;
+  if (symlink(mount_point.c_str(), link_path.c_str()) != 0) {
+    PLOG(ERROR) << "Can't create symlink " << link_path << " with target " << mount_point;
+  }
+}
+
 void installPackage(const std::string& full_path) {
   LOG(INFO) << "Trying to install " << full_path;
 
@@ -543,6 +551,10 @@ void installPackage(const std::string& full_path) {
             NULL) == 0) {
     LOG(INFO) << "Successfully mounted package " << full_path << " on "
               << mountPoint;
+
+    // TODO: only create symlinks if we are sure we are mounting the latest
+    //       version of a package.
+    updateSymlink(manifest->GetName(), mountPoint);
   } else {
     PLOG(ERROR) << "Mounting failed for package " << full_path;
     // Tear down loop device.
