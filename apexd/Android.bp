@@ -1,8 +1,21 @@
 cc_defaults {
   name: "apex_defaults",
   cflags: [
-    "-Wunused",
+    "-Wall",
+    "-Wextra",
+
+    // Some extra flags.
+    "-fstrict-aliasing",
+    "-Wredundant-decls",
+    "-Wshadow",
+    "-Wstrict-aliasing",
+    "-Wthread-safety",
+    "-Wthread-safety-negative",
     "-Wunreachable-code",
+    "-Wunreachable-code-break",
+    "-Wunreachable-code-return",
+    "-Wunused",
+    "-Wused-but-marked-unused",
   ],
   shared_libs: [
     "libbase",
