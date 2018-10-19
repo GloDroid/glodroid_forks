@@ -21,7 +21,7 @@
 #include "apex_file.h"
 
 static std::string testDataDir =
-    android::base::GetExecutableDirectory() + "/testdata";
+    android::base::GetExecutableDirectory() + "/apexd_testdata";
 
 namespace android {
 namespace apex {
