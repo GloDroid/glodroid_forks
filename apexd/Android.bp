@@ -72,13 +72,15 @@ cc_test {
   name: "apex_file_test",
   defaults: ["apex_defaults"],
   data: [
-    "testdata/*",
+    "apexd_testdata/*",
   ],
   srcs: [
     "apex_file_test.cpp",
   ],
   host_supported: true,
   static_libs: ["libapex"],
+  test_suites: ["device-tests"],
+  test_config: "apex_file_test_config.xml",  // TODO: Remove after b/117891984.
 }
 
 cc_test {
@@ -89,4 +91,5 @@ cc_test {
   ],
   host_supported: true,
   static_libs: ["libapex"],
+  test_suites: ["device-tests"],
 }
