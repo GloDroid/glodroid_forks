@@ -628,8 +628,8 @@ void scanPackagesDirAndMount(const char* apex_package_dir) {
       std::unique_ptr<DIR, int (*)(DIR*)>(opendir(apex_package_dir), closedir);
 
   if (!d) {
-    LOG(WARNING) << "Package directory " << apex_package_dir
-                 << " not found, nothing to do.";
+    PLOG(WARNING) << "Package directory " << apex_package_dir
+                  << " not found, nothing to do.";
     return;
   }
   struct dirent* dp;
