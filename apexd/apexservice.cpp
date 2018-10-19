@@ -41,19 +41,21 @@ static constexpr const char* kApexPackageSuffix = ".apex";
 
   LOG(DEBUG) << "installPackage() received by ApexService, path " << packageTmpPath;
 
-  std::unique_ptr<ApexFile> apex = ApexFile::Open(packageTmpPath);
-  if (apex.get() == nullptr) {
+  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(packageTmpPath);
+  if (!apexFileRes.Ok()) {
     *aidl_return = false;
     // Error opening the file.
     return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT);
   }
+  const std::unique_ptr<ApexFile>& apex = *apexFileRes;
 
-  std::unique_ptr<ApexManifest> manifest =
+  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
     ApexManifest::Open(apex->GetManifest());
-  if (manifest.get() == nullptr) {
+  if (!manifestRes.Ok()) {
     // Error parsing manifest.
     return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT);
   }
+  const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
   std::string packageId =
       manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
 
