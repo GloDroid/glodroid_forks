@@ -228,6 +228,7 @@ def CreateApex(args, work_dir):
   cmd.append('--do_not_generate_fec')
   cmd.extend(['--algorithm', 'SHA256_RSA4096'])
   cmd.extend(['--key', args.key])
+  cmd.extend(['--prop', "apex.key:" + os.path.basename(os.path.splitext(args.key)[0])])
   cmd.extend(['--image', img_file])
   RunCommand(cmd, args.verbose)
 
