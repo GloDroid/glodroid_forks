@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <android-base/file.h>
+#include <android-base/logging.h>
 #include <gtest/gtest.h>
 #include <string>
 
@@ -48,3 +49,9 @@ TEST(ApexFileTest, GetApexManifest) {
 }
 }  // namespace apex
 }  // namespace android
+
+int main(int argc, char **argv) {
+  android::base::InitLogging(argv, &android::base::StderrLogger);
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
