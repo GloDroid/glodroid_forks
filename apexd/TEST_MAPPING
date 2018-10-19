@@ -1,0 +1,10 @@
+{
+  "presubmit": [
+    {
+      "name": "apex_file_test"
+    },
+    {
+      "name": "apex_manifest_test"
+    }
+  ]
+}
