@@ -20,6 +20,13 @@ apex {
     native_shared_libs: ["libc", "libcutils"],
     java_libs: ["core-all"],
     prebuilts: ["sample_prebuilt_file"],
+    key: "apex.test.key",
+}
+
+apex_key {
+    name: "apex.test.key",
+    public_key: "testdata/testkey.avbpubkey",
+    private_key: "testdata/testkey.pem",
 }
 
 prebuilt_etc {
