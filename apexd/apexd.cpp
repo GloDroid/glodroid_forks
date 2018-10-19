@@ -59,6 +59,7 @@ using android::String16;
 using android::apex::ApexService;
 using android::base::Basename;
 using android::base::EndsWith;
+using android::base::ReadFullyAtOffset;
 using android::base::StringPrintf;
 using android::base::unique_fd;
 using android::dm::DeviceMapper;
@@ -282,8 +283,12 @@ bool verifyPublicKey(const uint8_t* key, size_t length,
   }
 
   std::streamsize size = pubkeyFile.tellg();
+  if (size < 0) {
+    LOG(ERROR) << "Could not get public key length position";
+    return false;
+  }
 
-  if (size != length) {
+  if (static_cast<size_t>(size) != length) {
     LOG(ERROR) << "Public key length (" << std::to_string(size) << ")"
                << " doesn't equal APEX public key length ("
                << std::to_string(length) << ")";
@@ -366,14 +371,7 @@ std::unique_ptr<uint8_t[]> verifyVbMeta(const ApexFile& apex,
   off_t offset = apex.GetImageOffset() + footer.vbmeta_offset;
   std::unique_ptr<uint8_t[]> vbmeta_buf(new uint8_t[footer.vbmeta_size]);
 
-  int ret = lseek(fd, offset, SEEK_SET);
-  if (ret != offset) {
-    PLOG(ERROR) << "Couldn't seek to AVB meta-data.";
-    return nullptr;
-  }
-
-  ret = read(fd, vbmeta_buf.get(), footer.vbmeta_size);
-  if (ret != footer.vbmeta_size) {
+  if (!ReadFullyAtOffset(fd, vbmeta_buf.get(), footer.vbmeta_size, offset)) {
     PLOG(ERROR) << "Couldn't read AVB meta-data.";
     return nullptr;
   }
