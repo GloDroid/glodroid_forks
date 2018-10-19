@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <android-base/logging.h>
 #include <gtest/gtest.h>
 
 #include "apex_manifest.h"
@@ -52,3 +53,9 @@ TEST(ApexManifestTest, UnparsableManifest) {
 
 }  // namespace apex
 }  // namespace android
+
+int main(int argc, char **argv) {
+  android::base::InitLogging(argv, &android::base::StderrLogger);
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
