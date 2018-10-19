@@ -42,7 +42,7 @@ class ApexFile {
  private:
   ApexFile(const std::string& apex_filename)
       : apex_filename_(apex_filename), handle_(nullptr){};
-  int OpenInternal();
+  int OpenInternal(std::string* error_msg);
 
   const std::string apex_filename_;
   int32_t image_offset_;

@@ -33,23 +33,39 @@ TEST(ApexManifestTest, SimpleTest) {
 TEST(ApexManifestTest, NameMissing) {
   auto apexManifest = ApexManifest::Open("{\"version\": 1}\n");
   ASSERT_FALSE(apexManifest.Ok());
+  EXPECT_EQ(apexManifest.ErrorMessage(),
+            std::string("Missing required field \"name\" from APEX manifest."))
+      << apexManifest.ErrorMessage();
 }
 
 TEST(ApexManifestTest, VersionMissing) {
   auto apexManifest =
       ApexManifest::Open("{\"name\": \"com.android.example.apex\"}\n");
   ASSERT_FALSE(apexManifest.Ok());
+  EXPECT_EQ(apexManifest.ErrorMessage(),
+            std::string("Missing required field \"version\" from APEX manifest."))
+      << apexManifest.ErrorMessage();
 }
 
 TEST(ApexManifestTest, VersionNotNumber) {
   auto apexManifest = ApexManifest::Open(
       "{\"name\": \"com.android.example.apex\", \"version\": \"1\"}\n");
   ASSERT_FALSE(apexManifest.Ok());
+  EXPECT_EQ(
+      apexManifest.ErrorMessage(),
+      std::string("Invalid type for field \"version\" from APEX manifest, expecting integer."))
+      << apexManifest.ErrorMessage();
 }
 
 TEST(ApexManifestTest, UnparsableManifest) {
   auto apexManifest = ApexManifest::Open("This is an invalid pony");
   ASSERT_FALSE(apexManifest.Ok());
+  EXPECT_EQ(
+        apexManifest.ErrorMessage(),
+        std::string(
+            "Failed to parse APEX Manifest JSON config: * Line 1, Column 1\n"
+            "  Syntax error: value, object or array expected.\n"))
+        << apexManifest.ErrorMessage();
 }
 
 }  // namespace apex

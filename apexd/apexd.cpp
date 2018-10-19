@@ -525,6 +525,7 @@ void installPackage(const std::string& full_path) {
   StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
   if (!apexFileRes.Ok()) {
     // Error opening the file.
+    LOG(ERROR) << apexFileRes.ErrorMessage();
     return;
   }
   const std::unique_ptr<ApexFile>& apex = *apexFileRes;
@@ -533,6 +534,7 @@ void installPackage(const std::string& full_path) {
       ApexManifest::Open(apex->GetManifest());
   if (!manifestRes.Ok()) {
     // Error parsing manifest.
+    LOG(ERROR) << manifestRes.ErrorMessage();
     return;
   }
   const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
