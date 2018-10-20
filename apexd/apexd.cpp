@@ -47,8 +47,6 @@
 #include <memory>
 #include <string>
 
-#include <utils/Errors.h>
-
 using android::base::Basename;
 using android::base::EndsWith;
 using android::base::ReadFullyAtOffset;
@@ -71,36 +69,31 @@ static constexpr const char* kApexKeyProp = "apex.key";
 
 static constexpr int kVbMetaMaxSize = 64 * 1024;
 
-status_t createLoopDevice(const std::string& target, const int32_t imageOffset,
-                          const size_t imageSize, std::string& out_device) {
+Status createLoopDevice(const std::string& target, const int32_t imageOffset,
+                        const size_t imageSize, std::string& out_device) {
   unique_fd ctl_fd(open("/dev/loop-control", O_RDWR | O_CLOEXEC));
   if (ctl_fd.get() == -1) {
-    PLOG(ERROR) << "Failed to open loop-control";
-    return -errno;
+    return Status::Fail(PStringLog() << "Failed to open loop-control");
   }
 
   int num = ioctl(ctl_fd.get(), LOOP_CTL_GET_FREE);
   if (num == -1) {
-    PLOG(ERROR) << "Failed LOOP_CTL_GET_FREE";
-    return -errno;
+    return Status::Fail(PStringLog() << "Failed LOOP_CTL_GET_FREE");
   }
 
   out_device = StringPrintf("/dev/block/loop%d", num);
 
   unique_fd target_fd(open(target.c_str(), O_RDONLY | O_CLOEXEC));
   if (target_fd.get() == -1) {
-    PLOG(ERROR) << "Failed to open " << target;
-    return -errno;
+    return Status::Fail(PStringLog() << "Failed to open " << target);
   }
   unique_fd device_fd(open(out_device.c_str(), O_RDWR | O_CLOEXEC));
   if (device_fd.get() == -1) {
-    PLOG(ERROR) << "Failed to open " << out_device;
-    return -errno;
+    return Status::Fail(PStringLog() << "Failed to open " << out_device);
   }
 
   if (ioctl(device_fd.get(), LOOP_SET_FD, target_fd.get()) == -1) {
-    PLOG(ERROR) << "Failed to LOOP_SET_FD";
-    return -errno;
+    return Status::Fail(PStringLog() << "Failed to LOOP_SET_FD");
   }
 
   struct loop_info64 li;
@@ -109,8 +102,7 @@ status_t createLoopDevice(const std::string& target, const int32_t imageOffset,
   li.lo_offset = imageOffset;
   li.lo_sizelimit = imageSize;
   if (ioctl(device_fd.get(), LOOP_SET_STATUS64, &li) == -1) {
-    PLOG(ERROR) << "Failed to LOOP_SET_STATUS64";
-    return -errno;
+    return Status::Fail(PStringLog() << "Failed to LOOP_SET_STATUS64");
   }
 
   // Direct-IO requires the loop device to have the same block size as the
@@ -125,8 +117,7 @@ status_t createLoopDevice(const std::string& target, const int32_t imageOffset,
     }
   }
 
-
-  return 0;
+  return Status::Success();
 }
 
 void destroyAllLoopDevices() {
@@ -174,7 +165,7 @@ void destroyAllLoopDevices() {
   }
 }
 
-static constexpr int kLoopDeviceSetupRetries = 3;
+static constexpr size_t kLoopDeviceSetupAttempts = 3u;
 
 std::string bytes_to_hex(const uint8_t* bytes, size_t bytes_len) {
   std::ostringstream s;
@@ -530,15 +521,17 @@ void mountPackage(const std::string& full_path) {
       manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
 
   std::string loopback;
-  status_t ret;
-  int retries = 0;
-  do {
-    ret = createLoopDevice(full_path, apex->GetImageOffset(),
-                           apex->GetImageSize(), loopback);
-    ++retries;
-  } while (ret != NO_ERROR && retries < kLoopDeviceSetupRetries);
-  if (ret != NO_ERROR) {
-    return;
+  for (size_t attempts = 1; ; ++attempts) {
+    Status ret = createLoopDevice(full_path, apex->GetImageOffset(),
+                                  apex->GetImageSize(), loopback);
+    if (ret.Ok()) {
+      break;
+    }
+    if (attempts >= kLoopDeviceSetupAttempts) {
+      LOG(ERROR) << "Could not create loop device for " << full_path << ": "
+                 << ret.ErrorMessage();
+      return;
+    }
   }
   LOG(VERBOSE) << "Loopback device created: " << loopback;
 
