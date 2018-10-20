@@ -507,8 +507,8 @@ void updateSymlink(const std::string& package_name, const std::string& mount_poi
   }
 }
 
-void installPackage(const std::string& full_path) {
-  LOG(INFO) << "Trying to install " << full_path;
+void mountPackage(const std::string& full_path) {
+  LOG(INFO) << "Trying to mount " << full_path;
 
   StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
   if (!apexFileRes.Ok()) {
@@ -633,7 +633,7 @@ void scanPackagesDirAndMount(const char* apex_package_dir) {
     }
     LOG(INFO) << "Found " << dp->d_name;
 
-    installPackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
+    mountPackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
   }
 }
 
