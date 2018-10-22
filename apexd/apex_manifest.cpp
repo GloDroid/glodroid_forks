@@ -26,13 +26,13 @@
 namespace android {
 namespace apex {
 
-std::unique_ptr<ApexManifest> ApexManifest::Open(
+StatusOr<std::unique_ptr<ApexManifest>> ApexManifest::Open(
     const std::string& apex_manifest) {
   std::unique_ptr<ApexManifest> ret(new ApexManifest(apex_manifest));
   if (ret->OpenInternal() < 0) {
-    return nullptr;
+    return StatusOr<std::unique_ptr<ApexManifest>>::MakeError("ApexManifest::Open failed");;
   }
-  return ret;
+  return StatusOr<std::unique_ptr<ApexManifest>>(std::move(ret));
 }
 
 int ApexManifest::OpenInternal() {
