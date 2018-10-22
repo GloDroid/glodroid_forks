@@ -34,7 +34,6 @@ using android::String16;
 using android::apex::ApexService;
 
 static constexpr const char* kApexPackageSystemDir = "/system/apex";
-static constexpr const char* kApexPackageDataDir = "/data/apex";
 static constexpr const char* kApexServiceName = "apexservice";
 
 int main(int /*argc*/, char** argv) {
@@ -53,7 +52,7 @@ int main(int /*argc*/, char** argv) {
   // Scan the directory under /data first, as it may contain updates of APEX
   // packages living in the directory under /system, and we want the former ones
   // to be used over the latter ones.
-  android::apex::scanPackagesDirAndMount(kApexPackageDataDir);
+  android::apex::scanPackagesDirAndMount(android::apex::kApexPackageDataDir);
   android::apex::scanPackagesDirAndMount(kApexPackageSystemDir);
 
   // Start threadpool, wait for IPC
