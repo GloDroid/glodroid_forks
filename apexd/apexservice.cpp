@@ -45,7 +45,8 @@ static constexpr const char* kApexPackageSuffix = ".apex";
   if (!apexFileRes.Ok()) {
     *aidl_return = false;
     // Error opening the file.
-    return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT);
+    return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT,
+                                             String8(apexFileRes.ErrorMessage().c_str()));
   }
   const std::unique_ptr<ApexFile>& apex = *apexFileRes;
 
@@ -53,7 +54,8 @@ static constexpr const char* kApexPackageSuffix = ".apex";
     ApexManifest::Open(apex->GetManifest());
   if (!manifestRes.Ok()) {
     // Error parsing manifest.
-    return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT);
+    return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT,
+                                             String8(manifestRes.ErrorMessage().c_str()));
   }
   const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
   std::string packageId =

@@ -20,14 +20,16 @@
 #include <string>
 
 #include "apex_file.h"
+#include "string_log.h"
 
 namespace android {
 namespace apex {
 
 StatusOr<std::unique_ptr<ApexFile>> ApexFile::Open(const std::string& apex_filename) {
   std::unique_ptr<ApexFile> ret(new ApexFile(apex_filename));
-  if (ret->OpenInternal() < 0) {
-    return StatusOr<std::unique_ptr<ApexFile>>::MakeError("ApexFile::Open failed");
+  std::string error_msg;
+  if (ret->OpenInternal(&error_msg) < 0) {
+    return StatusOr<std::unique_ptr<ApexFile>>::MakeError(error_msg);
   }
   return StatusOr<std::unique_ptr<ApexFile>>(std::move(ret));
 }
@@ -41,15 +43,15 @@ ApexFile::~ApexFile() {
 static constexpr const char* kImageFilename = "image.img";
 static constexpr const char* kManifestFilename = "manifest.json";
 
-int ApexFile::OpenInternal() {
+int ApexFile::OpenInternal(std::string* error_msg) {
   if (handle_ != nullptr) {
     // Already opened.
     return 0;
   }
   int ret = OpenArchive(apex_filename_.c_str(), &handle_);
   if (ret < 0) {
-    LOG(ERROR) << "Failed to open package " << apex_filename_ << ": "
-               << ErrorCodeString(ret);
+    *error_msg = StringLog() << "Failed to open package " << apex_filename_ << ": "
+                             << ErrorCodeString(ret);
     return ret;
   }
 
@@ -57,9 +59,9 @@ int ApexFile::OpenInternal() {
   ZipEntry entry;
   ret = FindEntry(handle_, ZipString(kImageFilename), &entry);
   if (ret < 0) {
-    LOG(ERROR) << "Could not find entry \"" << kImageFilename
-               << "\" in package " << apex_filename_ << ": "
-               << ErrorCodeString(ret);
+    *error_msg = StringLog() << "Could not find entry \"" << kImageFilename
+                             << "\" in package " << apex_filename_ << ": "
+                             << ErrorCodeString(ret);
     return ret;
   }
   image_offset_ = entry.offset;
@@ -67,9 +69,9 @@ int ApexFile::OpenInternal() {
 
   ret = FindEntry(handle_, ZipString(kManifestFilename), &entry);
   if (ret < 0) {
-    LOG(ERROR) << "Could not find entry \"" << kManifestFilename
-               << "\" in package " << apex_filename_ << ": "
-               << ErrorCodeString(ret);
+    *error_msg = StringLog() << "Could not find entry \"" << kManifestFilename
+                             << "\" in package " << apex_filename_ << ": "
+                             << ErrorCodeString(ret);
     return ret;
   }
 
@@ -78,8 +80,8 @@ int ApexFile::OpenInternal() {
   ret = ExtractToMemory(handle_, &entry,
                         reinterpret_cast<uint8_t*>(&(manifest_)[0]), length);
   if (ret != 0) {
-    LOG(ERROR) << "Failed to extract manifest from package " << apex_filename_
-               << ": " << ErrorCodeString(ret);
+    *error_msg = StringLog() << "Failed to extract manifest from package " << apex_filename_
+                             << ": " << ErrorCodeString(ret);
     return ret;
   }
   return 0;
