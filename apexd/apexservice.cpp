@@ -25,49 +25,30 @@
 #include <android-base/stringprintf.h>
 #include <binder/IResultReceiver.h>
 
-#include "apex_file.h"
-#include "apex_manifest.h"
+#include "apexd.h"
+#include "status_or.h"
 
 using android::base::StringPrintf;
 
 namespace android {
 namespace apex {
 
-static constexpr const char* kApexPackageDir = "/data/apex";
-static constexpr const char* kApexPackageSuffix = ".apex";
-
-::android::binder::Status ApexService::installPackage(const std::string& packageTmpPath, bool* aidl_return) {
-  *aidl_return = true;
-
+::android::binder::Status ApexService::installPackage(const std::string& packageTmpPath,
+                                                      bool* aidl_return) {
   LOG(DEBUG) << "installPackage() received by ApexService, path " << packageTmpPath;
 
-  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(packageTmpPath);
-  if (!apexFileRes.Ok()) {
-    *aidl_return = false;
-    // Error opening the file.
-    return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT,
-                                             String8(apexFileRes.ErrorMessage().c_str()));
-  }
-  const std::unique_ptr<ApexFile>& apex = *apexFileRes;
+  *aidl_return = false;
+  StatusOr<bool> res = ::android::apex::installPackage(packageTmpPath);
 
-  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
-    ApexManifest::Open(apex->GetManifest());
-  if (!manifestRes.Ok()) {
-    // Error parsing manifest.
-    return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT,
-                                             String8(manifestRes.ErrorMessage().c_str()));
+  if (res.Ok()) {
+    *aidl_return = *res;
+    return binder::Status::ok();
   }
-  const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
-  std::string packageId =
-      manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
 
-  std::string destPath = StringPrintf("%s/%s%s", kApexPackageDir, packageId.c_str(), kApexPackageSuffix);
-  if (rename(packageTmpPath.c_str(), destPath.c_str()) != 0) {
-    PLOG(WARNING) << "Unable to rename " << packageTmpPath << " to " << destPath;
-    return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_STATE);
-  }
-  LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
-  return binder::Status::ok();
+  // TODO: Get correct binder error status.
+  LOG(ERROR) << "Failed installing " << packageTmpPath << ": " << res.ErrorMessage();
+  return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT,
+                                           String8(res.ErrorMessage().c_str()));
 }
 
 status_t ApexService::onTransact(uint32_t _aidl_code,
@@ -130,5 +111,5 @@ status_t ApexService::shellCommand(int in, int out, int err, const Vector<String
   return BAD_VALUE;
 }
 
-};  // namespace apex
-};  // namespace android
+}  // namespace apex
+}  // namespace android

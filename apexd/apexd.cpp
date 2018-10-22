@@ -20,6 +20,7 @@
 
 #include "apex_file.h"
 #include "apex_manifest.h"
+#include "string_log.h"
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
@@ -635,6 +636,40 @@ void scanPackagesDirAndMount(const char* apex_package_dir) {
 
     mountPackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
   }
+}
+
+StatusOr<bool> installPackage(const std::string& packageTmpPath) {
+  LOG(DEBUG) << "installPackage() for " << packageTmpPath;
+
+  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(packageTmpPath);
+  if (!apexFileRes.Ok()) {
+    // TODO: Get correct binder error status.
+    return StatusOr<bool>::MakeError(apexFileRes.ErrorMessage());
+  }
+  const std::unique_ptr<ApexFile>& apex = *apexFileRes;
+
+  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
+    ApexManifest::Open(apex->GetManifest());
+  if (!manifestRes.Ok()) {
+    // TODO: Get correct binder error status.
+    return StatusOr<bool>::MakeError(manifestRes.ErrorMessage());
+  }
+  const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
+  std::string packageId =
+      manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
+
+  std::string destPath = StringPrintf("%s/%s%s",
+                                      kApexPackageDataDir,
+                                      packageId.c_str(),
+                                      kApexPackageSuffix);
+  if (rename(packageTmpPath.c_str(), destPath.c_str()) != 0) {
+    // TODO: Get correct binder error status.
+    return StatusOr<bool>::MakeError(
+        StringLog() << "Unable to rename " << packageTmpPath << " to " << destPath << ": "
+                    << strerror(errno));
+  }
+  LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
+  return StatusOr<bool>(true);
 }
 
 }  // namespace apex
