@@ -17,12 +17,22 @@
 #ifndef ANDROID_APEXD_APEXD_H_
 #define ANDROID_APEXD_APEXD_H_
 
+#include <string>
+
+#include <android-base/macros.h>
+
+#include "status_or.h"
+
 namespace android {
 namespace apex {
+
+static constexpr const char* kApexPackageDataDir = "/data/apex";
 
 void unmountAndDetachExistingImages();
 
 void scanPackagesDirAndMount(const char* apex_package_dir);
+
+StatusOr<bool> installPackage(const std::string& packageTmpPath) WARN_UNUSED;
 
 }  // namespace apex
 }  // namespace android

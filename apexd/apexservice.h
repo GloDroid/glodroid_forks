@@ -40,7 +40,7 @@ class ApexService : public BnApexService {
   status_t shellCommand(int in, int out, int err, const Vector<String16>& args);
 };
 
-};  // namespace apex
-};  // namespace android
+}  // namespace apex
+}  // namespace android
 
 #endif  // ANDROID_APEX_APEX_SERVICE_H
