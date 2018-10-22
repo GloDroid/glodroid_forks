@@ -39,6 +39,7 @@ cc_binary {
   defaults: ["apex_defaults"],
   srcs: [
     "apexd.cpp",
+    "apexd_main.cpp",
     "apexservice.cpp",
   ],
   shared_libs: [
