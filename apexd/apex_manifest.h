@@ -34,7 +34,7 @@ class ApexManifest {
 
  private:
   ApexManifest(const std::string& apex_manifest) : manifest_(apex_manifest){};
-  int OpenInternal();
+  int OpenInternal(std::string* error_msg);
 
   std::string manifest_;
   std::string name_;

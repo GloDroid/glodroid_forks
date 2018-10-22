@@ -39,6 +39,8 @@ TEST(ApexFileTest, GetOffsetMissingFile) {
   const std::string filePath = testDataDir + "/missing.apex";
   StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(filePath);
   ASSERT_FALSE(apexFileRes.Ok());
+  EXPECT_NE(std::string::npos, apexFileRes.ErrorMessage().find("Failed to open package"))
+      << apexFileRes.ErrorMessage();
 }
 
 TEST(ApexFileTest, GetApexManifest) {

@@ -22,6 +22,7 @@
 #include <json/value.h>
 
 #include "apex_manifest.h"
+#include "string_log.h"
 
 namespace android {
 namespace apex {
@@ -29,37 +30,38 @@ namespace apex {
 StatusOr<std::unique_ptr<ApexManifest>> ApexManifest::Open(
     const std::string& apex_manifest) {
   std::unique_ptr<ApexManifest> ret(new ApexManifest(apex_manifest));
-  if (ret->OpenInternal() < 0) {
-    return StatusOr<std::unique_ptr<ApexManifest>>::MakeError("ApexManifest::Open failed");;
+  std::string error_msg;
+  if (ret->OpenInternal(&error_msg) < 0) {
+    return StatusOr<std::unique_ptr<ApexManifest>>::MakeError(error_msg);
   }
   return StatusOr<std::unique_ptr<ApexManifest>>(std::move(ret));
 }
 
-int ApexManifest::OpenInternal() {
+int ApexManifest::OpenInternal(std::string* error_msg) {
   Json::Value root;
   Json::Reader reader;
 
   if (!reader.parse(manifest_, root)) {
-    LOG(ERROR) << "Failed to parse APEX Manifest JSON config: "
-               << reader.getFormattedErrorMessages();
+    *error_msg = StringLog() << "Failed to parse APEX Manifest JSON config: "
+                             << reader.getFormattedErrorMessages();
     return -1;
   }
 
   if (!root.isMember("name")) {
-    LOG(ERROR) << "Missing required field \"name\" from APEX manifest.";
+    *error_msg = StringLog() << "Missing required field \"name\" from APEX manifest.";
     return -1;
   }
   Json::Value name = root["name"];
   name_ = name.asString();
 
   if (!root.isMember("version")) {
-    LOG(ERROR) << "Missing required field \"version\" from APEX manifest.";
+    *error_msg = StringLog() << "Missing required field \"version\" from APEX manifest.";
     return -1;
   }
   Json::Value version = root["version"];
   if (!version.isUInt64()) {
-    LOG(ERROR) << "Invalid type for field \"version\" from APEX manifest, "
-                  "expecting integer.";
+    *error_msg = StringLog() << "Invalid type for field \"version\" from APEX manifest, "
+                                "expecting integer.";
     return -1;
   }
   version_ = version.asUInt64();
