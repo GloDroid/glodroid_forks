@@ -16,24 +16,20 @@
 
 #define LOG_TAG "apexd"
 
+#include "apexd.h"
+
 #include "apex_file.h"
 #include "apex_manifest.h"
-#include "apexservice.h"
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 #include <android-base/unique_fd.h>
-#include <binder/IPCThreadState.h>
-#include <binder/IServiceManager.h>
-#include <binder/ProcessState.h>
 #include <libavb/libavb.h>
 #include <libdm/dm.h>
 #include <libdm/dm_table.h>
 #include <libdm/dm_target.h>
-
-#include <utils/String16.h>
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -52,12 +48,6 @@
 
 #include <utils/Errors.h>
 
-using android::defaultServiceManager;
-using android::IPCThreadState;
-using android::ProcessState;
-using android::sp;
-using android::String16;
-using android::apex::ApexService;
 using android::base::Basename;
 using android::base::EndsWith;
 using android::base::ReadFullyAtOffset;
@@ -70,8 +60,8 @@ using android::dm::DmTargetVerity;
 namespace android {
 namespace apex {
 
-static constexpr const char* kApexPackageSystemDir = "/system/apex";
-static constexpr const char* kApexPackageDataDir = "/data/apex";
+namespace {
+
 static constexpr const char* kApexPackageSuffix = ".apex";
 static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kApexLoopIdPrefix = "apex:";
@@ -184,8 +174,6 @@ void destroyAllLoopDevices() {
 }
 
 static constexpr int kLoopDeviceSetupRetries = 3;
-
-static constexpr const char* kApexServiceName = "apexservice";
 
 std::string bytes_to_hex(const uint8_t* bytes, size_t bytes_len) {
   std::ostringstream s;
@@ -595,6 +583,8 @@ void installPackage(const std::string& full_path) {
   }
 }
 
+}  // namespace
+
 void unmountAndDetachExistingImages() {
   // TODO: this procedure should probably not be needed anymore when apexd
   // becomes an actual daemon. Remove if that's the case.
@@ -646,30 +636,6 @@ void scanPackagesDirAndMount(const char* apex_package_dir) {
     installPackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
   }
 }
+
 }  // namespace apex
 }  // namespace android
-
-int main(int /*argc*/, char** /*argv*/) {
-  sp<ProcessState> ps(ProcessState::self());
-
-  // TODO: add a -v flag or an external setting to change LogSeverity.
-  android::base::SetMinimumLogSeverity(android::base::VERBOSE);
-
-  // Create binder service and register with servicemanager
-  sp<ApexService> apexService = new ApexService();
-  defaultServiceManager()->addService(String16(android::apex::kApexServiceName),
-                                      apexService);
-
-  android::apex::unmountAndDetachExistingImages();
-  // Scan the directory under /data first, as it may contain updates of APEX
-  // packages living in the directory under /system, and we want the former ones
-  // to be used over the latter ones.
-  android::apex::scanPackagesDirAndMount(android::apex::kApexPackageDataDir);
-  android::apex::scanPackagesDirAndMount(android::apex::kApexPackageSystemDir);
-
-  // Start threadpool, wait for IPC
-  ps->startThreadPool();
-  IPCThreadState::self()->joinThreadPool();  // should not return
-
-  return 1;
-}
