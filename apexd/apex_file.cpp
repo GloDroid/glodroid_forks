@@ -24,12 +24,12 @@
 namespace android {
 namespace apex {
 
-std::unique_ptr<ApexFile> ApexFile::Open(const std::string& apex_filename) {
+StatusOr<std::unique_ptr<ApexFile>> ApexFile::Open(const std::string& apex_filename) {
   std::unique_ptr<ApexFile> ret(new ApexFile(apex_filename));
   if (ret->OpenInternal() < 0) {
-    return nullptr;
+    return StatusOr<std::unique_ptr<ApexFile>>::MakeError("ApexFile::Open failed");
   }
-  return ret;
+  return StatusOr<std::unique_ptr<ApexFile>>(std::move(ret));
 }
 
 ApexFile::~ApexFile() {

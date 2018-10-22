@@ -22,33 +22,34 @@ namespace android {
 namespace apex {
 
 TEST(ApexManifestTest, SimpleTest) {
-  auto apexManifest = ApexManifest::Open(
+  auto apexManifestRes = ApexManifest::Open(
       "{\"name\": \"com.android.example.apex\", \"version\": 1}\n");
-  ASSERT_NE(nullptr, apexManifest.get());
+  ASSERT_TRUE(apexManifestRes.Ok());
+  auto& apexManifest = *apexManifestRes;
   EXPECT_EQ("com.android.example.apex", std::string(apexManifest->GetName()));
   EXPECT_EQ(1u, apexManifest->GetVersion());
 }
 
 TEST(ApexManifestTest, NameMissing) {
   auto apexManifest = ApexManifest::Open("{\"version\": 1}\n");
-  EXPECT_EQ(nullptr, apexManifest.get());
+  ASSERT_FALSE(apexManifest.Ok());
 }
 
 TEST(ApexManifestTest, VersionMissing) {
   auto apexManifest =
       ApexManifest::Open("{\"name\": \"com.android.example.apex\"}\n");
-  EXPECT_EQ(nullptr, apexManifest.get());
+  ASSERT_FALSE(apexManifest.Ok());
 }
 
 TEST(ApexManifestTest, VersionNotNumber) {
   auto apexManifest = ApexManifest::Open(
       "{\"name\": \"com.android.example.apex\", \"version\": \"1\"}\n");
-  EXPECT_EQ(nullptr, apexManifest.get());
+  ASSERT_FALSE(apexManifest.Ok());
 }
 
 TEST(ApexManifestTest, UnparsableManifest) {
   auto apexManifest = ApexManifest::Open("This is an invalid pony");
-  EXPECT_EQ(nullptr, apexManifest.get());
+  ASSERT_FALSE(apexManifest.Ok());
 }
 
 }  // namespace apex

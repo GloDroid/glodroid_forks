@@ -522,18 +522,20 @@ void updateSymlink(const std::string& package_name, const std::string& mount_poi
 void installPackage(const std::string& full_path) {
   LOG(INFO) << "Trying to install " << full_path;
 
-  std::unique_ptr<ApexFile> apex = ApexFile::Open(full_path);
-  if (apex.get() == nullptr) {
+  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
+  if (!apexFileRes.Ok()) {
     // Error opening the file.
     return;
   }
+  const std::unique_ptr<ApexFile>& apex = *apexFileRes;
 
-  std::unique_ptr<ApexManifest> manifest =
+  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
       ApexManifest::Open(apex->GetManifest());
-  if (manifest.get() == nullptr) {
+  if (!manifestRes.Ok()) {
     // Error parsing manifest.
     return;
   }
+  const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
   std::string packageId =
       manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
 
