@@ -14,27 +14,44 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_APEXD_APEXD_H_
-#define ANDROID_APEXD_APEXD_H_
+#ifndef ANDROID_APEXD_STATUS_H_
+#define ANDROID_APEXD_STATUS_H_
 
 #include <string>
 
-#include <android-base/macros.h>
-
-#include "status.h"
+#include <android-base/logging.h>
 
 namespace android {
 namespace apex {
 
-static constexpr const char* kApexPackageDataDir = "/data/apex";
+class Status {
+ public:
+  Status() : ok_(true) {}
+  Status(const std::string& error_msg) : error_msg_(error_msg), ok_(false) {}
 
-void unmountAndDetachExistingImages();
+  // For better legible code.
+  static Status Success() {
+    return Status();
+  }
+  static Status Fail(const std::string& error_msg) {
+    return Status(error_msg);
+  }
 
-void scanPackagesDirAndMount(const char* apex_package_dir);
+  bool Ok() const {
+    return ok_;
+  }
 
-Status installPackage(const std::string& packageTmpPath) WARN_UNUSED;
+  const std::string& ErrorMessage() const {
+    CHECK(!ok_);
+    return error_msg_;
+  }
 
-}  // namespace apex
-}  // namespace android
+ private:
+  std::string error_msg_;
+  bool ok_;
+};
 
-#endif  // ANDROID_APEXD_APEXD_H_
+}
+}
+
+#endif // ANDROID_APEXD_STATUS_H_
