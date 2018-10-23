@@ -23,6 +23,8 @@
 #include <android-base/logging.h>
 #include <android-base/macros.h>
 
+#include "status.h"
+
 namespace android {
 namespace apex {
 
@@ -54,9 +56,15 @@ class StatusOr {
     return std::get_if<1u>(&data_);
   }
 
-  const std::string& ErrorMessage() const {
+  const Status& ErrorStatus() const {
     CHECK(!Ok());
-    return *std::get_if<0u>(&data_);
+    const Status& status = *std::get_if<0u>(&data_);
+    CHECK(!status.Ok());
+    return status;
+  }
+
+  const std::string& ErrorMessage() const {
+    return ErrorStatus().ErrorMessage();
   }
 
   static StatusOr MakeError(const std::string& msg) {
@@ -66,7 +74,7 @@ class StatusOr {
  private:
   StatusOr(const std::string& msg, StatusOrTag dummy ATTRIBUTE_UNUSED) : data_(kIndex0, msg) {}
 
-  std::variant<std::string, T> data_;
+  std::variant<Status, T> data_;
 };
 
 }
