@@ -21,25 +21,29 @@
 // Usage sample:
 //   std::string msg = StringLog() << "Hello " << std::hex << 1234;
 
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 
-class StringLog {
+#include <errno.h>
+
+template <typename T>
+class BaseStringLog {
  public:
-  StringLog() {}
+  BaseStringLog() {}
 
   // Pipe in values.
-  template<class T>
-  StringLog& operator<<(const T& t) {
+  template<class U>
+  T& operator<<(const U& t) {
     os_stream << t;
-    return *this;
+    return static_cast<T&>(*this);
   }
 
   // Pipe in modifiers.
-  StringLog& operator<<(std::ostream& (*f)(std::ostream&)) {
+  T& operator<<(std::ostream& (*f)(std::ostream&)) {
     os_stream << f;
-    return *this;
+    return static_cast<T&>(*this);
   }
 
   // Get the current string.
@@ -49,6 +53,22 @@ class StringLog {
 
  private:
   std::ostringstream os_stream;
+};
+
+class StringLog : public BaseStringLog<StringLog> {
+};
+
+class PStringLog : public BaseStringLog<PStringLog> {
+ public:
+  PStringLog() : errno_(errno) {}
+
+  // Get the current string.
+  operator std::string() const {
+    return (BaseStringLog::operator std::string()).append(": ").append(strerror(errno_));
+  }
+
+ private:
+  int errno_;
 };
 
 #endif  // ANDROID_APEXD_STRING_LOG_H_
