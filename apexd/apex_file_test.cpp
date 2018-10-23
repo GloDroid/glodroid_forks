@@ -32,7 +32,7 @@ TEST(ApexFileTest, GetOffsetOfSimplePackage) {
   ASSERT_TRUE(apexFileRes.Ok());
   ApexFile* apexFile = apexFileRes->get();
   EXPECT_EQ(4096, apexFile->GetImageOffset());
-  EXPECT_EQ(3608576u, apexFile->GetImageSize());
+  EXPECT_EQ(589824u, apexFile->GetImageSize());
 }
 
 TEST(ApexFileTest, GetOffsetMissingFile) {
@@ -48,7 +48,7 @@ TEST(ApexFileTest, GetApexManifest) {
   StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(filePath);
   ASSERT_TRUE(apexFileRes.Ok());
   ApexFile* apexFile = apexFileRes->get();
-  EXPECT_EQ("{\"name\": \"com.android.example.apex\", \"version\": 1}\n",
+  EXPECT_EQ("{\n  \"name\": \"com.android.example.apex\",\n  \"version\": 1\n}\n",
             std::string(apexFile->GetManifest()));
 }
 }  // namespace apex
