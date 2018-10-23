@@ -37,11 +37,7 @@ aidl_interface {
 cc_binary {
   name: "apexd",
   defaults: ["apex_defaults"],
-  srcs: [
-    "apexd.cpp",
-    "apexd_main.cpp",
-    "apexservice.cpp",
-  ],
+  srcs: ["apexd_main.cpp"],
   shared_libs: [
     "libbinder",
     "libutils",
@@ -49,10 +45,38 @@ cc_binary {
   ],
   static_libs: [
     "libapex",
+    "libapexd",
+    "libapexservice",
     "libavb",
     "libdm",
   ],
   init_rc: ["apexd.rc"],
+}
+
+cc_library_static {
+  name: "libapexd",
+  defaults: ["apex_defaults"],
+  srcs: ["apexd.cpp"],
+  shared_libs: [
+    "libutils",
+  ],
+  static_libs: [
+    "libapex",
+    "libavb",
+    "libdm",
+  ],
+}
+
+cc_library_static {
+  name: "libapexservice",
+  defaults: ["apex_defaults"],
+  srcs: ["apexservice.cpp"],
+  shared_libs: [
+    "libbinder",
+    "libutils",
+    "apex_aidl_interface-cpp",
+  ],
+  static_libs: ["libapexd"],
 }
 
 cc_library_static {
