@@ -310,8 +310,7 @@ std::string getPublicKeyFilePath(const ApexFile& apex, const uint8_t* data,
   keyFilePath.append(keyName, keyNameLen);
   std::string canonicalKeyFilePath;
   if (!android::base::Realpath(keyFilePath, &canonicalKeyFilePath)) {
-    LOG(ERROR) << "Failed to get realpath of " << keyFilePath << " error: "
-               << strerror(errno);
+    PLOG(ERROR) << "Failed to get realpath of " << keyFilePath;
     return "";
   }
 
@@ -665,8 +664,7 @@ Status installPackage(const std::string& packageTmpPath) {
   if (rename(packageTmpPath.c_str(), destPath.c_str()) != 0) {
     // TODO: Get correct binder error status.
     return Status::Fail(
-        StringLog() << "Unable to rename " << packageTmpPath << " to " << destPath << ": "
-                    << strerror(errno));
+        PStringLog() << "Unable to rename " << packageTmpPath << " to " << destPath);
   }
   LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
   return Status::Success();
