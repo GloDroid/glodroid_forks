@@ -26,29 +26,30 @@
 #include <binder/IResultReceiver.h>
 
 #include "apexd.h"
-#include "status_or.h"
+#include "status.h"
 
 using android::base::StringPrintf;
 
 namespace android {
 namespace apex {
 
-::android::binder::Status ApexService::installPackage(const std::string& packageTmpPath,
-                                                      bool* aidl_return) {
+using BinderStatus = ::android::binder::Status;
+
+BinderStatus ApexService::installPackage(const std::string& packageTmpPath, bool* aidl_return) {
   LOG(DEBUG) << "installPackage() received by ApexService, path " << packageTmpPath;
 
   *aidl_return = false;
-  StatusOr<bool> res = ::android::apex::installPackage(packageTmpPath);
+  Status res = ::android::apex::installPackage(packageTmpPath);
 
   if (res.Ok()) {
-    *aidl_return = *res;
-    return binder::Status::ok();
+    *aidl_return = true;
+    return BinderStatus::ok();
   }
 
   // TODO: Get correct binder error status.
   LOG(ERROR) << "Failed installing " << packageTmpPath << ": " << res.ErrorMessage();
-  return binder::Status::fromExceptionCode(binder::Status::EX_ILLEGAL_ARGUMENT,
-                                           String8(res.ErrorMessage().c_str()));
+  return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
+                                         String8(res.ErrorMessage().c_str()));
 }
 
 status_t ApexService::onTransact(uint32_t _aidl_code,

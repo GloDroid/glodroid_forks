@@ -638,13 +638,13 @@ void scanPackagesDirAndMount(const char* apex_package_dir) {
   }
 }
 
-StatusOr<bool> installPackage(const std::string& packageTmpPath) {
+Status installPackage(const std::string& packageTmpPath) {
   LOG(DEBUG) << "installPackage() for " << packageTmpPath;
 
   StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(packageTmpPath);
   if (!apexFileRes.Ok()) {
     // TODO: Get correct binder error status.
-    return StatusOr<bool>::MakeError(apexFileRes.ErrorMessage());
+    return apexFileRes.ErrorStatus();
   }
   const std::unique_ptr<ApexFile>& apex = *apexFileRes;
 
@@ -652,7 +652,7 @@ StatusOr<bool> installPackage(const std::string& packageTmpPath) {
     ApexManifest::Open(apex->GetManifest());
   if (!manifestRes.Ok()) {
     // TODO: Get correct binder error status.
-    return StatusOr<bool>::MakeError(manifestRes.ErrorMessage());
+    return manifestRes.ErrorStatus();
   }
   const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
   std::string packageId =
@@ -664,12 +664,12 @@ StatusOr<bool> installPackage(const std::string& packageTmpPath) {
                                       kApexPackageSuffix);
   if (rename(packageTmpPath.c_str(), destPath.c_str()) != 0) {
     // TODO: Get correct binder error status.
-    return StatusOr<bool>::MakeError(
+    return Status::Fail(
         StringLog() << "Unable to rename " << packageTmpPath << " to " << destPath << ": "
                     << strerror(errno));
   }
   LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
-  return StatusOr<bool>(true);
+  return Status::Success();
 }
 
 }  // namespace apex
