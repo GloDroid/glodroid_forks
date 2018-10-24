@@ -57,9 +57,6 @@ cc_library_static {
   name: "libapexd",
   defaults: ["apex_defaults"],
   srcs: ["apexd.cpp"],
-  shared_libs: [
-    "libutils",
-  ],
   static_libs: [
     "libapex",
     "libavb",
