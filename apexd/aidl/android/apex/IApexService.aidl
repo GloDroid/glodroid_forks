@@ -18,4 +18,10 @@ package android.apex;
 
 interface IApexService {
    boolean installPackage(in @utf8InCpp String package_tmp_path);
+
+   /**
+    * Not meant for use outside of testing. The call will not be
+    * functional on user builds.
+    */
+   void mountPackage(in @utf8InCpp String package_path);
 }

@@ -28,8 +28,12 @@ namespace apex {
 
 class ApexService : public BnApexService {
  public:
+  using BinderStatus = ::android::binder::Status;
+
   ApexService(){};
-  ::android::binder::Status installPackage(const std::string& packageTmpPath, bool* aidl_return);
+
+  BinderStatus installPackage(const std::string& packageTmpPath, bool* aidl_return) override;
+  BinderStatus mountPackage(const std::string& packagePath) override;
 
   // Override onTransact so we can handle shellCommand.
   status_t onTransact(uint32_t _aidl_code,
