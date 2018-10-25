@@ -27,6 +27,7 @@ namespace android {
 namespace apex {
 
 static constexpr const char* kApexPackageDataDir = "/data/apex";
+static constexpr const char* kApexRoot = "/apex";
 
 void unmountAndDetachExistingImages();
 
