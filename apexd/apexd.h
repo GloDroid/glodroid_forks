@@ -33,6 +33,7 @@ void unmountAndDetachExistingImages();
 void scanPackagesDirAndMount(const char* apex_package_dir);
 
 Status installPackage(const std::string& packageTmpPath) WARN_UNUSED;
+Status mountPackage(const std::string& full_path) WARN_UNUSED;
 
 }  // namespace apex
 }  // namespace android

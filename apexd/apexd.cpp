@@ -498,23 +498,21 @@ void updateSymlink(const std::string& package_name, const std::string& mount_poi
   }
 }
 
-void mountPackage(const std::string& full_path) {
+}  // namespace
+
+Status mountPackage(const std::string& full_path) {
   LOG(INFO) << "Trying to mount " << full_path;
 
   StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
   if (!apexFileRes.Ok()) {
-    // Error opening the file.
-    LOG(ERROR) << apexFileRes.ErrorMessage();
-    return;
+    return apexFileRes.ErrorStatus();
   }
   const std::unique_ptr<ApexFile>& apex = *apexFileRes;
 
   StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
       ApexManifest::Open(apex->GetManifest());
   if (!manifestRes.Ok()) {
-    // Error parsing manifest.
-    LOG(ERROR) << manifestRes.ErrorMessage();
-    return;
+    return manifestRes.ErrorStatus();
   }
   const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
   std::string packageId =
@@ -528,22 +526,22 @@ void mountPackage(const std::string& full_path) {
       break;
     }
     if (attempts >= kLoopDeviceSetupAttempts) {
-      LOG(ERROR) << "Could not create loop device for " << full_path << ": "
-                 << ret.ErrorMessage();
-      return;
+      return Status::Fail(
+          StringLog() << "Could not create loop device for " << full_path << ": "
+                      << ret.ErrorMessage());
     }
   }
   LOG(VERBOSE) << "Loopback device created: " << loopback;
 
   auto verityData = verifyApexVerity(*apex);
   if (!verityData) {
-    return;
+    return Status(StringLog() << "Failed to verify Apex Verity data for " << full_path);
   }
 
   auto verityTable = createVerityTable(*verityData, loopback);
   std::string verityDevice = createVerityDevice(packageId, *verityTable);
   if (verityDevice.empty()) {
-    return;
+    return Status(StringLog() << "Failed to create Apex Verity device " << full_path);
   }
 
   std::string mountPoint = StringPrintf("%s/%s", kApexRoot, packageId.c_str());
@@ -559,24 +557,22 @@ void mountPackage(const std::string& full_path) {
     // TODO: only create symlinks if we are sure we are mounting the latest
     //       version of a package.
     updateSymlink(manifest->GetName(), mountPoint);
+    return Status::Success();
   } else {
-    PLOG(ERROR) << "Mounting failed for package " << full_path;
+    Status res = Status::Fail(PStringLog() << "Mounting failed for package " << full_path);
     // Tear down loop device.
     unique_fd fd(open(loopback.c_str(), O_RDWR | O_CLOEXEC));
-    if (fd.get() == -1) {
+    if (fd.get() != -1) {
+      if (ioctl(fd.get(), LOOP_CLR_FD, 0) < 0) {
+        PLOG(WARNING) << "Failed to clean up unused loop device " << loopback;
+      }
+    } else {
       PLOG(WARNING) << "Failed to open " << loopback
                     << " while attempting to clean up unused loop device";
-      return;
     }
-
-    if (ioctl(fd.get(), LOOP_CLR_FD, 0) < 0) {
-      PLOG(WARNING) << "Failed to clean up unused loop device " << loopback;
-      return;
-    }
+    return res;
   }
 }
-
-}  // namespace
 
 void unmountAndDetachExistingImages() {
   // TODO: this procedure should probably not be needed anymore when apexd
@@ -626,7 +622,10 @@ void scanPackagesDirAndMount(const char* apex_package_dir) {
     }
     LOG(INFO) << "Found " << dp->d_name;
 
-    mountPackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
+    Status res = mountPackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
+    if (!res.Ok()) {
+      LOG(ERROR) << res.ErrorMessage();
+    }
   }
 }
 
