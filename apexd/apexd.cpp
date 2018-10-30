@@ -465,23 +465,62 @@ std::unique_ptr<AvbHashtreeDescriptor> verifyDescriptor(
   return verifiedDesc;
 }
 
-std::string createVerityDevice(const std::string& name, const DmTable& table) {
-  std::string dev_path;
+class DmVerityDevice {
+ public:
+  DmVerityDevice() : cleared_(true) {}
+  DmVerityDevice(const std::string& name) : name_(name), cleared_(false) {}
+  DmVerityDevice(const std::string& name, const std::string& dev_path)
+      : name_(name), dev_path_(dev_path), cleared_(false) {}
+
+  DmVerityDevice(DmVerityDevice&& other)
+      : name_(other.name_), dev_path_(other.dev_path_), cleared_(other.cleared_) {
+    other.cleared_ = true;
+  }
+
+  ~DmVerityDevice() {
+    if (!cleared_) {
+      DeviceMapper& dm = DeviceMapper::Instance();
+      dm.DeleteDevice(name_);
+    }
+  }
+
+  const std::string& GetName() const {
+    return name_;
+  }
+  const std::string& GetDevPath() const {
+    return dev_path_;
+  }
+  void SetDevPath(const std::string& dev_path) {
+    dev_path_ = dev_path;
+  }
+
+  void Release() {
+    cleared_ = true;
+  }
+
+ private:
+  std::string name_;
+  std::string dev_path_;
+  bool cleared_;
+};
+
+StatusOr<DmVerityDevice> createVerityDevice(const std::string& name, const DmTable& table) {
   DeviceMapper& dm = DeviceMapper::Instance();
 
   dm.DeleteDevice(name);
 
   if (!dm.CreateDevice(name, table)) {
-    LOG(ERROR) << "Couldn't create verity device.";
-    return {};
+    return StatusOr<DmVerityDevice>::MakeError("Couldn't create verity device.");
   }
+  DmVerityDevice dev(name);
 
+  std::string dev_path;
   if (!dm.GetDmDevicePathByName(name, &dev_path)) {
-    LOG(ERROR) << "Couldn't get verity device path!";
-    return {};
+    return StatusOr<DmVerityDevice>::MakeError("Couldn't get verity device path!");
   }
+  dev.SetDevPath(dev_path);
 
-  return dev_path;
+  return StatusOr<DmVerityDevice>(std::move(dev));
 }
 
 // What this function verifies
@@ -582,16 +621,19 @@ Status mountPackage(const std::string& full_path) {
   }
 
   auto verityTable = createVerityTable(*verityData, loopbackDevice.name);
-  std::string verityDevice = createVerityDevice(packageId, *verityTable);
-  if (verityDevice.empty()) {
-    return Status(StringLog() << "Failed to create Apex Verity device " << full_path);
+  StatusOr<DmVerityDevice> verityDevRes = createVerityDevice(packageId, *verityTable);
+  if (!verityDevRes.Ok()) {
+    return Status(
+        StringLog() << "Failed to create Apex Verity device " << full_path
+                    << ": " << verityDevRes.ErrorMessage());
   }
+  DmVerityDevice verityDev = std::move(*verityDevRes);
 
   std::string mountPoint = StringPrintf("%s/%s", kApexRoot, packageId.c_str());
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
   mkdir(mountPoint.c_str(), 0755);
 
-  if (mount(verityDevice.c_str(), mountPoint.c_str(), "ext4",
+  if (mount(verityDev.GetDevPath().c_str(), mountPoint.c_str(), "ext4",
             MS_NOATIME | MS_NODEV | MS_NOSUID | MS_DIRSYNC | MS_RDONLY,
             NULL) == 0) {
     LOG(INFO) << "Successfully mounted package " << full_path << " on "
@@ -602,6 +644,7 @@ Status mountPackage(const std::string& full_path) {
     updateSymlink(manifest->GetName(), mountPoint);
 
     // Time to accept the temporaries as good.
+    verityDev.Release();
     loopbackDevice.CloseGood();
 
     return Status::Success();
