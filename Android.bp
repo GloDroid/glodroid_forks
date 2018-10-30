@@ -16,10 +16,19 @@ apex {
     name: "apex.test",
     manifest: "testdata/manifest.json",
     file_contexts: "testdata/file_contexts",
-    binaries: ["vold", "surfaceflinger"],
+    binaries: ["surfaceflinger", "vold"],
+    multilib: {
+        lib32: {
+            binaries: ["drmserver"],
+        },
+        prefer32: {
+            binaries: ["dex2oat"],
+        },
+    },
     native_shared_libs: ["libc", "libcutils"],
     java_libs: ["core-all"],
     prebuilts: ["sample_prebuilt_file"],
+    compile_multilib: "both",
     key: "apex.test.key",
 }
 
