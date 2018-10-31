@@ -30,12 +30,19 @@ apex {
     prebuilts: ["sample_prebuilt_file"],
     compile_multilib: "both",
     key: "apex.test.key",
+    certificate: ":apex.test.certificate",
 }
 
 apex_key {
     name: "apex.test.key",
     public_key: "testdata/testkey.avbpubkey",
     private_key: "testdata/testkey.pem",
+}
+
+android_app_certificate {
+    name: "apex.test.certificate",
+    // will use testcert.pk8 and testcert.x509.pem
+    certificate: "testdata/testcert",
 }
 
 prebuilt_etc {
