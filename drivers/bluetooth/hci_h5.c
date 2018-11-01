@@ -815,6 +815,7 @@ static int h5_serdev_probe(struct serdev_device *serdev)
 			devm_acpi_dev_add_driver_gpios(dev,
 						       h5->vnd->acpi_gpio_map);
 	} else {
+<<<<<<< HEAD
 		const void *data;
 
 		data = of_device_get_match_data(dev);
@@ -822,6 +823,12 @@ static int h5_serdev_probe(struct serdev_device *serdev)
 			return -ENODEV;
 
 		h5->vnd = (const struct h5_vnd *)data;
+=======
+		h5->vnd = (const struct h5_vnd *)
+				of_device_get_match_data(&serdev->dev);
+		of_property_read_string(serdev->dev.of_node,
+					"firmware-postfix", &h5->id);
+>>>>>>> edf41d4b7173... Bluetooth: hci_h5: Add support for binding RTL8723BS with device tree
 	}
 
 
@@ -1024,11 +1031,19 @@ static const struct dev_pm_ops h5_serdev_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(h5_serdev_suspend, h5_serdev_resume)
 };
 
+static struct h5_vnd rtl8723_of_vnd = {
+	.setup		= h5_btrtl_setup,
+	.open		= h5_btrtl_open,
+	.close		= h5_btrtl_close,
+};
+
 static const struct of_device_id rtl_bluetooth_of_match[] = {
 #ifdef CONFIG_BT_HCIUART_RTL
 	{ .compatible = "realtek,rtl8822cs-bt",
 	  .data = (const void *)&rtl_vnd },
 #endif
+	{ .compatible = "realtek,rtl8723bs-bt", .data = &rtl8723_of_vnd },
+	{ .compatible = "realtek,rtl8723cs-bt", .data = &rtl8723_of_vnd },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, rtl_bluetooth_of_match);
@@ -1040,7 +1055,11 @@ static struct serdev_device_driver h5_serdev_driver = {
 		.name = "hci_uart_h5",
 		.acpi_match_table = ACPI_PTR(h5_acpi_match),
 		.pm = &h5_serdev_pm_ops,
+<<<<<<< HEAD
 		.of_match_table = rtl_bluetooth_of_match,
+=======
+		.of_match_table = of_match_ptr(h5_of_match),
+>>>>>>> edf41d4b7173... Bluetooth: hci_h5: Add support for binding RTL8723BS with device tree
 	},
 };
 
