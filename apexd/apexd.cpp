@@ -25,6 +25,7 @@
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
+#include <android-base/properties.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 #include <android-base/unique_fd.h>
@@ -67,6 +68,10 @@ static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kApexLoopIdPrefix = "apex:";
 static constexpr const char* kApexKeyDirectory = "/system/etc/security/apex/";
 static constexpr const char* kApexKeyProp = "apex.key";
+// These should be in-sync with system/sepolicy/public/property_contexts
+static constexpr const char* kApexStatusSysprop = "apexd.status";
+static constexpr const char* kApexStatusStarting = "starting";
+static constexpr const char* kApexStatusReady = "ready";
 
 static constexpr int kVbMetaMaxSize = 64 * 1024;
 
@@ -738,6 +743,23 @@ Status installPackage(const std::string& packageTmpPath) {
   }
   LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
   return Status::Success();
+}
+
+void onStart() {
+  if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusStarting)) {
+    PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to " << kApexStatusStarting;
+  }
+}
+
+void onAllPackagesReady() {
+  // Set a system property to let other components to know that APEXs are
+  // correctly mounted and ready to be used. Before using any file from APEXs,
+  // they can query this system property to ensure that they are okay to
+  // access. Or they may have a on-property trigger to delay a task until
+  // APEXs become ready.
+  if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusReady)) {
+    PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to " << kApexStatusReady;
+  }
 }
 
 }  // namespace apex
