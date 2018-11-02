@@ -39,6 +39,8 @@ static constexpr const char* kApexServiceName = "apexservice";
 int main(int /*argc*/, char** argv) {
   android::base::InitLogging(argv);
 
+  android::apex::onStart();
+
   sp<ProcessState> ps(ProcessState::self());
 
   // TODO: add a -v flag or an external setting to change LogSeverity.
@@ -54,6 +56,10 @@ int main(int /*argc*/, char** argv) {
   // to be used over the latter ones.
   android::apex::scanPackagesDirAndMount(android::apex::kApexPackageDataDir);
   android::apex::scanPackagesDirAndMount(kApexPackageSystemDir);
+
+  // Notify other components (e.g. init) that all APEXs are correctly mounted and
+  // are ready to be used.
+  android::apex::onAllPackagesReady();
 
   // Start threadpool, wait for IPC
   ps->startThreadPool();
