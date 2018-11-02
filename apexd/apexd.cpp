@@ -269,8 +269,8 @@ std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
   return table;
 }
 
-std::unique_ptr<AvbFooter> getAvbFooter(const ApexFile& apex,
-                                        const unique_fd& fd) {
+StatusOr<std::unique_ptr<AvbFooter>> getAvbFooter(const ApexFile& apex,
+                                                  const unique_fd& fd) {
   std::array<uint8_t, AVB_FOOTER_SIZE> footer_data;
   auto footer = std::make_unique<AvbFooter>();
 
@@ -278,47 +278,46 @@ std::unique_ptr<AvbFooter> getAvbFooter(const ApexFile& apex,
   off_t offset = apex.GetImageSize() + apex.GetImageOffset() - AVB_FOOTER_SIZE;
   int ret = lseek(fd, offset, SEEK_SET);
   if (ret == -1) {
-    PLOG(ERROR) << "Couldn't seek to AVB footer.";
-    return nullptr;
+    return StatusOr<std::unique_ptr<AvbFooter>>::MakeError(
+        PStringLog() << "Couldn't seek to AVB footer.");
   }
 
   ret = read(fd, footer_data.data(), AVB_FOOTER_SIZE);
   if (ret != AVB_FOOTER_SIZE) {
-    PLOG(ERROR) << "Couldn't read AVB footer.";
-    return nullptr;
+    return StatusOr<std::unique_ptr<AvbFooter>>::MakeError(
+        PStringLog() << "Couldn't read AVB footer.");
   }
 
   if (!avb_footer_validate_and_byteswap((const AvbFooter*)footer_data.data(),
                                         footer.get())) {
-    LOG(ERROR) << "AVB footer verification failed.";
-    return nullptr;
+    return StatusOr<std::unique_ptr<AvbFooter>>::MakeError(
+        StringLog() << "AVB footer verification failed.");
   }
 
   LOG(VERBOSE) << "AVB footer verification successful.";
-  return footer;
+  return StatusOr<std::unique_ptr<AvbFooter>>(std::move(footer));
 }
 
 // TODO We'll want to cache the verified key to avoid having to read it every
 // time.
-bool verifyPublicKey(const uint8_t* key, size_t length,
-                     std::string acceptedKeyFile) {
+Status verifyPublicKey(const uint8_t* key, size_t length,
+                       std::string acceptedKeyFile) {
   std::ifstream pubkeyFile(acceptedKeyFile, std::ios::binary | std::ios::ate);
   if (pubkeyFile.bad()) {
-    LOG(ERROR) << "Can't open " << acceptedKeyFile;
-    return false;
+    return Status::Fail(StringLog() << "Can't open " << acceptedKeyFile);
   }
 
   std::streamsize size = pubkeyFile.tellg();
   if (size < 0) {
-    LOG(ERROR) << "Could not get public key length position";
-    return false;
+    return Status::Fail(StringLog()
+                        << "Could not get public key length position");
   }
 
   if (static_cast<size_t>(size) != length) {
-    LOG(ERROR) << "Public key length (" << std::to_string(size) << ")"
-               << " doesn't equal APEX public key length ("
-               << std::to_string(length) << ")";
-    return false;
+    return Status::Fail(StringLog()
+                        << "Public key length (" << std::to_string(size) << ")"
+                        << " doesn't equal APEX public key length ("
+                        << std::to_string(length) << ")");
   }
 
   pubkeyFile.seekg(0, std::ios::beg);
@@ -326,43 +325,45 @@ bool verifyPublicKey(const uint8_t* key, size_t length,
   std::string verifiedKey(size, 0);
   pubkeyFile.read(&verifiedKey[0], size);
   if (pubkeyFile.bad()) {
-    LOG(ERROR) << "Can't read from " << acceptedKeyFile;
-    return false;
+    return Status::Fail(StringLog() << "Can't read from " << acceptedKeyFile);
   }
 
-  return (memcmp(&verifiedKey[0], key, length) == 0);
+  if (memcmp(&verifiedKey[0], key, length) != 0) {
+    return Status::Fail("Failed to compare verified key with key");
+  }
+  return Status::Success();
 }
 
-std::string getPublicKeyFilePath(const ApexFile& apex, const uint8_t* data,
-                                 size_t length) {
+StatusOr<std::string> getPublicKeyFilePath(const ApexFile& apex,
+                                           const uint8_t* data, size_t length) {
   size_t keyNameLen;
   const char* keyName = avb_property_lookup(data, length, kApexKeyProp,
       strlen(kApexKeyProp), &keyNameLen);
   if (keyName == nullptr || keyNameLen == 0) {
-    LOG(ERROR) << "Cannot find prop \"" << kApexKeyProp << "\" from "
-               << apex.GetPath();
-    return "";
+    return StatusOr<std::string>::MakeError(
+        StringLog() << "Cannot find prop \"" << kApexKeyProp << "\" from "
+                    << apex.GetPath());
   }
 
   std::string keyFilePath(kApexKeyDirectory);
   keyFilePath.append(keyName, keyNameLen);
   std::string canonicalKeyFilePath;
   if (!android::base::Realpath(keyFilePath, &canonicalKeyFilePath)) {
-    PLOG(ERROR) << "Failed to get realpath of " << keyFilePath;
-    return "";
+    return StatusOr<std::string>::MakeError(
+        PStringLog() << "Failed to get realpath of " << keyFilePath);
   }
 
   if (!android::base::StartsWith(canonicalKeyFilePath, kApexKeyDirectory)) {
-    LOG(ERROR) << "Key file " << canonicalKeyFilePath << " is not under "
-               << kApexKeyDirectory;
-    return "";
+    return StatusOr<std::string>::MakeError(
+        StringLog() << "Key file " << canonicalKeyFilePath << " is not under "
+                    << kApexKeyDirectory);
   }
 
-  return canonicalKeyFilePath;
+  return StatusOr<std::string>(canonicalKeyFilePath);
 }
 
-bool verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
-                           size_t length) {
+Status verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
+                             size_t length) {
   const uint8_t* pk;
   size_t pk_len;
   AvbVBMetaVerifyResult res;
@@ -374,64 +375,65 @@ bool verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
     case AVB_VBMETA_VERIFY_RESULT_OK_NOT_SIGNED:
     case AVB_VBMETA_VERIFY_RESULT_HASH_MISMATCH:
     case AVB_VBMETA_VERIFY_RESULT_SIGNATURE_MISMATCH:
-      LOG(ERROR) << "Error verifying " << apex.GetPath() << ": "
-                 << avb_vbmeta_verify_result_to_string(res);
-      return false;
+      return Status::Fail(StringLog()
+                          << "Error verifying " << apex.GetPath() << ": "
+                          << avb_vbmeta_verify_result_to_string(res));
     case AVB_VBMETA_VERIFY_RESULT_INVALID_VBMETA_HEADER:
-      LOG(ERROR) << "Error verifying " << apex.GetPath() << ": "
-                 << "invalid vbmeta header";
-      return false;
+      return Status::Fail(StringLog()
+                          << "Error verifying " << apex.GetPath() << ": "
+                          << "invalid vbmeta header");
     case AVB_VBMETA_VERIFY_RESULT_UNSUPPORTED_VERSION:
-      LOG(ERROR) << "Error verifying " << apex.GetPath() << ": "
-                 << "unsupported version";
-      return false;
+      return Status::Fail(StringLog()
+                          << "Error verifying " << apex.GetPath() << ": "
+                          << "unsupported version");
     default:
-      return false;
+      return Status::Fail("Unknown vmbeta_image_verify return value");
   }
 
-  std::string keyFilePath = getPublicKeyFilePath(apex, data, length);
-  if (keyFilePath == "") {
-    return false;
+  StatusOr<std::string> keyFilePath = getPublicKeyFilePath(apex, data, length);
+  if (!keyFilePath.Ok()) {
+    return keyFilePath.ErrorStatus();
   }
 
   // TODO(b/115718846)
   // We need to decide whether we need rollback protection, and whether
   // we can use the rollback protection provided by libavb.
-  if (verifyPublicKey(pk, pk_len, keyFilePath)) {
+  Status st = verifyPublicKey(pk, pk_len, *keyFilePath);
+  if (st.Ok()) {
     LOG(VERBOSE) << apex.GetPath() << ": public key matches.";
-    return true;
-  } else {
-    LOG(ERROR) << "Error verifying " << apex.GetPath() << ": "
-               << "couldn't verify public key.";
-    return false;
+    return st;
   }
+  return Status::Fail(StringLog()
+                      << "Error verifying " << apex.GetPath() << ": "
+                      << "couldn't verify public key: " << st.ErrorMessage());
 }
 
-std::unique_ptr<uint8_t[]> verifyVbMeta(const ApexFile& apex,
-                                        const unique_fd& fd,
-                                        const AvbFooter& footer) {
+StatusOr<std::unique_ptr<uint8_t[]>> verifyVbMeta(const ApexFile& apex,
+                                                  const unique_fd& fd,
+                                                  const AvbFooter& footer) {
   if (footer.vbmeta_size > kVbMetaMaxSize) {
-    LOG(ERROR) << "VbMeta size in footer exceeds kVbMetaMaxSize.";
-    return nullptr;
+    return StatusOr<std::unique_ptr<uint8_t[]>>::MakeError(
+        "VbMeta size in footer exceeds kVbMetaMaxSize.");
   }
 
   off_t offset = apex.GetImageOffset() + footer.vbmeta_offset;
   std::unique_ptr<uint8_t[]> vbmeta_buf(new uint8_t[footer.vbmeta_size]);
 
   if (!ReadFullyAtOffset(fd, vbmeta_buf.get(), footer.vbmeta_size, offset)) {
-    PLOG(ERROR) << "Couldn't read AVB meta-data.";
-    return nullptr;
+    return StatusOr<std::unique_ptr<uint8_t[]>>::MakeError(
+        PStringLog() << "Couldn't read AVB meta-data.");
   }
 
-  if (!verifyVbMetaSignature(apex, vbmeta_buf.get(), footer.vbmeta_size)) {
-    return nullptr;
+  Status st = verifyVbMetaSignature(apex, vbmeta_buf.get(), footer.vbmeta_size);
+  if (!st.Ok()) {
+    return StatusOr<std::unique_ptr<uint8_t[]>>::MakeError(st.ErrorMessage());
   }
 
-  return vbmeta_buf;
+  return StatusOr<std::unique_ptr<uint8_t[]>>(std::move(vbmeta_buf));
 }
 
-const AvbHashtreeDescriptor* findDescriptor(uint8_t* vbmeta_data,
-                                            size_t vbmeta_size) {
+StatusOr<const AvbHashtreeDescriptor*> findDescriptor(uint8_t* vbmeta_data,
+                                                      size_t vbmeta_size) {
   const AvbDescriptor** descriptors;
   size_t num_descriptors;
 
@@ -441,8 +443,8 @@ const AvbHashtreeDescriptor* findDescriptor(uint8_t* vbmeta_data,
   for (size_t i = 0; i < num_descriptors; i++) {
     AvbDescriptor desc;
     if (!avb_descriptor_validate_and_byteswap(descriptors[i], &desc)) {
-      LOG(ERROR) << "Couldn't validate AvbDescriptor.";
-      return nullptr;
+      return StatusOr<const AvbHashtreeDescriptor*>::MakeError(
+          "Couldn't validate AvbDescriptor.");
     }
 
     if (desc.tag != AVB_DESCRIPTOR_TAG_HASHTREE) {
@@ -450,24 +452,26 @@ const AvbHashtreeDescriptor* findDescriptor(uint8_t* vbmeta_data,
       continue;
     }
 
-    return (const AvbHashtreeDescriptor*)descriptors[i];
+    return StatusOr<const AvbHashtreeDescriptor*>(
+        (const AvbHashtreeDescriptor*)descriptors[i]);
   }
 
-  LOG(ERROR) << "Couldn't find any AVB hashtree descriptors.";
-  return nullptr;
+  return StatusOr<const AvbHashtreeDescriptor*>::MakeError(
+      "Couldn't find any AVB hashtree descriptors.");
 }
 
-std::unique_ptr<AvbHashtreeDescriptor> verifyDescriptor(
+StatusOr<std::unique_ptr<AvbHashtreeDescriptor>> verifyDescriptor(
     const AvbHashtreeDescriptor* desc) {
   auto verifiedDesc = std::make_unique<AvbHashtreeDescriptor>();
 
   if (!avb_hashtree_descriptor_validate_and_byteswap(desc,
                                                      verifiedDesc.get())) {
-    LOG(ERROR) << "Couldn't validate AvbDescriptor.";
-    return nullptr;
+    StatusOr<std::unique_ptr<AvbHashtreeDescriptor>>::MakeError(
+        "Couldn't validate AvbDescriptor.");
   }
 
-  return verifiedDesc;
+  return StatusOr<std::unique_ptr<AvbHashtreeDescriptor>>(
+      std::move(verifiedDesc));
 }
 
 class DmVerityDevice {
@@ -537,43 +541,51 @@ StatusOr<DmVerityDevice> createVerityDevice(const std::string& name, const DmTab
 // If all these steps pass, this function returns an ApexVerityTable
 // struct with all the data necessary to create a dm-verity device for this
 // APEX.
-std::unique_ptr<ApexVerityData> verifyApexVerity(const ApexFile& apex) {
+StatusOr<std::unique_ptr<ApexVerityData>> verifyApexVerity(
+    const ApexFile& apex) {
   auto verityData = std::make_unique<ApexVerityData>();
 
   unique_fd fd(open(apex.GetPath().c_str(), O_RDONLY | O_CLOEXEC));
   if (fd.get() == -1) {
-    PLOG(ERROR) << "Failed to open " << apex.GetPath();
-    return nullptr;
+    return StatusOr<std::unique_ptr<ApexVerityData>>::MakeError(
+        PStringLog() << "Failed to open " << apex.GetPath());
   }
 
-  std::unique_ptr<AvbFooter> footer = getAvbFooter(apex, fd);
-  if (!footer) {
-    return nullptr;
+  StatusOr<std::unique_ptr<AvbFooter>> footer = getAvbFooter(apex, fd);
+  if (!footer.Ok()) {
+    return StatusOr<std::unique_ptr<ApexVerityData>>::MakeError(
+        footer.ErrorMessage());
   }
 
-  std::unique_ptr<uint8_t[]> vbmeta_data = verifyVbMeta(apex, fd, *footer);
-  if (!vbmeta_data) {
-    return nullptr;
+  StatusOr<std::unique_ptr<uint8_t[]>> vbmeta_data =
+      verifyVbMeta(apex, fd, **footer);
+  if (!vbmeta_data.Ok()) {
+    return StatusOr<std::unique_ptr<ApexVerityData>>::MakeError(
+        vbmeta_data.ErrorMessage());
   }
 
-  const AvbHashtreeDescriptor* descriptor =
-      findDescriptor(vbmeta_data.get(), footer->vbmeta_size);
-  if (!descriptor) {
-    return nullptr;
+  StatusOr<const AvbHashtreeDescriptor*> descriptor =
+      findDescriptor(vbmeta_data->get(), (*footer)->vbmeta_size);
+  if (!descriptor.Ok()) {
+    return StatusOr<std::unique_ptr<ApexVerityData>>::MakeError(
+        descriptor.ErrorMessage());
   }
 
-  verityData->desc = verifyDescriptor(descriptor);
-  if (!verityData->desc) {
-    return nullptr;
+  StatusOr<std::unique_ptr<AvbHashtreeDescriptor>> verifiedDescriptor =
+      verifyDescriptor(*descriptor);
+  if (!verifiedDescriptor.Ok()) {
+    return StatusOr<std::unique_ptr<ApexVerityData>>::MakeError(
+        verifiedDescriptor.ErrorMessage());
   }
+  verityData->desc = std::move(*verifiedDescriptor);
 
   // This area is now safe to access, because we just verified it
   const uint8_t* trailingData =
-      (const uint8_t*)descriptor + sizeof(AvbHashtreeDescriptor);
+      (const uint8_t*)*descriptor + sizeof(AvbHashtreeDescriptor);
   verityData->salt = getSalt(*(verityData->desc), trailingData);
   verityData->root_digest = getDigest(*(verityData->desc), trailingData);
 
-  return verityData;
+  return StatusOr<std::unique_ptr<ApexVerityData>>(std::move(verityData));
 }
 
 void updateSymlink(const std::string& package_name, const std::string& mount_point) {
@@ -621,11 +633,13 @@ Status mountPackage(const std::string& full_path) {
   LOG(VERBOSE) << "Loopback device created: " << loopbackDevice.name;
 
   auto verityData = verifyApexVerity(*apex);
-  if (!verityData) {
-    return Status(StringLog() << "Failed to verify Apex Verity data for " << full_path);
+  if (!verityData.Ok()) {
+    return Status(StringLog()
+                  << "Failed to verify Apex Verity data for " << full_path
+                  << ": " << verityData.ErrorMessage());
   }
 
-  auto verityTable = createVerityTable(*verityData, loopbackDevice.name);
+  auto verityTable = createVerityTable(**verityData, loopbackDevice.name);
   StatusOr<DmVerityDevice> verityDevRes = createVerityDevice(packageId, *verityTable);
   if (!verityDevRes.Ok()) {
     return Status(
