@@ -27,7 +27,7 @@ apex {
     },
     native_shared_libs: ["libc", "libcutils"],
     java_libs: ["core-all"],
-    prebuilts: ["sample_prebuilt_file"],
+    prebuilts: ["sample_prebuilt_file", "apex.test.ld.config.txt"],
     compile_multilib: "both",
     key: "apex.test.key",
     certificate: ":apex.test.certificate",
@@ -43,6 +43,13 @@ android_app_certificate {
     name: "apex.test.certificate",
     // will use testcert.pk8 and testcert.x509.pem
     certificate: "testdata/testcert",
+}
+
+prebuilt_etc {
+    name: "apex.test.ld.config.txt",
+    src: "testdata/ld.config.txt",
+    filename: "ld.config.txt",
+    installable: false,
 }
 
 prebuilt_etc {
