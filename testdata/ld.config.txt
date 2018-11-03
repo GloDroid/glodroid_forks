@@ -1,0 +1,4 @@
+dir.myapex = /apex/com.android.example.apex/bin
+
+[myapex]
+namespace.default.search.paths  = /apex/com.android.example.apex/${LIB}
