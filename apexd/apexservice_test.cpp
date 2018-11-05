@@ -144,7 +144,8 @@ TEST_F(ApexServiceTest, HaveSelinux) {
   EXPECT_TRUE(HaveSelinux());
 }
 
-TEST_F(ApexServiceTest, EnforceSelinux) {
+// Skip for b/119032200.
+TEST_F(ApexServiceTest, DISABLED_EnforceSelinux) {
   // Crude cutout for virtual devices.
 #if !defined(__i386__) && !defined(__x86_64__)
   constexpr bool kIsX86 = false;
