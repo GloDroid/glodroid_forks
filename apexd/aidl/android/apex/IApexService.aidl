@@ -26,5 +26,5 @@ interface IApexService {
     * Not meant for use outside of testing. The call will not be
     * functional on user builds.
     */
-   void mountPackage(in @utf8InCpp String package_path);
+   void activatePackage(in @utf8InCpp String package_path);
 }

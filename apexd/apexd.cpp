@@ -597,8 +597,8 @@ void updateSymlink(const std::string& package_name, const std::string& mount_poi
 
 }  // namespace
 
-Status mountPackage(const std::string& full_path) {
-  LOG(INFO) << "Trying to mount " << full_path;
+Status activatePackage(const std::string& full_path) {
+  LOG(INFO) << "Trying to activate " << full_path;
 
   StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
   if (!apexFileRes.Ok()) {
@@ -701,7 +701,7 @@ void unmountAndDetachExistingImages() {
   destroyAllLoopDevices();
 }
 
-void scanPackagesDirAndMount(const char* apex_package_dir) {
+void scanPackagesDirAndActivate(const char* apex_package_dir) {
   LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
   auto d =
       std::unique_ptr<DIR, int (*)(DIR*)>(opendir(apex_package_dir), closedir);
@@ -718,7 +718,8 @@ void scanPackagesDirAndMount(const char* apex_package_dir) {
     }
     LOG(INFO) << "Found " << dp->d_name;
 
-    Status res = mountPackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
+    Status res =
+        activatePackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
     if (!res.Ok()) {
       LOG(ERROR) << res.ErrorMessage();
     }
