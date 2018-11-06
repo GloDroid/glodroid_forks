@@ -34,6 +34,8 @@ class ApexService : public BnApexService {
 
   BinderStatus installPackage(const std::string& packageTmpPath, bool* aidl_return) override;
   BinderStatus mountPackage(const std::string& packagePath) override;
+  BinderStatus getActivePackages(
+      std::vector<PackageInfo>* aidl_return) override;
 
   // Override onTransact so we can handle shellCommand.
   status_t onTransact(uint32_t _aidl_code,
