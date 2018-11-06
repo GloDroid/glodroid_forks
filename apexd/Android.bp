@@ -30,8 +30,14 @@ aidl_interface {
   name: "apex_aidl_interface",
   srcs: [
     "aidl/android/apex/IApexService.aidl",
+    "aidl/android/apex/PackageInfo.aidl",
   ],
   local_include_dir: "aidl",
+  backend: {
+      ndk: {
+          enabled: false,
+      },
+  },
 }
 
 cc_binary {
