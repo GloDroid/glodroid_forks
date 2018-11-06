@@ -64,7 +64,6 @@ namespace apex {
 namespace {
 
 static constexpr const char* kApexPackageSuffix = ".apex";
-static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kApexLoopIdPrefix = "apex:";
 static constexpr const char* kApexKeyDirectory = "/system/etc/security/apex/";
 static constexpr const char* kApexKeyProp = "apex.key";
