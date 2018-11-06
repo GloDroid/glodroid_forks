@@ -31,20 +31,17 @@ namespace apex {
 template <typename T>
 class StatusOr {
  private:
-  enum class StatusOrTag {
-    kDummy
-  };
+  enum class StatusOrTag { kDummy };
 
   static constexpr std::in_place_index_t<0> kIndex0{};
   static constexpr std::in_place_index_t<1> kIndex1{};
 
  public:
   template <class... Args>
-  explicit StatusOr(Args&&... args) : data_(kIndex1, std::forward<Args>(args)...) {}
+  explicit StatusOr(Args&&... args)
+      : data_(kIndex1, std::forward<Args>(args)...) {}
 
-  bool Ok() const WARN_UNUSED {
-    return data_.index() != 0;
-  }
+  bool Ok() const WARN_UNUSED { return data_.index() != 0; }
 
   T& operator*() {
     CHECK(Ok());
@@ -72,12 +69,13 @@ class StatusOr {
   }
 
  private:
-  StatusOr(const std::string& msg, StatusOrTag dummy ATTRIBUTE_UNUSED) : data_(kIndex0, msg) {}
+  StatusOr(const std::string& msg, StatusOrTag dummy ATTRIBUTE_UNUSED)
+      : data_(kIndex0, msg) {}
 
   std::variant<Status, T> data_;
 };
 
-}
-}
+}  // namespace apex
+}  // namespace android
 
-#endif // ANDROID_APEXD_STATUS_OR_H_
+#endif  // ANDROID_APEXD_STATUS_OR_H_

@@ -25,7 +25,8 @@
 namespace android {
 namespace apex {
 
-StatusOr<std::unique_ptr<ApexFile>> ApexFile::Open(const std::string& apex_filename) {
+StatusOr<std::unique_ptr<ApexFile>> ApexFile::Open(
+    const std::string& apex_filename) {
   std::unique_ptr<ApexFile> ret(new ApexFile(apex_filename));
   std::string error_msg;
   if (ret->OpenInternal(&error_msg) < 0) {
@@ -50,8 +51,8 @@ int ApexFile::OpenInternal(std::string* error_msg) {
   }
   int ret = OpenArchive(apex_filename_.c_str(), &handle_);
   if (ret < 0) {
-    *error_msg = StringLog() << "Failed to open package " << apex_filename_ << ": "
-                             << ErrorCodeString(ret);
+    *error_msg = StringLog() << "Failed to open package " << apex_filename_
+                             << ": " << ErrorCodeString(ret);
     return ret;
   }
 
@@ -80,8 +81,8 @@ int ApexFile::OpenInternal(std::string* error_msg) {
   ret = ExtractToMemory(handle_, &entry,
                         reinterpret_cast<uint8_t*>(&(manifest_)[0]), length);
   if (ret != 0) {
-    *error_msg = StringLog() << "Failed to extract manifest from package " << apex_filename_
-                             << ": " << ErrorCodeString(ret);
+    *error_msg = StringLog() << "Failed to extract manifest from package "
+                             << apex_filename_ << ": " << ErrorCodeString(ret);
     return ret;
   }
   return 0;
