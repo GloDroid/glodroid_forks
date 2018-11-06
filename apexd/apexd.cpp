@@ -43,6 +43,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <algorithm>
 #include <array>
 #include <fstream>
 #include <iomanip>
@@ -77,6 +79,8 @@ static constexpr const char* kApexStatusStarting = "starting";
 static constexpr const char* kApexStatusReady = "ready";
 
 static constexpr int kVbMetaMaxSize = 64 * 1024;
+
+static constexpr int kMkdirMode = 0755;
 
 struct LoopbackDeviceUniqueFd {
   unique_fd device_fd;
@@ -583,16 +587,90 @@ StatusOr<std::unique_ptr<ApexVerityData>> verifyApexVerity(
   return StatusOr<std::unique_ptr<ApexVerityData>>(std::move(verityData));
 }
 
-void updateSymlink(const std::string& package_name,
-                   const std::string& mount_point) {
-  std::string link_path =
+Status updateLatest(const std::string& package_name,
+                    const std::string& mount_point) {
+  std::string latest_path =
       StringPrintf("%s/%s", kApexRoot, package_name.c_str());
-  LOG(VERBOSE) << "Creating symlink " << link_path << " with target "
+  LOG(VERBOSE) << "Creating bind-mount for " << latest_path << " with target "
                << mount_point;
-  if (symlink(mount_point.c_str(), link_path.c_str()) != 0) {
-    PLOG(ERROR) << "Can't create symlink " << link_path << " with target "
-                << mount_point;
+  // Ensure the directory exists, try to unmount.
+  {
+    bool exists;
+    bool is_dir;
+    {
+      struct stat buf;
+      if (stat(latest_path.c_str(), &buf) != 0) {
+        if (errno == ENOENT) {
+          exists = false;
+          is_dir = false;
+        } else {
+          PLOG(ERROR) << "Could not stat target directory " << latest_path;
+          // Still attempt to bind-mount.
+          exists = true;
+          is_dir = true;
+        }
+      } else {
+        exists = true;
+        is_dir = S_ISDIR(buf.st_mode);
+      }
+    }
+
+    // Ensure that it is a folder.
+    if (exists && !is_dir) {
+      LOG(WARNING) << latest_path << " is not a directory, attempting to fix";
+      if (unlink(latest_path.c_str()) != 0) {
+        PLOG(ERROR) << "Failed to unlink " << latest_path;
+        // Try mkdir, anyways.
+      }
+      exists = false;
+    }
+    // And create it if necessary.
+    if (!exists) {
+      LOG(VERBOSE) << "Creating mountpoint " << latest_path;
+      if (mkdir(latest_path.c_str(), kMkdirMode) != 0) {
+        return Status::Fail(PStringLog()
+                            << "Could not create mountpoint " << latest_path);
+      }
+    };
+    // Unmount any active bind-mount.
+    if (exists) {
+      int rc = umount2(latest_path.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH);
+      if (rc != 0 && errno != EINVAL) {
+        // Log error but ignore.
+        PLOG(ERROR) << "Could not unmount " << latest_path;
+      }
+    }
   }
+
+  LOG(VERBOSE) << "Bind-mounting " << mount_point << " to " << latest_path;
+  if (mount(mount_point.c_str(), latest_path.c_str(), nullptr, MS_BIND,
+            nullptr) == 0) {
+    return Status::Success();
+  }
+  return Status::Fail(PStringLog() << "Could not bind-mount " << mount_point
+                                   << " to " << latest_path);
+}
+
+StatusOr<std::vector<std::string>> getApexRootSubFolders() {
+  // This code would be much shorter if C++17's std::filesystem were available,
+  // which is not at the time of writing this.
+  auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(kApexRoot), closedir);
+  if (!d) {
+    return StatusOr<std::vector<std::string>>::MakeError(
+        PStringLog() << "Can't open " << kApexRoot << " for reading.");
+  }
+
+  std::vector<std::string> ret;
+  struct dirent* dp;
+  while ((dp = readdir(d.get())) != NULL) {
+    if (dp->d_type != DT_DIR || (strcmp(dp->d_name, ".") == 0) ||
+        (strcmp(dp->d_name, "..") == 0)) {
+      continue;
+    }
+    ret.push_back(dp->d_name);
+  }
+
+  return StatusOr<std::vector<std::string>>(std::move(ret));
 }
 
 Status configureReadAhead(const std::string& device_path) {
@@ -680,7 +758,7 @@ Status activatePackage(const std::string& full_path) {
 
   std::string mountPoint = StringPrintf("%s/%s", kApexRoot, packageId.c_str());
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
-  mkdir(mountPoint.c_str(), 0755);
+  mkdir(mountPoint.c_str(), kMkdirMode);
 
   if (mount(verityDev.GetDevPath().c_str(), mountPoint.c_str(), "ext4",
             MS_NOATIME | MS_NODEV | MS_NOSUID | MS_DIRSYNC | MS_RDONLY,
@@ -688,9 +766,13 @@ Status activatePackage(const std::string& full_path) {
     LOG(INFO) << "Successfully mounted package " << full_path << " on "
               << mountPoint;
 
-    // TODO: only create symlinks if we are sure we are mounting the latest
+    // TODO: only create bind-mount if we are sure we are mounting the latest
     //       version of a package.
-    updateSymlink(manifest->GetName(), mountPoint);
+    Status st = updateLatest(manifest->GetName(), mountPoint);
+    if (!st.Ok()) {
+      // TODO: Fail?
+      LOG(ERROR) << st.ErrorMessage();
+    }
 
     // Time to accept the temporaries as good.
     verityDev.Release();
@@ -707,26 +789,25 @@ void unmountAndDetachExistingImages() {
   // becomes an actual daemon. Remove if that's the case.
   LOG(INFO) << "Scanning " << kApexRoot
             << " looking for packages already mounted.";
-  auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(kApexRoot), closedir);
-  if (!d) {
-    // Nothing to do
-    PLOG(ERROR) << "Can't open " << kApexRoot;
+  StatusOr<std::vector<std::string>> folders_status = getApexRootSubFolders();
+  if (!folders_status.Ok()) {
+    LOG(ERROR) << folders_status.ErrorMessage();
     return;
   }
 
-  struct dirent* dp;
-  while ((dp = readdir(d.get())) != NULL) {
-    if (dp->d_type != DT_DIR || (strcmp(dp->d_name, ".") == 0) ||
-        (strcmp(dp->d_name, "..") == 0)) {
-      continue;
-    }
-    LOG(INFO) << "Unmounting " << kApexRoot << "/" << dp->d_name;
+  // Sort the folders. This way, the "latest" folder will appear before any
+  // versioned folder, so we'll unmount the bind-mount first.
+  std::vector<std::string>& folders = *folders_status;
+  std::sort(folders.begin(), folders.end());
+
+  for (const std::string& folder : folders) {
+    LOG(INFO) << "Unmounting " << kApexRoot << "/" << folder;
     // Lazily try to umount whatever is mounted.
-    if (umount2(StringPrintf("%s/%s", kApexRoot, dp->d_name).c_str(),
+    if (umount2(StringPrintf("%s/%s", kApexRoot, folder.c_str()).c_str(),
                 UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
         errno != EINVAL && errno != ENOENT) {
       PLOG(ERROR) << "Failed to unmount directory " << kApexRoot << "/"
-                  << dp->d_name;
+                  << folder;
     }
   }
 
