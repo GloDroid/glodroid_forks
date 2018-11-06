@@ -22,7 +22,8 @@
 namespace android {
 
 class String16;
-template <typename T> class Vector;
+template <typename T>
+class Vector;
 
 namespace apex {
 
@@ -32,16 +33,15 @@ class ApexService : public BnApexService {
 
   ApexService(){};
 
-  BinderStatus installPackage(const std::string& packageTmpPath, bool* aidl_return) override;
+  BinderStatus installPackage(const std::string& packageTmpPath,
+                              bool* aidl_return) override;
   BinderStatus activatePackage(const std::string& packagePath) override;
   BinderStatus getActivePackages(
       std::vector<PackageInfo>* aidl_return) override;
 
   // Override onTransact so we can handle shellCommand.
-  status_t onTransact(uint32_t _aidl_code,
-                      const Parcel& _aidl_data,
-                      Parcel* _aidl_reply,
-                      uint32_t _aidl_flags = 0) override;
+  status_t onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
+                      Parcel* _aidl_reply, uint32_t _aidl_flags = 0) override;
 
   status_t shellCommand(int in, int out, int err, const Vector<String16>& args);
 };

@@ -34,7 +34,7 @@ class BaseStringLog {
   BaseStringLog() {}
 
   // Pipe in values.
-  template<class U>
+  template <class U>
   T& operator<<(const U& t) {
     os_stream << t;
     return static_cast<T&>(*this);
@@ -47,16 +47,13 @@ class BaseStringLog {
   }
 
   // Get the current string.
-  operator std::string() const {
-    return os_stream.str();
-  }
+  operator std::string() const { return os_stream.str(); }
 
  private:
   std::ostringstream os_stream;
 };
 
-class StringLog : public BaseStringLog<StringLog> {
-};
+class StringLog : public BaseStringLog<StringLog> {};
 
 class PStringLog : public BaseStringLog<PStringLog> {
  public:
@@ -64,7 +61,9 @@ class PStringLog : public BaseStringLog<PStringLog> {
 
   // Get the current string.
   operator std::string() const {
-    return (BaseStringLog::operator std::string()).append(": ").append(strerror(errno_));
+    return (BaseStringLog::operator std::string())
+        .append(": ")
+        .append(strerror(errno_));
   }
 
  private:
