@@ -33,7 +33,7 @@ class ApexService : public BnApexService {
   ApexService(){};
 
   BinderStatus installPackage(const std::string& packageTmpPath, bool* aidl_return) override;
-  BinderStatus mountPackage(const std::string& packagePath) override;
+  BinderStatus activatePackage(const std::string& packagePath) override;
   BinderStatus getActivePackages(
       std::vector<PackageInfo>* aidl_return) override;
 
