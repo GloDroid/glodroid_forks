@@ -43,8 +43,8 @@ namespace {
 
 BinderStatus CheckDebuggable() {
   if (!::android::base::GetBoolProperty("ro.debuggable", false)) {
-    return BinderStatus::fromExceptionCode(BinderStatus::EX_SECURITY,
-                                           String8("mountPackage unavailable"));
+    return BinderStatus::fromExceptionCode(
+        BinderStatus::EX_SECURITY, String8("activatePackage unavailable"));
   }
   return BinderStatus::ok();
 }
@@ -71,22 +71,24 @@ BinderStatus ApexService::installPackage(const std::string& packageTmpPath,
                                          String8(res.ErrorMessage().c_str()));
 }
 
-BinderStatus ApexService::mountPackage(const std::string& packagePath) {
+BinderStatus ApexService::activatePackage(const std::string& packagePath) {
   BinderStatus debugCheck = CheckDebuggable();
   if (!debugCheck.isOk()) {
     return debugCheck;
   }
 
-  LOG(DEBUG) << "mountPackage() received by ApexService, path " << packagePath;
+  LOG(DEBUG) << "activatePackage() received by ApexService, path "
+             << packagePath;
 
-  Status res = ::android::apex::mountPackage(packagePath);
+  Status res = ::android::apex::activatePackage(packagePath);
 
   if (res.Ok()) {
     return BinderStatus::ok();
   }
 
   // TODO: Get correct binder error status.
-  LOG(ERROR) << "Failed to mount " << packagePath << ": " << res.ErrorMessage();
+  LOG(ERROR) << "Failed to activate " << packagePath << ": "
+             << res.ErrorMessage();
   return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
                                          String8(res.ErrorMessage().c_str()));
 }
@@ -164,16 +166,16 @@ status_t ApexService::shellCommand(int in, int out, int err,
   }
   auto print_help = [](int fd) {
     auto stream = std::fstream(base::StringPrintf("/proc/self/fd/%d", fd));
-    stream
-        << "ApexService:" << std::endl
-        << "  help - display this help" << std::endl
-        << "  installPackage [packagePath] - install package from the given "
-           "path"
-        << std::endl
-        << "  getActivePackages - return the list of active packages"
-        << std::endl
-        << "  mountPackage [packagePath]   - mount package from the given path"
-        << std::endl;
+    stream << "ApexService:" << std::endl
+           << "  help - display this help" << std::endl
+           << "  installPackage [packagePath] - install package from the given "
+              "path"
+           << std::endl
+           << "  getActivePackages - return the list of active packages"
+           << std::endl
+           << "  activatePackage [packagePath]   - mount package from the "
+              "given path"
+           << std::endl;
   };
 
   if (args.size() == 2 && args[0] == String16("installPackage")) {
@@ -204,13 +206,14 @@ status_t ApexService::shellCommand(int in, int out, int err,
             << std::endl;
     return BAD_VALUE;
   }
-  if (args.size() == 2 && args[0] == String16("mountPackage")) {
-    ::android::binder::Status status = mountPackage(String8(args[1]).string());
+  if (args.size() == 2 && args[0] == String16("activatePackage")) {
+    ::android::binder::Status status =
+        activatePackage(String8(args[1]).string());
     if (status.isOk()) {
       return OK;
     }
     auto err_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", err));
-    err_str << "Failed to mount package: " << status.toString8().string()
+    err_str << "Failed to activate package: " << status.toString8().string()
             << std::endl;
     return BAD_VALUE;
   }
