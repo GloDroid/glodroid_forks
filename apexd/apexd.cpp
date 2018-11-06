@@ -91,9 +91,7 @@ struct LoopbackDeviceUniqueFd {
     return *this;
   }
 
-  ~LoopbackDeviceUniqueFd() {
-    MaybeCloseBad();
-  }
+  ~LoopbackDeviceUniqueFd() { MaybeCloseBad(); }
 
   void MaybeCloseBad() {
     if (device_fd.get() != -1) {
@@ -104,13 +102,9 @@ struct LoopbackDeviceUniqueFd {
     }
   }
 
-  void CloseGood() {
-    device_fd.reset(-1);
-  }
+  void CloseGood() { device_fd.reset(-1); }
 
-  int get() {
-    return device_fd.get();
-  }
+  int get() { return device_fd.get(); }
 };
 
 StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
@@ -133,7 +127,8 @@ StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
   if (target_fd.get() == -1) {
     return Failed::MakeError(PStringLog() << "Failed to open " << target);
   }
-  LoopbackDeviceUniqueFd device_fd(unique_fd(open(device.c_str(), O_RDWR | O_CLOEXEC)), device);
+  LoopbackDeviceUniqueFd device_fd(
+      unique_fd(open(device.c_str(), O_RDWR | O_CLOEXEC)), device);
   if (device_fd.get() == -1) {
     return Failed::MakeError(PStringLog() << "Failed to open " << device);
   }
@@ -337,7 +332,7 @@ StatusOr<std::string> getPublicKeyFilePath(const ApexFile& apex,
                                            const uint8_t* data, size_t length) {
   size_t keyNameLen;
   const char* keyName = avb_property_lookup(data, length, kApexKeyProp,
-      strlen(kApexKeyProp), &keyNameLen);
+                                            strlen(kApexKeyProp), &keyNameLen);
   if (keyName == nullptr || keyNameLen == 0) {
     return StatusOr<std::string>::MakeError(
         StringLog() << "Cannot find prop \"" << kApexKeyProp << "\" from "
@@ -481,7 +476,9 @@ class DmVerityDevice {
       : name_(name), dev_path_(dev_path), cleared_(false) {}
 
   DmVerityDevice(DmVerityDevice&& other)
-      : name_(other.name_), dev_path_(other.dev_path_), cleared_(other.cleared_) {
+      : name_(other.name_),
+        dev_path_(other.dev_path_),
+        cleared_(other.cleared_) {
     other.cleared_ = true;
   }
 
@@ -492,19 +489,11 @@ class DmVerityDevice {
     }
   }
 
-  const std::string& GetName() const {
-    return name_;
-  }
-  const std::string& GetDevPath() const {
-    return dev_path_;
-  }
-  void SetDevPath(const std::string& dev_path) {
-    dev_path_ = dev_path;
-  }
+  const std::string& GetName() const { return name_; }
+  const std::string& GetDevPath() const { return dev_path_; }
+  void SetDevPath(const std::string& dev_path) { dev_path_ = dev_path; }
 
-  void Release() {
-    cleared_ = true;
-  }
+  void Release() { cleared_ = true; }
 
  private:
   std::string name_;
@@ -512,19 +501,22 @@ class DmVerityDevice {
   bool cleared_;
 };
 
-StatusOr<DmVerityDevice> createVerityDevice(const std::string& name, const DmTable& table) {
+StatusOr<DmVerityDevice> createVerityDevice(const std::string& name,
+                                            const DmTable& table) {
   DeviceMapper& dm = DeviceMapper::Instance();
 
   dm.DeleteDevice(name);
 
   if (!dm.CreateDevice(name, table)) {
-    return StatusOr<DmVerityDevice>::MakeError("Couldn't create verity device.");
+    return StatusOr<DmVerityDevice>::MakeError(
+        "Couldn't create verity device.");
   }
   DmVerityDevice dev(name);
 
   std::string dev_path;
   if (!dm.GetDmDevicePathByName(name, &dev_path)) {
-    return StatusOr<DmVerityDevice>::MakeError("Couldn't get verity device path!");
+    return StatusOr<DmVerityDevice>::MakeError(
+        "Couldn't get verity device path!");
   }
   dev.SetDevPath(dev_path);
 
@@ -587,11 +579,15 @@ StatusOr<std::unique_ptr<ApexVerityData>> verifyApexVerity(
   return StatusOr<std::unique_ptr<ApexVerityData>>(std::move(verityData));
 }
 
-void updateSymlink(const std::string& package_name, const std::string& mount_point) {
-  std::string link_path = StringPrintf("%s/%s", kApexRoot, package_name.c_str());
-  LOG(VERBOSE) << "Creating symlink " << link_path << " with target " << mount_point;
+void updateSymlink(const std::string& package_name,
+                   const std::string& mount_point) {
+  std::string link_path =
+      StringPrintf("%s/%s", kApexRoot, package_name.c_str());
+  LOG(VERBOSE) << "Creating symlink " << link_path << " with target "
+               << mount_point;
   if (symlink(mount_point.c_str(), link_path.c_str()) != 0) {
-    PLOG(ERROR) << "Can't create symlink " << link_path << " with target " << mount_point;
+    PLOG(ERROR) << "Can't create symlink " << link_path << " with target "
+                << mount_point;
   }
 }
 
@@ -616,17 +612,17 @@ Status activatePackage(const std::string& full_path) {
       manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
 
   LoopbackDeviceUniqueFd loopbackDevice;
-  for (size_t attempts = 1; ; ++attempts) {
-    StatusOr<LoopbackDeviceUniqueFd> ret = createLoopDevice(full_path, apex->GetImageOffset(),
-                                                            apex->GetImageSize());
+  for (size_t attempts = 1;; ++attempts) {
+    StatusOr<LoopbackDeviceUniqueFd> ret = createLoopDevice(
+        full_path, apex->GetImageOffset(), apex->GetImageSize());
     if (ret.Ok()) {
       loopbackDevice = std::move(*ret);
       break;
     }
     if (attempts >= kLoopDeviceSetupAttempts) {
-      return Status::Fail(
-          StringLog() << "Could not create loop device for " << full_path << ": "
-                      << ret.ErrorMessage());
+      return Status::Fail(StringLog()
+                          << "Could not create loop device for " << full_path
+                          << ": " << ret.ErrorMessage());
     }
   }
   LOG(VERBOSE) << "Loopback device created: " << loopbackDevice.name;
@@ -639,11 +635,12 @@ Status activatePackage(const std::string& full_path) {
   }
 
   auto verityTable = createVerityTable(**verityData, loopbackDevice.name);
-  StatusOr<DmVerityDevice> verityDevRes = createVerityDevice(packageId, *verityTable);
+  StatusOr<DmVerityDevice> verityDevRes =
+      createVerityDevice(packageId, *verityTable);
   if (!verityDevRes.Ok()) {
-    return Status(
-        StringLog() << "Failed to create Apex Verity device " << full_path
-                    << ": " << verityDevRes.ErrorMessage());
+    return Status(StringLog()
+                  << "Failed to create Apex Verity device " << full_path << ": "
+                  << verityDevRes.ErrorMessage());
   }
   DmVerityDevice verityDev = std::move(*verityDevRes);
 
@@ -667,7 +664,8 @@ Status activatePackage(const std::string& full_path) {
 
     return Status::Success();
   }
-  return Status::Fail(PStringLog() << "Mounting failed for package " << full_path);
+  return Status::Fail(PStringLog()
+                      << "Mounting failed for package " << full_path);
 }
 
 void unmountAndDetachExistingImages() {
@@ -729,7 +727,8 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
 Status installPackage(const std::string& packageTmpPath) {
   LOG(DEBUG) << "installPackage() for " << packageTmpPath;
 
-  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(packageTmpPath);
+  StatusOr<std::unique_ptr<ApexFile>> apexFileRes =
+      ApexFile::Open(packageTmpPath);
   if (!apexFileRes.Ok()) {
     // TODO: Get correct binder error status.
     return apexFileRes.ErrorStatus();
@@ -737,7 +736,7 @@ Status installPackage(const std::string& packageTmpPath) {
   const std::unique_ptr<ApexFile>& apex = *apexFileRes;
 
   StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
-    ApexManifest::Open(apex->GetManifest());
+      ApexManifest::Open(apex->GetManifest());
   if (!manifestRes.Ok()) {
     // TODO: Get correct binder error status.
     return manifestRes.ErrorStatus();
@@ -746,14 +745,12 @@ Status installPackage(const std::string& packageTmpPath) {
   std::string packageId =
       manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
 
-  std::string destPath = StringPrintf("%s/%s%s",
-                                      kApexPackageDataDir,
-                                      packageId.c_str(),
-                                      kApexPackageSuffix);
+  std::string destPath = StringPrintf("%s/%s%s", kApexPackageDataDir,
+                                      packageId.c_str(), kApexPackageSuffix);
   if (rename(packageTmpPath.c_str(), destPath.c_str()) != 0) {
     // TODO: Get correct binder error status.
-    return Status::Fail(
-        PStringLog() << "Unable to rename " << packageTmpPath << " to " << destPath);
+    return Status::Fail(PStringLog() << "Unable to rename " << packageTmpPath
+                                     << " to " << destPath);
   }
   LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
   return Status::Success();
@@ -761,7 +758,8 @@ Status installPackage(const std::string& packageTmpPath) {
 
 void onStart() {
   if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusStarting)) {
-    PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to " << kApexStatusStarting;
+    PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to "
+                << kApexStatusStarting;
   }
 }
 
@@ -772,7 +770,8 @@ void onAllPackagesReady() {
   // access. Or they may have a on-property trigger to delay a task until
   // APEXs become ready.
   if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusReady)) {
-    PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to " << kApexStatusReady;
+    PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to "
+                << kApexStatusReady;
   }
 }
 
