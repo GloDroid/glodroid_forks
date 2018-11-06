@@ -57,8 +57,8 @@ int main(int /*argc*/, char** argv) {
   android::apex::scanPackagesDirAndActivate(android::apex::kApexPackageDataDir);
   android::apex::scanPackagesDirAndActivate(kApexPackageSystemDir);
 
-  // Notify other components (e.g. init) that all APEXs are correctly mounted and
-  // are ready to be used.
+  // Notify other components (e.g. init) that all APEXs are correctly mounted
+  // and are ready to be used.
   android::apex::onAllPackagesReady();
 
   // Start threadpool, wait for IPC

@@ -30,16 +30,10 @@ class Status {
   Status(const std::string& error_msg) : error_msg_(error_msg), ok_(false) {}
 
   // For better legible code.
-  static Status Success() {
-    return Status();
-  }
-  static Status Fail(const std::string& error_msg) {
-    return Status(error_msg);
-  }
+  static Status Success() { return Status(); }
+  static Status Fail(const std::string& error_msg) { return Status(error_msg); }
 
-  bool Ok() const {
-    return ok_;
-  }
+  bool Ok() const { return ok_; }
 
   const std::string& ErrorMessage() const {
     CHECK(!ok_);
@@ -51,7 +45,7 @@ class Status {
   bool ok_;
 };
 
-}
-}
+}  // namespace apex
+}  // namespace android
 
-#endif // ANDROID_APEXD_STATUS_H_
+#endif  // ANDROID_APEXD_STATUS_H_

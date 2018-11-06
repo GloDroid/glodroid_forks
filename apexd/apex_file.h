@@ -30,7 +30,8 @@ namespace apex {
 // the content.
 class ApexFile {
  public:
-  static StatusOr<std::unique_ptr<ApexFile>> Open(const std::string& apex_filename);
+  static StatusOr<std::unique_ptr<ApexFile>> Open(
+      const std::string& apex_filename);
   ~ApexFile();
 
   std::string GetPath() const { return apex_filename_; }

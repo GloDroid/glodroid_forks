@@ -48,20 +48,23 @@ int ApexManifest::OpenInternal(std::string* error_msg) {
   }
 
   if (!root.isMember("name")) {
-    *error_msg = StringLog() << "Missing required field \"name\" from APEX manifest.";
+    *error_msg = StringLog()
+                 << "Missing required field \"name\" from APEX manifest.";
     return -1;
   }
   Json::Value name = root["name"];
   name_ = name.asString();
 
   if (!root.isMember("version")) {
-    *error_msg = StringLog() << "Missing required field \"version\" from APEX manifest.";
+    *error_msg = StringLog()
+                 << "Missing required field \"version\" from APEX manifest.";
     return -1;
   }
   Json::Value version = root["version"];
   if (!version.isUInt64()) {
-    *error_msg = StringLog() << "Invalid type for field \"version\" from APEX manifest, "
-                                "expecting integer.";
+    *error_msg = StringLog()
+                 << "Invalid type for field \"version\" from APEX manifest, "
+                    "expecting integer.";
     return -1;
   }
   version_ = version.asUInt64();
