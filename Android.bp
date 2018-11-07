@@ -25,7 +25,7 @@ apex {
         },
     },
     native_shared_libs: ["libc", "libcutils"],
-    java_libs: ["core-all"],
+    java_libs: ["core-oj"],
     prebuilts: ["sample_prebuilt_file", "apex.test.ld.config.txt", "apex.test.init.rc"],
     compile_multilib: "both",
     key: "apex.test.key",
