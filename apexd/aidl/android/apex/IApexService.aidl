@@ -19,7 +19,7 @@ package android.apex;
 import android.apex.PackageInfo;
 
 interface IApexService {
-   boolean installPackage(in @utf8InCpp String package_tmp_path);
+   boolean stagePackage(in @utf8InCpp String package_tmp_path);
    PackageInfo[] getActivePackages();
 
    /**

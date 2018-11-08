@@ -724,8 +724,8 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
   }
 }
 
-Status installPackage(const std::string& packageTmpPath) {
-  LOG(DEBUG) << "installPackage() for " << packageTmpPath;
+Status stagePackage(const std::string& packageTmpPath) {
+  LOG(DEBUG) << "stagePackage() for " << packageTmpPath;
 
   StatusOr<std::unique_ptr<ApexFile>> apexFileRes =
       ApexFile::Open(packageTmpPath);
