@@ -33,7 +33,7 @@ void unmountAndDetachExistingImages();
 
 void scanPackagesDirAndActivate(const char* apex_package_dir);
 
-Status installPackage(const std::string& packageTmpPath) WARN_UNUSED;
+Status stagePackage(const std::string& packageTmpPath) WARN_UNUSED;
 Status activatePackage(const std::string& full_path) WARN_UNUSED;
 
 void onStart();

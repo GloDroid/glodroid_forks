@@ -51,13 +51,13 @@ BinderStatus CheckDebuggable() {
 
 }  // namespace
 
-BinderStatus ApexService::installPackage(const std::string& packageTmpPath,
-                                         bool* aidl_return) {
-  LOG(DEBUG) << "installPackage() received by ApexService, path "
+BinderStatus ApexService::stagePackage(const std::string& packageTmpPath,
+                                       bool* aidl_return) {
+  LOG(DEBUG) << "stagePackage() received by ApexService, path "
              << packageTmpPath;
 
   *aidl_return = false;
-  Status res = ::android::apex::installPackage(packageTmpPath);
+  Status res = ::android::apex::stagePackage(packageTmpPath);
 
   if (res.Ok()) {
     *aidl_return = true;
@@ -65,7 +65,7 @@ BinderStatus ApexService::installPackage(const std::string& packageTmpPath,
   }
 
   // TODO: Get correct binder error status.
-  LOG(ERROR) << "Failed installing " << packageTmpPath << ": "
+  LOG(ERROR) << "Failed to stage " << packageTmpPath << ": "
              << res.ErrorMessage();
   return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
                                          String8(res.ErrorMessage().c_str()));
@@ -95,8 +95,7 @@ BinderStatus ApexService::activatePackage(const std::string& packagePath) {
 
 BinderStatus ApexService::getActivePackages(
     std::vector<PackageInfo>* aidl_return) {
-  LOG(DEBUG) << "Scanning " << kApexRoot
-             << " looking for packages already installed.";
+  LOG(DEBUG) << "Scanning " << kApexRoot << " looking for active packages.";
   // This code would be much shorter if C++17's std::filesystem were available,
   // which is not at the time of writing this.
   auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(kApexRoot), closedir);
@@ -168,25 +167,25 @@ status_t ApexService::shellCommand(int in, int out, int err,
     auto stream = std::fstream(base::StringPrintf("/proc/self/fd/%d", fd));
     stream << "ApexService:" << std::endl
            << "  help - display this help" << std::endl
-           << "  installPackage [packagePath] - install package from the given "
+           << "  stagePackage [packagePath] - stage package from the given "
               "path"
            << std::endl
            << "  getActivePackages - return the list of active packages"
            << std::endl
-           << "  activatePackage [packagePath]   - mount package from the "
+           << "  activatePackage [packagePath] - activate package from the "
               "given path"
            << std::endl;
   };
 
-  if (args.size() == 2 && args[0] == String16("installPackage")) {
+  if (args.size() == 2 && args[0] == String16("stagePackage")) {
     bool ret_value;
     ::android::binder::Status status =
-        installPackage(String8(args[1]).string(), &ret_value);
+        stagePackage(String8(args[1]).string(), &ret_value);
     if (status.isOk()) {
       return OK;
     }
     auto err_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", err));
-    err_str << "Failed to install package: " << status.toString8().string()
+    err_str << "Failed to stage package: " << status.toString8().string()
             << std::endl;
     return BAD_VALUE;
   }
