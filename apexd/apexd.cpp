@@ -801,13 +801,18 @@ void unmountAndDetachExistingImages() {
   std::sort(folders.begin(), folders.end());
 
   for (const std::string& folder : folders) {
-    LOG(INFO) << "Unmounting " << kApexRoot << "/" << folder;
+    std::string full_path = std::string(kApexRoot).append("/").append(folder);
+    LOG(INFO) << "Unmounting " << full_path;
     // Lazily try to umount whatever is mounted.
-    if (umount2(StringPrintf("%s/%s", kApexRoot, folder.c_str()).c_str(),
-                UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
+    if (umount2(full_path.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
         errno != EINVAL && errno != ENOENT) {
-      PLOG(ERROR) << "Failed to unmount directory " << kApexRoot << "/"
-                  << folder;
+      PLOG(ERROR) << "Failed to unmount directory " << full_path;
+    }
+    // Attempt to delete the folder. If the folder is retained, other
+    // data may be incorrect.
+    // TODO: Fix this.
+    if (rmdir(full_path.c_str()) != 0) {
+      PLOG(ERROR) << "Failed to rmdir directory " << full_path;
     }
   }
 
