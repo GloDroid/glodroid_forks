@@ -67,6 +67,10 @@ static constexpr const char* kApexPackageSuffix = ".apex";
 static constexpr const char* kApexLoopIdPrefix = "apex:";
 static constexpr const char* kApexKeyDirectory = "/system/etc/security/apex/";
 static constexpr const char* kApexKeyProp = "apex.key";
+
+// 128 kB read-ahead, which we currently use for /system as well
+static constexpr const char* kReadAheadKb = "128";
+
 // These should be in-sync with system/sepolicy/public/property_contexts
 static constexpr const char* kApexStatusSysprop = "apexd.status";
 static constexpr const char* kApexStatusStarting = "starting";
@@ -591,6 +595,31 @@ void updateSymlink(const std::string& package_name,
   }
 }
 
+Status configureReadAhead(const std::string& device_path) {
+  auto pos = device_path.find("/dev/block/");
+  if (pos != 0) {
+    return Status::Fail(StringLog()
+                        << "Device path does not start with /dev/block.");
+  }
+  pos = device_path.find_last_of("/");
+  std::string device_name = device_path.substr(pos + 1, std::string::npos);
+
+  std::string sysfs_device =
+      StringPrintf("/sys/block/%s/queue/read_ahead_kb", device_name.c_str());
+  unique_fd sysfs_fd(open(sysfs_device.c_str(), O_RDWR | O_CLOEXEC));
+  if (sysfs_fd.get() == -1) {
+    return Status::Fail(PStringLog() << "Failed to open " << sysfs_device);
+  }
+
+  int ret = TEMP_FAILURE_RETRY(
+      write(sysfs_fd.get(), kReadAheadKb, strlen(kReadAheadKb) + 1));
+  if (ret < 0) {
+    return Status::Fail(PStringLog() << "Failed to write to " << sysfs_device);
+  }
+
+  return Status::Success();
+}
+
 }  // namespace
 
 Status activatePackage(const std::string& full_path) {
@@ -643,6 +672,11 @@ Status activatePackage(const std::string& full_path) {
                   << verityDevRes.ErrorMessage());
   }
   DmVerityDevice verityDev = std::move(*verityDevRes);
+
+  Status readAheadStatus = configureReadAhead(verityDev.GetDevPath());
+  if (!readAheadStatus.Ok()) {
+    return readAheadStatus.ErrorMessage();
+  }
 
   std::string mountPoint = StringPrintf("%s/%s", kApexRoot, packageId.c_str());
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
