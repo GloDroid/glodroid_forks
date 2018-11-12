@@ -27,4 +27,9 @@ interface IApexService {
     * functional on user builds.
     */
    void activatePackage(in @utf8InCpp String package_path);
+   /**
+    * Not meant for use outside of testing. The call will not be
+    * functional on user builds.
+    */
+   void deactivatePackage(in @utf8InCpp String package_path);
 }
