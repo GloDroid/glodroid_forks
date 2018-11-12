@@ -784,6 +784,64 @@ Status activatePackage(const std::string& full_path) {
                       << "Mounting failed for package " << full_path);
 }
 
+Status deactivatePackage(const std::string& full_path) {
+  LOG(INFO) << "Trying to deactivate " << full_path;
+
+  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
+  if (!apexFileRes.Ok()) {
+    return apexFileRes.ErrorStatus();
+  }
+  const std::unique_ptr<ApexFile>& apex = *apexFileRes;
+
+  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
+      ApexManifest::Open(apex->GetManifest());
+  if (!manifestRes.Ok()) {
+    return manifestRes.ErrorStatus();
+  }
+  const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
+
+  // TODO: It's not clear what the right thing to do is for umount failures.
+
+  // Unmount "latest" bind-mount.
+  // TODO: What if bind-mount isn't latest?
+  {
+    std::string mount_point =
+        StringPrintf("%s/%s", kApexRoot, manifest->GetName().c_str());
+    if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0) {
+      return Status::Fail(PStringLog() << "Failed to unmount " << mount_point);
+    }
+    if (rmdir(mount_point.c_str()) != 0) {
+      PLOG(ERROR) << "Could not rmdir " << mount_point;
+      // Continue here.
+    }
+  }
+
+  std::string packageId =
+      manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
+  std::string mount_point = StringPrintf("%s/%s", kApexRoot, packageId.c_str());
+  if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0) {
+    return Status::Fail(PStringLog() << "Failed to unmount " << mount_point);
+  }
+  std::string error_msg;
+  if (rmdir(mount_point.c_str()) != 0) {
+    // If we cannot delete the directory, we're in a bad state (e.g., getting
+    // active packages depends on directory existence right now).
+    // TODO: consider additional delayed cleanups, and rewrite once we have
+    //       a package database.
+    error_msg = PStringLog() << "Failed to rmdir " << mount_point;
+  }
+
+  // TODO: Find the loop device connected with the mount. For now, just run the
+  //       destroy-all and rely on EBUSY.
+  destroyAllLoopDevices();
+
+  if (error_msg.empty()) {
+    return Status::Success();
+  } else {
+    return Status::Fail(error_msg);
+  }
+}
+
 void unmountAndDetachExistingImages() {
   // TODO: this procedure should probably not be needed anymore when apexd
   // becomes an actual daemon. Remove if that's the case.

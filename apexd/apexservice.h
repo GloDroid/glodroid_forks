@@ -36,6 +36,7 @@ class ApexService : public BnApexService {
   BinderStatus stagePackage(const std::string& packageTmpPath,
                             bool* aidl_return) override;
   BinderStatus activatePackage(const std::string& packagePath) override;
+  BinderStatus deactivatePackage(const std::string& packagePath) override;
   BinderStatus getActivePackages(
       std::vector<PackageInfo>* aidl_return) override;
 

@@ -41,10 +41,11 @@ using BinderStatus = ::android::binder::Status;
 
 namespace {
 
-BinderStatus CheckDebuggable() {
+BinderStatus CheckDebuggable(const std::string& name) {
   if (!::android::base::GetBoolProperty("ro.debuggable", false)) {
-    return BinderStatus::fromExceptionCode(
-        BinderStatus::EX_SECURITY, String8("activatePackage unavailable"));
+    std::string tmp = name + " unavailable";
+    return BinderStatus::fromExceptionCode(BinderStatus::EX_SECURITY,
+                                           String8(tmp.c_str()));
   }
   return BinderStatus::ok();
 }
@@ -72,7 +73,7 @@ BinderStatus ApexService::stagePackage(const std::string& packageTmpPath,
 }
 
 BinderStatus ApexService::activatePackage(const std::string& packagePath) {
-  BinderStatus debugCheck = CheckDebuggable();
+  BinderStatus debugCheck = CheckDebuggable("activatePackage");
   if (!debugCheck.isOk()) {
     return debugCheck;
   }
@@ -88,6 +89,28 @@ BinderStatus ApexService::activatePackage(const std::string& packagePath) {
 
   // TODO: Get correct binder error status.
   LOG(ERROR) << "Failed to activate " << packagePath << ": "
+             << res.ErrorMessage();
+  return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
+                                         String8(res.ErrorMessage().c_str()));
+}
+
+BinderStatus ApexService::deactivatePackage(const std::string& packagePath) {
+  BinderStatus debugCheck = CheckDebuggable("deactivatePackage");
+  if (!debugCheck.isOk()) {
+    return debugCheck;
+  }
+
+  LOG(DEBUG) << "deactivatePackage() received by ApexService, path "
+             << packagePath;
+
+  Status res = ::android::apex::deactivatePackage(packagePath);
+
+  if (res.Ok()) {
+    return BinderStatus::ok();
+  }
+
+  // TODO: Get correct binder error status.
+  LOG(ERROR) << "Failed to deactivate " << packagePath << ": "
              << res.ErrorMessage();
   return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
                                          String8(res.ErrorMessage().c_str()));
