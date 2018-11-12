@@ -1,0 +1,2 @@
+service apex.test /apex/com.android.example.apex/bin/test
+    disabled

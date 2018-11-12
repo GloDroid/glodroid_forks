@@ -27,7 +27,7 @@ apex {
     },
     native_shared_libs: ["libc", "libcutils"],
     java_libs: ["core-all"],
-    prebuilts: ["sample_prebuilt_file", "apex.test.ld.config.txt"],
+    prebuilts: ["sample_prebuilt_file", "apex.test.ld.config.txt", "apex.test.init.rc"],
     compile_multilib: "both",
     key: "apex.test.key",
     certificate: ":apex.test.certificate",
@@ -55,4 +55,11 @@ prebuilt_etc {
 prebuilt_etc {
     name: "sample_prebuilt_file",
     src: "testdata/sample_prebuilt_file",
+}
+
+prebuilt_etc {
+    name: "apex.test.init.rc",
+    src: "testdata/init.rc",
+    filename: "init.rc",
+    installable: false,
 }
