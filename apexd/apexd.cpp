@@ -706,10 +706,31 @@ Status configureReadAhead(const std::string& device_path) {
   return Status::Success();
 }
 
+using ApexFileAndManifest =
+    std::pair<std::unique_ptr<ApexFile>, std::unique_ptr<ApexManifest>>;
+
+StatusOr<ApexFileAndManifest> openFileAndManifest(
+    const std::string& full_path) {
+  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
+  if (!apexFileRes.Ok()) {
+    return StatusOr<ApexFileAndManifest>::MakeError(apexFileRes.ErrorMessage());
+  }
+
+  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
+      ApexManifest::Open((*apexFileRes)->GetManifest());
+  if (!manifestRes.Ok()) {
+    return StatusOr<ApexFileAndManifest>::MakeError(manifestRes.ErrorMessage());
+  }
+
+  return StatusOr<ApexFileAndManifest>(std::move(*apexFileRes),
+                                       std::move(*manifestRes));
+}
+
 Status activateNonFlattened(const ApexFile& apex,
                             const ApexManifest& manifest) {
   const std::string& full_path = apex.GetPath();
   const std::string& packageId = manifest.GetPackageId();
+
   LoopbackDeviceUniqueFd loopbackDevice;
   for (size_t attempts = 1;; ++attempts) {
     StatusOr<LoopbackDeviceUniqueFd> ret =
@@ -846,18 +867,13 @@ Status activatePackage(const std::string& full_path) {
 Status deactivatePackage(const std::string& full_path) {
   LOG(INFO) << "Trying to deactivate " << full_path;
 
-  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
-  if (!apexFileRes.Ok()) {
-    return apexFileRes.ErrorStatus();
+  StatusOr<ApexFileAndManifest> apexFileAndManifest =
+      openFileAndManifest(full_path);
+  if (!apexFileAndManifest.Ok()) {
+    return apexFileAndManifest.ErrorStatus();
   }
-  const std::unique_ptr<ApexFile>& apex = *apexFileRes;
-
-  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
-      ApexManifest::Open(apex->GetManifest());
-  if (!manifestRes.Ok()) {
-    return manifestRes.ErrorStatus();
-  }
-  const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
+  const std::unique_ptr<ApexFile>& apex = apexFileAndManifest->first;
+  const std::unique_ptr<ApexManifest>& manifest = apexFileAndManifest->second;
 
   // TODO: It's not clear what the right thing to do is for umount failures.
 
@@ -971,21 +987,12 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
 Status stagePackage(const std::string& packageTmpPath) {
   LOG(DEBUG) << "stagePackage() for " << packageTmpPath;
 
-  StatusOr<std::unique_ptr<ApexFile>> apexFileRes =
-      ApexFile::Open(packageTmpPath);
-  if (!apexFileRes.Ok()) {
-    // TODO: Get correct binder error status.
-    return apexFileRes.ErrorStatus();
+  StatusOr<ApexFileAndManifest> apexFileAndManifest =
+      openFileAndManifest(packageTmpPath);
+  if (!apexFileAndManifest.Ok()) {
+    return apexFileAndManifest.ErrorStatus();
   }
-  const std::unique_ptr<ApexFile>& apex = *apexFileRes;
-
-  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
-      ApexManifest::Open(apex->GetManifest());
-  if (!manifestRes.Ok()) {
-    // TODO: Get correct binder error status.
-    return manifestRes.ErrorStatus();
-  }
-  const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
+  const std::unique_ptr<ApexManifest>& manifest = apexFileAndManifest->second;
   std::string packageId =
       manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
 
