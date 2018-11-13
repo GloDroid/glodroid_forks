@@ -1,5 +1,6 @@
 (/.*)?                u:object_r:system_file:s0
 /manifest\.json   u:object_r:system_file:s0
+/bin/surfaceflinger u:object_r:surfaceflinger_exec:s0
 /lib        u:object_r:system_file:s0
 /lib(64)?(/.*)  u:object_r:system_file:s0
 /lib/libc.so       u:object_r:system_file:s0
