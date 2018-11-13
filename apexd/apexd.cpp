@@ -490,6 +490,14 @@ class DmVerityDevice {
     other.cleared_ = true;
   }
 
+  DmVerityDevice& operator=(DmVerityDevice&& other) {
+    name_ = other.name_;
+    dev_path_ = other.dev_path_;
+    cleared_ = other.cleared_;
+    other.cleared_ = true;
+    return *this;
+  }
+
   ~DmVerityDevice() {
     if (!cleared_) {
       DeviceMapper& dm = DeviceMapper::Instance();
@@ -724,27 +732,38 @@ Status activateNonFlattened(const ApexFile& apex,
                   << "Failed to verify Apex Verity data for " << full_path
                   << ": " << verityData.ErrorMessage());
   }
+  std::string blockDevice = loopbackDevice.name;
 
-  auto verityTable = createVerityTable(**verityData, loopbackDevice.name);
-  StatusOr<DmVerityDevice> verityDevRes =
-      createVerityDevice(packageId, *verityTable);
-  if (!verityDevRes.Ok()) {
-    return Status(StringLog()
-                  << "Failed to create Apex Verity device " << full_path << ": "
-                  << verityDevRes.ErrorMessage());
-  }
-  DmVerityDevice verityDev = std::move(*verityDevRes);
+  // for APEXes in system partition, we don't need to mount them on dm-verity
+  // because they are already in the dm-verity protected partition; system.
+  // However, note that we don't skip verification to ensure that APEXes are
+  // correctly signed.
+  const bool mountOnVerity =
+      !android::base::StartsWith(full_path, kApexPackageSystemDir);
+  DmVerityDevice verityDev;
+  if (mountOnVerity) {
+    auto verityTable = createVerityTable(**verityData, loopbackDevice.name);
+    StatusOr<DmVerityDevice> verityDevRes =
+        createVerityDevice(packageId, *verityTable);
+    if (!verityDevRes.Ok()) {
+      return Status(StringLog()
+                    << "Failed to create Apex Verity device " << full_path
+                    << ": " << verityDevRes.ErrorMessage());
+    }
+    verityDev = std::move(*verityDevRes);
+    blockDevice = verityDev.GetDevPath();
 
-  Status readAheadStatus = configureReadAhead(verityDev.GetDevPath());
-  if (!readAheadStatus.Ok()) {
-    return readAheadStatus.ErrorMessage();
+    Status readAheadStatus = configureReadAhead(verityDev.GetDevPath());
+    if (!readAheadStatus.Ok()) {
+      return readAheadStatus.ErrorMessage();
+    }
   }
 
   std::string mountPoint = StringPrintf("%s/%s", kApexRoot, packageId.c_str());
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
   mkdir(mountPoint.c_str(), kMkdirMode);
 
-  if (mount(verityDev.GetDevPath().c_str(), mountPoint.c_str(), "ext4",
+  if (mount(blockDevice.c_str(), mountPoint.c_str(), "ext4",
             MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, NULL) == 0) {
     LOG(INFO) << "Successfully mounted package " << full_path << " on "
               << mountPoint;
@@ -758,7 +777,9 @@ Status activateNonFlattened(const ApexFile& apex,
     }
 
     // Time to accept the temporaries as good.
-    verityDev.Release();
+    if (mountOnVerity) {
+      verityDev.Release();
+    }
     loopbackDevice.CloseGood();
 
     return Status::Success();
