@@ -33,7 +33,6 @@ using android::sp;
 using android::String16;
 using android::apex::ApexService;
 
-static constexpr const char* kApexPackageSystemDir = "/system/apex";
 static constexpr const char* kApexServiceName = "apexservice";
 
 int main(int /*argc*/, char** argv) {
@@ -55,7 +54,8 @@ int main(int /*argc*/, char** argv) {
   // packages living in the directory under /system, and we want the former ones
   // to be used over the latter ones.
   android::apex::scanPackagesDirAndActivate(android::apex::kApexPackageDataDir);
-  android::apex::scanPackagesDirAndActivate(kApexPackageSystemDir);
+  android::apex::scanPackagesDirAndActivate(
+      android::apex::kApexPackageSystemDir);
 
   // Notify other components (e.g. init) that all APEXs are correctly mounted
   // and are ready to be used.
