@@ -24,6 +24,10 @@
         <option name="push" value="apexd_testdata->/data/local/tmp/apexservice_test/apexd_testdata" />
     </target_preparer>
 
+    <!-- Temporarily disable selinux enforcement until the install flow is clear
+         and apexd has all rights. b/112669193 -->
+    <target_preparer class="com.android.tradefed.targetprep.DisableSELinuxTargetPreparer"/>
+
     <test class="com.android.tradefed.testtype.GTest" >
         <option name="native-test-device-path" value="/data/local/tmp/apexservice_test" />
         <option name="module-name" value="apexservice_test" />
