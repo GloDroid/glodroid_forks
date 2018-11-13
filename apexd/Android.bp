@@ -123,3 +123,19 @@ cc_test {
   static_libs: ["libapex"],
   test_suites: ["device-tests"],
 }
+
+cc_test {
+  name: "apexservice_test",
+  defaults: ["apex_defaults"],
+  data: ["apexd_testdata/*"],
+  srcs: ["apexservice_test.cpp"],
+  host_supported: false,
+  static_libs: ["apex_aidl_interface-cpp"],
+  shared_libs: [
+    "libbinder",
+    "libselinux",
+    "libutils",
+  ],
+  test_suites: ["device-tests"],
+  test_config: "apexservice_test_config.xml",  // TODO: Remove after b/117891984.
+}
