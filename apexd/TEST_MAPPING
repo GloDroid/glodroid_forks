@@ -5,6 +5,9 @@
     },
     {
       "name": "apex_manifest_test"
+    },
+    {
+      "name": "apexservice_test"
     }
   ]
 }
