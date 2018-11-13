@@ -761,8 +761,7 @@ Status activatePackage(const std::string& full_path) {
   mkdir(mountPoint.c_str(), kMkdirMode);
 
   if (mount(verityDev.GetDevPath().c_str(), mountPoint.c_str(), "ext4",
-            MS_NOATIME | MS_NODEV | MS_NOSUID | MS_DIRSYNC | MS_RDONLY,
-            NULL) == 0) {
+            MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, NULL) == 0) {
     LOG(INFO) << "Successfully mounted package " << full_path << " on "
               << mountPoint;
 
