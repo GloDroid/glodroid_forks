@@ -27,19 +27,45 @@
 #include <android-base/properties.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
+#include <binder/IPCThreadState.h>
 #include <binder/IResultReceiver.h>
+#include <binder/IServiceManager.h>
+#include <binder/ProcessState.h>
+#include <utils/String16.h>
 
 #include "apexd.h"
 #include "status.h"
+
+#include <android/apex/BnApexService.h>
 
 using android::base::StringPrintf;
 
 namespace android {
 namespace apex {
+namespace binder {
+namespace {
 
 using BinderStatus = ::android::binder::Status;
 
-namespace {
+class ApexService : public BnApexService {
+ public:
+  using BinderStatus = ::android::binder::Status;
+
+  ApexService(){};
+
+  BinderStatus stagePackage(const std::string& packageTmpPath,
+                            bool* aidl_return) override;
+  BinderStatus activatePackage(const std::string& packagePath) override;
+  BinderStatus deactivatePackage(const std::string& packagePath) override;
+  BinderStatus getActivePackages(
+      std::vector<PackageInfo>* aidl_return) override;
+
+  // Override onTransact so we can handle shellCommand.
+  status_t onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
+                      Parcel* _aidl_reply, uint32_t _aidl_flags = 0) override;
+
+  status_t shellCommand(int in, int out, int err, const Vector<String16>& args);
+};
 
 BinderStatus CheckDebuggable(const std::string& name) {
   if (!::android::base::GetBoolProperty("ro.debuggable", false)) {
@@ -49,8 +75,6 @@ BinderStatus CheckDebuggable(const std::string& name) {
   }
   return BinderStatus::ok();
 }
-
-}  // namespace
 
 BinderStatus ApexService::stagePackage(const std::string& packageTmpPath,
                                        bool* aidl_return) {
@@ -247,5 +271,32 @@ status_t ApexService::shellCommand(int in, int out, int err,
   return BAD_VALUE;
 }
 
+}  // namespace
+
+static constexpr const char* kApexServiceName = "apexservice";
+
+using android::defaultServiceManager;
+using android::IPCThreadState;
+using android::ProcessState;
+using android::sp;
+using android::String16;
+
+void CreateAndRegisterService() {
+  sp<ProcessState> ps(ProcessState::self());
+
+  // Create binder service and register with servicemanager
+  sp<ApexService> apexService = new ApexService();
+  defaultServiceManager()->addService(String16(kApexServiceName), apexService);
+}
+
+void JoinThreadPool() {
+  sp<ProcessState> ps(ProcessState::self());
+
+  // Start threadpool, wait for IPC
+  ps->startThreadPool();
+  IPCThreadState::self()->joinThreadPool();  // should not return
+}
+
+}  // namespace binder
 }  // namespace apex
 }  // namespace android
