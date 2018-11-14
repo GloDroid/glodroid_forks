@@ -698,30 +698,14 @@ Status configureReadAhead(const std::string& device_path) {
   return Status::Success();
 }
 
-}  // namespace
-
-Status activatePackage(const std::string& full_path) {
-  LOG(INFO) << "Trying to activate " << full_path;
-
-  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
-  if (!apexFileRes.Ok()) {
-    return apexFileRes.ErrorStatus();
-  }
-  const std::unique_ptr<ApexFile>& apex = *apexFileRes;
-
-  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
-      ApexManifest::Open(apex->GetManifest());
-  if (!manifestRes.Ok()) {
-    return manifestRes.ErrorStatus();
-  }
-  const std::unique_ptr<ApexManifest>& manifest = *manifestRes;
-  std::string packageId =
-      manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
-
+Status activateNonFlattened(const ApexFile& apex,
+                            const ApexManifest& manifest) {
+  const std::string& full_path = apex.GetPath();
+  const std::string& packageId = manifest.GetPackageId();
   LoopbackDeviceUniqueFd loopbackDevice;
   for (size_t attempts = 1;; ++attempts) {
-    StatusOr<LoopbackDeviceUniqueFd> ret = createLoopDevice(
-        full_path, apex->GetImageOffset(), apex->GetImageSize());
+    StatusOr<LoopbackDeviceUniqueFd> ret =
+        createLoopDevice(full_path, apex.GetImageOffset(), apex.GetImageSize());
     if (ret.Ok()) {
       loopbackDevice = std::move(*ret);
       break;
@@ -734,7 +718,7 @@ Status activatePackage(const std::string& full_path) {
   }
   LOG(VERBOSE) << "Loopback device created: " << loopbackDevice.name;
 
-  auto verityData = verifyApexVerity(*apex);
+  auto verityData = verifyApexVerity(apex);
   if (!verityData.Ok()) {
     return Status(StringLog()
                   << "Failed to verify Apex Verity data for " << full_path
@@ -767,7 +751,7 @@ Status activatePackage(const std::string& full_path) {
 
     // TODO: only create bind-mount if we are sure we are mounting the latest
     //       version of a package.
-    Status st = updateLatest(manifest->GetName(), mountPoint);
+    Status st = updateLatest(manifest.GetName(), mountPoint);
     if (!st.Ok()) {
       // TODO: Fail?
       LOG(ERROR) << st.ErrorMessage();
@@ -781,6 +765,61 @@ Status activatePackage(const std::string& full_path) {
   }
   return Status::Fail(PStringLog()
                       << "Mounting failed for package " << full_path);
+}
+
+Status activateFlattened(const ApexFile& apex, const ApexManifest& manifest) {
+  if (!android::base::StartsWith(apex.GetPath(), kApexPackageSystemDir)) {
+    return Status::Fail(StringLog()
+                        << "Cannot activate flattened APEX " << apex.GetPath());
+  }
+
+  const std::string mountPoint =
+      StringPrintf("%s/%s", kApexRoot, manifest.GetPackageId().c_str());
+
+  LOG(VERBOSE) << "Creating mount point: " << mountPoint;
+  mkdir(mountPoint.c_str(), kMkdirMode);
+
+  if (mount(apex.GetPath().c_str(), mountPoint.c_str(), nullptr, MS_BIND,
+            nullptr) == 0) {
+    LOG(INFO) << "Successfully bind-mounted flattened package "
+              << apex.GetPath() << " on " << mountPoint;
+
+    // TODO: only create bind-mount if we are sure we are mounting the latest
+    //       version of a package.
+    Status st = updateLatest(manifest.GetName(), mountPoint);
+    if (!st.Ok()) {
+      // TODO: Fail?
+      LOG(ERROR) << st.ErrorMessage();
+    }
+
+    return Status::Success();
+  }
+  return Status::Fail(PStringLog() << "Mounting failed for flattened package "
+                                   << apex.GetPath());
+}
+
+}  // namespace
+
+Status activatePackage(const std::string& full_path) {
+  LOG(INFO) << "Trying to activate " << full_path;
+
+  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
+  if (!apexFileRes.Ok()) {
+    return apexFileRes.ErrorStatus();
+  }
+  const std::unique_ptr<ApexFile>& apex = *apexFileRes;
+
+  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
+      ApexManifest::Open(apex->GetManifest());
+  if (!manifestRes.Ok()) {
+    return manifestRes.ErrorStatus();
+  }
+
+  if (apex->IsFlattened()) {
+    return activateFlattened(*apex, **manifestRes);
+  } else {
+    return activateNonFlattened(*apex, **manifestRes);
+  }
 }
 
 Status deactivatePackage(const std::string& full_path) {
@@ -815,8 +854,7 @@ Status deactivatePackage(const std::string& full_path) {
     }
   }
 
-  std::string packageId =
-      manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
+  std::string packageId = manifest->GetPackageId();
   std::string mount_point = StringPrintf("%s/%s", kApexRoot, packageId.c_str());
   if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0) {
     return Status::Fail(PStringLog() << "Failed to unmount " << mount_point);
@@ -832,7 +870,9 @@ Status deactivatePackage(const std::string& full_path) {
 
   // TODO: Find the loop device connected with the mount. For now, just run the
   //       destroy-all and rely on EBUSY.
-  destroyAllLoopDevices();
+  if (!apex->IsFlattened()) {
+    destroyAllLoopDevices();
+  }
 
   if (error_msg.empty()) {
     return Status::Success();
@@ -886,17 +926,23 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
                   << " not found, nothing to do.";
     return;
   }
+  const bool scanSystemApexes =
+      android::base::StartsWith(apex_package_dir, kApexPackageSystemDir);
   struct dirent* dp;
   while ((dp = readdir(d.get())) != NULL) {
-    if (dp->d_type != DT_REG || !EndsWith(dp->d_name, kApexPackageSuffix)) {
+    const std::string name(dp->d_name);
+    if (name == "." || name == "..") {
       continue;
     }
-    LOG(INFO) << "Found " << dp->d_name;
+    const bool isApexFile =
+        dp->d_type == DT_REG && EndsWith(name, kApexPackageSuffix);
+    if (isApexFile || (dp->d_type == DT_DIR && scanSystemApexes)) {
+      LOG(INFO) << "Found " << name;
 
-    Status res =
-        activatePackage(StringPrintf("%s/%s", apex_package_dir, dp->d_name));
-    if (!res.Ok()) {
-      LOG(ERROR) << res.ErrorMessage();
+      Status res = activatePackage(std::string(apex_package_dir) + "/" + name);
+      if (!res.Ok()) {
+        LOG(ERROR) << res.ErrorMessage();
+      }
     }
   }
 }
