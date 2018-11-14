@@ -32,6 +32,9 @@ class ApexManifest {
 
   std::string GetName() const { return name_; }
   uint64_t GetVersion() const { return version_; }
+  std::string GetPackageId() const {
+    return name_ + "@" + std::to_string(version_);
+  }
 
  private:
   ApexManifest(const std::string& apex_manifest) : manifest_(apex_manifest){};

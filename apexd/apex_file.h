@@ -30,22 +30,23 @@ namespace apex {
 // the content.
 class ApexFile {
  public:
-  static StatusOr<std::unique_ptr<ApexFile>> Open(
-      const std::string& apex_filename);
+  static StatusOr<std::unique_ptr<ApexFile>> Open(const std::string& apex_path);
   ~ApexFile();
 
-  std::string GetPath() const { return apex_filename_; }
+  std::string GetPath() const { return apex_path_; }
   int32_t GetImageOffset() const { return image_offset_; }
   size_t GetImageSize() const { return image_size_; }
 
   std::string GetManifest() const { return manifest_; }
+  bool IsFlattened() const { return flattened_; }
 
  private:
-  ApexFile(const std::string& apex_filename)
-      : apex_filename_(apex_filename), handle_(nullptr){};
+  ApexFile(const std::string& apex_path)
+      : apex_path_(apex_path), handle_(nullptr){};
   int OpenInternal(std::string* error_msg);
 
-  const std::string apex_filename_;
+  const std::string apex_path_;
+  bool flattened_;
   int32_t image_offset_;
   size_t image_size_;
   std::string manifest_;

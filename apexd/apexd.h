@@ -28,6 +28,7 @@ namespace apex {
 
 static constexpr const char* kApexPackageDataDir = "/data/apex";
 static constexpr const char* kApexRoot = "/apex";
+static constexpr const char* kApexPackageSystemDir = "/system/apex";
 
 void unmountAndDetachExistingImages();
 
