@@ -110,19 +110,42 @@ class ApexServiceTest : public ::testing::Test {
         ASSERT_EQ(0, access(GetTestFile().c_str(), F_OK))
             << GetTestFile() << ": " << strerror(errno);
         ASSERT_EQ(0, mkdir(kTestDir, 0777)) << strerror(errno);
-        ASSERT_TRUE(0 == setfilecon(kTestDir, "u:object_r:apex_data_file:s0") ||
-                    !HaveSelinux())
-            << strerror(errno);
 
-        ASSERT_EQ(0, link(GetTestFile().c_str(), kTestFile)) << strerror(errno);
-        ASSERT_TRUE(0 ==
-                        setfilecon(kTestFile, "u:object_r:apex_data_file:s0") ||
-                    !HaveSelinux())
-            << strerror(errno);
+        auto mode_info = [](const std::string& f) {
+          auto get_mode = [](const std::string& path) {
+            struct stat buf;
+            if (stat(path.c_str(), &buf) != 0) {
+              return std::string(strerror(errno));
+            }
+            return android::base::StringPrintf("%x", buf.st_mode);
+          };
+          std::string file_part = f + "(" + get_mode(f) + ")";
+
+          std::string dir = android::base::Dirname(f);
+          std::string dir_part = dir + "(" + get_mode(dir) + ")";
+
+          return file_part + " - " + dir_part;
+        };
+        int rc = link(GetTestFile().c_str(), kTestFile);
+        if (rc != 0) {
+          int saved_errno = errno;
+          ASSERT_EQ(0, rc) << mode_info(GetTestFile()) << " to "
+                           << mode_info(kTestFile) << " : "
+                           << strerror(saved_errno);
+        }
+
         ASSERT_EQ(0, chmod(kTestFile, 0777)) << strerror(errno);
         struct group* g = getgrnam("system");
         ASSERT_NE(nullptr, g);
         ASSERT_EQ(0, chown(kTestFile, /* root uid */ 0, g->gr_gid))
+            << strerror(errno);
+
+        ASSERT_TRUE(0 == setfilecon(kTestDir, "u:object_r:apex_data_file:s0") ||
+                    !HaveSelinux())
+            << strerror(errno);
+        ASSERT_TRUE(0 ==
+                        setfilecon(kTestFile, "u:object_r:apex_data_file:s0") ||
+                    !HaveSelinux())
             << strerror(errno);
       };
       prepare();
