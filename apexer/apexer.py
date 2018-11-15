@@ -112,6 +112,8 @@ def PrepareAndroidManifest(package, version):
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="{package}" versionCode="{version}">
+  <!-- APEX does not have classes.dex -->
+  <application android:hasCode="false" />
 </manifest>
 """
   return template.format(package=package, version=version)
@@ -264,6 +266,7 @@ def CreateApex(args, work_dir):
   cmd.append('link')
   cmd.extend(['--manifest', android_manifest_file])
   cmd.extend(['-o', apk_file])
+  cmd.extend(['-I', "prebuilts/sdk/current/public/android.jar"])
   RunCommand(cmd, args.verbose)
 
   zip_file = os.path.join(work_dir, 'apex.zip')
