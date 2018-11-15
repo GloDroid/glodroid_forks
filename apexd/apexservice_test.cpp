@@ -24,6 +24,8 @@
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
+#include <android-base/macros.h>
+#include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 #include <binder/IServiceManager.h>
 #include <gtest/gtest.h>
@@ -289,11 +291,31 @@ TEST_F(ApexServiceTest, Activate) {
   // TODO: Uninstall.
 }
 
+class LogTestToLogcat : public testing::EmptyTestEventListener {
+  void OnTestStart(const testing::TestInfo& test_info) override {
+#ifdef __ANDROID__
+    using base::LogId;
+    using base::LogSeverity;
+    using base::StringPrintf;
+    base::LogdLogger l;
+    std::string msg =
+        StringPrintf("=== %s::%s (%s:%d)", test_info.test_case_name(),
+                     test_info.name(), test_info.file(), test_info.line());
+    l(LogId::MAIN, LogSeverity::INFO, "apexservice_test", __FILE__, __LINE__,
+      msg.c_str());
+#else
+    UNUSED(test_case);
+#endif
+  }
+};
+
 }  // namespace apex
 }  // namespace android
 
 int main(int argc, char** argv) {
   android::base::InitLogging(argv, &android::base::StderrLogger);
   ::testing::InitGoogleTest(&argc, argv);
+  testing::UnitTest::GetInstance()->listeners().Append(
+      new android::apex::LogTestToLogcat());
   return RUN_ALL_TESTS();
 }
