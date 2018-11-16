@@ -58,7 +58,7 @@ class ApexService : public BnApexService {
   BinderStatus activatePackage(const std::string& packagePath) override;
   BinderStatus deactivatePackage(const std::string& packagePath) override;
   BinderStatus getActivePackages(
-      std::vector<PackageInfo>* aidl_return) override;
+      std::vector<ApexPackageInfo>* aidl_return) override;
 
   // Override onTransact so we can handle shellCommand.
   status_t onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
@@ -141,7 +141,7 @@ BinderStatus ApexService::deactivatePackage(const std::string& packagePath) {
 }
 
 BinderStatus ApexService::getActivePackages(
-    std::vector<PackageInfo>* aidl_return) {
+    std::vector<ApexPackageInfo>* aidl_return) {
   LOG(DEBUG) << "Scanning " << kApexRoot << " looking for active packages.";
   // This code would be much shorter if C++17's std::filesystem were available,
   // which is not at the time of writing this.
@@ -160,7 +160,7 @@ BinderStatus ApexService::getActivePackages(
         (strcmp(dp->d_name, "..") == 0)) {
       continue;
     }
-    PackageInfo pkg;
+    ApexPackageInfo pkg;
     std::vector<std::string> splits = android::base::Split(dp->d_name, "@");
     if (splits.size() != 2) {
       LOG(ERROR) << "Unable to extract package info from directory name "
@@ -237,7 +237,7 @@ status_t ApexService::shellCommand(int in, int out, int err,
     return BAD_VALUE;
   }
   if (args.size() == 1 && args[0] == String16("getActivePackages")) {
-    std::vector<PackageInfo> list;
+    std::vector<ApexPackageInfo> list;
     android::binder::Status status = getActivePackages(&list);
     if (status.isOk()) {
       auto out_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", out));
