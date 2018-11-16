@@ -110,6 +110,15 @@ class MountedApexDatabase {
     }
   }
 
+  template <typename T>
+  inline void ForallMountedApexes(const T& handler) {
+    for (const auto& pkg : mounted_apexes_) {
+      for (const auto& pair : pkg.second) {
+        handler(pkg.first, pair.first, pair.second);
+      }
+    }
+  }
+
  private:
   // A map from package name to mounted apexes.
   // Note: using std::maps to

@@ -18,6 +18,7 @@
 #define ANDROID_APEXD_APEXD_H_
 
 #include <string>
+#include <vector>
 
 #include <android-base/macros.h>
 
@@ -38,6 +39,8 @@ Status stagePackage(const std::string& packageTmpPath) WARN_UNUSED;
 
 Status activatePackage(const std::string& full_path) WARN_UNUSED;
 Status deactivatePackage(const std::string& full_path) WARN_UNUSED;
+
+std::vector<std::pair<std::string, uint64_t>> getActivePackages();
 
 void onStart();
 void onAllPackagesReady();
