@@ -221,6 +221,9 @@ status_t ApexService::shellCommand(int in, int out, int err,
            << std::endl
            << "  activatePackage [packagePath] - activate package from the "
               "given path"
+           << std::endl
+           << "  deactivatePackage [packagePath] - deactivate package from the "
+              "given path"
            << std::endl;
   };
 
@@ -260,6 +263,17 @@ status_t ApexService::shellCommand(int in, int out, int err,
     }
     auto err_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", err));
     err_str << "Failed to activate package: " << status.toString8().string()
+            << std::endl;
+    return BAD_VALUE;
+  }
+  if (args.size() == 2 && args[0] == String16("deactivatePackage")) {
+    ::android::binder::Status status =
+        deactivatePackage(String8(args[1]).string());
+    if (status.isOk()) {
+      return OK;
+    }
+    auto err_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", err));
+    err_str << "Failed to deactivate package: " << status.toString8().string()
             << std::endl;
     return BAD_VALUE;
   }
