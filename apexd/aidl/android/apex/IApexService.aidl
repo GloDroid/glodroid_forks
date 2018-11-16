@@ -16,11 +16,11 @@
 
 package android.apex;
 
-import android.apex.PackageInfo;
+import android.apex.ApexPackageInfo;
 
 interface IApexService {
    boolean stagePackage(in @utf8InCpp String package_tmp_path);
-   PackageInfo[] getActivePackages();
+   ApexPackageInfo[] getActivePackages();
 
    /**
     * Not meant for use outside of testing. The call will not be

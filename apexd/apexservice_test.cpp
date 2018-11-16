@@ -31,8 +31,8 @@
 #include <gtest/gtest.h>
 #include <selinux/selinux.h>
 
+#include <android/apex/ApexPackageInfo.h>
 #include <android/apex/IApexService.h>
-#include <android/apex/PackageInfo.h>
 
 #include "status_or.h"
 
@@ -68,10 +68,10 @@ class ApexServiceTest : public ::testing::Test {
   static bool IsSelinuxEnforced() { return 0 != security_getenforce(); }
 
   StatusOr<bool> IsActive(const std::string& name, int64_t version) {
-    std::vector<PackageInfo> list;
+    std::vector<ApexPackageInfo> list;
     android::binder::Status status = service_->getActivePackages(&list);
     if (status.isOk()) {
-      for (const PackageInfo& p : list) {
+      for (const ApexPackageInfo& p : list) {
         if (p.package_name == name && p.version_code == version) {
           return StatusOr<bool>(true);
         }
@@ -82,11 +82,11 @@ class ApexServiceTest : public ::testing::Test {
   }
 
   std::vector<std::string> GetActivePackagesStrings() {
-    std::vector<PackageInfo> list;
+    std::vector<ApexPackageInfo> list;
     android::binder::Status status = service_->getActivePackages(&list);
     if (status.isOk()) {
       std::vector<std::string> ret;
-      for (const PackageInfo& p : list) {
+      for (const ApexPackageInfo& p : list) {
         ret.push_back(p.package_name + "@" + std::to_string(p.version_code));
       }
       return ret;

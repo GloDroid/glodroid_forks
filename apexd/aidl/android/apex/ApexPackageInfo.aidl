@@ -16,7 +16,7 @@
 
 package android.apex;
 
-parcelable PackageInfo {
+parcelable ApexPackageInfo {
     @utf8InCpp String package_name;
     long version_code;
 }
