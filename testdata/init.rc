@@ -1,7 +1,7 @@
-service apex.test /apex/com.android.example.apex/bin/test
+service apex.test /apex/com.android.apex.test/bin/test
     disabled
 
-service surfaceflinger /apex/com.android.example.apex/bin/surfaceflinger
+service surfaceflinger /apex/com.android.apex.test/bin/surfaceflinger
     class core animation
     user system
     group graphics drmrpc readproc
