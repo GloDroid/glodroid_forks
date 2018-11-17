@@ -327,7 +327,7 @@ class LogTestToLogcat : public testing::EmptyTestEventListener {
     l(LogId::MAIN, LogSeverity::INFO, "apexservice_test", __FILE__, __LINE__,
       msg.c_str());
 #else
-    UNUSED(test_case);
+    UNUSED(test_info);
 #endif
   }
 };
