@@ -56,7 +56,12 @@ static bool isFlattenedApex(const std::string& path) {
     if (errno == ENOENT) {
       return false;
     }
-    PLOG(ERROR) << "Failed to stat " << path << ". error: " << strerror(errno);
+    // If the APEX is there but not a flatttened apex, the final component
+    // of path will be a file, and stat will complain that it's not a directory.
+    // We are OK with that to avoid two stat calls.
+    if (errno != ENOTDIR) {
+      PLOG(ERROR) << "Failed to stat " << path;
+    }
     return false;
   }
 
