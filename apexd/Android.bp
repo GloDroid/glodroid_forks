@@ -29,7 +29,7 @@ cc_defaults {
 aidl_interface {
   name: "apex_aidl_interface",
   srcs: [
-    "aidl/android/apex/ApexPackageInfo.aidl",
+    "aidl/android/apex/ApexInfo.aidl",
     "aidl/android/apex/IApexService.aidl",
   ],
   local_include_dir: "aidl",
