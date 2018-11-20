@@ -738,9 +738,9 @@ StatusOr<ApexFileAndManifest> openFileAndManifest(
                                        std::move(*manifestRes));
 }
 
-Status activateNonFlattened(const ApexFile& apex, const ApexManifest& manifest,
-                            const std::string& mountPoint,
-                            MountedApexData* apex_data) {
+Status mountNonFlattened(const ApexFile& apex, const ApexManifest& manifest,
+                         const std::string& mountPoint,
+                         MountedApexData* apex_data) {
   const std::string& full_path = apex.GetPath();
   const std::string& packageId = manifest.GetPackageId();
 
@@ -811,10 +811,10 @@ Status activateNonFlattened(const ApexFile& apex, const ApexManifest& manifest,
                       << "Mounting failed for package " << full_path);
 }
 
-Status activateFlattened(const ApexFile& apex,
-                         const ApexManifest& manifest ATTRIBUTE_UNUSED,
-                         const std::string& mountPoint,
-                         MountedApexData* apex_data) {
+Status mountFlattened(const ApexFile& apex,
+                      const ApexManifest& manifest ATTRIBUTE_UNUSED,
+                      const std::string& mountPoint,
+                      MountedApexData* apex_data) {
   if (!android::base::StartsWith(apex.GetPath(), kApexPackageSystemDir)) {
     return Status::Fail(StringLog()
                         << "Cannot activate flattened APEX " << apex.GetPath());
@@ -831,6 +831,27 @@ Status activateFlattened(const ApexFile& apex,
   }
   return Status::Fail(PStringLog() << "Mounting failed for flattened package "
                                    << apex.GetPath());
+}
+
+Status mountPackage(const ApexFile& apex, const ApexManifest& manifest,
+                    const std::string& mountPoint, MountedApexData* data) {
+  LOG(VERBOSE) << "Creating mount point: " << mountPoint;
+  if (mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
+    return Status::Fail(PStringLog()
+                        << "Could not create mount point " << mountPoint);
+  }
+
+  Status st = apex.IsFlattened()
+                  ? mountFlattened(apex, manifest, mountPoint, data)
+                  : mountNonFlattened(apex, manifest, mountPoint, data);
+  if (!st.Ok()) {
+    if (!rmdir(mountPoint.c_str())) {
+      PLOG(WARNING) << "Could not rmdir " << mountPoint;
+    }
+    return st;
+  }
+
+  return Status::Success();
 }
 
 Status deactivatePackageImpl(const ApexFile& apex,
@@ -896,12 +917,12 @@ Status activatePackage(const std::string& full_path) {
   // We roll this into a single check.
   bool is_newest_version = true;
   bool found_other_version = false;
+  bool version_found_mounted = false;
   {
     uint64_t new_version = manifest->GetVersion();
-    bool version_found = false;
+    bool version_found_active = false;
     gMountedApexes.ForallMountedApexes(
-        manifest->GetName(),
-        [&](const MountedApexData& data, bool latest ATTRIBUTE_UNUSED) {
+        manifest->GetName(), [&](const MountedApexData& data, bool latest) {
           StatusOr<ApexFileAndManifest> otherFileAndManifest =
               openFileAndManifest(data.full_path);
           if (!otherFileAndManifest.Ok()) {
@@ -909,51 +930,45 @@ Status activatePackage(const std::string& full_path) {
           }
           found_other_version = true;
           if (otherFileAndManifest->second->GetVersion() == new_version) {
-            version_found = true;
+            version_found_mounted = true;
+            version_found_active = latest;
           }
           if (otherFileAndManifest->second->GetVersion() > new_version) {
             is_newest_version = false;
           }
         });
-    if (version_found) {
+    if (version_found_active) {
       return Status::Fail("Package is already active.");
     }
   }
 
   std::string mountPoint = GetPackageMountPoint(*manifest);
-  LOG(VERBOSE) << "Creating mount point: " << mountPoint;
-  if (mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
-    return Status::Fail(PStringLog()
-                        << "Could not create mount point " << mountPoint);
-  }
 
   MountedApexData apex_data("", full_path);
 
-  Status st =
-      apex->IsFlattened()
-          ? activateFlattened(*apex, *manifest, mountPoint, &apex_data)
-          : activateNonFlattened(*apex, *manifest, mountPoint, &apex_data);
-  if (st.Ok()) {
-    bool mounted_latest = false;
-    if (is_newest_version) {
-      Status update_st =
-          updateLatest(GetActiveMountPoint(*manifest), mountPoint);
-      mounted_latest = update_st.Ok();
-      if (!update_st.Ok()) {
-        // TODO: Fail?
-        LOG(ERROR) << st.ErrorMessage();
-      }
+  if (!version_found_mounted) {
+    Status mountStatus = mountPackage(*apex, *manifest, mountPoint, &apex_data);
+    if (!mountStatus.Ok()) {
+      return mountStatus;
     }
-    if (found_other_version && mounted_latest) {
-      gMountedApexes.UnsetLatestForall(manifest->GetName());
-    }
-    gMountedApexes.AddMountedApex(manifest->GetName(), mounted_latest,
-                                  std::move(apex_data));
-  } else {
-    rmdir(mountPoint.c_str());
   }
 
-  return st;
+  bool mounted_latest = false;
+  if (is_newest_version) {
+    Status update_st = updateLatest(GetActiveMountPoint(*manifest), mountPoint);
+    mounted_latest = update_st.Ok();
+    if (!update_st.Ok()) {
+      // TODO: Fail?
+      LOG(ERROR) << update_st.ErrorMessage();
+    }
+  }
+  if (found_other_version && mounted_latest) {
+    gMountedApexes.UnsetLatestForall(manifest->GetName());
+  }
+  gMountedApexes.AddMountedApex(manifest->GetName(), mounted_latest,
+                                std::move(apex_data));
+
+  return Status::Success();
 }
 
 Status deactivatePackage(const std::string& full_path) {
