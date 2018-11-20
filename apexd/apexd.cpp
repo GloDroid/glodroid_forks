@@ -88,6 +88,14 @@ static constexpr int kMkdirMode = 0755;
 
 MountedApexDatabase gMountedApexes;
 
+std::string GetPackageMountPoint(const ApexManifest& manifest) {
+  return StringPrintf("%s/%s", kApexRoot, manifest.GetPackageId().c_str());
+}
+
+std::string GetActiveMountPoint(const ApexManifest& manifest) {
+  return StringPrintf("%s/%s", kApexRoot, manifest.GetName().c_str());
+}
+
 struct LoopbackDeviceUniqueFd {
   unique_fd device_fd;
   std::string name;
@@ -601,10 +609,8 @@ StatusOr<std::unique_ptr<ApexVerityData>> verifyApexVerity(
   return StatusOr<std::unique_ptr<ApexVerityData>>(std::move(verityData));
 }
 
-Status updateLatest(const std::string& package_name,
+Status updateLatest(const std::string& latest_path,
                     const std::string& mount_point) {
-  std::string latest_path =
-      StringPrintf("%s/%s", kApexRoot, package_name.c_str());
   LOG(VERBOSE) << "Creating bind-mount for " << latest_path << " with target "
                << mount_point;
   // Ensure the directory exists, try to unmount.
@@ -834,8 +840,7 @@ Status deactivatePackageImpl(const ApexFile& apex,
   // Unmount "latest" bind-mount.
   // TODO: What if bind-mount isn't latest?
   {
-    std::string mount_point =
-        StringPrintf("%s/%s", kApexRoot, manifest.GetName().c_str());
+    std::string mount_point = GetActiveMountPoint(manifest);
     LOG(VERBOSE) << "Unmounting and deleting " << mount_point;
     if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0) {
       return Status::Fail(PStringLog() << "Failed to unmount " << mount_point);
@@ -846,8 +851,7 @@ Status deactivatePackageImpl(const ApexFile& apex,
     }
   }
 
-  std::string packageId = manifest.GetPackageId();
-  std::string mount_point = StringPrintf("%s/%s", kApexRoot, packageId.c_str());
+  std::string mount_point = GetPackageMountPoint(manifest);
   LOG(VERBOSE) << "Unmounting and deleting " << mount_point;
   if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0) {
     return Status::Fail(PStringLog() << "Failed to unmount " << mount_point);
@@ -916,8 +920,7 @@ Status activatePackage(const std::string& full_path) {
     }
   }
 
-  std::string mountPoint =
-      StringPrintf("%s/%s", kApexRoot, manifest->GetPackageId().c_str());
+  std::string mountPoint = GetPackageMountPoint(*manifest);
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
   if (mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
     return Status::Fail(PStringLog()
@@ -933,7 +936,8 @@ Status activatePackage(const std::string& full_path) {
   if (st.Ok()) {
     bool mounted_latest = false;
     if (is_newest_version) {
-      Status update_st = updateLatest(manifest->GetName(), mountPoint);
+      Status update_st =
+          updateLatest(GetActiveMountPoint(*manifest), mountPoint);
       mounted_latest = update_st.Ok();
       if (!update_st.Ok()) {
         // TODO: Fail?
