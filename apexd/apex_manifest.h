@@ -36,13 +36,18 @@ class ApexManifest {
     return name_ + "@" + std::to_string(version_);
   }
 
+  std::string GetPreInstallHook() const { return pre_install_hook_; }
+  std::string GetPostInstallHook() const { return post_install_hook_; }
+
  private:
   ApexManifest(const std::string& apex_manifest) : manifest_(apex_manifest){};
   int OpenInternal(std::string* error_msg);
 
   std::string manifest_;
   std::string name_;
-  uint64_t version_;
+  std::string pre_install_hook_;
+  std::string post_install_hook_;
+  uint64_t version_ = 0;
 };
 
 }  // namespace apex

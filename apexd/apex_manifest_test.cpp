@@ -58,6 +58,42 @@ TEST(ApexManifestTest, VersionNotNumber) {
       << apexManifest.ErrorMessage();
 }
 
+TEST(ApexManifestTest, NoPreInstallHook) {
+  auto apexManifestRes = ApexManifest::Open(
+      "{\"name\": \"com.android.example.apex\", \"version\": 1}\n");
+  ASSERT_TRUE(apexManifestRes.Ok());
+  auto& apexManifest = *apexManifestRes;
+  EXPECT_EQ("", std::string(apexManifest->GetPreInstallHook()));
+}
+
+TEST(ApexManifestTest, PreInstallHook) {
+  auto apexManifestRes = ApexManifest::Open(
+      "{\"name\": \"com.android.example.apex\", \"version\": 1, "
+      "\"pre_install_hook\": \"bin/pre_install_hook\"}\n");
+  ASSERT_TRUE(apexManifestRes.Ok());
+  auto& apexManifest = *apexManifestRes;
+  EXPECT_EQ("bin/pre_install_hook",
+            std::string(apexManifest->GetPreInstallHook()));
+}
+
+TEST(ApexManifestTest, NoPostInstallHook) {
+  auto apexManifestRes = ApexManifest::Open(
+      "{\"name\": \"com.android.example.apex\", \"version\": 1}\n");
+  ASSERT_TRUE(apexManifestRes.Ok());
+  auto& apexManifest = *apexManifestRes;
+  EXPECT_EQ("", std::string(apexManifest->GetPostInstallHook()));
+}
+
+TEST(ApexManifestTest, PostInstallHook) {
+  auto apexManifestRes = ApexManifest::Open(
+      "{\"name\": \"com.android.example.apex\", \"version\": 1, "
+      "\"post_install_hook\": \"bin/post_install_hook\"}\n");
+  ASSERT_TRUE(apexManifestRes.Ok());
+  auto& apexManifest = *apexManifestRes;
+  EXPECT_EQ("bin/post_install_hook",
+            std::string(apexManifest->GetPostInstallHook()));
+}
+
 TEST(ApexManifestTest, UnparsableManifest) {
   auto apexManifest = ApexManifest::Open("This is an invalid pony");
   ASSERT_FALSE(apexManifest.Ok());
