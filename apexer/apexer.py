@@ -45,7 +45,6 @@ Aborting.
 
 tool_path = os.environ['APEXER_TOOL_PATH']
 tool_path_list = tool_path.split(":")
-print "Using tool_path_list=" + str(tool_path_list)
 
 def ParseArgs(argv):
   parser = argparse.ArgumentParser(description='Create an APEX file')
@@ -146,6 +145,9 @@ def ValidateArgs(args):
 def CreateApex(args, work_dir):
   if not ValidateArgs(args):
     return False
+
+  if args.verbose:
+    print "Using tools from " + str(tool_path_list)
 
   try:
     with open(args.manifest) as f:
