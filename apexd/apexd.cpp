@@ -972,6 +972,29 @@ Status deactivatePackage(const std::string& full_path) {
   return st;
 }
 
+std::vector<std::pair<std::string, uint64_t>> getActivePackages() {
+  std::vector<std::pair<std::string, uint64_t>> ret;
+  gMountedApexes.ForallMountedApexes([&](const std::string& package,
+                                         const MountedApexData& data,
+                                         bool latest) {
+    if (!latest) {
+      return;
+    }
+
+    StatusOr<ApexFileAndManifest> apexFileAndManifest =
+        openFileAndManifest(data.full_path);
+    if (!apexFileAndManifest.Ok()) {
+      // TODO: Fail?
+      return;
+    }
+
+    const std::unique_ptr<ApexManifest>& manifest = apexFileAndManifest->second;
+    ret.emplace_back(package, manifest->GetVersion());
+  });
+
+  return ret;
+}
+
 void unmountAndDetachExistingImages() {
   // TODO: this procedure should probably not be needed anymore when apexd
   // becomes an actual daemon. Remove if that's the case.
