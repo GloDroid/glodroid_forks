@@ -52,7 +52,7 @@ def ParseArgs(argv):
                       help='force overwriting output')
   parser.add_argument('-v', '--verbose', action='store_true',
                       help='verbose execution')
-  parser.add_argument('--manifest', default='manifest.json',
+  parser.add_argument('--manifest', default='apex_manifest.json',
                       help='path to the APEX manifest file')
   parser.add_argument('--file_contexts', required=True,
                       help='selinux file contexts file')
@@ -174,7 +174,7 @@ def CreateApex(args, work_dir):
 
   content_dir = os.path.join(work_dir, 'content')
   os.mkdir(content_dir)
-  img_file = os.path.join(content_dir, 'image.img')
+  img_file = os.path.join(content_dir, 'apex_payload.img')
 
   cmd = ['mke2fs']
   cmd.extend(['-O', '^has_journal']) # because image is read-only
@@ -207,7 +207,7 @@ def CreateApex(args, work_dir):
   # within the zip container).
   manifests_dir = os.path.join(work_dir, 'manifests')
   os.mkdir(manifests_dir)
-  manifest_file = os.path.join(manifests_dir, 'manifest.json')
+  manifest_file = os.path.join(manifests_dir, 'apex_manifest.json')
   if args.verbose:
     print('Copying ' + args.manifest + ' to ' + manifest_file)
   shutil.copyfile(args.manifest, manifest_file)
@@ -261,7 +261,7 @@ def CreateApex(args, work_dir):
 
   # copy manifest to the content dir so that it is also accessible
   # without mounting the image
-  shutil.copyfile(args.manifest, os.path.join(content_dir, 'manifest.json'))
+  shutil.copyfile(args.manifest, os.path.join(content_dir, 'apex_manifest.json'))
 
   apk_file = os.path.join(work_dir, 'apex.apk')
   cmd = ['aapt2']
