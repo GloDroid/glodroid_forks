@@ -38,6 +38,11 @@ StatusOr<std::unique_ptr<ApexManifest>> ApexManifest::Open(
 }
 
 int ApexManifest::OpenInternal(std::string* error_msg) {
+  constexpr const char* kNameTag = "name";
+  constexpr const char* kVersionTag = "version";
+  constexpr const char* kPreInstallTag = "pre_install_hook";
+  constexpr const char* kPostInstallTag = "post_install_hook";
+
   Json::Value root;
   Json::Reader reader;
 
@@ -47,27 +52,43 @@ int ApexManifest::OpenInternal(std::string* error_msg) {
     return -1;
   }
 
-  if (!root.isMember("name")) {
-    *error_msg = StringLog()
-                 << "Missing required field \"name\" from APEX manifest.";
-    return -1;
-  }
-  Json::Value name = root["name"];
-  name_ = name.asString();
+  auto read_string_field = [&](const char* tag, bool req, std::string* field) {
+    if (!root.isMember(tag)) {
+      if (req) {
+        *error_msg = StringLog() << "Missing required field \"" << tag
+                                 << "\" from APEX manifest.";
+        return false;
+      }
+      return true;
+    }
 
-  if (!root.isMember("version")) {
-    *error_msg = StringLog()
-                 << "Missing required field \"version\" from APEX manifest.";
+    *field = root[tag].asString();
+    return true;
+  };
+
+  if (!read_string_field(kNameTag, /*req=*/true, &name_)) {
     return -1;
   }
-  Json::Value version = root["version"];
+
+  if (!root.isMember(kVersionTag)) {
+    *error_msg = StringLog() << "Missing required field \"" << kVersionTag
+                             << "\" from APEX manifest.";
+    return -1;
+  }
+  Json::Value version = root[kVersionTag];
   if (!version.isUInt64()) {
-    *error_msg = StringLog()
-                 << "Invalid type for field \"version\" from APEX manifest, "
-                    "expecting integer.";
+    *error_msg = StringLog() << "Invalid type for field \"" << kVersionTag
+                             << "\" from APEX manifest, expecting integer.";
     return -1;
   }
   version_ = version.asUInt64();
+
+  if (!read_string_field(kPreInstallTag, /*req=*/false, &pre_install_hook_)) {
+    return -1;
+  }
+  if (!read_string_field(kPostInstallTag, /*req=*/false, &post_install_hook_)) {
+    return -1;
+  }
 
   return 0;
 }
