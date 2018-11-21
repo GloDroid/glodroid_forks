@@ -27,6 +27,8 @@ namespace apex {
 // Parses an APEX manifest on construction and exposes its fields.
 class ApexManifest {
  public:
+  ApexManifest(ApexManifest&&) = default;
+
   static StatusOr<std::unique_ptr<ApexManifest>> Open(
       const std::string& apex_manifest);
 

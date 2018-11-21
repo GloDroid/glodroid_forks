@@ -29,6 +29,16 @@
 namespace android {
 namespace apex {
 
+ApexFile::ApexFile(ApexFile&& other)
+    : apex_path_(other.apex_path_),
+      flattened_(other.flattened_),
+      image_offset_(other.image_offset_),
+      image_size_(other.image_size_),
+      manifest_(other.manifest_),
+      handle_(other.handle_) {
+  other.handle_ = nullptr;
+}
+
 StatusOr<std::unique_ptr<ApexFile>> ApexFile::Open(
     const std::string& apex_path) {
   std::unique_ptr<ApexFile> ret(new ApexFile(apex_path));
