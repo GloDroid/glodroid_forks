@@ -718,8 +718,7 @@ Status configureReadAhead(const std::string& device_path) {
   return Status::Success();
 }
 
-using ApexFileAndManifest =
-    std::pair<std::unique_ptr<ApexFile>, std::unique_ptr<ApexManifest>>;
+using ApexFileAndManifest = std::pair<ApexFile, ApexManifest>;
 
 StatusOr<ApexFileAndManifest> openFileAndManifest(
     const std::string& full_path) {
@@ -734,8 +733,8 @@ StatusOr<ApexFileAndManifest> openFileAndManifest(
     return StatusOr<ApexFileAndManifest>::MakeError(manifestRes.ErrorMessage());
   }
 
-  return StatusOr<ApexFileAndManifest>(std::move(*apexFileRes),
-                                       std::move(*manifestRes));
+  return StatusOr<ApexFileAndManifest>(std::move(*apexFileRes->get()),
+                                       std::move(*manifestRes->get()));
 }
 
 Status mountNonFlattened(const ApexFile& apex, const ApexManifest& manifest,
@@ -909,8 +908,8 @@ Status activatePackage(const std::string& full_path) {
   if (!apexFileAndManifest.Ok()) {
     return apexFileAndManifest.ErrorStatus();
   }
-  const std::unique_ptr<ApexFile>& apex = apexFileAndManifest->first;
-  const std::unique_ptr<ApexManifest>& manifest = apexFileAndManifest->second;
+  const ApexFile& apex = apexFileAndManifest->first;
+  const ApexManifest& manifest = apexFileAndManifest->second;
 
   // See whether we think it's active, and do not allow to activate the same
   // version. Also detect whether this is the highest version.
@@ -919,21 +918,21 @@ Status activatePackage(const std::string& full_path) {
   bool found_other_version = false;
   bool version_found_mounted = false;
   {
-    uint64_t new_version = manifest->GetVersion();
+    uint64_t new_version = manifest.GetVersion();
     bool version_found_active = false;
     gMountedApexes.ForallMountedApexes(
-        manifest->GetName(), [&](const MountedApexData& data, bool latest) {
+        manifest.GetName(), [&](const MountedApexData& data, bool latest) {
           StatusOr<ApexFileAndManifest> otherFileAndManifest =
               openFileAndManifest(data.full_path);
           if (!otherFileAndManifest.Ok()) {
             return;
           }
           found_other_version = true;
-          if (otherFileAndManifest->second->GetVersion() == new_version) {
+          if (otherFileAndManifest->second.GetVersion() == new_version) {
             version_found_mounted = true;
             version_found_active = latest;
           }
-          if (otherFileAndManifest->second->GetVersion() > new_version) {
+          if (otherFileAndManifest->second.GetVersion() > new_version) {
             is_newest_version = false;
           }
         });
@@ -942,12 +941,12 @@ Status activatePackage(const std::string& full_path) {
     }
   }
 
-  std::string mountPoint = GetPackageMountPoint(*manifest);
+  std::string mountPoint = GetPackageMountPoint(manifest);
 
   MountedApexData apex_data("", full_path);
 
   if (!version_found_mounted) {
-    Status mountStatus = mountPackage(*apex, *manifest, mountPoint, &apex_data);
+    Status mountStatus = mountPackage(apex, manifest, mountPoint, &apex_data);
     if (!mountStatus.Ok()) {
       return mountStatus;
     }
@@ -955,7 +954,7 @@ Status activatePackage(const std::string& full_path) {
 
   bool mounted_latest = false;
   if (is_newest_version) {
-    Status update_st = updateLatest(GetActiveMountPoint(*manifest), mountPoint);
+    Status update_st = updateLatest(GetActiveMountPoint(manifest), mountPoint);
     mounted_latest = update_st.Ok();
     if (!update_st.Ok()) {
       // TODO: Fail?
@@ -963,9 +962,9 @@ Status activatePackage(const std::string& full_path) {
     }
   }
   if (found_other_version && mounted_latest) {
-    gMountedApexes.UnsetLatestForall(manifest->GetName());
+    gMountedApexes.UnsetLatestForall(manifest.GetName());
   }
-  gMountedApexes.AddMountedApex(manifest->GetName(), mounted_latest,
+  gMountedApexes.AddMountedApex(manifest.GetName(), mounted_latest,
                                 std::move(apex_data));
 
   return Status::Success();
@@ -979,13 +978,13 @@ Status deactivatePackage(const std::string& full_path) {
   if (!apexFileAndManifest.Ok()) {
     return apexFileAndManifest.ErrorStatus();
   }
-  const std::unique_ptr<ApexFile>& apex = apexFileAndManifest->first;
-  const std::unique_ptr<ApexManifest>& manifest = apexFileAndManifest->second;
+  const ApexFile& apex = apexFileAndManifest->first;
+  const ApexManifest& manifest = apexFileAndManifest->second;
 
-  Status st = deactivatePackageImpl(*apex, *manifest);
+  Status st = deactivatePackageImpl(apex, manifest);
 
   if (st.Ok()) {
-    gMountedApexes.RemoveMountedApex(manifest->GetName(), full_path);
+    gMountedApexes.RemoveMountedApex(manifest.GetName(), full_path);
   }
 
   return st;
@@ -1007,8 +1006,8 @@ std::vector<std::pair<std::string, uint64_t>> getActivePackages() {
       return;
     }
 
-    const std::unique_ptr<ApexManifest>& manifest = apexFileAndManifest->second;
-    ret.emplace_back(package, manifest->GetVersion());
+    const ApexManifest& manifest = apexFileAndManifest->second;
+    ret.emplace_back(package, manifest.GetVersion());
   });
 
   return ret;
@@ -1088,12 +1087,11 @@ Status stagePackage(const std::string& packageTmpPath) {
   if (!apexFileAndManifest.Ok()) {
     return apexFileAndManifest.ErrorStatus();
   }
-  const std::unique_ptr<ApexManifest>& manifest = apexFileAndManifest->second;
-  std::string packageId =
-      manifest->GetName() + "@" + std::to_string(manifest->GetVersion());
+  const ApexManifest& manifest = apexFileAndManifest->second;
 
-  std::string destPath = StringPrintf("%s/%s%s", kApexPackageDataDir,
-                                      packageId.c_str(), kApexPackageSuffix);
+  std::string destPath =
+      StringPrintf("%s/%s%s", kApexPackageDataDir,
+                   manifest.GetPackageId().c_str(), kApexPackageSuffix);
   if (rename(packageTmpPath.c_str(), destPath.c_str()) != 0) {
     // TODO: Get correct binder error status.
     return Status::Fail(PStringLog() << "Unable to rename " << packageTmpPath
