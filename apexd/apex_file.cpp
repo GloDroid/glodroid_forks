@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
+#include "apex_file.h"
+#include "string_log.h"
+
 #include <android-base/file.h>
 #include <android-base/logging.h>
+#include <android-base/scopeguard.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -23,43 +27,15 @@
 #include <memory>
 #include <string>
 
-#include "apex_file.h"
-#include "string_log.h"
-
 namespace android {
 namespace apex {
+namespace {
 
-ApexFile::ApexFile(ApexFile&& other)
-    : apex_path_(other.apex_path_),
-      flattened_(other.flattened_),
-      image_offset_(other.image_offset_),
-      image_size_(other.image_size_),
-      manifest_(other.manifest_),
-      handle_(other.handle_) {
-  other.handle_ = nullptr;
-}
+constexpr const char* kImageFilename = "apex_payload.img";
+constexpr const char* kManifestFilename = "apex_manifest.json";
 
-StatusOr<std::unique_ptr<ApexFile>> ApexFile::Open(
-    const std::string& apex_path) {
-  std::unique_ptr<ApexFile> ret(new ApexFile(apex_path));
-  std::string error_msg;
-  if (ret->OpenInternal(&error_msg) < 0) {
-    return StatusOr<std::unique_ptr<ApexFile>>::MakeError(error_msg);
-  }
-  return StatusOr<std::unique_ptr<ApexFile>>(std::move(ret));
-}
-
-ApexFile::~ApexFile() {
-  if (handle_ != nullptr) {
-    CloseArchive(handle_);
-  }
-}
-
-static constexpr const char* kImageFilename = "apex_payload.img";
-static constexpr const char* kManifestFilename = "apex_manifest.json";
-
-// Tests if <path>/apex_manifest.json file exists.
-static bool isFlattenedApex(const std::string& path) {
+// Tests if <path>/manifest.json file exists.
+bool isFlattenedApex(const std::string& path) {
   struct stat buf;
   const std::string manifest = path + "/" + kManifestFilename;
   if (stat(manifest.c_str(), &buf) != 0) {
@@ -78,68 +54,80 @@ static bool isFlattenedApex(const std::string& path) {
   if (!S_ISREG(buf.st_mode)) {
     return false;
   }
-
   return true;
 }
 
-int ApexFile::OpenInternal(std::string* error_msg) {
-  if (handle_ != nullptr) {
-    // Already opened.
-    return 0;
-  }
+}  // namespace
 
-  if (isFlattenedApex(apex_path_)) {
-    image_offset_ = 0;
-    image_size_ = 0;
-    const std::string manifest_path = apex_path_ + "/" + kManifestFilename;
-    if (!android::base::ReadFileToString(manifest_path, &manifest_)) {
-      *error_msg = StringLog()
-                   << "Failed to read manifest file: " << manifest_path;
-      return -1;
+StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
+  bool flattened;
+  int32_t image_offset;
+  size_t image_size;
+  std::string manifest_content;
+
+  if (isFlattenedApex(path)) {
+    flattened = true;
+    image_offset = 0;
+    image_size = 0;
+    const std::string manifest_path = path + "/" + kManifestFilename;
+    if (!android::base::ReadFileToString(path, &manifest_content)) {
+      std::string err = StringLog()
+                        << "Failed to read manifest file: " << manifest_path;
+      return StatusOr<ApexFile>::MakeError(err);
     }
-    flattened_ = true;
-    return 0;
+  } else {
+    flattened = false;
+
+    ZipArchiveHandle handle;
+    auto handle_guard =
+        android::base::make_scope_guard([&handle] { CloseArchive(handle); });
+    int ret = OpenArchive(path.c_str(), &handle);
+    if (ret < 0) {
+      std::string err = StringLog() << "Failed to open package " << path << ": "
+                                    << ErrorCodeString(ret);
+      return StatusOr<ApexFile>::MakeError(err);
+    }
+
+    // Locate the mountable image within the zipfile and store offset and size.
+    ZipEntry entry;
+    ret = FindEntry(handle, ZipString(kImageFilename), &entry);
+    if (ret < 0) {
+      std::string err = StringLog() << "Could not find entry \""
+                                    << kImageFilename << "\" in package "
+                                    << path << ": " << ErrorCodeString(ret);
+      return StatusOr<ApexFile>::MakeError(err);
+    }
+    image_offset = entry.offset;
+    image_size = entry.uncompressed_length;
+
+    ret = FindEntry(handle, ZipString(kManifestFilename), &entry);
+    if (ret < 0) {
+      std::string err = StringLog() << "Could not find entry \""
+                                    << kManifestFilename << "\" in package "
+                                    << path << ": " << ErrorCodeString(ret);
+      return StatusOr<ApexFile>::MakeError(err);
+    }
+
+    uint32_t length = entry.uncompressed_length;
+    manifest_content.resize(length, '\0');
+    ret = ExtractToMemory(handle, &entry,
+                          reinterpret_cast<uint8_t*>(&(manifest_content)[0]),
+                          length);
+    if (ret != 0) {
+      std::string err = StringLog()
+                        << "Failed to extract manifest from package " << path
+                        << ": " << ErrorCodeString(ret);
+      return StatusOr<ApexFile>::MakeError(err);
+    }
   }
 
-  flattened_ = false;
-
-  int ret = OpenArchive(apex_path_.c_str(), &handle_);
-  if (ret < 0) {
-    *error_msg = StringLog() << "Failed to open package " << apex_path_ << ": "
-                             << ErrorCodeString(ret);
-    return ret;
+  StatusOr<ApexManifest> manifest = ApexManifest::Parse(manifest_content);
+  if (!manifest.Ok()) {
+    return StatusOr<ApexFile>::MakeError(manifest.ErrorMessage());
   }
 
-  // Locate the mountable image within the zipfile and store offset and size.
-  ZipEntry entry;
-  ret = FindEntry(handle_, ZipString(kImageFilename), &entry);
-  if (ret < 0) {
-    *error_msg = StringLog() << "Could not find entry \"" << kImageFilename
-                             << "\" in package " << apex_path_ << ": "
-                             << ErrorCodeString(ret);
-    return ret;
-  }
-  image_offset_ = entry.offset;
-  image_size_ = entry.uncompressed_length;
-
-  ret = FindEntry(handle_, ZipString(kManifestFilename), &entry);
-  if (ret < 0) {
-    *error_msg = StringLog() << "Could not find entry \"" << kManifestFilename
-                             << "\" in package " << apex_path_ << ": "
-                             << ErrorCodeString(ret);
-    return ret;
-  }
-
-  uint32_t length = entry.uncompressed_length;
-  manifest_.resize(length, '\0');
-  ret = ExtractToMemory(handle_, &entry,
-                        reinterpret_cast<uint8_t*>(&(manifest_)[0]), length);
-  if (ret != 0) {
-    *error_msg = StringLog() << "Failed to extract manifest from package "
-                             << apex_path_ << ": " << ErrorCodeString(ret);
-    return ret;
-  }
-  return 0;
+  ApexFile apexFile(path, flattened, image_offset, image_size, *manifest);
+  return StatusOr<ApexFile>(std::move(apexFile));
 }
 
 }  // namespace apex

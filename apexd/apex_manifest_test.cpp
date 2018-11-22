@@ -22,16 +22,15 @@ namespace android {
 namespace apex {
 
 TEST(ApexManifestTest, SimpleTest) {
-  auto apexManifestRes = ApexManifest::Open(
+  auto apexManifest = ApexManifest::Parse(
       "{\"name\": \"com.android.example.apex\", \"version\": 1}\n");
-  ASSERT_TRUE(apexManifestRes.Ok());
-  auto& apexManifest = *apexManifestRes;
+  ASSERT_TRUE(apexManifest.Ok());
   EXPECT_EQ("com.android.example.apex", std::string(apexManifest->GetName()));
   EXPECT_EQ(1u, apexManifest->GetVersion());
 }
 
 TEST(ApexManifestTest, NameMissing) {
-  auto apexManifest = ApexManifest::Open("{\"version\": 1}\n");
+  auto apexManifest = ApexManifest::Parse("{\"version\": 1}\n");
   ASSERT_FALSE(apexManifest.Ok());
   EXPECT_EQ(apexManifest.ErrorMessage(),
             std::string("Missing required field \"name\" from APEX manifest."))
@@ -40,7 +39,7 @@ TEST(ApexManifestTest, NameMissing) {
 
 TEST(ApexManifestTest, VersionMissing) {
   auto apexManifest =
-      ApexManifest::Open("{\"name\": \"com.android.example.apex\"}\n");
+      ApexManifest::Parse("{\"name\": \"com.android.example.apex\"}\n");
   ASSERT_FALSE(apexManifest.Ok());
   EXPECT_EQ(
       apexManifest.ErrorMessage(),
@@ -49,7 +48,7 @@ TEST(ApexManifestTest, VersionMissing) {
 }
 
 TEST(ApexManifestTest, VersionNotNumber) {
-  auto apexManifest = ApexManifest::Open(
+  auto apexManifest = ApexManifest::Parse(
       "{\"name\": \"com.android.example.apex\", \"version\": \"1\"}\n");
   ASSERT_FALSE(apexManifest.Ok());
   EXPECT_EQ(apexManifest.ErrorMessage(),
@@ -59,43 +58,39 @@ TEST(ApexManifestTest, VersionNotNumber) {
 }
 
 TEST(ApexManifestTest, NoPreInstallHook) {
-  auto apexManifestRes = ApexManifest::Open(
+  auto apexManifest = ApexManifest::Parse(
       "{\"name\": \"com.android.example.apex\", \"version\": 1}\n");
-  ASSERT_TRUE(apexManifestRes.Ok());
-  auto& apexManifest = *apexManifestRes;
+  ASSERT_TRUE(apexManifest.Ok());
   EXPECT_EQ("", std::string(apexManifest->GetPreInstallHook()));
 }
 
 TEST(ApexManifestTest, PreInstallHook) {
-  auto apexManifestRes = ApexManifest::Open(
+  auto apexManifest = ApexManifest::Parse(
       "{\"name\": \"com.android.example.apex\", \"version\": 1, "
       "\"pre_install_hook\": \"bin/pre_install_hook\"}\n");
-  ASSERT_TRUE(apexManifestRes.Ok());
-  auto& apexManifest = *apexManifestRes;
+  ASSERT_TRUE(apexManifest.Ok());
   EXPECT_EQ("bin/pre_install_hook",
             std::string(apexManifest->GetPreInstallHook()));
 }
 
 TEST(ApexManifestTest, NoPostInstallHook) {
-  auto apexManifestRes = ApexManifest::Open(
+  auto apexManifest = ApexManifest::Parse(
       "{\"name\": \"com.android.example.apex\", \"version\": 1}\n");
-  ASSERT_TRUE(apexManifestRes.Ok());
-  auto& apexManifest = *apexManifestRes;
+  ASSERT_TRUE(apexManifest.Ok());
   EXPECT_EQ("", std::string(apexManifest->GetPostInstallHook()));
 }
 
 TEST(ApexManifestTest, PostInstallHook) {
-  auto apexManifestRes = ApexManifest::Open(
+  auto apexManifest = ApexManifest::Parse(
       "{\"name\": \"com.android.example.apex\", \"version\": 1, "
       "\"post_install_hook\": \"bin/post_install_hook\"}\n");
-  ASSERT_TRUE(apexManifestRes.Ok());
-  auto& apexManifest = *apexManifestRes;
+  ASSERT_TRUE(apexManifest.Ok());
   EXPECT_EQ("bin/post_install_hook",
             std::string(apexManifest->GetPostInstallHook()));
 }
 
 TEST(ApexManifestTest, UnparsableManifest) {
-  auto apexManifest = ApexManifest::Open("This is an invalid pony");
+  auto apexManifest = ApexManifest::Parse("This is an invalid pony");
   ASSERT_FALSE(apexManifest.Ok());
   EXPECT_EQ(
       apexManifest.ErrorMessage(),

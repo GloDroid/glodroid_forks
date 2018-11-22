@@ -17,11 +17,12 @@
 #ifndef ANDROID_APEXD_APEX_FILE_H_
 #define ANDROID_APEXD_APEX_FILE_H_
 
+#include "apex_manifest.h"
+#include "status_or.h"
+
 #include <ziparchive/zip_archive.h>
 #include <memory>
 #include <string>
-
-#include "status_or.h"
 
 namespace android {
 namespace apex {
@@ -30,29 +31,30 @@ namespace apex {
 // the content.
 class ApexFile {
  public:
-  ApexFile(ApexFile&&);
+  static StatusOr<ApexFile> Open(const std::string& path);
+  ApexFile() = delete;
+  ApexFile(ApexFile&&) = default;
 
-  static StatusOr<std::unique_ptr<ApexFile>> Open(const std::string& apex_path);
-  ~ApexFile();
-
-  std::string GetPath() const { return apex_path_; }
+  const std::string& GetPath() const { return apex_path_; }
   int32_t GetImageOffset() const { return image_offset_; }
   size_t GetImageSize() const { return image_size_; }
-
-  std::string GetManifest() const { return manifest_; }
+  const ApexManifest& GetManifest() const { return manifest_; }
   bool IsFlattened() const { return flattened_; }
 
  private:
-  ApexFile(const std::string& apex_path)
-      : apex_path_(apex_path), handle_(nullptr){};
-  int OpenInternal(std::string* error_msg);
+  ApexFile(const std::string& apex_path, bool flattened, int32_t image_offset,
+           size_t image_size, ApexManifest& manifest)
+      : apex_path_(apex_path),
+        flattened_(flattened),
+        image_offset_(image_offset),
+        image_size_(image_size),
+        manifest_(std::move(manifest)) {}
 
-  const std::string apex_path_;
+  std::string apex_path_;
   bool flattened_;
   int32_t image_offset_;
   size_t image_size_;
-  std::string manifest_;
-  ZipArchiveHandle handle_;
+  ApexManifest manifest_;
 };
 
 }  // namespace apex
