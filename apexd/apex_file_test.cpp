@@ -47,7 +47,7 @@ TEST(ApexFileTest, GetApexManifest) {
   const std::string filePath = testDataDir + "/test.apex";
   StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
   ASSERT_TRUE(apexFile.Ok());
-  EXPECT_EQ("com.android.example.apex", apexFile->GetManifest().GetName());
+  EXPECT_EQ("com.android.apex.test", apexFile->GetManifest().GetName());
   EXPECT_EQ(1UL, apexFile->GetManifest().GetVersion());
 }
 }  // namespace apex
