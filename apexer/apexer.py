@@ -110,7 +110,7 @@ def PrepareAndroidManifest(package, version):
   template = """\
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="{package}" versionCode="{version}">
+  package="{package}" android:versionCode="{version}">
   <!-- APEX does not have classes.dex -->
   <application android:hasCode="false" />
 </manifest>
