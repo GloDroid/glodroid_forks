@@ -14,7 +14,7 @@
 
 apex {
     name: "apex.test",
-    manifest: "testdata/manifest.json",
+    manifest: "testdata/apex_manifest.json",
     binaries: ["surfaceflinger", "vold"],
     multilib: {
         lib32: {
