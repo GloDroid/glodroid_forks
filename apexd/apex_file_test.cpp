@@ -31,7 +31,7 @@ TEST(ApexFileTest, GetOffsetOfSimplePackage) {
   StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(filePath);
   ASSERT_TRUE(apexFileRes.Ok());
   ApexFile* apexFile = apexFileRes->get();
-  EXPECT_EQ(4096, apexFile->GetImageOffset());
+  EXPECT_EQ(8192, apexFile->GetImageOffset());
   EXPECT_EQ(589824u, apexFile->GetImageSize());
 }
 

@@ -63,7 +63,7 @@ echo '
 
 canned_fs_config_file=$(mktemp)
 echo '/ 1000 1000 0644
-/manifest.json 1000 1000 0644
+/apex_manifest.json 1000 1000 0644
 /file1 1001 1001 0644
 /file2 1001 1001 0644
 /sub 1002 1002 0644
@@ -83,25 +83,25 @@ ${ANDROID_HOST_OUT}/bin/apexer --verbose --manifest ${manifest_file} \
 #############################################
 # check the result
 #############################################
-offset=$(zipalign -v -c 4096 ${output_file} | grep image.img | tr -s ' ' | cut -d ' ' -f 2)
+offset=$(zipalign -v -c 4096 ${output_file} | grep apex_payload.img | tr -s ' ' | cut -d ' ' -f 2)
 
-unzip ${output_file} image.img -d ${output_dir}
-size=$(avbtool info_image --image ${output_dir}/image.img | awk '/Image size:/{print $3}')
+unzip ${output_file} apex_payload.img -d ${output_dir}
+size=$(avbtool info_image --image ${output_dir}/apex_payload.img | awk '/Image size:/{print $3}')
 
 
 # test if it is mountable
 mkdir ${output_dir}/mnt
 sudo losetup -o ${offset} --sizelimit ${size} /dev/loop10 ${output_file}
 sudo mount -o ro /dev/loop10 ${output_dir}/mnt
-unzip ${output_file} manifest.json -d ${output_dir}
+unzip ${output_file} apex_manifest.json -d ${output_dir}
 
 # verify vbmeta
-avbtool verify_image --image ${output_dir}/image.img \
+avbtool verify_image --image ${output_dir}/apex_payload.img \
 --key ${ANDROID_BUILD_TOP}/system/apex/apexer/testdata/testkey.pem
 
 # check the contents
-sudo diff ${manifest_file} ${output_dir}/mnt/manifest.json
-sudo diff ${manifest_file} ${output_dir}/manifest.json
+sudo diff ${manifest_file} ${output_dir}/mnt/apex_manifest.json
+sudo diff ${manifest_file} ${output_dir}/apex_manifest.json
 sudo diff ${input_dir}/file1 ${output_dir}/mnt/file1
 sudo diff ${input_dir}/file2 ${output_dir}/mnt/file2
 sudo diff ${input_dir}/sub/file3 ${output_dir}/mnt/sub/file3
@@ -111,14 +111,14 @@ sudo diff ${input_dir}/sub/file3 ${output_dir}/mnt/sub/file3
 [ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/file2` = "1001,1001,644" ]
 [ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/sub` = "1002,1002,644" ]
 [ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/sub/file3` = "1003,1003,644" ]
-[ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/manifest.json` = "1000,1000,644" ]
+[ `sudo stat -c '%u,%g,%a' ${output_dir}/mnt/apex_manifest.json` = "1000,1000,644" ]
 
 # check the selinux labels
 [ `sudo ls -Z ${output_dir}/mnt/file1 | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
 [ `sudo ls -Z ${output_dir}/mnt/file2 | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
 [ `sudo ls -d -Z ${output_dir}/mnt/sub/ | cut -d ' ' -f 1` = "u:object_r:sub_file:s0" ]
 [ `sudo ls -Z ${output_dir}/mnt/sub/file3 | cut -d ' ' -f 1` = "u:object_r:file3_file:s0" ]
-[ `sudo ls -Z ${output_dir}/mnt/manifest.json | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
+[ `sudo ls -Z ${output_dir}/mnt/apex_manifest.json | cut -d ' ' -f 1` = "u:object_r:root_file:s0" ]
 
 # check the android manifest
 aapt dump xmltree ${output_file} AndroidManifest.xml
