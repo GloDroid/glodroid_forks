@@ -55,10 +55,10 @@ ApexFile::~ApexFile() {
   }
 }
 
-static constexpr const char* kImageFilename = "image.img";
-static constexpr const char* kManifestFilename = "manifest.json";
+static constexpr const char* kImageFilename = "apex_payload.img";
+static constexpr const char* kManifestFilename = "apex_manifest.json";
 
-// Tests if <path>/manifest.json file exists.
+// Tests if <path>/apex_manifest.json file exists.
 static bool isFlattenedApex(const std::string& path) {
   struct stat buf;
   const std::string manifest = path + "/" + kManifestFilename;
