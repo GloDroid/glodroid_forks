@@ -718,28 +718,9 @@ Status configureReadAhead(const std::string& device_path) {
   return Status::Success();
 }
 
-using ApexFileAndManifest = std::pair<ApexFile, ApexManifest>;
-
-StatusOr<ApexFileAndManifest> openFileAndManifest(
-    const std::string& full_path) {
-  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(full_path);
-  if (!apexFileRes.Ok()) {
-    return StatusOr<ApexFileAndManifest>::MakeError(apexFileRes.ErrorMessage());
-  }
-
-  StatusOr<std::unique_ptr<ApexManifest>> manifestRes =
-      ApexManifest::Open((*apexFileRes)->GetManifest());
-  if (!manifestRes.Ok()) {
-    return StatusOr<ApexFileAndManifest>::MakeError(manifestRes.ErrorMessage());
-  }
-
-  return StatusOr<ApexFileAndManifest>(std::move(*apexFileRes->get()),
-                                       std::move(*manifestRes->get()));
-}
-
-Status mountNonFlattened(const ApexFile& apex, const ApexManifest& manifest,
-                         const std::string& mountPoint,
+Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
                          MountedApexData* apex_data) {
+  const ApexManifest& manifest = apex.GetManifest();
   const std::string& full_path = apex.GetPath();
   const std::string& packageId = manifest.GetPackageId();
 
@@ -811,7 +792,6 @@ Status mountNonFlattened(const ApexFile& apex, const ApexManifest& manifest,
 }
 
 Status mountFlattened(const ApexFile& apex,
-                      const ApexManifest& manifest ATTRIBUTE_UNUSED,
                       const std::string& mountPoint,
                       MountedApexData* apex_data) {
   if (!android::base::StartsWith(apex.GetPath(), kApexPackageSystemDir)) {
@@ -832,17 +812,16 @@ Status mountFlattened(const ApexFile& apex,
                                    << apex.GetPath());
 }
 
-Status mountPackage(const ApexFile& apex, const ApexManifest& manifest,
-                    const std::string& mountPoint, MountedApexData* data) {
+Status mountPackage(const ApexFile& apex, const std::string& mountPoint,
+                    MountedApexData* data) {
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
   if (mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
     return Status::Fail(PStringLog()
                         << "Could not create mount point " << mountPoint);
   }
 
-  Status st = apex.IsFlattened()
-                  ? mountFlattened(apex, manifest, mountPoint, data)
-                  : mountNonFlattened(apex, manifest, mountPoint, data);
+  Status st = apex.IsFlattened() ? mountFlattened(apex, mountPoint, data)
+                                 : mountNonFlattened(apex, mountPoint, data);
   if (!st.Ok()) {
     if (!rmdir(mountPoint.c_str())) {
       PLOG(WARNING) << "Could not rmdir " << mountPoint;
@@ -853,10 +832,10 @@ Status mountPackage(const ApexFile& apex, const ApexManifest& manifest,
   return Status::Success();
 }
 
-Status deactivatePackageImpl(const ApexFile& apex,
-                             const ApexManifest& manifest) {
+Status deactivatePackageImpl(const ApexFile& apex) {
   // TODO: It's not clear what the right thing to do is for umount failures.
 
+  const ApexManifest& manifest = apex.GetManifest();
   // Unmount "latest" bind-mount.
   // TODO: What if bind-mount isn't latest?
   {
@@ -903,13 +882,11 @@ Status deactivatePackageImpl(const ApexFile& apex,
 Status activatePackage(const std::string& full_path) {
   LOG(INFO) << "Trying to activate " << full_path;
 
-  StatusOr<ApexFileAndManifest> apexFileAndManifest =
-      openFileAndManifest(full_path);
-  if (!apexFileAndManifest.Ok()) {
-    return apexFileAndManifest.ErrorStatus();
+  StatusOr<ApexFile> apexFile = ApexFile::Open(full_path);
+  if (!apexFile.Ok()) {
+    return apexFile.ErrorStatus();
   }
-  const ApexFile& apex = apexFileAndManifest->first;
-  const ApexManifest& manifest = apexFileAndManifest->second;
+  const ApexManifest& manifest = apexFile->GetManifest();
 
   // See whether we think it's active, and do not allow to activate the same
   // version. Also detect whether this is the highest version.
@@ -922,17 +899,16 @@ Status activatePackage(const std::string& full_path) {
     bool version_found_active = false;
     gMountedApexes.ForallMountedApexes(
         manifest.GetName(), [&](const MountedApexData& data, bool latest) {
-          StatusOr<ApexFileAndManifest> otherFileAndManifest =
-              openFileAndManifest(data.full_path);
-          if (!otherFileAndManifest.Ok()) {
+          StatusOr<ApexFile> otherApex = ApexFile::Open(data.full_path);
+          if (!otherApex.Ok()) {
             return;
           }
           found_other_version = true;
-          if (otherFileAndManifest->second.GetVersion() == new_version) {
+          if (otherApex->GetManifest().GetVersion() == new_version) {
             version_found_mounted = true;
             version_found_active = latest;
           }
-          if (otherFileAndManifest->second.GetVersion() > new_version) {
+          if (otherApex->GetManifest().GetVersion() > new_version) {
             is_newest_version = false;
           }
         });
@@ -946,7 +922,7 @@ Status activatePackage(const std::string& full_path) {
   MountedApexData apex_data("", full_path);
 
   if (!version_found_mounted) {
-    Status mountStatus = mountPackage(apex, manifest, mountPoint, &apex_data);
+    Status mountStatus = mountPackage(*apexFile, mountPoint, &apex_data);
     if (!mountStatus.Ok()) {
       return mountStatus;
     }
@@ -973,18 +949,16 @@ Status activatePackage(const std::string& full_path) {
 Status deactivatePackage(const std::string& full_path) {
   LOG(INFO) << "Trying to deactivate " << full_path;
 
-  StatusOr<ApexFileAndManifest> apexFileAndManifest =
-      openFileAndManifest(full_path);
-  if (!apexFileAndManifest.Ok()) {
-    return apexFileAndManifest.ErrorStatus();
+  StatusOr<ApexFile> apexFile = ApexFile::Open(full_path);
+  if (!apexFile.Ok()) {
+    return apexFile.ErrorStatus();
   }
-  const ApexFile& apex = apexFileAndManifest->first;
-  const ApexManifest& manifest = apexFileAndManifest->second;
 
-  Status st = deactivatePackageImpl(apex, manifest);
+  Status st = deactivatePackageImpl(*apexFile);
 
   if (st.Ok()) {
-    gMountedApexes.RemoveMountedApex(manifest.GetName(), full_path);
+    gMountedApexes.RemoveMountedApex(apexFile->GetManifest().GetName(),
+                                     full_path);
   }
 
   return st;
@@ -999,15 +973,13 @@ std::vector<std::pair<std::string, uint64_t>> getActivePackages() {
       return;
     }
 
-    StatusOr<ApexFileAndManifest> apexFileAndManifest =
-        openFileAndManifest(data.full_path);
-    if (!apexFileAndManifest.Ok()) {
+    StatusOr<ApexFile> apexFile = ApexFile::Open(data.full_path);
+    if (!apexFile.Ok()) {
       // TODO: Fail?
       return;
     }
 
-    const ApexManifest& manifest = apexFileAndManifest->second;
-    ret.emplace_back(package, manifest.GetVersion());
+    ret.emplace_back(package, apexFile->GetManifest().GetVersion());
   });
 
   return ret;
@@ -1082,16 +1054,14 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
 Status stagePackage(const std::string& packageTmpPath) {
   LOG(DEBUG) << "stagePackage() for " << packageTmpPath;
 
-  StatusOr<ApexFileAndManifest> apexFileAndManifest =
-      openFileAndManifest(packageTmpPath);
-  if (!apexFileAndManifest.Ok()) {
-    return apexFileAndManifest.ErrorStatus();
+  StatusOr<ApexFile> apexFile = ApexFile::Open(packageTmpPath);
+  if (!apexFile.Ok()) {
+    return apexFile.ErrorStatus();
   }
-  const ApexManifest& manifest = apexFileAndManifest->second;
 
-  std::string destPath =
-      StringPrintf("%s/%s%s", kApexPackageDataDir,
-                   manifest.GetPackageId().c_str(), kApexPackageSuffix);
+  std::string destPath = StringPrintf(
+      "%s/%s%s", kApexPackageDataDir,
+      apexFile->GetManifest().GetPackageId().c_str(), kApexPackageSuffix);
   if (rename(packageTmpPath.c_str(), destPath.c_str()) != 0) {
     // TODO: Get correct binder error status.
     return Status::Fail(PStringLog() << "Unable to rename " << packageTmpPath

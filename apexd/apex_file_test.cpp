@@ -28,30 +28,27 @@ namespace apex {
 
 TEST(ApexFileTest, GetOffsetOfSimplePackage) {
   const std::string filePath = testDataDir + "/test.apex";
-  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(filePath);
-  ASSERT_TRUE(apexFileRes.Ok());
-  ApexFile* apexFile = apexFileRes->get();
+  StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
+  ASSERT_TRUE(apexFile.Ok());
   EXPECT_EQ(8192, apexFile->GetImageOffset());
   EXPECT_EQ(589824u, apexFile->GetImageSize());
 }
 
 TEST(ApexFileTest, GetOffsetMissingFile) {
   const std::string filePath = testDataDir + "/missing.apex";
-  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(filePath);
-  ASSERT_FALSE(apexFileRes.Ok());
+  StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
+  ASSERT_FALSE(apexFile.Ok());
   EXPECT_NE(std::string::npos,
-            apexFileRes.ErrorMessage().find("Failed to open package"))
-      << apexFileRes.ErrorMessage();
+            apexFile.ErrorMessage().find("Failed to open package"))
+      << apexFile.ErrorMessage();
 }
 
 TEST(ApexFileTest, GetApexManifest) {
   const std::string filePath = testDataDir + "/test.apex";
-  StatusOr<std::unique_ptr<ApexFile>> apexFileRes = ApexFile::Open(filePath);
-  ASSERT_TRUE(apexFileRes.Ok());
-  ApexFile* apexFile = apexFileRes->get();
-  EXPECT_EQ(
-      "{\n  \"name\": \"com.android.example.apex\",\n  \"version\": 1\n}\n",
-      std::string(apexFile->GetManifest()));
+  StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
+  ASSERT_TRUE(apexFile.Ok());
+  EXPECT_EQ("com.android.example.apex", apexFile->GetManifest().GetName());
+  EXPECT_EQ(1UL, apexFile->GetManifest().GetVersion());
 }
 }  // namespace apex
 }  // namespace android
