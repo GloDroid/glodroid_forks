@@ -162,8 +162,14 @@ def CreateApex(args, work_dir):
   if 'name' not in manifest or manifest['name'] is None:
     print("Invalid manifest: 'name' does not exist")
     return False
+
   package_name = manifest['name']
   version_number = manifest['version']
+  key_name = os.path.basename(os.path.splitext(args.key)[0])
+
+  if package_name != key_name:
+    print("package name '" + package_name + "' does not match with key name '" + key_name + "'")
+    return False
 
   # create an empty ext4 image that is sufficiently big
   # Sufficiently big = twice the size of the input directory
@@ -232,7 +238,7 @@ def CreateApex(args, work_dir):
   cmd.append('--do_not_generate_fec')
   cmd.extend(['--algorithm', 'SHA256_RSA4096'])
   cmd.extend(['--key', args.key])
-  cmd.extend(['--prop', "apex.key:" + os.path.basename(os.path.splitext(args.key)[0])])
+  cmd.extend(['--prop', "apex.key:" + key_name])
   cmd.extend(['--image', img_file])
   RunCommand(cmd, args.verbose)
 
