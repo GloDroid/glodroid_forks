@@ -357,8 +357,15 @@ StatusOr<std::string> getPublicKeyFilePath(const ApexFile& apex,
                                             strlen(kApexKeyProp), &keyNameLen);
   if (keyName == nullptr || keyNameLen == 0) {
     return StatusOr<std::string>::MakeError(
-        StringLog() << "Cannot find prop \"" << kApexKeyProp << "\" from "
+        StringLog() << "Cannot find prop '" << kApexKeyProp << "' from "
                     << apex.GetPath());
+  }
+
+  if (keyName != apex.GetManifest().GetName()) {
+    return StatusOr<std::string>::MakeError(
+        StringLog() << "Key mismatch: apex name is '"
+                    << apex.GetManifest().GetName() << "'"
+                    << " but key name is '" << keyName << "'");
   }
 
   std::string keyFilePath(kApexKeyDirectory);
