@@ -85,7 +85,7 @@ def RunCommand(cmd, verbose=False, env=None):
       cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
   output, _ = p.communicate()
 
-  if verbose:
+  if verbose or p.returncode is not 0:
     print(output.rstrip())
 
   assert p.returncode is 0, "Failed to execute: " + " ".join(cmd)
