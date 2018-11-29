@@ -27,6 +27,9 @@
     <!-- Temporarily disable selinux enforcement until the install flow is clear
          and apexd has all rights. b/112669193 -->
     <target_preparer class="com.android.tradefed.targetprep.DisableSELinuxTargetPreparer"/>
+    <!-- Similarly, ensure that the test runs as root to prepare the temporary
+         directory. b/112669193, b/119569101 -->
+    <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer" />
 
     <test class="com.android.tradefed.testtype.GTest" >
         <option name="native-test-device-path" value="/data/local/tmp/apexservice_test" />
