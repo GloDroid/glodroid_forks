@@ -16,14 +16,34 @@
 
 #define LOG_TAG "apexd"
 
-#include "apexd.h"
+#include <strings.h>
 
 #include <android-base/logging.h>
 
+#include "apexd.h"
+#include "apexd_preinstall.h"
 #include "apexservice.h"
+
+namespace {
+
+int HandleSubcommand(char** argv) {
+  if (strcmp("--pre-install", argv[1]) == 0) {
+    LOG(INFO) << "Preinstall subcommand detected";
+    return android::apex::RunPreInstall(argv);
+  }
+
+  LOG(ERROR) << "Unknown subcommand: " << argv[1];
+  return 1;
+}
+
+}  // namespace
 
 int main(int /*argc*/, char** argv) {
   android::base::InitLogging(argv);
+
+  if (argv[1] != nullptr) {
+    return HandleSubcommand(argv);
+  }
 
   android::apex::onStart();
 
