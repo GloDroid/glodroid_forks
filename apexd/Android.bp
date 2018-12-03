@@ -22,8 +22,6 @@ cc_defaults {
     "libjsoncpp",
     "libziparchive",
   ],
-
-  cpp_std: "c++17",
 }
 
 aidl_interface {
