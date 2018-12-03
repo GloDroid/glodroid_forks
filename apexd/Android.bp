@@ -52,6 +52,9 @@ cc_binary {
     "libavb",
     "libdm",
   ],
+  shared_libs: [
+    "libselinux",
+  ],
   init_rc: ["apexd.rc"],
 }
 
@@ -63,6 +66,9 @@ cc_library_static {
     "libapex",
     "libavb",
     "libdm",
+  ],
+  shared_libs: [
+    "libselinux",
   ],
 }
 
