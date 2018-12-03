@@ -37,7 +37,8 @@ import org.junit.runner.RunWith;
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Test {
 
-    private static final String TEST_APK_NAME = "com.rovio.angrybirds";
+    private static final String TEST_APK_NAME = "HelloActivity";
+    private static final String TEST_PACKAGE_NAME = "com.example.android.helloactivity";
 
     private ITestDevice mDevice;
 
@@ -45,7 +46,7 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
     public synchronized void setUp() throws Exception {
         // Cleanup test apps that might be installed from previous partial test run
         mDevice = getDevice();
-        mDevice.uninstallPackage(TEST_APK_NAME);
+        mDevice.uninstallPackage(TEST_PACKAGE_NAME);
     }
 
     /**
@@ -62,15 +63,15 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
         Assert.assertNull(
                 String.format("failed to install test app. Reason: %s", installResult),
                 installResult);
-        Assert.assertTrue(mDevice.getInstalledPackageNames().contains(TEST_APK_NAME));
+        Assert.assertTrue(mDevice.getInstalledPackageNames().contains(TEST_PACKAGE_NAME));
 
         // TODO: Reboot device after staging to test if apex can be activated successfully.
 
         // Test uninstallation
         // TODO: reboot device to check the Apexd activates the original module
         // after uninstallation.
-        mDevice.uninstallPackage(TEST_APK_NAME);
-        Assert.assertFalse(mDevice.getInstalledPackageNames().contains(TEST_APK_NAME));
+        mDevice.uninstallPackage(TEST_PACKAGE_NAME);
+        Assert.assertFalse(mDevice.getInstalledPackageNames().contains(TEST_PACKAGE_NAME));
     }
 
     /**
@@ -84,7 +85,7 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
 
     @After
     public void tearDown() throws DeviceNotAvailableException {
-        mDevice.uninstallPackage(TEST_APK_NAME);
+        mDevice.uninstallPackage(TEST_PACKAGE_NAME);
         mDevice.reboot();
     }
 }
