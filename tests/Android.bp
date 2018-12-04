@@ -19,10 +19,60 @@ java_test_host {
 
     libs: ["tradefed"],
 
-    data: ["testdata/*"],
+    data: ["testdata/prebuilts/*"],
 
     test_config: "apex-e2e-tests.xml",
 
     test_suites: ["general-tests"],
 }
 
+apex {
+    name: "apex.test",
+    manifest: "testdata/apex_manifest.json",
+    binaries: ["surfaceflinger", "vold"],
+    multilib: {
+        lib32: {
+            binaries: ["drmserver"],
+        },
+        prefer32: {
+            binaries: ["dex2oat"],
+        },
+    },
+    native_shared_libs: ["libc", "libcutils"],
+    java_libs: ["core-oj"],
+    prebuilts: ["sample_prebuilt_file", "apex.test.ld.config.txt", "apex.test.init.rc"],
+    compile_multilib: "both",
+    key: "apex.test.key",
+    certificate: ":apex.test.certificate",
+}
+
+apex_key {
+    name: "apex.test.key",
+    public_key: "testdata/com.android.apex.test.avbpubkey",
+    private_key: "testdata/com.android.apex.test.pem",
+}
+
+android_app_certificate {
+    name: "apex.test.certificate",
+    // will use testcert.pk8 and testcert.x509.pem
+    certificate: "testdata/testcert",
+}
+
+prebuilt_etc {
+    name: "apex.test.ld.config.txt",
+    src: "testdata/ld.config.txt",
+    filename: "ld.config.txt",
+    installable: false,
+}
+
+prebuilt_etc {
+    name: "sample_prebuilt_file",
+    src: "testdata/sample_prebuilt_file",
+}
+
+prebuilt_etc {
+    name: "apex.test.init.rc",
+    src: "testdata/init.rc",
+    filename: "init.rc",
+    installable: false,
+}
