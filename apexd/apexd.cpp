@@ -35,6 +35,7 @@
 #include <libdm/dm.h>
 #include <libdm/dm_table.h>
 #include <libdm/dm_target.h>
+#include <selinux/android.h>
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -1073,6 +1074,12 @@ Status stagePackage(const std::string& packageTmpPath) {
     // TODO: Get correct binder error status.
     return Status::Fail(PStringLog() << "Unable to rename " << packageTmpPath
                                      << " to " << destPath);
+  }
+  // TODO(b/112669193) remove this. Move the file from packageTmpPath to
+  // destPath using file descriptor.
+  if (selinux_android_restorecon(destPath.c_str(), 0) < 0) {
+    return Status::Fail(PStringLog() << "Failed to restorecon " << destPath
+                                     << " error: " << strerror(errno));
   }
   LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
   return Status::Success();
