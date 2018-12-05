@@ -16,8 +16,6 @@
 
 #include "apexservice.h"
 
-#include <fstream>
-
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +33,7 @@
 
 #include "apexd.h"
 #include "status.h"
+#include "string_log.h"
 
 #include <android/apex/BnApexService.h>
 
@@ -188,8 +187,8 @@ status_t ApexService::shellCommand(int in, int out, int err,
     return BAD_VALUE;
   }
   auto print_help = [](int fd) {
-    auto stream = std::fstream(base::StringPrintf("/proc/self/fd/%d", fd));
-    stream << "ApexService:" << std::endl
+    std::string msg = StringLog()
+           << "ApexService:" << std::endl
            << "  help - display this help" << std::endl
            << "  stagePackage [packagePath] - stage package from the given "
               "path"
@@ -202,6 +201,7 @@ status_t ApexService::shellCommand(int in, int out, int err,
            << "  deactivatePackage [packagePath] - deactivate package from the "
               "given path"
            << std::endl;
+    dprintf(fd, "%s", msg.c_str());
   };
 
   if (args.size() == 2 && args[0] == String16("stagePackage")) {
@@ -211,25 +211,28 @@ status_t ApexService::shellCommand(int in, int out, int err,
     if (status.isOk()) {
       return OK;
     }
-    auto err_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", err));
-    err_str << "Failed to stage package: " << status.toString8().string()
+    std::string msg = StringLog()
+            << "Failed to stage package: " << status.toString8().string()
             << std::endl;
+    dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
   if (args.size() == 1 && args[0] == String16("getActivePackages")) {
     std::vector<ApexInfo> list;
     android::binder::Status status = getActivePackages(&list);
     if (status.isOk()) {
-      auto out_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", out));
       for (auto item : list) {
-        out_str << "Package: " << item.packageName
+        std::string msg = StringLog()
+                << "Package: " << item.packageName
                 << " Version: " << item.versionCode << std::endl;
+        dprintf(out, "%s", msg.c_str());
       }
       return OK;
     }
-    auto err_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", err));
-    err_str << "Failed to retrieve packages: " << status.toString8().string()
+    std::string msg = StringLog()
+            << "Failed to retrieve packages: " << status.toString8().string()
             << std::endl;
+    dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
   if (args.size() == 2 && args[0] == String16("activatePackage")) {
@@ -238,9 +241,10 @@ status_t ApexService::shellCommand(int in, int out, int err,
     if (status.isOk()) {
       return OK;
     }
-    auto err_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", err));
-    err_str << "Failed to activate package: " << status.toString8().string()
+    std::string msg = StringLog()
+            << "Failed to activate package: " << status.toString8().string()
             << std::endl;
+    dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
   if (args.size() == 2 && args[0] == String16("deactivatePackage")) {
@@ -249,9 +253,10 @@ status_t ApexService::shellCommand(int in, int out, int err,
     if (status.isOk()) {
       return OK;
     }
-    auto err_str = std::fstream(base::StringPrintf("/proc/self/fd/%d", err));
-    err_str << "Failed to deactivate package: " << status.toString8().string()
+    std::string msg = StringLog()
+            << "Failed to deactivate package: " << status.toString8().string()
             << std::endl;
+    dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
   if (args.size() == 1 && args[0] == String16("help")) {
