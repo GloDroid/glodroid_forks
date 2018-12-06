@@ -22,6 +22,8 @@ import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,16 +39,13 @@ import org.junit.runner.RunWith;
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Test {
 
-    private static final String TEST_APK_NAME = "HelloActivity";
-    private static final String TEST_PACKAGE_NAME = "com.example.android.helloactivity";
-
-    private ITestDevice mDevice;
+    private static final String TEST_APK_NAME = "test.apex";
+    private static final String TEST_PACKAGE_NAME = "com.android.apex.test";
+    private static final String APEX_DATA_DIR = "/data/apex";
 
     @Before
     public synchronized void setUp() throws Exception {
-        // Cleanup test apps that might be installed from previous partial test run
-        mDevice = getDevice();
-        mDevice.uninstallPackage(TEST_PACKAGE_NAME);
+        getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
     }
 
     /**
@@ -58,35 +57,68 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
 
         // Test staging APEX module (currently we simply install a sample apk).
         // TODO: change sample apk to test APEX package and do install using adb.
-        File testAppFile = getTestApk();
-        String installResult = mDevice.installPackage(testAppFile, false);
+        File testAppFile = getTestApex();
+        String installResult = getDevice().installPackage(testAppFile, false);
         Assert.assertNull(
                 String.format("failed to install test app. Reason: %s", installResult),
                 installResult);
-        Assert.assertTrue(mDevice.getInstalledPackageNames().contains(TEST_PACKAGE_NAME));
 
-        // TODO: Reboot device after staging to test if apex can be activated successfully.
+        // TODO: ensure that APEX is staged.
 
-        // Test uninstallation
-        // TODO: reboot device to check the Apexd activates the original module
-        // after uninstallation.
-        mDevice.uninstallPackage(TEST_PACKAGE_NAME);
-        Assert.assertFalse(mDevice.getInstalledPackageNames().contains(TEST_PACKAGE_NAME));
+        // Reboot to actually activate the staged APEX.
+        getDevice().nonBlockingReboot();
+        getDevice().waitForDeviceAvailable();
+
+        // Disable SELinux to directly talk to apexservice.
+        // TODO: Remove this by using Package Manager APIs instead.
+        final boolean adbWasRoot = getDevice().isAdbRoot();
+        if (!adbWasRoot) {
+            Assert.assertTrue(getDevice().enableAdbRoot());
+        }
+        CommandResult result = getDevice().executeShellV2Command("getenforce");
+        final boolean selinuxWasEnforcing = result.getStdout().contains("Enforcing");
+        if (selinuxWasEnforcing) {
+            result = getDevice().executeShellV2Command("setenforce 0");
+            Assert.assertEquals(CommandStatus.SUCCESS, result.getStatus());
+        }
+
+        // Check that the APEX is actaully activated
+        result = getDevice().executeShellV2Command("cmd apexservice getActivePackages");
+        Assert.assertEquals(CommandStatus.SUCCESS, result.getStatus());
+        String lines[] = result.getStdout().split("\n");
+        boolean found = false;
+        for (String l : lines) {
+            if (l.contains(TEST_PACKAGE_NAME)) {
+                found = true;
+                break;
+            }
+        }
+        Assert.assertTrue(found);
+
+        // Enable SELinux back on
+        // TODO: don't change SElinux enforcement at all
+        if (selinuxWasEnforcing) {
+            result = getDevice().executeShellV2Command("setenforce 1");
+            Assert.assertEquals(CommandStatus.SUCCESS, result.getStatus());
+        }
+        if (!adbWasRoot) {
+            Assert.assertTrue(getDevice().disableAdbRoot());
+        }
     }
 
     /**
-     * Helper method to extract the sample apk from the jar file.
+     * Helper method to get the test apex.
      */
-    private File getTestApk() throws IOException {
+    private File getTestApex() throws IOException {
         File hostdir = getBuild().getFile(BuildInfoFileKey.HOST_LINKED_DIR);
-        File apkFile = FileUtil.findFile(hostdir, TEST_APK_NAME + ".apk");
+        File apkFile = FileUtil.findFile(hostdir, TEST_APK_NAME);
         return apkFile;
     }
 
     @After
     public void tearDown() throws DeviceNotAvailableException {
-        mDevice.uninstallPackage(TEST_PACKAGE_NAME);
-        mDevice.reboot();
+        getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
+        getDevice().reboot();
     }
 }
 
