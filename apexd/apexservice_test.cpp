@@ -25,6 +25,7 @@
 #include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/macros.h>
+#include <android-base/scopeguard.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 #include <binder/IServiceManager.h>
@@ -286,6 +287,24 @@ TEST_F(ApexServiceTest, Activate) {
                                                 ',');
   }
 
+  auto cleanup = [&]() {
+    // Cleanup.
+    st = service_->deactivatePackage(installer.test_installed_file);
+    EXPECT_TRUE(st.isOk()) << st.toString8().c_str();
+    {
+      // Check package is not active.
+      StatusOr<bool> active = IsActive(installer.package, installer.version);
+      EXPECT_TRUE(active.Ok());
+      if (active.Ok()) {
+        EXPECT_FALSE(*active)
+            << android::base::Join(GetActivePackagesStrings(), ',');
+      }
+    }
+
+    // TODO: Uninstall.
+  };
+  auto scope_guard = android::base::make_scope_guard(cleanup);
+
   {
     // Check that the "latest" view exists.
     std::string latest_path = std::string(kApexRoot) + "/" + installer.package;
@@ -329,16 +348,7 @@ TEST_F(ApexServiceTest, Activate) {
         << " Latest:" << android::base::Join(latest_folder_entries, ',');
   }
 
-  // Cleanup.
-  st = service_->deactivatePackage(installer.test_installed_file);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
-  {
-    // Check package is not active.
-    StatusOr<bool> active = IsActive(installer.package, installer.version);
-    ASSERT_TRUE(active.Ok());
-    ASSERT_FALSE(*active) << android::base::Join(GetActivePackagesStrings(),
-                                                 ',');
-  }
+  // Cleanup through ScopeGuard.
 }
 
 class LogTestToLogcat : public testing::EmptyTestEventListener {
