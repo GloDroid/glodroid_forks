@@ -102,8 +102,8 @@ class ApexServiceTest : public ::testing::Test {
     static constexpr const char* kTestFile =
         "/data/local/apexservice_tmp/test.apex";
     static constexpr const char* kTestInstalled =
-        "/data/apex/com.android.apex.test@1.apex";
-    static constexpr const char* kTestName = "com.android.apex.test";
+        "/data/apex/com.android.apex.test_package@1.apex";
+    static constexpr const char* kTestName = "com.android.apex.test_package";
 
     bool Prepare() {
       auto prepare = []() {
