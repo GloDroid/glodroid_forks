@@ -138,7 +138,10 @@ cc_test {
   data: ["apexd_testdata/*"],
   srcs: ["apexservice_test.cpp"],
   host_supported: false,
-  static_libs: ["apex_aidl_interface-cpp"],
+  static_libs: [
+    "apex_aidl_interface-cpp",
+    "libapex",
+  ],
   shared_libs: [
     "libbinder",
     "libselinux",
