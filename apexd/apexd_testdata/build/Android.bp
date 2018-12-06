@@ -1,0 +1,65 @@
+// Copyright (C) 2018 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// These apex definitions will generate the prebuilt test data. The modules
+// are disabled so as not to pollute the build.
+
+apex_key {
+    name: "com.android.apex.test_package.key",
+    public_key: "com.android.apex.test_package.avbpubkey",
+    private_key: "com.android.apex.test_package.pem",
+}
+
+apex {
+    name: "test",
+    manifest: "manifest.json",
+    file_contexts: "apex.test",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.key",
+    enabled: false,
+}
+
+apex {
+    name: "test_v2",
+    manifest: "manifest_v2.json",
+    file_contexts: "apex.test",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.key",
+    enabled: false,
+}
+
+apex_key {
+    name: "com.android.apex.test_package.preinstall.key",
+    public_key: "com.android.apex.test_package.preinstall.avbpubkey",
+    private_key: "com.android.apex.test_package.preinstall.pem",
+}
+
+apex {
+    name: "test_preinstall",
+    manifest: "manifest_preinstall.json",
+    file_contexts: "apex.test",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.preinstall.key",
+    binaries: ["apex_test_pre_install_hook"],
+    enabled: false,
+}
+
+cc_prebuilt_binary {
+    name: "apex_test_pre_install_hook",
+    srcs: ["pre_install_hook.sh"],
+    stl: "none",
+    strip: {
+        none: true,
+    },
+}
