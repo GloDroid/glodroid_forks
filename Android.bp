@@ -128,13 +128,46 @@ cc_library_shared {
     },
 }
 
+// This target is used to extract the build commands for a test executable.
+// See run_tests.py.
+cc_binary {
+    name: "libcxx_test_template",
+    srcs: [
+        "libcxx_test_template.cpp",
+    ],
+    cppflags: [
+        "-fsized-deallocation",
+        "-fexceptions",
+        "-Wno-format-zero-length",
+        "-Wno-implicit-fallthrough",
+        "-Wno-non-virtual-dtor",
+        "-Wno-return-stack-address",
+        "-Wno-unused-local-typedef",
 
-// ANDROIDMK TRANSLATION ERROR: unsupported conditional
-// ifdef LIBCXX_TESTING
-// ANDROIDMK TRANSLATION ERROR: unsupported include
-// include $(LOCAL_PATH)/buildcmds/Android.mk
+        "-UNDEBUG",
 
-// ANDROIDMK TRANSLATION ERROR: endif from unsupported contitional
-// endif
-// TARGET_BUILD_APPS
-
+        // Optimization is causing relocation for nothrow new to be thrown away.
+        // http://llvm.org/bugs/show_bug.cgi?id=21421
+        "-O0",
+    ],
+    ldflags: [
+        // This makes the tests run a little faster.
+        "-Wl,--strip-all",
+    ],
+    rtti: true,
+    local_include_dirs: [
+        "test/support",
+    ],
+    multilib: {
+        lib32: {
+            suffix: "32",
+        },
+        lib64: {
+            suffix: "64",
+        },
+    },
+    compile_multilib: "both",
+    host_supported: true,
+    gnu_extensions: false,
+    cpp_std: "c++17",
+}
