@@ -39,7 +39,7 @@ import org.junit.runner.RunWith;
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Test {
 
-    private static final String TEST_APK_NAME = "test.apex";
+    private static final String TEST_APEX_NAME = "test.apex";
     private static final String TEST_PACKAGE_NAME = "com.android.apex.test";
     private static final String APEX_DATA_DIR = "/data/apex";
 
@@ -111,7 +111,7 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
      */
     private File getTestApex() throws IOException {
         File hostdir = getBuild().getFile(BuildInfoFileKey.HOST_LINKED_DIR);
-        File apkFile = FileUtil.findFile(hostdir, TEST_APK_NAME);
+        File apkFile = FileUtil.findFile(hostdir, TEST_APEX_NAME);
         return apkFile;
     }
 
