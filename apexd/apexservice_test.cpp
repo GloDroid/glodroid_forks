@@ -134,7 +134,7 @@ class ApexServiceTest : public ::testing::Test {
                            << strerror(saved_errno);
         }
 
-        ASSERT_EQ(0, chmod(kTestFile, 0777)) << strerror(errno);
+        ASSERT_EQ(0, chmod(kTestFile, 0666)) << strerror(errno);
         struct group* g = getgrnam("system");
         ASSERT_NE(nullptr, g);
         ASSERT_EQ(0, chown(kTestFile, /* root uid */ 0, g->gr_gid))
@@ -223,7 +223,11 @@ TEST_F(ApexServiceTest, StageSuccess) {
   ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
   ASSERT_TRUE(success);
 
-  // TODO: Uninstall.
+  // TODO: to the unstaging using APIs
+  if (unlink(PrepareTestApexForInstall::kTestInstalled) != 0) {
+    PLOG(ERROR) << "Unable to unlink "
+                << PrepareTestApexForInstall::kTestInstalled;
+  }
 }
 
 TEST_F(ApexServiceTest, Activate) {
@@ -311,7 +315,11 @@ TEST_F(ApexServiceTest, Activate) {
                                                  ',');
   }
 
-  // TODO: Uninstall.
+  // TODO: to the unstaging using APIs
+  if (unlink(PrepareTestApexForInstall::kTestInstalled) != 0) {
+    PLOG(ERROR) << "Unable to unlink "
+                << PrepareTestApexForInstall::kTestInstalled;
+  }
 }
 
 class LogTestToLogcat : public testing::EmptyTestEventListener {
