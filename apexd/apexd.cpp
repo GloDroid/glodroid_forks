@@ -28,6 +28,7 @@
 #include <android-base/logging.h>
 #include <android-base/macros.h>
 #include <android-base/properties.h>
+#include <android-base/scopeguard.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 #include <android-base/unique_fd.h>
@@ -1075,6 +1076,15 @@ Status stagePackage(const std::string& packageTmpPath) {
     return Status::Fail(PStringLog() << "Unable to rename " << packageTmpPath
                                      << " to " << destPath);
   }
+
+  // Ensure the APEX gets removed on failure.
+  auto deleter = [&destPath]() {
+    if (TEMP_FAILURE_RETRY(unlink(destPath.c_str())) != 0) {
+      PLOG(ERROR) << "Unable to unlink " << destPath;
+    }
+  };
+  auto scope_guard = android::base::make_scope_guard(deleter);
+
   // TODO(b/112669193) remove this. Move the file from packageTmpPath to
   // destPath using file descriptor.
   if (selinux_android_restorecon(destPath.c_str(), 0) < 0) {
@@ -1082,6 +1092,8 @@ Status stagePackage(const std::string& packageTmpPath) {
                                      << " error: " << strerror(errno));
   }
   LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
+
+  scope_guard.Disable();  // Accept the state.
   return Status::Success();
 }
 
