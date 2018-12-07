@@ -34,6 +34,5 @@
     <test class="com.android.tradefed.testtype.GTest" >
         <option name="native-test-device-path" value="/data/local/tmp/apexservice_test" />
         <option name="module-name" value="apexservice_test" />
-        <option name="file-exclusion-filter-regex" value=".*apexd_testdata" />
     </test>
 </configuration>
