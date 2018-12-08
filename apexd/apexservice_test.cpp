@@ -34,6 +34,9 @@
 #include <android/apex/ApexInfo.h>
 #include <android/apex/IApexService.h>
 
+#include "apex_file.h"
+#include "apex_manifest.h"
+#include "apexd.h"
 #include "status_or.h"
 
 namespace android {
@@ -61,7 +64,9 @@ class ApexServiceTest : public ::testing::Test {
   static std::string GetTestDataDir() {
     return android::base::GetExecutableDirectory() + "/apexd_testdata";
   }
-  static std::string GetTestFile() { return GetTestDataDir() + "/test.apex"; }
+  static std::string GetTestFile(const std::string& name) {
+    return GetTestDataDir() + "/" + name;
+  }
 
   static bool HaveSelinux() { return 1 == is_selinux_enabled(); }
 
@@ -99,17 +104,39 @@ class ApexServiceTest : public ::testing::Test {
 
   struct PrepareTestApexForInstall {
     static constexpr const char* kTestDir = "/data/local/apexservice_tmp";
-    static constexpr const char* kTestFile =
-        "/data/local/apexservice_tmp/test.apex";
-    static constexpr const char* kTestInstalled =
-        "/data/apex/com.android.apex.test_package@1.apex";
-    static constexpr const char* kTestName = "com.android.apex.test_package";
+
+    // This is given to the constructor.
+    std::string test_input;  // Original test file.
+
+    // This is derived from the input.
+    std::string test_file;            // Prepared path. Under kTestDir.
+    std::string test_installed_file;  // Where apexd will store it.
+
+    std::string package;  // APEX package name.
+    uint64_t version;     // APEX version.
+
+    PrepareTestApexForInstall(const std::string& test) {
+      test_input = test;
+
+      test_file = std::string(kTestDir) + "/" + android::base::Basename(test);
+
+      StatusOr<ApexFile> apex_file = ApexFile::Open(test);
+      CHECK(apex_file.Ok());
+
+      const ApexManifest& manifest = apex_file->GetManifest();
+      package = manifest.GetName();
+      version = manifest.GetVersion();
+
+      test_installed_file = std::string(kApexPackageDataDir) + "/" + package +
+                            "@" + std::to_string(version) + ".apex";
+    }
 
     bool Prepare() {
-      auto prepare = []() {
-        ASSERT_EQ(0, access(GetTestFile().c_str(), F_OK))
-            << GetTestFile() << ": " << strerror(errno);
-        ASSERT_EQ(0, mkdir(kTestDir, 0777)) << strerror(errno);
+      auto prepare = [](const std::string& src, const std::string& trg) {
+        ASSERT_EQ(0, access(src.c_str(), F_OK))
+            << src << ": " << strerror(errno);
+        const std::string trg_dir = android::base::Dirname(trg);
+        ASSERT_EQ(0, mkdir(trg_dir.c_str(), 0777)) << trg << strerror(errno);
 
         auto mode_info = [](const std::string& f) {
           auto get_mode = [](const std::string& path) {
@@ -126,38 +153,40 @@ class ApexServiceTest : public ::testing::Test {
 
           return file_part + " - " + dir_part;
         };
-        int rc = link(GetTestFile().c_str(), kTestFile);
+        int rc = link(src.c_str(), trg.c_str());
         if (rc != 0) {
           int saved_errno = errno;
-          ASSERT_EQ(0, rc) << mode_info(GetTestFile()) << " to "
-                           << mode_info(kTestFile) << " : "
-                           << strerror(saved_errno);
+          ASSERT_EQ(0, rc) << mode_info(src) << " to " << mode_info(trg)
+                           << " : " << strerror(saved_errno);
         }
 
-        ASSERT_EQ(0, chmod(kTestFile, 0666)) << strerror(errno);
+        ASSERT_EQ(0, chmod(trg.c_str(), 0666)) << strerror(errno);
         struct group* g = getgrnam("system");
         ASSERT_NE(nullptr, g);
-        ASSERT_EQ(0, chown(kTestFile, /* root uid */ 0, g->gr_gid))
+        ASSERT_EQ(0, chown(trg.c_str(), /* root uid */ 0, g->gr_gid))
             << strerror(errno);
 
-        ASSERT_TRUE(0 == setfilecon(kTestDir, "u:object_r:apex_data_file:s0") ||
-                    !HaveSelinux())
-            << strerror(errno);
-        ASSERT_TRUE(0 ==
-                        setfilecon(kTestFile, "u:object_r:apex_data_file:s0") ||
-                    !HaveSelinux())
-            << strerror(errno);
+        rc = setfilecon(trg_dir.c_str(), "u:object_r:apex_data_file:s0");
+        ASSERT_TRUE(0 == rc || !HaveSelinux()) << strerror(errno);
+        rc = setfilecon(trg.c_str(), "u:object_r:apex_data_file:s0");
+        ASSERT_TRUE(0 == rc || !HaveSelinux()) << strerror(errno);
       };
-      prepare();
+      prepare(test_input, test_file);
       return !HasFatalFailure();
     }
 
     ~PrepareTestApexForInstall() {
-      if (unlink(kTestFile) != 0) {
-        PLOG(ERROR) << "Unable to unlink " << kTestFile;
+      if (unlink(test_file.c_str()) != 0) {
+        PLOG(ERROR) << "Unable to unlink " << test_file;
       }
       if (rmdir(kTestDir) != 0) {
         PLOG(ERROR) << "Unable to rmdir " << kTestDir;
+      }
+
+      // For cleanliness, also attempt to delete apexd's file.
+      // TODO: to the unstaging using APIs
+      if (unlink(test_installed_file.c_str()) != 0) {
+        PLOG(ERROR) << "Unable to unlink " << test_installed_file;
       }
     }
   };
@@ -188,7 +217,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
 
   // Use an extra copy, so that even if this test fails (incorrectly installs),
   // we have the testdata file still around.
-  std::string orig_test_file = GetTestFile();
+  std::string orig_test_file = GetTestFile("test.apex");
   std::string test_file = orig_test_file + ".2";
   ASSERT_EQ(0, link(orig_test_file.c_str(), test_file.c_str()))
       << strerror(errno);
@@ -212,33 +241,27 @@ TEST_F(ApexServiceTest, StageFailAccess) {
 }
 
 TEST_F(ApexServiceTest, StageSuccess) {
-  PrepareTestApexForInstall installer;
+  PrepareTestApexForInstall installer(GetTestFile("test.apex"));
   if (!installer.Prepare()) {
     return;
   }
 
   bool success;
   android::binder::Status st =
-      service_->stagePackage(PrepareTestApexForInstall::kTestFile, &success);
+      service_->stagePackage(installer.test_file, &success);
   ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
   ASSERT_TRUE(success);
-
-  // TODO: to the unstaging using APIs
-  if (unlink(PrepareTestApexForInstall::kTestInstalled) != 0) {
-    PLOG(ERROR) << "Unable to unlink "
-                << PrepareTestApexForInstall::kTestInstalled;
-  }
 }
 
 TEST_F(ApexServiceTest, Activate) {
-  PrepareTestApexForInstall installer;
+  PrepareTestApexForInstall installer(GetTestFile("test.apex"));
   if (!installer.Prepare()) {
     return;
   }
 
   {
     // Check package is not active.
-    StatusOr<bool> active = IsActive(PrepareTestApexForInstall::kTestName, 1);
+    StatusOr<bool> active = IsActive(installer.package, installer.version);
     ASSERT_TRUE(active.Ok());
     ASSERT_FALSE(*active);
   }
@@ -246,18 +269,18 @@ TEST_F(ApexServiceTest, Activate) {
   {
     bool success;
     android::binder::Status st =
-        service_->stagePackage(PrepareTestApexForInstall::kTestFile, &success);
+        service_->stagePackage(installer.test_file, &success);
     ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
     ASSERT_TRUE(success);
   }
 
   android::binder::Status st =
-      service_->activatePackage(PrepareTestApexForInstall::kTestInstalled);
+      service_->activatePackage(installer.test_installed_file);
   ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
 
   {
     // Check package is active.
-    StatusOr<bool> active = IsActive(PrepareTestApexForInstall::kTestName, 1);
+    StatusOr<bool> active = IsActive(installer.package, installer.version);
     ASSERT_TRUE(active.Ok());
     ASSERT_TRUE(*active) << android::base::Join(GetActivePackagesStrings(),
                                                 ',');
@@ -265,8 +288,7 @@ TEST_F(ApexServiceTest, Activate) {
 
   {
     // Check that the "latest" view exists.
-    std::string latest_path =
-        std::string("/apex/") + PrepareTestApexForInstall::kTestName;
+    std::string latest_path = std::string(kApexRoot) + "/" + installer.package;
     struct stat buf;
     ASSERT_EQ(0, stat(latest_path.c_str(), &buf)) << strerror(errno);
     // Check that it is a folder.
@@ -294,8 +316,11 @@ TEST_F(ApexServiceTest, Activate) {
       return ret;
     };
 
-    std::vector<std::string> versioned_folder_entries = collect_entries_fn(
-        std::string("/apex/") + PrepareTestApexForInstall::kTestName + "@1");
+    std::string versioned_path = std::string(kApexRoot) + "/" +
+                                 installer.package + "@" +
+                                 std::to_string(installer.version);
+    std::vector<std::string> versioned_folder_entries =
+        collect_entries_fn(versioned_path);
     std::vector<std::string> latest_folder_entries =
         collect_entries_fn(latest_path);
 
@@ -305,20 +330,14 @@ TEST_F(ApexServiceTest, Activate) {
   }
 
   // Cleanup.
-  st = service_->deactivatePackage(PrepareTestApexForInstall::kTestInstalled);
+  st = service_->deactivatePackage(installer.test_installed_file);
   ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
   {
     // Check package is not active.
-    StatusOr<bool> active = IsActive(PrepareTestApexForInstall::kTestName, 1);
+    StatusOr<bool> active = IsActive(installer.package, installer.version);
     ASSERT_TRUE(active.Ok());
     ASSERT_FALSE(*active) << android::base::Join(GetActivePackagesStrings(),
                                                  ',');
-  }
-
-  // TODO: to the unstaging using APIs
-  if (unlink(PrepareTestApexForInstall::kTestInstalled) != 0) {
-    PLOG(ERROR) << "Unable to unlink "
-                << PrepareTestApexForInstall::kTestInstalled;
   }
 }
 
