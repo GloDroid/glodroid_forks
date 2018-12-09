@@ -22,6 +22,7 @@
 #include "apex_database.h"
 #include "apex_file.h"
 #include "apex_manifest.h"
+#include "apexd_preinstall.h"
 #include "status_or.h"
 #include "string_log.h"
 
@@ -1045,6 +1046,20 @@ Status stagePackage(const std::string& packageTmpPath) {
                                      << " error: " << strerror(errno));
   }
   LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
+
+  if (!apexFile->GetManifest().GetPreInstallHook().empty()) {
+    // Need to recreate the APEX file, as it points to the packageTmpPath.
+    StatusOr<ApexFile> stagedApexFile = ApexFile::Open(destPath);
+    if (stagedApexFile.Ok()) {
+      Status preinstall_status = StagePreInstall(*stagedApexFile);
+      if (!preinstall_status.Ok()) {
+        return preinstall_status;
+      }
+    } else {
+      return Status::Fail(std::string("Failed reloading staged apex: ")
+                              .append(stagedApexFile.ErrorMessage()));
+    }
+  }
 
   scope_guard.Disable();  // Accept the state.
   return Status::Success();

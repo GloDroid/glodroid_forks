@@ -38,6 +38,7 @@
 #include "apex_file.h"
 #include "apex_manifest.h"
 #include "apexd.h"
+#include "apexd_utils.h"
 #include "status_or.h"
 
 namespace android {
@@ -101,6 +102,27 @@ class ApexServiceTest : public ::testing::Test {
     std::vector<std::string> error;
     error.push_back("ERROR");
     return error;
+  }
+
+  static std::string GetLogcat() {
+    // For simplicity, log to file and read it.
+    std::string file = GetTestFile("logcat.tmp.txt");
+    std::vector<std::string> args{
+        "/system/bin/logcat",
+        "-d",
+        "-f",
+        file,
+    };
+    std::string error_msg;
+    int res = ForkAndRun(args, &error_msg);
+    CHECK_EQ(0, res) << error_msg;
+
+    std::string data;
+    CHECK(android::base::ReadFileToString(file, &data));
+
+    unlink(file.c_str());
+
+    return data;
   }
 
   struct PrepareTestApexForInstall {
@@ -349,6 +371,24 @@ TEST_F(ApexServiceTest, Activate) {
   }
 
   // Cleanup through ScopeGuard.
+}
+
+TEST_F(ApexServiceTest, StagePreinstall) {
+  PrepareTestApexForInstall installer(GetTestFile("test_preinstall.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+
+  bool success;
+  android::binder::Status st =
+      service_->stagePackage(installer.test_file, &success);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(success);
+
+  std::string logcat = GetLogcat();
+  EXPECT_NE(std::string::npos, logcat.find("echo    : Test\n")) << logcat;
+
+  // TODO: Uninstall.
 }
 
 class LogTestToLogcat : public testing::EmptyTestEventListener {
