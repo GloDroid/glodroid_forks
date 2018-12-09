@@ -44,7 +44,10 @@ cc_binary {
     "apex_defaults",
     "libapexservice-deps",
   ],
-  srcs: ["apexd_main.cpp"],
+  srcs: [
+    "apexd_main.cpp",
+    "apexd_private.cpp",
+  ],
   static_libs: [
     "libapex",
     "libapexd",
