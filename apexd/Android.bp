@@ -46,6 +46,7 @@ cc_binary {
   ],
   srcs: [
     "apexd_main.cpp",
+    "apexd_preinstall.cpp",
     "apexd_private.cpp",
   ],
   static_libs: [
