@@ -20,6 +20,7 @@ import android.apex.ApexInfo;
 
 interface IApexService {
    boolean stagePackage(in @utf8InCpp String package_tmp_path);
+   boolean stagePackages(in @utf8InCpp List<String> package_tmp_paths);
    ApexInfo[] getActivePackages();
 
    /**

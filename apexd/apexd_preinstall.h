@@ -18,6 +18,7 @@
 #define ANDROID_APEXD_APEXD_PREINSTALL_H_
 
 #include <string>
+#include <vector>
 
 #include "status.h"
 
@@ -26,7 +27,7 @@ namespace apex {
 
 class ApexFile;
 
-Status StagePreInstall(const ApexFile& apex);
+Status StagePreInstall(std::vector<ApexFile>& apexes);
 
 int RunPreInstall(char** argv);
 
