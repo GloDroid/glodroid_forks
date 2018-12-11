@@ -15,6 +15,7 @@
  */
 
 #include <algorithm>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -161,26 +162,15 @@ class ApexServiceTest : public ::testing::Test {
         const std::string trg_dir = android::base::Dirname(trg);
         ASSERT_EQ(0, mkdir(trg_dir.c_str(), 0777)) << trg << strerror(errno);
 
-        auto mode_info = [](const std::string& f) {
-          auto get_mode = [](const std::string& path) {
-            struct stat buf;
-            if (stat(path.c_str(), &buf) != 0) {
-              return std::string(strerror(errno));
-            }
-            return android::base::StringPrintf("%x", buf.st_mode);
-          };
-          std::string file_part = f + "(" + get_mode(f) + ")";
+        // Do not use a hardlink, even though it's the simplest solution.
+        // b/119569101.
+        {
+          std::ifstream src_stream(src, std::ios::binary);
+          ASSERT_TRUE(src_stream.good());
+          std::ofstream trg_stream(trg, std::ios::binary);
+          ASSERT_TRUE(trg_stream.good());
 
-          std::string dir = android::base::Dirname(f);
-          std::string dir_part = dir + "(" + get_mode(dir) + ")";
-
-          return file_part + " - " + dir_part;
-        };
-        int rc = link(src.c_str(), trg.c_str());
-        if (rc != 0) {
-          int saved_errno = errno;
-          ASSERT_EQ(0, rc) << mode_info(src) << " to " << mode_info(trg)
-                           << " : " << strerror(saved_errno);
+          trg_stream << src_stream.rdbuf();
         }
 
         ASSERT_EQ(0, chmod(trg.c_str(), 0666)) << strerror(errno);
@@ -189,7 +179,7 @@ class ApexServiceTest : public ::testing::Test {
         ASSERT_EQ(0, chown(trg.c_str(), /* root uid */ 0, g->gr_gid))
             << strerror(errno);
 
-        rc = setfilecon(trg_dir.c_str(), "u:object_r:apex_data_file:s0");
+        int rc = setfilecon(trg_dir.c_str(), "u:object_r:apex_data_file:s0");
         ASSERT_TRUE(0 == rc || !HaveSelinux()) << strerror(errno);
         rc = setfilecon(trg.c_str(), "u:object_r:apex_data_file:s0");
         ASSERT_TRUE(0 == rc || !HaveSelinux()) << strerror(errno);
