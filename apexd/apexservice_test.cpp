@@ -47,6 +47,7 @@ namespace apex {
 
 using android::sp;
 using android::String16;
+using android::base::Join;
 
 class ApexServiceTest : public ::testing::Test {
  public:
@@ -103,6 +104,38 @@ class ApexServiceTest : public ::testing::Test {
     std::vector<std::string> error;
     error.push_back("ERROR");
     return error;
+  }
+
+  static std::vector<std::string> ListDir(const std::string& path) {
+    std::vector<std::string> ret;
+    auto d =
+        std::unique_ptr<DIR, int (*)(DIR*)>(opendir(path.c_str()), closedir);
+    if (d == nullptr) {
+      return ret;
+    }
+
+    struct dirent* dp;
+    while ((dp = readdir(d.get())) != nullptr) {
+      std::string tmp;
+      switch (dp->d_type) {
+        case DT_DIR:
+          tmp = "[dir]";
+          break;
+        case DT_LNK:
+          tmp = "[lnk]";
+          break;
+        case DT_REG:
+          tmp = "[reg]";
+          break;
+        default:
+          tmp = "[other]";
+          break;
+      }
+      tmp = tmp.append(dp->d_name);
+      ret.push_back(tmp);
+    }
+    std::sort(ret.begin(), ret.end());
+    return ret;
   }
 
   static std::string GetLogcat() {
@@ -203,6 +236,26 @@ class ApexServiceTest : public ::testing::Test {
       }
     }
   };
+
+  std::string GetDebugStr(PrepareTestApexForInstall* installer) {
+    StringLog log;
+
+    if (installer != nullptr) {
+      log << "test_input=" << installer->test_input << " ";
+      log << "test_file=" << installer->test_file << " ";
+      log << "test_installed_file=" << installer->test_installed_file << " ";
+      log << "package=" << installer->package << " ";
+      log << "version=" << installer->version << " ";
+    }
+
+    log << "active=[" << Join(GetActivePackagesStrings(), ',') << "] ";
+    log << kApexPackageDataDir << "=["
+        << Join(ListDir(kApexPackageDataDir), ',') << "] ";
+    log << kApexRoot << "=[" << Join(ListDir(kApexRoot), ',') << "]";
+
+    return log;
+  }
+
   sp<IApexService> service_;
 };
 
@@ -258,6 +311,7 @@ TEST_F(ApexServiceTest, StageSuccess) {
   if (!installer.Prepare()) {
     return;
   }
+  ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
 
   bool success;
   android::binder::Status st =
@@ -271,6 +325,7 @@ TEST_F(ApexServiceTest, Activate) {
   if (!installer.Prepare()) {
     return;
   }
+  ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
 
   {
     // Check package is not active.
@@ -289,14 +344,14 @@ TEST_F(ApexServiceTest, Activate) {
 
   android::binder::Status st =
       service_->activatePackage(installer.test_installed_file);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str() << " "
+                         << GetDebugStr(&installer);
 
   {
     // Check package is active.
     StatusOr<bool> active = IsActive(installer.package, installer.version);
     ASSERT_TRUE(active.Ok());
-    ASSERT_TRUE(*active) << android::base::Join(GetActivePackagesStrings(),
-                                                ',');
+    ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
   }
 
   auto cleanup = [&]() {
@@ -308,8 +363,7 @@ TEST_F(ApexServiceTest, Activate) {
       StatusOr<bool> active = IsActive(installer.package, installer.version);
       EXPECT_TRUE(active.Ok());
       if (active.Ok()) {
-        EXPECT_FALSE(*active)
-            << android::base::Join(GetActivePackagesStrings(), ',');
+        EXPECT_FALSE(*active) << Join(GetActivePackagesStrings(), ',');
       }
     }
 
@@ -356,8 +410,8 @@ TEST_F(ApexServiceTest, Activate) {
         collect_entries_fn(latest_path);
 
     EXPECT_TRUE(versioned_folder_entries == latest_folder_entries)
-        << "Versioned: " << android::base::Join(versioned_folder_entries, ',')
-        << " Latest:" << android::base::Join(latest_folder_entries, ',');
+        << "Versioned: " << Join(versioned_folder_entries, ',')
+        << " Latest: " << Join(latest_folder_entries, ',');
   }
 
   // Cleanup through ScopeGuard.
