@@ -22,21 +22,19 @@ apex_key {
 }
 
 apex {
-    name: "test",
+    name: "apex.apexd_test",
     manifest: "manifest.json",
     file_contexts: "apex.test",
     prebuilts: ["sample_prebuilt_file"],
     key: "com.android.apex.test_package.key",
-    enabled: false,
 }
 
 apex {
-    name: "test_v2",
+    name: "apex.apexd_test_v2",
     manifest: "manifest_v2.json",
     file_contexts: "apex.test",
     prebuilts: ["sample_prebuilt_file"],
     key: "com.android.apex.test_package.key",
-    enabled: false,
 }
 
 apex_key {
@@ -46,13 +44,12 @@ apex_key {
 }
 
 apex {
-    name: "test_preinstall",
+    name: "apex.apexd_test_preinstall",
     manifest: "manifest_preinstall.json",
     file_contexts: "apex.test",
     prebuilts: ["sample_prebuilt_file"],
     key: "com.android.apex.test_package.preinstall.key",
     binaries: ["apex_test_pre_install_hook"],
-    enabled: false,
 }
 
 cc_prebuilt_binary {
