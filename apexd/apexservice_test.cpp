@@ -39,6 +39,7 @@
 #include "apex_file.h"
 #include "apex_manifest.h"
 #include "apexd.h"
+#include "apexd_private.h"
 #include "apexd_utils.h"
 #include "status_or.h"
 
@@ -474,7 +475,21 @@ TEST_F(ApexServiceTest, StagePreinstall) {
   std::string logcat = GetLogcat();
   EXPECT_NE(std::string::npos, logcat.find("echo    : Test\n")) << logcat;
 
-  // TODO: Uninstall.
+  // Ensure that the package is neither active nor mounted.
+  {
+    StatusOr<bool> active = IsActive(installer.package, installer.version);
+    ASSERT_TRUE(active.Ok());
+    EXPECT_FALSE(*active);
+  }
+  {
+    StatusOr<ApexFile> apex = ApexFile::Open(installer.test_input);
+    ASSERT_TRUE(apex.Ok());
+    std::string path = apexd_private::GetPackageMountPoint(apex->GetManifest());
+    std::string entry = std::string("[dir]").append(path);
+    std::vector<std::string> slash_apex = ListDir(kApexRoot);
+    auto it = std::find(slash_apex.begin(), slash_apex.end(), entry);
+    EXPECT_TRUE(it == slash_apex.end()) << Join(slash_apex, ',');
+  }
 }
 
 class LogTestToLogcat : public testing::EmptyTestEventListener {

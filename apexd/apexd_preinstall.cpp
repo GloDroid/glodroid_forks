@@ -76,7 +76,11 @@ Status StagePreInstall(std::vector<ApexFile>& apexes) {
 
   // 1) Mount the package, if necessary.
   auto mount_guard = android::base::make_scope_guard([&]() {
-    // TODO: Unmount code here.
+    Status st = apexd_private::UnmountPackage(apex);
+    if (!st.Ok()) {
+      LOG(ERROR) << "Failed to unmount " << apex.GetPath()
+                 << " after preinst: " << st.ErrorMessage();
+    }
   });
 
   std::string mount_point =

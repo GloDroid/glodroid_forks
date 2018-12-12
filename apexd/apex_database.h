@@ -98,9 +98,10 @@ class MountedApexDatabase {
     for (auto pkg_it = pkg_map.begin(); pkg_it != pkg_map.end(); ++pkg_it) {
       if (pkg_it->first.full_path == full_path) {
         pkg_it->second = true;
-        for (auto it = pkg_map.begin(); it != pkg_map.end(); ++it) {
-          if (it != pkg_it) {
-            it->second = false;
+        for (auto reset_it = pkg_map.begin(); reset_it != pkg_map.end();
+             ++reset_it) {
+          if (reset_it != pkg_it) {
+            reset_it->second = false;
           }
         }
         return;
