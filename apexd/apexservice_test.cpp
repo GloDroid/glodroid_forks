@@ -193,7 +193,10 @@ class ApexServiceTest : public ::testing::Test {
         ASSERT_EQ(0, access(src.c_str(), F_OK))
             << src << ": " << strerror(errno);
         const std::string trg_dir = android::base::Dirname(trg);
-        ASSERT_EQ(0, mkdir(trg_dir.c_str(), 0777)) << trg << strerror(errno);
+        if (0 != mkdir(trg_dir.c_str(), 0777)) {
+          int saved_errno = errno;
+          ASSERT_EQ(saved_errno, EEXIST) << trg << ":" << strerror(saved_errno);
+        }
 
         // Do not use a hardlink, even though it's the simplest solution.
         // b/119569101.
@@ -259,6 +262,18 @@ class ApexServiceTest : public ::testing::Test {
   sp<IApexService> service_;
 };
 
+namespace {
+
+bool RegularFileExists(const std::string& path) {
+  struct stat buf;
+  if (0 != stat(path.c_str(), &buf)) {
+    return false;
+  }
+  return S_ISREG(buf.st_mode);
+}
+
+}  // namespace
+
 TEST_F(ApexServiceTest, HaveSelinux) {
   // We want to test under selinux.
   EXPECT_TRUE(HaveSelinux());
@@ -318,6 +333,33 @@ TEST_F(ApexServiceTest, StageSuccess) {
       service_->stagePackage(installer.test_file, &success);
   ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
   ASSERT_TRUE(success);
+  EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
+}
+
+TEST_F(ApexServiceTest, MultiStageSuccess) {
+  PrepareTestApexForInstall installer(GetTestFile("test.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+  ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
+
+  // TODO: Add second test. Right now, just use a separate version.
+  PrepareTestApexForInstall installer2(GetTestFile("test_v2.apex"));
+  if (!installer2.Prepare()) {
+    return;
+  }
+  ASSERT_EQ(std::string("com.android.apex.test_package"), installer2.package);
+
+  std::vector<std::string> packages;
+  packages.push_back(installer.test_file);
+  packages.push_back(installer2.test_file);
+
+  bool success;
+  android::binder::Status st = service_->stagePackages(packages, &success);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(success);
+  EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
+  EXPECT_TRUE(RegularFileExists(installer2.test_installed_file));
 }
 
 TEST_F(ApexServiceTest, Activate) {
