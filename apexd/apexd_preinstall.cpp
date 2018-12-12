@@ -64,7 +64,13 @@ void PseudoCloseDescriptors() {
 
 }  // namespace
 
-Status StagePreInstall(const ApexFile& apex) {
+Status StagePreInstall(std::vector<ApexFile>& apexes) {
+  if (apexes.size() != 1u) {
+    // TODO: Implement.
+    return Status::Fail("Missing support for multiple pre-install hooks");
+  }
+  const ApexFile& apex = apexes[0];
+
   LOG(VERBOSE) << "Preinstall for " << apex.GetPath();
 
   // 1) Mount the package, if necessary.

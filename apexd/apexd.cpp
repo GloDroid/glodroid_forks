@@ -1014,50 +1014,85 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
   }
 }
 
-Status stagePackage(const std::string& packageTmpPath) {
-  LOG(DEBUG) << "stagePackage() for " << packageTmpPath;
+Status stagePackages(const std::vector<std::string>& tmp_paths) {
+  LOG(DEBUG) << "stagePackages() for " << android::base::Join(tmp_paths, ',');
 
-  StatusOr<ApexFile> apexFile = ApexFile::Open(packageTmpPath);
-  if (!apexFile.Ok()) {
-    return apexFile.ErrorStatus();
+  if (tmp_paths.empty()) {
+    return Status::Fail("Empty set of inputs");
   }
 
-  std::string destPath = StringPrintf(
-      "%s/%s%s", kApexPackageDataDir,
-      apexFile->GetManifest().GetPackageId().c_str(), kApexPackageSuffix);
-  if (rename(packageTmpPath.c_str(), destPath.c_str()) != 0) {
-    // TODO: Get correct binder error status.
-    return Status::Fail(PStringLog() << "Unable to rename " << packageTmpPath
-                                     << " to " << destPath);
+  // Note: assume that sessions do not have thousands of paths, so that it is
+  //       OK to keep the ApexFile/ApexManifests in memory.
+
+  // 1) Open all to check they can be opened and have valid manifests etc.
+  std::vector<ApexFile> apex_files;
+  for (const std::string& path : tmp_paths) {
+    StatusOr<ApexFile> apexFile = ApexFile::Open(path);
+    if (!apexFile.Ok()) {
+      return apexFile.ErrorStatus();
+    }
+    apex_files.emplace_back(std::move(*apexFile));
   }
+
+  // 2) Now stage all of them.
+
+  auto path_fn = [](const ApexFile& apex_file) {
+    return StringPrintf("%s/%s%s", kApexPackageDataDir,
+                        apex_file.GetManifest().GetPackageId().c_str(),
+                        kApexPackageSuffix);
+  };
 
   // Ensure the APEX gets removed on failure.
-  auto deleter = [&destPath]() {
-    if (TEMP_FAILURE_RETRY(unlink(destPath.c_str())) != 0) {
-      PLOG(ERROR) << "Unable to unlink " << destPath;
+  std::vector<const ApexFile*> staged;
+  auto deleter = [&staged, &path_fn]() {
+    for (const ApexFile* apex_file : staged) {
+      if (TEMP_FAILURE_RETRY(unlink(path_fn(*apex_file).c_str())) != 0) {
+        PLOG(ERROR) << "Unable to unlink " << path_fn(*apex_file);
+      }
     }
   };
   auto scope_guard = android::base::make_scope_guard(deleter);
 
-  // TODO(b/112669193) remove this. Move the file from packageTmpPath to
-  // destPath using file descriptor.
-  if (selinux_android_restorecon(destPath.c_str(), 0) < 0) {
-    return Status::Fail(PStringLog() << "Failed to restorecon " << destPath
-                                     << " error: " << strerror(errno));
-  }
-  LOG(DEBUG) << "Success renaming " << packageTmpPath << " to " << destPath;
+  bool has_pre_install_hooks = false;
 
-  if (!apexFile->GetManifest().GetPreInstallHook().empty()) {
-    // Need to recreate the APEX file, as it points to the packageTmpPath.
-    StatusOr<ApexFile> stagedApexFile = ApexFile::Open(destPath);
-    if (stagedApexFile.Ok()) {
-      Status preinstall_status = StagePreInstall(*stagedApexFile);
-      if (!preinstall_status.Ok()) {
-        return preinstall_status;
+  for (const ApexFile& apex_file : apex_files) {
+    std::string dest_path = path_fn(apex_file);
+    if (rename(apex_file.GetPath().c_str(), dest_path.c_str()) != 0) {
+      // TODO: Get correct binder error status.
+      return Status::Fail(PStringLog()
+                          << "Unable to rename " << apex_file.GetPath()
+                          << " to " << dest_path);
+    }
+    staged.push_back(&apex_file);
+
+    // TODO(b/112669193) remove this. Move the file from packageTmpPath to
+    // destPath using file descriptor.
+    if (selinux_android_restorecon(dest_path.c_str(), 0) < 0) {
+      return Status::Fail(PStringLog() << "Failed to restorecon " << dest_path);
+    }
+    LOG(DEBUG) << "Success renaming " << apex_file.GetPath() << " to "
+               << dest_path;
+    if (!apex_file.GetManifest().GetPreInstallHook().empty()) {
+      has_pre_install_hooks = true;
+    }
+  }
+
+  if (has_pre_install_hooks) {
+    // Need to recreate the APEX files, as they point to the tmp path.
+    std::vector<ApexFile> staged_apex_files;
+    staged_apex_files.reserve(apex_files.size());
+    for (const ApexFile& apex_file : apex_files) {
+      StatusOr<ApexFile> staged_apex_file = ApexFile::Open(path_fn(apex_file));
+      if (!staged_apex_file.Ok()) {
+        return Status::Fail(std::string("Failed reloading staged apex: ")
+                                .append(staged_apex_file.ErrorMessage()));
       }
-    } else {
-      return Status::Fail(std::string("Failed reloading staged apex: ")
-                              .append(stagedApexFile.ErrorMessage()));
+      staged_apex_files.emplace_back(std::move(*staged_apex_file));
+    }
+
+    Status preinstall_status = StagePreInstall(staged_apex_files);
+    if (!preinstall_status.Ok()) {
+      return preinstall_status;
     }
   }
 

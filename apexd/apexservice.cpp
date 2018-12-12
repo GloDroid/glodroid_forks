@@ -54,6 +54,8 @@ class ApexService : public BnApexService {
 
   BinderStatus stagePackage(const std::string& packageTmpPath,
                             bool* aidl_return) override;
+  BinderStatus stagePackages(const std::vector<std::string>& paths,
+                             bool* aidl_return) override;
   BinderStatus activatePackage(const std::string& packagePath) override;
   BinderStatus deactivatePackage(const std::string& packagePath) override;
   BinderStatus getActivePackages(std::vector<ApexInfo>* aidl_return) override;
@@ -76,11 +78,18 @@ BinderStatus CheckDebuggable(const std::string& name) {
 
 BinderStatus ApexService::stagePackage(const std::string& packageTmpPath,
                                        bool* aidl_return) {
-  LOG(DEBUG) << "stagePackage() received by ApexService, path "
-             << packageTmpPath;
+  std::vector<std::string> tmp;
+  tmp.push_back(packageTmpPath);
+  return stagePackages(tmp, aidl_return);
+}
+
+BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths,
+                                        bool* aidl_return) {
+  LOG(DEBUG) << "stagePackages() received by ApexService, paths "
+             << android::base::Join(paths, ',');
 
   *aidl_return = false;
-  Status res = ::android::apex::stagePackage(packageTmpPath);
+  Status res = ::android::apex::stagePackages(paths);
 
   if (res.Ok()) {
     *aidl_return = true;
@@ -88,7 +97,7 @@ BinderStatus ApexService::stagePackage(const std::string& packageTmpPath,
   }
 
   // TODO: Get correct binder error status.
-  LOG(ERROR) << "Failed to stage " << packageTmpPath << ": "
+  LOG(ERROR) << "Failed to stage " << android::base::Join(paths, ',') << ": "
              << res.ErrorMessage();
   return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
                                          String8(res.ErrorMessage().c_str()));
