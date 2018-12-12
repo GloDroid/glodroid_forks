@@ -146,6 +146,29 @@ cc_library_static {
     ],
 }
 
+cc_library_static {
+    name: "libc++fs",
+    defaults: ["libc++ defaults"],
+    srcs: [
+        "src/filesystem/directory_iterator.cpp",
+        "src/filesystem/operations.cpp",
+    ],
+    multilib: {
+        lib32: {
+            // off_t usage is constrained to within the libc++ source (not the
+            // headers), so we can build the filesystem library with a 64-bit
+            // off_t on LP32 to get large file support without needing all users
+            // of the library to match.
+            cflags: ["-D_FILE_OFFSET_BITS=64"],
+        },
+    },
+    target: {
+        windows: {
+            enabled: false,
+        },
+    },
+}
+
 // This target is used to extract the build commands for a test executable.
 // See run_tests.py.
 cc_binary {
@@ -170,6 +193,7 @@ cc_binary {
     ],
     static_libs: [
         "libc++experimental",
+        "libc++fs",
     ],
     rtti: true,
     local_include_dirs: [
@@ -195,4 +219,21 @@ cc_binary {
     },
     gnu_extensions: false,
     cpp_std: "c++17",
+}
+
+python_test {
+    name: "filesystem_dynamic_test_helper.py",
+    main: "test/support/filesystem_dynamic_test_helper.py",
+    srcs: [
+        "test/support/filesystem_dynamic_test_helper.py",
+    ],
+    version: {
+        py2: {
+            enabled: true,
+            embedded_launcher: true,
+        },
+        py3: {
+            enabled: false,
+        },
+    },
 }
