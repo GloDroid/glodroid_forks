@@ -117,7 +117,14 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
 
     @After
     public void tearDown() throws DeviceNotAvailableException {
+        final boolean adbWasRoot = getDevice().isAdbRoot();
+        if (!adbWasRoot) {
+            Assert.assertTrue(getDevice().enableAdbRoot());
+        }
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
+        if (!adbWasRoot) {
+            Assert.assertTrue(getDevice().disableAdbRoot());
+        }
         getDevice().reboot();
     }
 }
