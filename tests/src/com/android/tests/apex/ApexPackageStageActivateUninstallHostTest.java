@@ -16,22 +16,24 @@
 
 package com.android.tests.apex;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
-import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
-import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 
-import java.io.File;
-import java.io.IOException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Test to check if Apex can be staged, activated and uninstalled successfully.
@@ -39,7 +41,7 @@ import org.junit.runner.RunWith;
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Test {
 
-    private static final String TEST_APEX_NAME = "test.apex";
+    private static final String TEST_APEX_FILE = "test.apex";
     private static final String TEST_PACKAGE_NAME = "com.android.apex.test";
     private static final String APEX_DATA_DIR = "/data/apex";
 
@@ -82,13 +84,17 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
             Assert.assertEquals(CommandStatus.SUCCESS, result.getStatus());
         }
 
-        // Check that the APEX is actaully activated
+        // Check that the APEX is actually activated
         result = getDevice().executeShellV2Command("cmd apexservice getActivePackages");
         Assert.assertEquals(CommandStatus.SUCCESS, result.getStatus());
         String lines[] = result.getStdout().split("\n");
+        Pattern p = Pattern.compile("Package:\\ ([\\S]+)\\ Version:\\ ([\\d]+)");
         boolean found = false;
         for (String l : lines) {
-            if (l.contains(TEST_PACKAGE_NAME)) {
+            Matcher m = p.matcher(l);
+            Assert.assertTrue(m.matches());
+            String name = m.group(1);
+            if (name.equals(TEST_PACKAGE_NAME)) {
                 found = true;
                 break;
             }
@@ -110,9 +116,10 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
      * Helper method to get the test apex.
      */
     private File getTestApex() throws IOException {
-        File hostdir = getBuild().getFile(BuildInfoFileKey.HOST_LINKED_DIR);
-        File apkFile = FileUtil.findFile(hostdir, TEST_APEX_NAME);
-        return apkFile;
+        File testDir = new File(
+                getBuild().getFile(BuildInfoFileKey.HOST_LINKED_DIR),
+                "apex_e2e_tests");
+        return FileUtil.findFile(testDir, TEST_APEX_FILE);
     }
 
     @After
@@ -128,5 +135,3 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
         getDevice().reboot();
     }
 }
-
-
