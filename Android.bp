@@ -150,10 +150,6 @@ cc_binary {
         // http://llvm.org/bugs/show_bug.cgi?id=21421
         "-O0",
     ],
-    ldflags: [
-        // This makes the tests run a little faster.
-        "-Wl,--strip-all",
-    ],
     rtti: true,
     local_include_dirs: [
         "test/support",
@@ -168,6 +164,14 @@ cc_binary {
     },
     compile_multilib: "both",
     host_supported: true,
+    target: {
+        linux: {
+            ldflags: [
+                // This makes the tests run a little faster.
+                "-Wl,--strip-all",
+            ],
+        },
+    },
     gnu_extensions: false,
     cpp_std: "c++17",
 }
