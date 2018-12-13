@@ -230,7 +230,7 @@ status_t ApexService::shellCommand(int in, int out, int err,
     std::vector<ApexInfo> list;
     android::binder::Status status = getActivePackages(&list);
     if (status.isOk()) {
-      for (auto item : list) {
+      for (const auto& item : list) {
         std::string msg = StringLog()
                 << "Package: " << item.packageName
                 << " Version: " << item.versionCode << std::endl;
