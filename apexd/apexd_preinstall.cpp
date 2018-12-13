@@ -23,6 +23,7 @@
 
 #include <fcntl.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -95,7 +96,27 @@ Status StagePreInstall(std::vector<ApexFile>& apexes) {
     mount_guard.Disable();
   }
 
-  // 2) Create invocation args.
+  // 2) Ensure there is an activation point, and we will clean it up.
+  std::string active_point =
+      apexd_private::GetActiveMountPoint(apex.GetManifest());
+  auto active_mount_guard = android::base::make_scope_guard([&]() {
+    if (0 != rmdir(active_point.c_str())) {
+      PLOG(ERROR) << "Could not delete temporary active point " << active_point;
+    }
+  });
+  {
+    if (0 != mkdir(active_point.c_str(), kMkdirMode)) {
+      int saved_errno = errno;
+      active_mount_guard.Disable();  // Skip warnings or disable.
+      if (saved_errno != EEXIST) {
+        return Status::Fail(StringLog()
+                            << "Unable to create mount point" << active_point
+                            << ": " << strerror(saved_errno));
+      }
+    }
+  }
+
+  // 3) Create invocation args.
   std::vector<std::string> args{
       "/system/bin/apexd",
       "--pre-install",
