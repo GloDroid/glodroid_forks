@@ -46,8 +46,6 @@ cc_binary {
   ],
   srcs: [
     "apexd_main.cpp",
-    "apexd_preinstall.cpp",
-    "apexd_private.cpp",
   ],
   static_libs: [
     "libapex",
@@ -65,7 +63,11 @@ cc_binary {
 cc_library_static {
   name: "libapexd",
   defaults: ["apex_defaults"],
-  srcs: ["apexd.cpp"],
+  srcs: [
+    "apexd.cpp",
+    "apexd_preinstall.cpp",
+    "apexd_private.cpp",
+  ],
   static_libs: [
     "libapex",
     "libavb",
@@ -74,6 +76,7 @@ cc_library_static {
   shared_libs: [
     "libselinux",
   ],
+  export_include_dirs: ["."],
 }
 
 cc_defaults {
