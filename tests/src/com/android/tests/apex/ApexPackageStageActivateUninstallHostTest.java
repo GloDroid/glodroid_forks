@@ -44,10 +44,12 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
     private static final String TEST_APEX_FILE = "test.apex";
     private static final String TEST_PACKAGE_NAME = "com.android.apex.test";
     private static final String APEX_DATA_DIR = "/data/apex";
+    private boolean mAdbWasRoot;
 
     @Before
     public synchronized void setUp() throws Exception {
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
+        mAdbWasRoot = getDevice().isAdbRoot();
     }
 
     /**
@@ -124,12 +126,9 @@ public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Tes
 
     @After
     public void tearDown() throws DeviceNotAvailableException {
-        final boolean adbWasRoot = getDevice().isAdbRoot();
-        if (!adbWasRoot) {
-            Assert.assertTrue(getDevice().enableAdbRoot());
-        }
+        Assert.assertTrue(getDevice().enableAdbRoot());
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
-        if (!adbWasRoot) {
+        if (!mAdbWasRoot) {
             Assert.assertTrue(getDevice().disableAdbRoot());
         }
         getDevice().reboot();
