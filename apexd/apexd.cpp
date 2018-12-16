@@ -162,6 +162,29 @@ StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
     return Failed::MakeError(PStringLog() << "Failed to LOOP_SET_STATUS64");
   }
 
+  if (ioctl(device_fd.get(), BLKFLSBUF, 0) == -1) {
+    // This works around a kernel bug where the following happens.
+    // 1) The device runs with a value of loop.max_part > 0
+    // 2) As part of LOOP_SET_FD above, we do a partition scan, which loads
+    //    the first 2 pages of the underlying file into the buffer cache
+    // 3) When we then change the offset with LOOP_SET_STATUS64, those pages
+    //    are not invalidated from the cache.
+    // 4) When we try to mount an ext4 filesystem on the loop device, the ext4
+    //    code will try to find a superblock by reading 4k at offset 0; but,
+    //    because we still have the old pages at offset 0 lying in the cache,
+    //    those pages will be returned directly. However, those pages contain
+    //    the data at offset 0 in the underlying file, not at the offset that
+    //    we configured
+    // 5) the ext4 driver fails to find a superblock in the (wrong) data, and
+    //    fails to mount the filesystem.
+    //
+    // To work around this, explicitly flush the block device, which will flush
+    // the buffer cache and make sure we actually read the data at the correct
+    // offset.
+    return Failed::MakeError(PStringLog()
+                             << "Failed to flush buffers on the loop device.");
+  }
+
   // Direct-IO requires the loop device to have the same block size as the
   // underlying filesystem.
   if (ioctl(device_fd.get(), LOOP_SET_BLOCK_SIZE, 4096) == -1) {
