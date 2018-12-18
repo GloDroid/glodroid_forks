@@ -81,11 +81,9 @@ Status StagePreInstall(std::vector<ApexFile>& apexes) {
 
   std::string mount_point =
       apexd_private::GetPackageMountPoint(apex.GetManifest());
-  apexd_private::MountedApexData apex_data("", apex.GetPath());
 
   if (!apexd_private::IsMounted(apex.GetManifest().GetName(), apex.GetPath())) {
-    Status mountStatus =
-        apexd_private::MountPackage(apex, mount_point, &apex_data);
+    Status mountStatus = apexd_private::MountPackage(apex, mount_point);
     if (!mountStatus.Ok()) {
       // Not mounted yet, skip warnings.
       mount_guard.Disable();

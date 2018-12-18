@@ -824,16 +824,16 @@ Status deactivatePackageImpl(const ApexFile& apex) {
 
 namespace apexd_private {
 
-Status MountPackage(const ApexFile& apex, const std::string& mountPoint,
-                    MountedApexData* data) {
+Status MountPackage(const ApexFile& apex, const std::string& mountPoint) {
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
   if (mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
     return Status::Fail(PStringLog()
                         << "Could not create mount point " << mountPoint);
   }
 
-  Status st = apex.IsFlattened() ? mountFlattened(apex, mountPoint, data)
-                                 : mountNonFlattened(apex, mountPoint, data);
+  MountedApexData data("", apex.GetPath());
+  Status st = apex.IsFlattened() ? mountFlattened(apex, mountPoint, &data)
+                                 : mountNonFlattened(apex, mountPoint, &data);
   if (!st.Ok()) {
     if (rmdir(mountPoint.c_str()) != 0) {
       PLOG(WARNING) << "Could not rmdir " << mountPoint;
@@ -841,6 +841,8 @@ Status MountPackage(const ApexFile& apex, const std::string& mountPoint,
     return st;
   }
 
+  gMountedApexes.AddMountedApex(apex.GetManifest().GetName(), false,
+                                std::move(data));
   return Status::Success();
 }
 
@@ -905,11 +907,8 @@ Status activatePackage(const std::string& full_path) {
 
   std::string mountPoint = apexd_private::GetPackageMountPoint(manifest);
 
-  MountedApexData apex_data("", full_path);
-
   if (!version_found_mounted) {
-    Status mountStatus =
-        apexd_private::MountPackage(*apexFile, mountPoint, &apex_data);
+    Status mountStatus = apexd_private::MountPackage(*apexFile, mountPoint);
     if (!mountStatus.Ok()) {
       return mountStatus;
     }
@@ -925,11 +924,9 @@ Status activatePackage(const std::string& full_path) {
       LOG(ERROR) << update_st.ErrorMessage();
     }
   }
-  if (found_other_version && mounted_latest) {
-    gMountedApexes.UnsetLatestForall(manifest.GetName());
+  if (mounted_latest) {
+    gMountedApexes.SetLatest(manifest.GetName(), full_path);
   }
-  gMountedApexes.AddMountedApex(manifest.GetName(), mounted_latest,
-                                std::move(apex_data));
 
   return Status::Success();
 }
