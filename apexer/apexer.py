@@ -23,6 +23,7 @@ Typical usage: apexer input_dir output.apex
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -30,6 +31,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 
 if 'APEXER_TOOL_PATH' not in os.environ:
   sys.stderr.write("""
@@ -215,9 +217,12 @@ def CreateApex(args, work_dir):
     cmd.extend(['-b', '4096']) # block size
     cmd.extend(['-m', '0']) # reserved block percentage
     cmd.extend(['-t', 'ext4'])
+    uu = str(uuid.uuid5(uuid.NAMESPACE_URL, "www.android.com"))
+    cmd.extend(['-U', uu])
+    cmd.extend(['-E', 'hash_seed=' + uu])
     cmd.append(img_file)
     cmd.append(str(size_in_mb) + 'M')
-    RunCommand(cmd, args.verbose)
+    RunCommand(cmd, args.verbose, {"E2FSPROGS_FAKE_TIME": "1"})
 
     # Compile the file context into the binary form
     compiled_file_contexts = os.path.join(work_dir, 'file_contexts.bin')
@@ -243,13 +248,14 @@ def CreateApex(args, work_dir):
     cmd.extend(['-S', compiled_file_contexts])
     cmd.extend(['-C', args.canned_fs_config])
     cmd.append(img_file)
-    RunCommand(cmd, args.verbose)
+    RunCommand(cmd, args.verbose, {"E2FSPROGS_FAKE_TIME": "1"})
 
     # Resize the image file to save space
     cmd = ['resize2fs']
     cmd.append('-M') # shrink as small as possible
     cmd.append(img_file)
-    RunCommand(cmd, args.verbose)
+    RunCommand(cmd, args.verbose, {"E2FSPROGS_FAKE_TIME": "1"})
+
 
     cmd = ['avbtool']
     cmd.append('add_hashtree_footer')
@@ -257,6 +263,10 @@ def CreateApex(args, work_dir):
     cmd.extend(['--algorithm', 'SHA256_RSA4096'])
     cmd.extend(['--key', args.key])
     cmd.extend(['--prop', "apex.key:" + key_name])
+    # Set up the salt based on manifest content which includes name
+    # and version
+    salt = hashlib.sha256(json.dumps(manifest)).hexdigest()
+    cmd.extend(['--salt', salt])
     cmd.extend(['--image', img_file])
     RunCommand(cmd, args.verbose)
 
