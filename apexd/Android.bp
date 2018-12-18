@@ -148,6 +148,7 @@ cc_test {
   static_libs: [
     "apex_aidl_interface-cpp",
     "libapex",
+    "libapexd",
   ],
   shared_libs: [
     "libbinder",
