@@ -220,19 +220,27 @@ status_t ApexService::shellCommand(int in, int out, int err,
 
   const String16& cmd = args[0];
 
-  if (cmd == String16("stagePackage")) {
-    if (args.size() != 2) {
+  if (cmd == String16("stagePackage") || cmd == String16("stagePackages")) {
+    if (args.size() < 2) {
+      print_help(err, "stagePackage(s) requires at least one packagePath");
+      return BAD_VALUE;
+    }
+    if (args.size() != 2 && cmd == String16("stagePackage")) {
       print_help(err, "stagePackage requires one packagePath");
       return BAD_VALUE;
     }
+    std::vector<std::string> pkgs;
+    pkgs.reserve(args.size() - 1);
+    for (size_t i = 1; i != args.size(); ++i) {
+      pkgs.emplace_back(String8(args[i]).string());
+    }
     bool ret_value;
-    BinderStatus status = stagePackage(String8(args[1]).string(), &ret_value);
+    BinderStatus status = stagePackages(pkgs, &ret_value);
     if (status.isOk()) {
       return OK;
     }
-    std::string msg = StringLog()
-            << "Failed to stage package: " << status.toString8().string()
-            << std::endl;
+    std::string msg = StringLog() << "Failed to stage package(s): "
+                                  << status.toString8().string() << std::endl;
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
