@@ -116,14 +116,13 @@ cc_library_static {
 cc_test {
   name: "apex_file_test",
   defaults: ["apex_defaults"],
-  data: [
-    "apexd_testdata/*",
-  ],
+  data: [":apex.apexd_test"],
   srcs: [
     "apex_file_test.cpp",
   ],
   host_supported: true,
   static_libs: ["libapex"],
+  shared_libs: ["libziparchive"],
   test_suites: ["device-tests"],
   test_config: "apex_file_test_config.xml",  // TODO: Remove after b/117891984.
 }
@@ -142,7 +141,11 @@ cc_test {
 cc_test {
   name: "apexservice_test",
   defaults: ["apex_defaults"],
-  data: ["apexd_testdata/*"],
+  data: [
+    ":apex.apexd_test",
+    ":apex.apexd_test_v2",
+    ":apex.apexd_test_preinstall",
+  ],
   srcs: ["apexservice_test.cpp"],
   host_supported: false,
   static_libs: [

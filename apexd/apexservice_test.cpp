@@ -67,7 +67,7 @@ class ApexServiceTest : public ::testing::Test {
 
  protected:
   static std::string GetTestDataDir() {
-    return android::base::GetExecutableDirectory() + "/apexd_testdata";
+    return android::base::GetExecutableDirectory();
   }
   static std::string GetTestFile(const std::string& name) {
     return GetTestDataDir() + "/" + name;
@@ -178,8 +178,12 @@ class ApexServiceTest : public ::testing::Test {
 
       test_file = std::string(kTestDir) + "/" + android::base::Basename(test);
 
+      package = "";  // Explicitly mark as not initialized.
+
       StatusOr<ApexFile> apex_file = ApexFile::Open(test);
-      CHECK(apex_file.Ok());
+      if (!apex_file.Ok()) {
+        return;
+      }
 
       const ApexManifest& manifest = apex_file->GetManifest();
       package = manifest.GetName();
@@ -190,6 +194,18 @@ class ApexServiceTest : public ::testing::Test {
     }
 
     bool Prepare() {
+      if (package.empty()) {
+        // Failure in constructor. Redo work to get error message.
+        auto fail_fn = [&]() {
+          StatusOr<ApexFile> apex_file = ApexFile::Open(test_input);
+          ASSERT_FALSE(apex_file.Ok());
+          ASSERT_TRUE(apex_file.Ok())
+              << test_input << " failed to load: " << apex_file.ErrorMessage();
+        };
+        fail_fn();
+        return false;
+      }
+
       auto prepare = [](const std::string& src, const std::string& trg) {
         ASSERT_EQ(0, access(src.c_str(), F_OK))
             << src << ": " << strerror(errno);
@@ -233,10 +249,12 @@ class ApexServiceTest : public ::testing::Test {
         PLOG(ERROR) << "Unable to rmdir " << kTestDir;
       }
 
-      // For cleanliness, also attempt to delete apexd's file.
-      // TODO: to the unstaging using APIs
-      if (unlink(test_installed_file.c_str()) != 0) {
-        PLOG(ERROR) << "Unable to unlink " << test_installed_file;
+      if (!package.empty()) {
+        // For cleanliness, also attempt to delete apexd's file.
+        // TODO: to the unstaging using APIs
+        if (unlink(test_installed_file.c_str()) != 0) {
+          PLOG(ERROR) << "Unable to unlink " << test_installed_file;
+        }
       }
     }
   };
@@ -299,7 +317,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
 
   // Use an extra copy, so that even if this test fails (incorrectly installs),
   // we have the testdata file still around.
-  std::string orig_test_file = GetTestFile("test.apex");
+  std::string orig_test_file = GetTestFile("apex.apexd_test.apex");
   std::string test_file = orig_test_file + ".2";
   ASSERT_EQ(0, link(orig_test_file.c_str(), test_file.c_str()))
       << strerror(errno);
@@ -323,7 +341,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
 }
 
 TEST_F(ApexServiceTest, StageSuccess) {
-  PrepareTestApexForInstall installer(GetTestFile("test.apex"));
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
   if (!installer.Prepare()) {
     return;
   }
@@ -338,14 +356,14 @@ TEST_F(ApexServiceTest, StageSuccess) {
 }
 
 TEST_F(ApexServiceTest, MultiStageSuccess) {
-  PrepareTestApexForInstall installer(GetTestFile("test.apex"));
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
   if (!installer.Prepare()) {
     return;
   }
   ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
 
   // TODO: Add second test. Right now, just use a separate version.
-  PrepareTestApexForInstall installer2(GetTestFile("test_v2.apex"));
+  PrepareTestApexForInstall installer2(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer2.Prepare()) {
     return;
   }
@@ -364,7 +382,7 @@ TEST_F(ApexServiceTest, MultiStageSuccess) {
 }
 
 TEST_F(ApexServiceTest, Activate) {
-  PrepareTestApexForInstall installer(GetTestFile("test.apex"));
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
   if (!installer.Prepare()) {
     return;
   }
@@ -461,7 +479,8 @@ TEST_F(ApexServiceTest, Activate) {
 }
 
 TEST_F(ApexServiceTest, StagePreinstall) {
-  PrepareTestApexForInstall installer(GetTestFile("test_preinstall.apex"));
+  PrepareTestApexForInstall installer(
+      GetTestFile("apex.apexd_test_preinstall.apex"));
   if (!installer.Prepare()) {
     return;
   }
