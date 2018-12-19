@@ -37,8 +37,6 @@
 
 #include <android/apex/BnApexService.h>
 
-using android::base::StringPrintf;
-
 namespace android {
 namespace apex {
 namespace binder {
