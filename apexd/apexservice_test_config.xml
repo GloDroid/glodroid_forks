@@ -21,7 +21,9 @@
     <target_preparer class="com.android.tradefed.targetprep.PushFilePreparer">
         <option name="cleanup" value="true" />
         <option name="push" value="apexservice_test->/data/local/tmp/apexservice_test/apexservice_test" />
-        <option name="push" value="apexd_testdata->/data/local/tmp/apexservice_test/apexd_testdata" />
+        <option name="push" value="apex.apexd_test.apex->/data/local/tmp/apex_file_test/apex.apexd_test.apex" />
+        <option name="push" value="apex.apexd_test_v2.apex->/data/local/tmp/apex_file_test/apex.apexd_test_v2.apex" />
+        <option name="push" value="apex.apexd_test_preinstall.apex->/data/local/tmp/apex_file_test/apex.apexd_test_preinstall.apex" />
     </target_preparer>
 
     <!-- Temporarily disable selinux enforcement until the install flow is clear

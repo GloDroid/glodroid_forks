@@ -13,29 +13,52 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <string>
+
 #include <android-base/file.h>
 #include <android-base/logging.h>
+#include <android-base/scopeguard.h>
 #include <gtest/gtest.h>
-#include <string>
+#include <ziparchive/zip_archive.h>
 
 #include "apex_file.h"
 
-static std::string testDataDir =
-    android::base::GetExecutableDirectory() + "/apexd_testdata";
+static std::string testDataDir = android::base::GetExecutableDirectory() + "/";
 
 namespace android {
 namespace apex {
 
 TEST(ApexFileTest, GetOffsetOfSimplePackage) {
-  const std::string filePath = testDataDir + "/test.apex";
+  const std::string filePath = testDataDir + "apex.apexd_test.apex";
   StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
   ASSERT_TRUE(apexFile.Ok());
-  EXPECT_EQ(8192, apexFile->GetImageOffset());
-  EXPECT_EQ(589824u, apexFile->GetImageSize());
+
+  int32_t zip_image_offset;
+  size_t zip_image_size;
+  {
+    ZipArchiveHandle handle;
+    int32_t rc = OpenArchive(filePath.c_str(), &handle);
+    ASSERT_EQ(0, rc);
+    auto close_guard =
+        android::base::make_scope_guard([&handle]() { CloseArchive(handle); });
+
+    ZipEntry entry;
+    rc = FindEntry(handle, ZipString("apex_payload.img"), &entry);
+    ASSERT_EQ(0, rc);
+
+    zip_image_offset = entry.offset;
+    EXPECT_EQ(zip_image_offset % 4096, 0);
+    zip_image_size = entry.uncompressed_length;
+    EXPECT_EQ(zip_image_size, entry.compressed_length);
+  }
+
+  EXPECT_EQ(zip_image_offset, apexFile->GetImageOffset());
+  EXPECT_EQ(zip_image_size, apexFile->GetImageSize());
 }
 
 TEST(ApexFileTest, GetOffsetMissingFile) {
-  const std::string filePath = testDataDir + "/missing.apex";
+  const std::string filePath = testDataDir + "missing.apex";
   StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
   ASSERT_FALSE(apexFile.Ok());
   EXPECT_NE(std::string::npos,
@@ -44,7 +67,7 @@ TEST(ApexFileTest, GetOffsetMissingFile) {
 }
 
 TEST(ApexFileTest, GetApexManifest) {
-  const std::string filePath = testDataDir + "/test.apex";
+  const std::string filePath = testDataDir + "apex.apexd_test.apex";
   StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
   ASSERT_TRUE(apexFile.Ok());
   EXPECT_EQ("com.android.apex.test_package", apexFile->GetManifest().GetName());
