@@ -24,7 +24,6 @@ Typical usage: apexer input_dir output.apex
 
 import argparse
 import hashlib
-import json
 import os
 import re
 import shutil
@@ -32,6 +31,8 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from apex_manifest import ValidateApexManifest
+from apex_manifest import ApexManifestError
 
 if 'APEXER_TOOL_PATH' not in os.environ:
   sys.stderr.write("""
@@ -168,21 +169,16 @@ def CreateApex(args, work_dir):
     print "Using tools from " + str(tool_path_list)
 
   try:
-    with open(args.manifest) as f:
-      manifest = json.load(f)
-  except ValueError:
+    with open(args.manifest, "r") as f:
+      manifest_raw = f.read()
+      manifest_apex = ValidateApexManifest(manifest_raw)
+  except ApexManifestError as err:
     print("'" + args.manifest + "' is not a valid manifest file")
+    print err.errmessage
     return False
   except IOError:
     print("Cannot read manifest file: '" + args.manifest + "'")
     return False
-
-  if 'name' not in manifest or manifest['name'] is None:
-    print("Invalid manifest: 'name' does not exist")
-    return False
-
-  package_name = manifest['name']
-  version_number = manifest['version']
 
   # create an empty ext4 image that is sufficiently big
   # Sufficiently big = twice the size of the input directory
@@ -207,8 +203,8 @@ def CreateApex(args, work_dir):
   if args.payload_type == 'image':
     key_name = os.path.basename(os.path.splitext(args.key)[0])
 
-    if package_name != key_name:
-      print("package name '" + package_name + "' does not match with key name '" + key_name + "'")
+    if manifest_apex.package_name != key_name:
+      print("package name '" + manifest_apex.package_name + "' does not match with key name '" + key_name + "'")
       return False
     img_file = os.path.join(content_dir, 'apex_payload.img')
 
@@ -265,7 +261,7 @@ def CreateApex(args, work_dir):
     cmd.extend(['--prop', "apex.key:" + key_name])
     # Set up the salt based on manifest content which includes name
     # and version
-    salt = hashlib.sha256(json.dumps(manifest)).hexdigest()
+    salt = hashlib.sha256(manifest_raw).hexdigest()
     cmd.extend(['--salt', salt])
     cmd.extend(['--image', img_file])
     RunCommand(cmd, args.verbose)
@@ -300,7 +296,7 @@ def CreateApex(args, work_dir):
   if args.verbose:
     print('Creating AndroidManifest ' + android_manifest_file)
   with open(android_manifest_file, 'w+') as f:
-    f.write(PrepareAndroidManifest(package_name, version_number))
+    f.write(PrepareAndroidManifest(manifest_apex.package_name, manifest_apex.version_number))
 
   # copy manifest to the content dir so that it is also accessible
   # without mounting the image
