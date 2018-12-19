@@ -57,7 +57,6 @@
 #include <memory>
 #include <string>
 
-using android::base::Basename;
 using android::base::EndsWith;
 using android::base::ReadFullyAtOffset;
 using android::base::StringPrintf;
