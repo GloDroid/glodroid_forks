@@ -77,7 +77,7 @@ output_file=${output_dir}/test.apex
 ${ANDROID_HOST_OUT}/bin/apexer --verbose --manifest ${manifest_file} \
   --file_contexts ${file_contexts_file} \
   --canned_fs_config ${canned_fs_config_file} \
-  --key ${ANDROID_BUILD_TOP}/system/apex/apexer/testdata/testkey.pem \
+  --key ${ANDROID_BUILD_TOP}/system/apex/apexer/testdata/com.android.example.apex.pem \
   ${input_dir} ${output_file}
 
 #############################################
@@ -97,7 +97,7 @@ unzip ${output_file} apex_manifest.json -d ${output_dir}
 
 # verify vbmeta
 avbtool verify_image --image ${output_dir}/apex_payload.img \
---key ${ANDROID_BUILD_TOP}/system/apex/apexer/testdata/testkey.pem
+--key ${ANDROID_BUILD_TOP}/system/apex/apexer/testdata/com.android.example.apex.pem
 
 # check the contents
 sudo diff ${manifest_file} ${output_dir}/mnt/apex_manifest.json
