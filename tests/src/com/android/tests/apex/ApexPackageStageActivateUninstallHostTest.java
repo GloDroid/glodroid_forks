@@ -41,7 +41,7 @@ import java.util.regex.Pattern;
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class ApexPackageStageActivateUninstallHostTest extends BaseHostJUnit4Test {
 
-    private static final String TEST_APEX_FILE = "test.apex";
+    private static final String TEST_APEX_FILE = "apex.test.apex";
     private static final String TEST_PACKAGE_NAME = "com.android.apex.test";
     private static final String APEX_DATA_DIR = "/data/apex";
     private boolean mAdbWasRoot;
