@@ -19,7 +19,7 @@ java_test_host {
 
     libs: ["tradefed"],
 
-    data: ["testdata/prebuilts/*"],
+    data: [":apex.test"],
 
     test_config: "apex-e2e-tests.xml",
 
