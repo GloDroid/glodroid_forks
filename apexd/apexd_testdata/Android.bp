@@ -27,6 +27,7 @@ apex {
     file_contexts: "apex.test",
     prebuilts: ["sample_prebuilt_file"],
     key: "com.android.apex.test_package.key",
+    installable: false,
 }
 
 apex {
@@ -35,6 +36,7 @@ apex {
     file_contexts: "apex.test",
     prebuilts: ["sample_prebuilt_file"],
     key: "com.android.apex.test_package.key",
+    installable: false,
 }
 
 apex_key {
@@ -50,6 +52,7 @@ apex {
     prebuilts: ["sample_prebuilt_file"],
     key: "com.android.apex.test_package.preinstall.key",
     binaries: ["apex_test_pre_install_hook"],
+    installable: false,
 }
 
 cc_prebuilt_binary {
