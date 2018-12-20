@@ -492,7 +492,50 @@ TEST_F(ApexServiceTest, StagePreinstall) {
   ASSERT_TRUE(success);
 
   std::string logcat = GetLogcat();
-  EXPECT_NE(std::string::npos, logcat.find("echo    : Test\n")) << logcat;
+  constexpr const char* kTestMessage = "sh      : PreInstall Test\n";
+  EXPECT_NE(std::string::npos, logcat.find(kTestMessage)) << logcat;
+
+  // Ensure that the package is neither active nor mounted.
+  {
+    StatusOr<bool> active = IsActive(installer.package, installer.version);
+    ASSERT_TRUE(active.Ok());
+    EXPECT_FALSE(*active);
+  }
+  {
+    StatusOr<ApexFile> apex = ApexFile::Open(installer.test_input);
+    ASSERT_TRUE(apex.Ok());
+    std::string path = apexd_private::GetPackageMountPoint(apex->GetManifest());
+    std::string entry = std::string("[dir]").append(path);
+    std::vector<std::string> slash_apex = ListDir(kApexRoot);
+    auto it = std::find(slash_apex.begin(), slash_apex.end(), entry);
+    EXPECT_TRUE(it == slash_apex.end()) << Join(slash_apex, ',');
+  }
+}
+
+TEST_F(ApexServiceTest, MultiStagePreinstall) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("apex.apexd_test_preinstall.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+  PrepareTestApexForInstall installer2(GetTestFile("apex.apexd_test.apex"));
+  if (!installer2.Prepare()) {
+    return;
+  }
+
+  std::vector<std::string> pkgs = {
+      installer.test_file,
+      installer2.test_file,
+  };
+  bool success;
+  android::binder::Status st = service_->stagePackages(pkgs, &success);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(success);
+
+  std::string logcat = GetLogcat();
+  constexpr const char* kTestMessage =
+      "sh      : /apex/com.android.apex.test_package/etc/sample_prebuilt_file";
+  EXPECT_NE(std::string::npos, logcat.find(kTestMessage)) << logcat;
 
   // Ensure that the package is neither active nor mounted.
   {
