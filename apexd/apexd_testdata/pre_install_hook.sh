@@ -1,2 +1,2 @@
 #!/system/bin/sh
-/system/bin/logwrapper echo "Test"
+/system/bin/logwrapper /system/bin/sh -c 'ls /apex/com.android.apex.test_package/etc/sample_prebuilt_file || echo "PreInstall Test"'
