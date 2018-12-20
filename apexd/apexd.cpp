@@ -62,6 +62,7 @@ using android::base::ReadFullyAtOffset;
 using android::base::StringPrintf;
 using android::base::unique_fd;
 using android::dm::DeviceMapper;
+using android::dm::DmDeviceState;
 using android::dm::DmTable;
 using android::dm::DmTargetVerity;
 
@@ -594,7 +595,10 @@ StatusOr<DmVerityDevice> createVerityDevice(const std::string& name,
                                             const DmTable& table) {
   DeviceMapper& dm = DeviceMapper::Instance();
 
-  dm.DeleteDevice(name);
+  if (dm.GetState(name) != DmDeviceState::INVALID) {
+    LOG(WARNING) << "Deleting existing dm device " << name;
+    dm.DeleteDevice(name);
+  }
 
   if (!dm.CreateDevice(name, table)) {
     return StatusOr<DmVerityDevice>::MakeError(
