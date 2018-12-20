@@ -66,50 +66,58 @@ void PseudoCloseDescriptors() {
 }  // namespace
 
 Status StagePreInstall(std::vector<ApexFile>& apexes) {
-  if (apexes.size() != 1u) {
-    // TODO: Implement.
-    return Status::Fail("Missing support for multiple pre-install hooks");
+  // TODO: Support a session with more than one pre-install hook.
+  const ApexFile* hook_file = nullptr;
+  for (const ApexFile& f : apexes) {
+    if (!f.GetManifest().GetPreInstallHook().empty()) {
+      if (hook_file != nullptr) {
+        return Status::Fail("Missing support for multiple pre-install hooks");
+      }
+      hook_file = &f;
+    }
   }
-  const ApexFile& apex = apexes[0];
+  CHECK(hook_file != nullptr);
+  LOG(VERBOSE) << "Preinstall for " << hook_file->GetPath();
 
-  LOG(VERBOSE) << "Preinstall for " << apex.GetPath();
-
-  // 1) Mount the package, if necessary.
-  auto mount_guard = android::base::make_scope_guard([&]() {
-    Status st = apexd_private::UnmountPackage(apex);
-    if (!st.Ok()) {
-      LOG(ERROR) << "Failed to unmount " << apex.GetPath()
-                 << " after preinst: " << st.ErrorMessage();
+  std::vector<const ApexFile*> mounted_apexes;
+  std::vector<std::string> activation_dirs;
+  auto preinstall_guard = android::base::make_scope_guard([&]() {
+    for (const ApexFile* f : mounted_apexes) {
+      Status st = apexd_private::UnmountPackage(*f);
+      if (!st.Ok()) {
+        LOG(ERROR) << "Failed to unmount " << f->GetPath()
+                   << " after preinst: " << st.ErrorMessage();
+      }
+    }
+    for (const std::string& active_point : activation_dirs) {
+      if (0 != rmdir(active_point.c_str())) {
+        PLOG(ERROR) << "Could not delete temporary active point "
+                    << active_point;
+      }
     }
   });
 
-  std::string mount_point =
-      apexd_private::GetPackageMountPoint(apex.GetManifest());
+  for (const ApexFile& apex : apexes) {
+    // 1) Mount the package, if necessary.
+    std::string mount_point =
+        apexd_private::GetPackageMountPoint(apex.GetManifest());
 
-  if (!apexd_private::IsMounted(apex.GetManifest().GetName(), apex.GetPath())) {
-    Status mountStatus = apexd_private::MountPackage(apex, mount_point);
-    if (!mountStatus.Ok()) {
-      // Not mounted yet, skip warnings.
-      mount_guard.Disable();
-      return mountStatus;
+    if (!apexd_private::IsMounted(apex.GetManifest().GetName(),
+                                  apex.GetPath())) {
+      Status mountStatus = apexd_private::MountPackage(apex, mount_point);
+      if (!mountStatus.Ok()) {
+        return mountStatus;
+      }
+      mounted_apexes.push_back(&apex);
     }
-  } else {
-    // Already mounted, don't unmount at the end.
-    mount_guard.Disable();
-  }
 
-  // 2) Ensure there is an activation point, and we will clean it up.
-  std::string active_point =
-      apexd_private::GetActiveMountPoint(apex.GetManifest());
-  auto active_mount_guard = android::base::make_scope_guard([&]() {
-    if (0 != rmdir(active_point.c_str())) {
-      PLOG(ERROR) << "Could not delete temporary active point " << active_point;
-    }
-  });
-  {
-    if (0 != mkdir(active_point.c_str(), kMkdirMode)) {
+    // 2) Ensure there is an activation point, and we will clean it up.
+    std::string active_point =
+        apexd_private::GetActiveMountPoint(apex.GetManifest());
+    if (0 == mkdir(active_point.c_str(), kMkdirMode)) {
+      activation_dirs.emplace_back(std::move(active_point));
+    } else {
       int saved_errno = errno;
-      active_mount_guard.Disable();  // Skip warnings or disable.
       if (saved_errno != EEXIST) {
         return Status::Fail(StringLog()
                             << "Unable to create mount point" << active_point
@@ -120,10 +128,15 @@ Status StagePreInstall(std::vector<ApexFile>& apexes) {
 
   // 3) Create invocation args.
   std::vector<std::string> args{
-      "/system/bin/apexd",
-      "--pre-install",
-      apex.GetPath(),
+      "/system/bin/apexd", "--pre-install",
+      hook_file->GetPath(),  // Make the APEX with hook first.
   };
+  for (const ApexFile& apex : apexes) {
+    if (&apex != hook_file) {
+      args.push_back(apex.GetPath());
+    }
+  }
+
   std::string error_msg;
   int res = ForkAndRun(args, &error_msg);
   return res == 0 ? Status::Success() : Status::Fail(error_msg);
@@ -146,41 +159,55 @@ int RunPreInstall(char** in_argv) {
     _exit(201);
   }
 
-  std::string apex = in_argv[2];
-  std::string pre_install_hook;
-  std::string mount_point;
-  std::string active_point;
+  std::string hook_path;
   {
-    StatusOr<ApexFile> apex_file = ApexFile::Open(apex);
-    if (!apex_file.Ok()) {
-      LOG(ERROR) << "Could not open apex " << apex
-                 << " for pre-install: " << apex_file.ErrorMessage();
-      _exit(202);
+    auto bind_fn = [](const std::string& apex) {
+      std::string pre_install_hook;
+      std::string mount_point;
+      std::string active_point;
+      {
+        StatusOr<ApexFile> apex_file = ApexFile::Open(apex);
+        if (!apex_file.Ok()) {
+          LOG(ERROR) << "Could not open apex " << apex
+                     << " for pre-install: " << apex_file.ErrorMessage();
+          _exit(202);
+        }
+        const ApexManifest& manifest = apex_file->GetManifest();
+        pre_install_hook = manifest.GetPreInstallHook();
+        mount_point = apexd_private::GetPackageMountPoint(manifest);
+        active_point = apexd_private::GetActiveMountPoint(manifest);
+      }
+
+      // 4) Activate the new apex.
+      Status bind_status = apexd_private::BindMount(active_point, mount_point);
+      if (!bind_status.Ok()) {
+        LOG(ERROR) << "Failed to bind-mount " << mount_point << " to "
+                   << active_point << ": " << bind_status.ErrorMessage();
+        _exit(203);
+      }
+
+      return std::make_pair(active_point, pre_install_hook);
+    };
+
+    // First/main APEX.
+    auto [active_point, pre_install_hook] = bind_fn(in_argv[2]);
+    hook_path = active_point + "/" + pre_install_hook;
+
+    for (size_t i = 3;; ++i) {
+      if (in_argv[i] == nullptr) {
+        break;
+      }
+      bind_fn(in_argv[i]);  // Ignore result, hook will be empty.
     }
-    const ApexManifest& manifest = apex_file->GetManifest();
-    pre_install_hook = manifest.GetPreInstallHook();
-    CHECK_NE(std::string(""), pre_install_hook);
-
-    mount_point = apexd_private::GetPackageMountPoint(manifest);
-    active_point = apexd_private::GetActiveMountPoint(manifest);
-  }
-
-  // 4) Activate the new apex.
-  Status bind_status = apexd_private::BindMount(active_point, mount_point);
-  if (!bind_status.Ok()) {
-    LOG(ERROR) << "Failed to bind-mount " << mount_point << " to "
-               << active_point << ": " << bind_status.ErrorMessage();
-    _exit(203);
   }
 
   // 5) Run the hook.
-  std::string pre_install_path = active_point + "/" + pre_install_hook;
 
   // For now, just run sh. But this probably needs to run the new linker.
   std::vector<std::string> args{
       "/system/bin/sh",
       "-c",
-      pre_install_path,
+      hook_path,
   };
   std::vector<const char*> argv;
   argv.resize(args.size() + 1, nullptr);
