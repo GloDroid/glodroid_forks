@@ -193,40 +193,65 @@ status_t ApexService::shellCommand(int in, int out, int err,
   if (in == BAD_TYPE || out == BAD_TYPE || err == BAD_TYPE) {
     return BAD_VALUE;
   }
-  auto print_help = [](int fd) {
-    std::string msg = StringLog()
-           << "ApexService:" << std::endl
-           << "  help - display this help" << std::endl
-           << "  stagePackage [packagePath] - stage package from the given "
-              "path"
-           << std::endl
-           << "  getActivePackages - return the list of active packages"
-           << std::endl
-           << "  activatePackage [packagePath] - activate package from the "
-              "given path"
-           << std::endl
-           << "  deactivatePackage [packagePath] - deactivate package from the "
-              "given path"
-           << std::endl;
-    dprintf(fd, "%s", msg.c_str());
+  auto print_help = [](int fd, const char* prefix = nullptr) {
+    StringLog log;
+    if (prefix != nullptr) {
+      log << prefix << std::endl;
+    }
+    log << "ApexService:" << std::endl
+        << "  help - display this help" << std::endl
+        << "  stagePackage [packagePath] - stage package from the given path"
+        << std::endl
+        << "  getActivePackages - return the list of active packages"
+        << std::endl
+        << "  activatePackage [packagePath] - activate package from the "
+           "given path"
+        << std::endl
+        << "  deactivatePackage [packagePath] - deactivate package from the "
+           "given path"
+        << std::endl;
+    dprintf(fd, "%s", log.operator std::string().c_str());
   };
 
-  if (args.size() == 2 && args[0] == String16("stagePackage")) {
+  if (args.size() == 0) {
+    print_help(err, "No command given");
+    return BAD_VALUE;
+  }
+
+  const String16& cmd = args[0];
+
+  if (cmd == String16("stagePackage") || cmd == String16("stagePackages")) {
+    if (args.size() < 2) {
+      print_help(err, "stagePackage(s) requires at least one packagePath");
+      return BAD_VALUE;
+    }
+    if (args.size() != 2 && cmd == String16("stagePackage")) {
+      print_help(err, "stagePackage requires one packagePath");
+      return BAD_VALUE;
+    }
+    std::vector<std::string> pkgs;
+    pkgs.reserve(args.size() - 1);
+    for (size_t i = 1; i != args.size(); ++i) {
+      pkgs.emplace_back(String8(args[i]).string());
+    }
     bool ret_value;
-    ::android::binder::Status status =
-        stagePackage(String8(args[1]).string(), &ret_value);
+    BinderStatus status = stagePackages(pkgs, &ret_value);
     if (status.isOk()) {
       return OK;
     }
-    std::string msg = StringLog()
-            << "Failed to stage package: " << status.toString8().string()
-            << std::endl;
+    std::string msg = StringLog() << "Failed to stage package(s): "
+                                  << status.toString8().string() << std::endl;
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
-  if (args.size() == 1 && args[0] == String16("getActivePackages")) {
+
+  if (cmd == String16("getActivePackages")) {
+    if (args.size() != 1) {
+      print_help(err, "Unrecognized options");
+      return BAD_VALUE;
+    }
     std::vector<ApexInfo> list;
-    android::binder::Status status = getActivePackages(&list);
+    BinderStatus status = getActivePackages(&list);
     if (status.isOk()) {
       for (const auto& item : list) {
         std::string msg = StringLog()
@@ -242,9 +267,13 @@ status_t ApexService::shellCommand(int in, int out, int err,
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
-  if (args.size() == 2 && args[0] == String16("activatePackage")) {
-    ::android::binder::Status status =
-        activatePackage(String8(args[1]).string());
+
+  if (cmd == String16("activatePackage")) {
+    if (args.size() != 2) {
+      print_help(err, "activatePackage requires one packagePath");
+      return BAD_VALUE;
+    }
+    BinderStatus status = activatePackage(String8(args[1]).string());
     if (status.isOk()) {
       return OK;
     }
@@ -254,9 +283,13 @@ status_t ApexService::shellCommand(int in, int out, int err,
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
-  if (args.size() == 2 && args[0] == String16("deactivatePackage")) {
-    ::android::binder::Status status =
-        deactivatePackage(String8(args[1]).string());
+
+  if (cmd == String16("deactivatePackage")) {
+    if (args.size() != 2) {
+      print_help(err, "deactivatePackage requires one packagePath");
+      return BAD_VALUE;
+    }
+    BinderStatus status = deactivatePackage(String8(args[1]).string());
     if (status.isOk()) {
       return OK;
     }
@@ -266,10 +299,16 @@ status_t ApexService::shellCommand(int in, int out, int err,
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
-  if (args.size() == 1 && args[0] == String16("help")) {
+
+  if (cmd == String16("help")) {
+    if (args.size() != 1) {
+      print_help(err, "Help has no options");
+      return BAD_VALUE;
+    }
     print_help(out);
     return OK;
   }
+
   print_help(err);
   return BAD_VALUE;
 }
