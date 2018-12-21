@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -381,60 +382,76 @@ TEST_F(ApexServiceTest, MultiStageSuccess) {
   EXPECT_TRUE(RegularFileExists(installer2.test_installed_file));
 }
 
-TEST_F(ApexServiceTest, Activate) {
-  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
-  if (!installer.Prepare()) {
-    return;
-  }
-  ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
+template <typename NameProvider>
+class ApexServiceActivationTest : public ApexServiceTest {
+ public:
+  void SetUp() override {
+    ApexServiceTest::SetUp();
+    ASSERT_NE(nullptr, service_.get());
 
-  {
-    // Check package is not active.
-    StatusOr<bool> active = IsActive(installer.package, installer.version);
-    ASSERT_TRUE(active.Ok());
-    ASSERT_FALSE(*active);
+    installer_ = std::make_unique<PrepareTestApexForInstall>(
+        GetTestFile(NameProvider::GetTestName()));
+    if (!installer_->Prepare()) {
+      return;
+    }
+    ASSERT_EQ(NameProvider::GetPackageName(), installer_->package);
+
+    {
+      // Check package is not active.
+      StatusOr<bool> active =
+          IsActive(installer_->package, installer_->version);
+      ASSERT_TRUE(active.Ok());
+      ASSERT_FALSE(*active);
+    }
+
+    {
+      bool success;
+      android::binder::Status st =
+          service_->stagePackage(installer_->test_file, &success);
+      ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+      ASSERT_TRUE(success);
+    }
   }
 
-  {
-    bool success;
-    android::binder::Status st =
-        service_->stagePackage(installer.test_file, &success);
-    ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
-    ASSERT_TRUE(success);
+  void TearDown() override {
+    // Attempt to deactivate.
+    if (installer_ != nullptr) {
+      service_->deactivatePackage(installer_->test_installed_file);
+    }
+
+    installer_.reset();
   }
 
+  std::unique_ptr<PrepareTestApexForInstall> installer_;
+};
+
+struct SuccessNameProvider {
+  static std::string GetTestName() { return "apex.apexd_test.apex"; }
+  static std::string GetPackageName() {
+    return "com.android.apex.test_package";
+  }
+};
+
+class ApexServiceActivationSuccessTest
+    : public ApexServiceActivationTest<SuccessNameProvider> {};
+
+TEST_F(ApexServiceActivationSuccessTest, Activate) {
   android::binder::Status st =
-      service_->activatePackage(installer.test_installed_file);
+      service_->activatePackage(installer_->test_installed_file);
   ASSERT_TRUE(st.isOk()) << st.toString8().c_str() << " "
-                         << GetDebugStr(&installer);
+                         << GetDebugStr(installer_.get());
 
   {
     // Check package is active.
-    StatusOr<bool> active = IsActive(installer.package, installer.version);
+    StatusOr<bool> active = IsActive(installer_->package, installer_->version);
     ASSERT_TRUE(active.Ok());
     ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
   }
 
-  auto cleanup = [&]() {
-    // Cleanup.
-    st = service_->deactivatePackage(installer.test_installed_file);
-    EXPECT_TRUE(st.isOk()) << st.toString8().c_str();
-    {
-      // Check package is not active.
-      StatusOr<bool> active = IsActive(installer.package, installer.version);
-      EXPECT_TRUE(active.Ok());
-      if (active.Ok()) {
-        EXPECT_FALSE(*active) << Join(GetActivePackagesStrings(), ',');
-      }
-    }
-
-    // TODO: Uninstall.
-  };
-  auto scope_guard = android::base::make_scope_guard(cleanup);
-
   {
     // Check that the "latest" view exists.
-    std::string latest_path = std::string(kApexRoot) + "/" + installer.package;
+    std::string latest_path =
+        std::string(kApexRoot) + "/" + installer_->package;
     struct stat buf;
     ASSERT_EQ(0, stat(latest_path.c_str(), &buf)) << strerror(errno);
     // Check that it is a folder.
@@ -463,8 +480,8 @@ TEST_F(ApexServiceTest, Activate) {
     };
 
     std::string versioned_path = std::string(kApexRoot) + "/" +
-                                 installer.package + "@" +
-                                 std::to_string(installer.version);
+                                 installer_->package + "@" +
+                                 std::to_string(installer_->version);
     std::vector<std::string> versioned_folder_entries =
         collect_entries_fn(versioned_path);
     std::vector<std::string> latest_folder_entries =
@@ -474,8 +491,31 @@ TEST_F(ApexServiceTest, Activate) {
         << "Versioned: " << Join(versioned_folder_entries, ',')
         << " Latest: " << Join(latest_folder_entries, ',');
   }
+}
 
-  // Cleanup through ScopeGuard.
+struct FailNameProvider {
+  static std::string GetTestName() {
+    return "apex.apexd_test_no_inst_key.apex";
+  }
+  static std::string GetPackageName() {
+    return "com.android.apex.test_package.no_inst_key";
+  }
+};
+
+class ApexServiceActivationFailNoInstKeyTest
+    : public ApexServiceActivationTest<FailNameProvider> {};
+
+TEST_F(ApexServiceActivationFailNoInstKeyTest, Activate) {
+  android::binder::Status st =
+      service_->activatePackage(installer_->test_installed_file);
+  ASSERT_FALSE(st.isOk()) << GetDebugStr(installer_.get());
+
+  {
+    // Check package is active.
+    StatusOr<bool> active = IsActive(installer_->package, installer_->version);
+    ASSERT_TRUE(active.Ok());
+    ASSERT_FALSE(*active) << Join(GetActivePackagesStrings(), ',');
+  }
 }
 
 TEST_F(ApexServiceTest, StagePreinstall) {
