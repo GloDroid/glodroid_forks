@@ -16,7 +16,6 @@ python_binary_host {
     name: "apexer",
     srcs: [
         "apexer.py",
-        "apex_manifest.py"
     ],
     version: {
         py2: {
@@ -26,9 +25,6 @@ python_binary_host {
             enabled: false,
         },
     },
-    libs: [
-        "apex_schema_proto",
-    ],
     required: [
         "aapt2",
         "avbtool",
