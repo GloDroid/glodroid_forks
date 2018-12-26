@@ -75,7 +75,10 @@ namespace {
 
 static constexpr const char* kApexPackageSuffix = ".apex";
 static constexpr const char* kApexLoopIdPrefix = "apex:";
-static constexpr const char* kApexKeyDirectory = "/system/etc/security/apex/";
+static constexpr const char* kApexKeySystemDirectory =
+    "/system/etc/security/apex/";
+static constexpr const char* kApexKeyProductDirectory =
+    "/product/etc/security/apex/";
 static constexpr const char* kApexKeyProp = "apex.key";
 
 // 128 kB read-ahead, which we currently use for /system as well
@@ -403,6 +406,27 @@ Status verifyPublicKey(const uint8_t* key, size_t length,
   return Status::Success();
 }
 
+// Check for the existence of fileName under dirName. This function also ensures
+// that the file is no a symlink that points to a file outside of dirName.
+StatusOr<std::string> checkFile(const std::string& fileName,
+                                const std::string& dirName) {
+  std::string filePath(dirName);
+  filePath.append(fileName);
+  std::string canonicalFilePath;
+  if (!android::base::Realpath(filePath, &canonicalFilePath)) {
+    return StatusOr<std::string>::MakeError(
+        PStringLog() << "Failed to get realpath of " << filePath);
+  }
+
+  if (!android::base::StartsWith(canonicalFilePath, dirName)) {
+    return StatusOr<std::string>::MakeError(StringLog()
+                                            << "File " << canonicalFilePath
+                                            << " is not under " << dirName);
+  }
+
+  return StatusOr<std::string>(canonicalFilePath);
+}
+
 StatusOr<std::string> getPublicKeyFilePath(const ApexFile& apex,
                                            const uint8_t* data, size_t length) {
   size_t keyNameLen;
@@ -421,21 +445,12 @@ StatusOr<std::string> getPublicKeyFilePath(const ApexFile& apex,
                     << " but key name is '" << keyName << "'");
   }
 
-  std::string keyFilePath(kApexKeyDirectory);
-  keyFilePath.append(keyName, keyNameLen);
-  std::string canonicalKeyFilePath;
-  if (!android::base::Realpath(keyFilePath, &canonicalKeyFilePath)) {
-    return StatusOr<std::string>::MakeError(
-        PStringLog() << "Failed to get realpath of " << keyFilePath);
+  std::string keyNameStr(keyName, keyNameLen);
+  StatusOr<std::string> ret = checkFile(keyNameStr, kApexKeySystemDirectory);
+  if (!ret.Ok()) {
+    ret = checkFile(keyNameStr, kApexKeyProductDirectory);
   }
-
-  if (!android::base::StartsWith(canonicalKeyFilePath, kApexKeyDirectory)) {
-    return StatusOr<std::string>::MakeError(
-        StringLog() << "Key file " << canonicalKeyFilePath << " is not under "
-                    << kApexKeyDirectory);
-  }
-
-  return StatusOr<std::string>(canonicalKeyFilePath);
+  return ret;
 }
 
 Status verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
