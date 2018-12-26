@@ -55,6 +55,21 @@ apex {
     installable: false,
 }
 
+apex_key {
+    name: "com.android.apex.test_package.no_inst_key.key",
+    public_key: "com.android.apex.test_package.no_inst_key.avbpubkey",
+    private_key: "com.android.apex.test_package.no_inst_key.pem",
+}
+
+apex {
+    name: "apex.apexd_test_no_inst_key",
+    manifest: "manifest_no_inst_key.json",
+    file_contexts: "apex.test",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.no_inst_key.key",
+    installable: false,
+}
+
 cc_prebuilt_binary {
     name: "apex_test_pre_install_hook",
     srcs: ["pre_install_hook.sh"],
