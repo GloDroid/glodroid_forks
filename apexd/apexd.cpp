@@ -1128,24 +1128,75 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
   }
 }
 
-Status stagePackages(const std::vector<std::string>& tmp_paths) {
-  LOG(DEBUG) << "stagePackages() for " << android::base::Join(tmp_paths, ',');
+Status verifyPackages(const std::vector<std::string>& paths) {
+  LOG(DEBUG) << "verifyPackages() for " << android::base::Join(paths, ',');
 
-  if (tmp_paths.empty()) {
+  if (paths.empty()) {
     return Status::Fail("Empty set of inputs");
   }
 
   // Note: assume that sessions do not have thousands of paths, so that it is
   //       OK to keep the ApexFile/ApexManifests in memory.
 
-  // 1) Open all to check they can be opened and have valid manifests etc.
-  std::vector<ApexFile> apex_files;
-  for (const std::string& path : tmp_paths) {
-    StatusOr<ApexFile> apexFile = ApexFile::Open(path);
-    if (!apexFile.Ok()) {
-      return apexFile.ErrorStatus();
+  // Open all to check they can be opened and have valid manifests etc.
+  for (const std::string& path : paths) {
+    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
+    if (!apex_file.Ok()) {
+      return apex_file.ErrorStatus();
     }
-    apex_files.emplace_back(std::move(*apexFile));
+  }
+
+  return Status::Success();
+}
+
+Status preinstallPackages(const std::vector<std::string>& paths) {
+  LOG(DEBUG) << "preinstallPackages() for " << android::base::Join(paths, ',');
+
+  if (paths.empty()) {
+    return Status::Fail("Empty set of inputs");
+  }
+
+  // Note: assume that sessions do not have thousands of paths, so that it is
+  //       OK to keep the ApexFile/ApexManifests in memory.
+
+  // 1) Open all APEXes, check whether they have hooks.
+  bool has_pre_install_hooks = false;
+  std::vector<ApexFile> apex_files;
+  for (const std::string& path : paths) {
+    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
+    if (!apex_file.Ok()) {
+      return apex_file.ErrorStatus();
+    }
+    if (!apex_file->GetManifest().GetPreInstallHook().empty()) {
+      has_pre_install_hooks = true;
+    }
+    apex_files.emplace_back(std::move(*apex_file));
+  }
+
+  // 2) If we found hooks, run pre-install.
+  if (has_pre_install_hooks) {
+    Status preinstall_status = StagePreInstall(apex_files);
+    if (!preinstall_status.Ok()) {
+      return preinstall_status;
+    }
+  }
+
+  return Status::Success();
+}
+
+Status stagePackages(const std::vector<std::string>& tmp_paths) {
+  LOG(DEBUG) << "stagePackages() for " << android::base::Join(tmp_paths, ',');
+
+  // Note: this function is temporary. As such the code is not optimized, e.g.,
+  //       it will open ApexFiles multiple times.
+
+  // 1) Verify all packages.
+  Status verify_status = verifyPackages(tmp_paths);
+  if (!verify_status.Ok()) {
+    return verify_status;
+  }
+  if (tmp_paths.empty()) {
+    return Status::Fail("Empty set of inputs");
   }
 
   // 2) Now stage all of them.
@@ -1157,57 +1208,44 @@ Status stagePackages(const std::vector<std::string>& tmp_paths) {
   };
 
   // Ensure the APEX gets removed on failure.
-  std::vector<const ApexFile*> staged;
-  auto deleter = [&staged, &path_fn]() {
-    for (const ApexFile* apex_file : staged) {
-      if (TEMP_FAILURE_RETRY(unlink(path_fn(*apex_file).c_str())) != 0) {
-        PLOG(ERROR) << "Unable to unlink " << path_fn(*apex_file);
+  std::vector<std::string> staged;
+  auto deleter = [&staged]() {
+    for (const std::string& staged_path : staged) {
+      if (TEMP_FAILURE_RETRY(unlink(staged_path.c_str())) != 0) {
+        PLOG(ERROR) << "Unable to unlink " << staged_path;
       }
     }
   };
   auto scope_guard = android::base::make_scope_guard(deleter);
 
-  bool has_pre_install_hooks = false;
+  for (const std::string& path : tmp_paths) {
+    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
+    if (!apex_file.Ok()) {
+      return apex_file.ErrorStatus();
+    }
+    std::string dest_path = path_fn(*apex_file);
 
-  for (const ApexFile& apex_file : apex_files) {
-    std::string dest_path = path_fn(apex_file);
-    if (rename(apex_file.GetPath().c_str(), dest_path.c_str()) != 0) {
+    if (rename(apex_file->GetPath().c_str(), dest_path.c_str()) != 0) {
       // TODO: Get correct binder error status.
       return Status::Fail(PStringLog()
-                          << "Unable to rename " << apex_file.GetPath()
+                          << "Unable to rename " << apex_file->GetPath()
                           << " to " << dest_path);
     }
-    staged.push_back(&apex_file);
+    staged.push_back(dest_path);
 
     // TODO(b/112669193) remove this. Move the file from packageTmpPath to
     // destPath using file descriptor.
     if (selinux_android_restorecon(dest_path.c_str(), 0) < 0) {
       return Status::Fail(PStringLog() << "Failed to restorecon " << dest_path);
     }
-    LOG(DEBUG) << "Success renaming " << apex_file.GetPath() << " to "
+    LOG(DEBUG) << "Success renaming " << apex_file->GetPath() << " to "
                << dest_path;
-    if (!apex_file.GetManifest().GetPreInstallHook().empty()) {
-      has_pre_install_hooks = true;
-    }
   }
 
-  if (has_pre_install_hooks) {
-    // Need to recreate the APEX files, as they point to the tmp path.
-    std::vector<ApexFile> staged_apex_files;
-    staged_apex_files.reserve(apex_files.size());
-    for (const ApexFile& apex_file : apex_files) {
-      StatusOr<ApexFile> staged_apex_file = ApexFile::Open(path_fn(apex_file));
-      if (!staged_apex_file.Ok()) {
-        return Status::Fail(std::string("Failed reloading staged apex: ")
-                                .append(staged_apex_file.ErrorMessage()));
-      }
-      staged_apex_files.emplace_back(std::move(*staged_apex_file));
-    }
-
-    Status preinstall_status = StagePreInstall(staged_apex_files);
-    if (!preinstall_status.Ok()) {
-      return preinstall_status;
-    }
+  // 3) Run preinstall, if necessary.
+  Status preinstall_status = preinstallPackages(staged);
+  if (!preinstall_status.Ok()) {
+    return preinstall_status;
   }
 
   scope_guard.Disable();  // Accept the state.
