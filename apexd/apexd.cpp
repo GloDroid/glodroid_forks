@@ -830,6 +830,11 @@ Status verifyPackages(const std::vector<std::string>& paths) {
     if (!apex_file.Ok()) {
       return apex_file.ErrorStatus();
     }
+    StatusOr<ApexVerityData> verity_or = apex_file->VerifyApexVerity(
+        {kApexKeySystemDirectory, kApexKeyProductDirectory});
+    if (!verity_or.Ok()) {
+      return verity_or.ErrorStatus();
+    }
   }
 
   return Status::Success();

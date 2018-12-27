@@ -341,6 +341,27 @@ TEST_F(ApexServiceTest, StageFailAccess) {
   EXPECT_NE(std::string::npos, error.find("I/O error")) << error;
 }
 
+TEST_F(ApexServiceTest, StageFailKey) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("apex.apexd_test_no_inst_key.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+  ASSERT_EQ(std::string("com.android.apex.test_package.no_inst_key"),
+            installer.package);
+
+  bool success;
+  android::binder::Status st =
+      service_->stagePackage(installer.test_file, &success);
+  ASSERT_FALSE(st.isOk());
+  std::string error = st.toString8().c_str();
+  constexpr const char* kExpectedError1 = "Failed to get realpath of ";
+  EXPECT_NE(std::string::npos, error.find(kExpectedError1)) << error;
+  constexpr const char* kExpectedError2 =
+      "/etc/security/apex/com.android.apex.test_package.no_inst_key";
+  EXPECT_NE(std::string::npos, error.find(kExpectedError2)) << error;
+}
+
 TEST_F(ApexServiceTest, StageSuccess) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
   if (!installer.Prepare()) {
@@ -490,31 +511,6 @@ TEST_F(ApexServiceActivationSuccessTest, Activate) {
     EXPECT_TRUE(versioned_folder_entries == latest_folder_entries)
         << "Versioned: " << Join(versioned_folder_entries, ',')
         << " Latest: " << Join(latest_folder_entries, ',');
-  }
-}
-
-struct FailNameProvider {
-  static std::string GetTestName() {
-    return "apex.apexd_test_no_inst_key.apex";
-  }
-  static std::string GetPackageName() {
-    return "com.android.apex.test_package.no_inst_key";
-  }
-};
-
-class ApexServiceActivationFailNoInstKeyTest
-    : public ApexServiceActivationTest<FailNameProvider> {};
-
-TEST_F(ApexServiceActivationFailNoInstKeyTest, Activate) {
-  android::binder::Status st =
-      service_->activatePackage(installer_->test_installed_file);
-  ASSERT_FALSE(st.isOk()) << GetDebugStr(installer_.get());
-
-  {
-    // Check package is active.
-    StatusOr<bool> active = IsActive(installer_->package, installer_->version);
-    ASSERT_TRUE(active.Ok());
-    ASSERT_FALSE(*active) << Join(GetActivePackagesStrings(), ',');
   }
 }
 
