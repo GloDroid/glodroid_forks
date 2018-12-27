@@ -20,6 +20,7 @@
 #include <android-base/logging.h>
 #include <android-base/scopeguard.h>
 #include <gtest/gtest.h>
+#include <libavb/libavb.h>
 #include <ziparchive/zip_archive.h>
 
 #include "apex_file.h"
@@ -28,6 +29,7 @@ static std::string testDataDir = android::base::GetExecutableDirectory() + "/";
 
 namespace android {
 namespace apex {
+namespace {
 
 TEST(ApexFileTest, GetOffsetOfSimplePackage) {
   const std::string filePath = testDataDir + "apex.apexd_test.apex";
@@ -73,6 +75,44 @@ TEST(ApexFileTest, GetApexManifest) {
   EXPECT_EQ("com.android.apex.test_package", apexFile->GetManifest().GetName());
   EXPECT_EQ(1UL, apexFile->GetManifest().GetVersion());
 }
+
+// TODO: Provide a way to bundle keys with the test to have a positive test
+//       that works without root (device) and on the host (no /system).
+#if 0
+TEST(ApexFileTest, VerifyApexVerity) {
+  const std::string filePath = testDataDir + "apex.apexd_test.apex";
+  StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
+  ASSERT_TRUE(apexFile.Ok()) << apexFile.ErrorMessage();
+
+  auto verity_or = apexFile->VerifyApexVerity({ "/system/etc/security/apex/" });
+  ASSERT_TRUE(verity_or.Ok()) << verity_or.ErrorMessage();
+
+  const ApexVerityData& data = *verity_or;
+  EXPECT_NE(nullptr, data.desc.get());
+  EXPECT_EQ(std::string("salt"), data.salt);
+  EXPECT_EQ(std::string("root_digest"), data.root_digest);
+}
+#endif
+
+TEST(ApexFileTest, VerifyApexVerityNoKeyDir) {
+  const std::string filePath = testDataDir + "apex.apexd_test.apex";
+  StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
+  ASSERT_TRUE(apexFile.Ok()) << apexFile.ErrorMessage();
+
+  auto verity_or = apexFile->VerifyApexVerity({"/tmp/"});
+  ASSERT_FALSE(verity_or.Ok());
+}
+
+TEST(ApexFileTest, VerifyApexVerityNoKeyInst) {
+  const std::string filePath = testDataDir + "apex.apexd_test_no_inst_key.apex";
+  StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
+  ASSERT_TRUE(apexFile.Ok()) << apexFile.ErrorMessage();
+
+  auto verity_or = apexFile->VerifyApexVerity({"/system/etc/security/apex/"});
+  ASSERT_FALSE(verity_or.Ok());
+}
+
+}  // namespace
 }  // namespace apex
 }  // namespace android
 
