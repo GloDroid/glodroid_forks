@@ -63,6 +63,8 @@ def ParseArgs(argv):
                            '"image" APEXS.')
   parser.add_argument('--key',
                       help='path to the private key file. Required for "image" APEXs.')
+  parser.add_argument('--pubkey',
+                      help='path to the public key file. Used to bundle the public key in APEX for testing.')
   parser.add_argument('input_dir', metavar='INPUT_DIR',
                       help='the directory having files to be packaged')
   parser.add_argument('output', metavar='OUTPUT',
@@ -305,6 +307,10 @@ def CreateApex(args, work_dir):
   # copy manifest to the content dir so that it is also accessible
   # without mounting the image
   shutil.copyfile(args.manifest, os.path.join(content_dir, 'apex_manifest.json'))
+
+  # copy the public key, if specified
+  if args.pubkey:
+    shutil.copyfile(args.pubkey, os.path.join(content_dir, "apex_pubkey"))
 
   apk_file = os.path.join(work_dir, 'apex.apk')
   cmd = ['aapt2']
