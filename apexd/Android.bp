@@ -104,6 +104,7 @@ cc_library_static {
     "apex_file.cpp",
     "apex_manifest.cpp",
   ],
+  static_libs: ["libavb"],
   host_supported: true,
   header_libs: [
     "libutils_headers",
@@ -116,12 +117,18 @@ cc_library_static {
 cc_test {
   name: "apex_file_test",
   defaults: ["apex_defaults"],
-  data: [":apex.apexd_test"],
+  data: [
+    ":apex.apexd_test",
+    ":apex.apexd_test_no_inst_key",
+  ],
   srcs: [
     "apex_file_test.cpp",
   ],
   host_supported: true,
-  static_libs: ["libapex"],
+  static_libs: [
+    "libapex",
+    "libavb",
+  ],
   shared_libs: ["libziparchive"],
   test_suites: ["device-tests"],
   test_config: "apex_file_test_config.xml",  // TODO: Remove after b/117891984.
@@ -134,7 +141,10 @@ cc_test {
     "apex_manifest_test.cpp",
   ],
   host_supported: true,
-  static_libs: ["libapex"],
+  static_libs: [
+    "libapex",
+    "libavb",
+  ],
   test_suites: ["device-tests"],
 }
 
@@ -153,6 +163,7 @@ cc_test {
     "apex_aidl_interface-cpp",
     "libapex",
     "libapexd",
+    "libavb",
   ],
   shared_libs: [
     "libbinder",

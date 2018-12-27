@@ -17,15 +17,26 @@
 #ifndef ANDROID_APEXD_APEX_FILE_H_
 #define ANDROID_APEXD_APEX_FILE_H_
 
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <ziparchive/zip_archive.h>
+
 #include "apex_manifest.h"
 #include "status_or.h"
 
-#include <ziparchive/zip_archive.h>
-#include <memory>
-#include <string>
+struct AvbHashtreeDescriptor;
 
 namespace android {
 namespace apex {
+
+// Data needed to construct a valid VerityTable
+struct ApexVerityData {
+  std::unique_ptr<AvbHashtreeDescriptor> desc;
+  std::string salt;
+  std::string root_digest;
+};
 
 // Manages the content of an APEX package and provides utilities to navigate
 // the content.
@@ -40,6 +51,9 @@ class ApexFile {
   size_t GetImageSize() const { return image_size_; }
   const ApexManifest& GetManifest() const { return manifest_; }
   bool IsFlattened() const { return flattened_; }
+
+  StatusOr<ApexVerityData> VerifyApexVerity(
+      const std::vector<std::string>& apex_key_dirs) const;
 
  private:
   ApexFile(const std::string& apex_path, bool flattened, int32_t image_offset,
