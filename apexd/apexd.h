@@ -35,6 +35,9 @@ void unmountAndDetachExistingImages();
 
 void scanPackagesDirAndActivate(const char* apex_package_dir);
 
+Status verifyPackages(const std::vector<std::string>& paths) WARN_UNUSED;
+Status preinstallPackages(const std::vector<std::string>& paths) WARN_UNUSED;
+
 Status stagePackages(const std::vector<std::string>& tmp_paths) WARN_UNUSED;
 
 Status activatePackage(const std::string& full_path) WARN_UNUSED;
