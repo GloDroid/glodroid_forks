@@ -22,6 +22,7 @@
         <option name="cleanup" value="true" />
         <option name="push" value="apex_file_test->/data/local/tmp/apex_file_test/apex_file_test" />
         <option name="push" value="apex.apexd_test.apex->/data/local/tmp/apex_file_test/apex.apexd_test.apex" />
+        <option name="push" value="apex.apexd_test_no_inst_key.apex->/data/local/tmp/apex_file_test/apex.apexd_test_no_inst_key.apex" />
     </target_preparer>
 
     <test class="com.android.tradefed.testtype.GTest" >
