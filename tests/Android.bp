@@ -75,6 +75,7 @@ apex_key {
     name: "apex.test.key",
     public_key: "testdata/com.android.apex.test.avbpubkey",
     private_key: "testdata/com.android.apex.test.pem",
+    installable: false,
 }
 
 android_app_certificate {
