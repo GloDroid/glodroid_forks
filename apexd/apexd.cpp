@@ -285,6 +285,7 @@ void destroyAllLoopDevices() {
 }
 
 static constexpr size_t kLoopDeviceSetupAttempts = 3u;
+static constexpr size_t kMountAttempts = 5u;
 
 std::string bytes_to_hex(const uint8_t* bytes, size_t bytes_len) {
   std::ostringstream s;
@@ -765,18 +766,27 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
     }
   }
 
-  if (mount(blockDevice.c_str(), mountPoint.c_str(), "ext4",
-            MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, NULL) == 0) {
-    LOG(INFO) << "Successfully mounted package " << full_path << " on "
-              << mountPoint;
+  for (size_t count = 0; count < kMountAttempts; ++count) {
+    if (mount(blockDevice.c_str(), mountPoint.c_str(), "ext4",
+              MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, NULL) == 0) {
+      LOG(INFO) << "Successfully mounted package " << full_path << " on "
+                << mountPoint;
 
-    // Time to accept the temporaries as good.
-    if (mountOnVerity) {
-      verityDev.Release();
+      // Time to accept the temporaries as good.
+      if (mountOnVerity) {
+        verityDev.Release();
+      }
+      loopbackDevice.CloseGood();
+
+      return Status::Success();
+    } else {
+      // TODO(b/122059364): Even though the kernel has created the verity
+      // device, we still depend on ueventd to run to actually create the
+      // device node in userspace. To solve this properly we should listen on
+      // the netlink socket for uevents, or use inotify. For now, this will
+      // have to do.
+      usleep(50000);
     }
-    loopbackDevice.CloseGood();
-
-    return Status::Success();
   }
   return Status::Fail(PStringLog()
                       << "Mounting failed for package " << full_path);
