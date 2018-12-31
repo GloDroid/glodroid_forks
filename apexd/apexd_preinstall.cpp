@@ -162,7 +162,7 @@ int RunPreInstall(char** in_argv) {
   std::string hook_path;
   {
     auto bind_fn = [](const std::string& apex) {
-      std::string pre_install_hook;
+      std::string preInstallHook;
       std::string mount_point;
       std::string active_point;
       {
@@ -173,7 +173,7 @@ int RunPreInstall(char** in_argv) {
           _exit(202);
         }
         const ApexManifest& manifest = apex_file->GetManifest();
-        pre_install_hook = manifest.GetPreInstallHook();
+        preInstallHook = manifest.GetPreInstallHook();
         mount_point = apexd_private::GetPackageMountPoint(manifest);
         active_point = apexd_private::GetActiveMountPoint(manifest);
       }
@@ -186,12 +186,12 @@ int RunPreInstall(char** in_argv) {
         _exit(203);
       }
 
-      return std::make_pair(active_point, pre_install_hook);
+      return std::make_pair(active_point, preInstallHook);
     };
 
     // First/main APEX.
-    auto [active_point, pre_install_hook] = bind_fn(in_argv[2]);
-    hook_path = active_point + "/" + pre_install_hook;
+    auto [active_point, preInstallHook] = bind_fn(in_argv[2]);
+    hook_path = active_point + "/" + preInstallHook;
 
     for (size_t i = 3;; ++i) {
       if (in_argv[i] == nullptr) {
