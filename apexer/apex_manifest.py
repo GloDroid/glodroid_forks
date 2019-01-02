@@ -19,17 +19,6 @@ import manifest_schema_pb2
 from google.protobuf.json_format import Parse
 from google.protobuf.json_format import ParseError
 
-class ApexManifest:
-	# Default values
-	package_name = ""
-	version_number = 0
-	preInstallHook = ""
-	def __init__(self, manifest_json):
-		self.package_name = manifest_json["name"]
-		self.version_number = manifest_json["version"]
-		if('preInstallHook' in manifest_json):
-			self.preInstallHook = manifest_json["preInstallHook"]
-
 class ApexManifestError(Exception):
 	def __init__(self, errmessage):
 		# Apex Manifest parse error (extra fields) or if required fields not present
@@ -46,4 +35,4 @@ def ValidateApexManifest(manifest_raw):
 		raise ApexManifestError("'name' field is required.")
 	if manifest_pb.version == 0:
 		raise ApexManifestError("'version' field is required.")
-	return ApexManifest(manifest_json)
+	return manifest_pb
