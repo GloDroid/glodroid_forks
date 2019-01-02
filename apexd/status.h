@@ -27,7 +27,8 @@ namespace apex {
 class Status {
  public:
   Status() : ok_(true) {}
-  Status(const std::string& error_msg) : error_msg_(error_msg), ok_(false) {}
+  explicit Status(const std::string& error_msg)
+      : error_msg_(error_msg), ok_(false) {}
 
   // For better legible code.
   static Status Success() { return Status(); }
