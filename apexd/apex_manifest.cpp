@@ -29,12 +29,12 @@ namespace apex {
 StatusOr<ApexManifest> ApexManifest::Parse(const std::string& content) {
   constexpr const char* kNameTag = "name";
   constexpr const char* kVersionTag = "version";
-  constexpr const char* kPreInstallTag = "pre_install_hook";
-  constexpr const char* kPostInstallTag = "post_install_hook";
+  constexpr const char* kPreInstallTag = "preInstallHook";
+  constexpr const char* kPostInstallTag = "postInstallHook";
 
   std::string name;
-  std::string pre_install_hook;
-  std::string post_install_hook;
+  std::string preInstallHook;
+  std::string postInstallHook;
   uint64_t version;
 
   Json::Value root;
@@ -81,15 +81,15 @@ StatusOr<ApexManifest> ApexManifest::Parse(const std::string& content) {
   }
   version = jVersion.asUInt64();
 
-  // [pre|post]_install_hook
-  if (!read_string_field(kPreInstallTag, /*req=*/false, &pre_install_hook)) {
+  // [pre|post]InstallHook
+  if (!read_string_field(kPreInstallTag, /*req=*/false, &preInstallHook)) {
     return StatusOr<ApexManifest>::MakeError(err_str);
   }
-  if (!read_string_field(kPostInstallTag, /*req=*/false, &post_install_hook)) {
+  if (!read_string_field(kPostInstallTag, /*req=*/false, &postInstallHook)) {
     return StatusOr<ApexManifest>::MakeError(err_str);
   }
 
-  ApexManifest manifest(name, pre_install_hook, post_install_hook, version);
+  ApexManifest manifest(name, preInstallHook, postInstallHook, version);
   return StatusOr<ApexManifest>(std::move(manifest));
 }
 
