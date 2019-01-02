@@ -13,8 +13,8 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 -->
-<configuration description="Config for apex install/uninstall test cases">
-    <option name="test-suite-tag" value="apex_e2e_tests" />
+<configuration description="Config for timezond data module e2e test cases">
+    <option name="test-suite-tag" value="timezone_data_e2e_tests" />
     <option name="test-suite-tag" value="apct" />
 
     <!-- Temporarily disable selinux enforcement until the install flow is clear
@@ -22,9 +22,9 @@
     <target_preparer class="com.android.tradefed.targetprep.DisableSELinuxTargetPreparer"/>
 
     <test class="com.android.tradefed.testtype.HostTest" >
-        <option name="jar" value="apex_e2e_tests.jar" />
-        <option name="set-option" value="apex_package_name:com.android.apex.test" />
-        <option name="set-option" value="apex_file_name:apex.test.apex" />
+        <option name="jar" value="timezone_data_e2e_tests.jar" />
+        <option name="set-option" value="apex_package_name:com.android.tzdata" />
+        <option name="set-option" value="apex_file_name:test1_com.android.tzdata.apex" />
     </test>
 </configuration>
 

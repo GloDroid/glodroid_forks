@@ -15,15 +15,40 @@
 java_test_host {
     name: "apex_e2e_tests",
 
-    srcs:  ["src/**/*.java"],
+    srcs:  ["src/**/ApexPackageStageActivateUninstallHostTest.java"],
 
     libs: ["tradefed"],
+
+    static_libs: ["apex_e2e_base_test"],
 
     data: [":apex.test"],
 
     test_config: "apex-e2e-tests.xml",
 
     test_suites: ["general-tests"],
+}
+
+// Need to build test1_com.android.tzdata.apex and copy it to
+// $ANDROID_HOST_OUT_TESTCASES, then run
+// "atest timezone_data_e2e_tests".
+java_test_host {
+    name: "timezone_data_e2e_tests",
+
+    srcs:  ["src/**/TimezoneDataHostTest.java"],
+
+    libs: ["tradefed"],
+
+    static_libs: ["apex_e2e_base_test"],
+
+    test_config: "timezone-data-e2e-tests.xml",
+
+    test_suites: ["general-tests"],
+}
+
+java_library_host {
+    name: "apex_e2e_base_test",
+    srcs: ["src/**/ApexE2EBaseHostTest.java"],
+    libs: ["tradefed"],
 }
 
 apex {

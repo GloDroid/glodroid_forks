@@ -28,8 +28,7 @@ import java.io.IOException;
  * Test to check if Apex can be staged, activated and uninstalled successfully.
  */
 @RunWith(DeviceJUnit4ClassRunner.class)
-public class ApexPackageStageActivateUninstallHostTest extends ApexE2EBaseHostTest {
-
+public class TimezoneDataHostTest extends ApexE2EBaseHostTest {
     /**
      * Tests that if Apex package can be staged, activated and uninstalled successfully.
      */
@@ -41,6 +40,7 @@ public class ApexPackageStageActivateUninstallHostTest extends ApexE2EBaseHostTe
 
     @Override
     public void additionalCheck() {
-      // Nothing to do here.
+        // TODO: Add the additional check for timezonedata module.
     }
+
 }
