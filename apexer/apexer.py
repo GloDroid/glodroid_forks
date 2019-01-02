@@ -205,8 +205,8 @@ def CreateApex(args, work_dir):
   if args.payload_type == 'image':
     key_name = os.path.basename(os.path.splitext(args.key)[0])
 
-    if manifest_apex.package_name != key_name:
-      print("package name '" + manifest_apex.package_name + "' does not match with key name '" + key_name + "'")
+    if manifest_apex.name != key_name:
+      print("package name '" + manifest_apex.name + "' does not match with key name '" + key_name + "'")
       return False
     img_file = os.path.join(content_dir, 'apex_payload.img')
 
@@ -298,7 +298,7 @@ def CreateApex(args, work_dir):
   if args.verbose:
     print('Creating AndroidManifest ' + android_manifest_file)
   with open(android_manifest_file, 'w+') as f:
-    f.write(PrepareAndroidManifest(manifest_apex.package_name, manifest_apex.version_number))
+    f.write(PrepareAndroidManifest(manifest_apex.name, manifest_apex.version))
 
   # copy manifest to the content dir so that it is also accessible
   # without mounting the image
