@@ -34,21 +34,21 @@ class ApexManifest {
   const std::string& GetName() const { return name_; }
   uint64_t GetVersion() const { return version_; }
   const std::string& GetPackageId() const { return package_id_; }
-  const std::string& GetPreInstallHook() const { return pre_install_hook_; }
-  const std::string& GetPostInstallHook() const { return post_install_hook_; }
+  const std::string& GetPreInstallHook() const { return preInstallHook_; }
+  const std::string& GetPostInstallHook() const { return postInstallHook_; }
 
  private:
-  ApexManifest(std::string& name, std::string& pre_install_hook,
-               std::string& post_install_hook, uint64_t version)
+  ApexManifest(std::string& name, std::string& preInstallHook,
+               std::string& postInstallHook, uint64_t version)
       : name_(std::move(name)),
-        pre_install_hook_(std::move(pre_install_hook)),
-        post_install_hook_(std::move(post_install_hook)),
+        preInstallHook_(std::move(preInstallHook)),
+        postInstallHook_(std::move(postInstallHook)),
         version_(version),
         package_id_(name_ + "@" + std::to_string(version_)) {}
 
   std::string name_;
-  std::string pre_install_hook_;
-  std::string post_install_hook_;
+  std::string preInstallHook_;
+  std::string postInstallHook_;
   uint64_t version_;
   std::string package_id_;
 };

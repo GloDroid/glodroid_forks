@@ -51,7 +51,7 @@ apex {
     file_contexts: "apex.test",
     prebuilts: ["sample_prebuilt_file"],
     key: "com.android.apex.test_package.preinstall.key",
-    binaries: ["apex_test_pre_install_hook"],
+    binaries: ["apex_test_preInstallHook"],
     installable: false,
 }
 
@@ -71,8 +71,8 @@ apex {
 }
 
 cc_prebuilt_binary {
-    name: "apex_test_pre_install_hook",
-    srcs: ["pre_install_hook.sh"],
+    name: "apex_test_preInstallHook",
+    srcs: ["preInstallHook.sh"],
     stl: "none",
     strip: {
         none: true,
