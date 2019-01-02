@@ -67,9 +67,9 @@ TEST(ApexManifestTest, NoPreInstallHook) {
 TEST(ApexManifestTest, PreInstallHook) {
   auto apexManifest = ApexManifest::Parse(
       "{\"name\": \"com.android.example.apex\", \"version\": 1, "
-      "\"pre_install_hook\": \"bin/pre_install_hook\"}\n");
+      "\"preInstallHook\": \"bin/preInstallHook\"}\n");
   ASSERT_TRUE(apexManifest.Ok());
-  EXPECT_EQ("bin/pre_install_hook",
+  EXPECT_EQ("bin/preInstallHook",
             std::string(apexManifest->GetPreInstallHook()));
 }
 
@@ -83,9 +83,9 @@ TEST(ApexManifestTest, NoPostInstallHook) {
 TEST(ApexManifestTest, PostInstallHook) {
   auto apexManifest = ApexManifest::Parse(
       "{\"name\": \"com.android.example.apex\", \"version\": 1, "
-      "\"post_install_hook\": \"bin/post_install_hook\"}\n");
+      "\"postInstallHook\": \"bin/postInstallHook\"}\n");
   ASSERT_TRUE(apexManifest.Ok());
-  EXPECT_EQ("bin/post_install_hook",
+  EXPECT_EQ("bin/postInstallHook",
             std::string(apexManifest->GetPostInstallHook()));
 }
 

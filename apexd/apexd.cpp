@@ -851,7 +851,7 @@ Status preinstallPackages(const std::vector<std::string>& paths) {
   //       OK to keep the ApexFile/ApexManifests in memory.
 
   // 1) Open all APEXes, check whether they have hooks.
-  bool has_pre_install_hooks = false;
+  bool has_preInstallHooks = false;
   std::vector<ApexFile> apex_files;
   for (const std::string& path : paths) {
     StatusOr<ApexFile> apex_file = ApexFile::Open(path);
@@ -859,13 +859,13 @@ Status preinstallPackages(const std::vector<std::string>& paths) {
       return apex_file.ErrorStatus();
     }
     if (!apex_file->GetManifest().GetPreInstallHook().empty()) {
-      has_pre_install_hooks = true;
+      has_preInstallHooks = true;
     }
     apex_files.emplace_back(std::move(*apex_file));
   }
 
   // 2) If we found hooks, run pre-install.
-  if (has_pre_install_hooks) {
+  if (has_preInstallHooks) {
     Status preinstall_status = StagePreInstall(apex_files);
     if (!preinstall_status.Ok()) {
       return preinstall_status;
