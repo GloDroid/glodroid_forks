@@ -19,7 +19,16 @@ syntax = "proto3";
 package apex.proto;
 
 message ManifestSchema {
+
+  // Package Name
   string name = 1;
+
+  // Version Number
   int64 version = 2;
+
+  // Pre Install Hook
   string preInstallHook = 3;
+
+  // Post Install Hook
+  string postInstallHook = 4;
 }
