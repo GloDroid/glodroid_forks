@@ -16,7 +16,7 @@
 
 #define LOG_TAG "apexd"
 
-#include "apexd_preinstall.h"
+#include "apexd_prepostinstall.h"
 
 #include <algorithm>
 #include <vector>
@@ -63,21 +63,22 @@ void PseudoCloseDescriptors() {
   dup_or_close(write_fd, STDERR_FILENO);
 }
 
-}  // namespace
-
-Status StagePreInstall(std::vector<ApexFile>& apexes) {
+template <typename Fn>
+Status StageFnInstall(std::vector<ApexFile>& apexes, Fn fn, const char* arg,
+                      const char* name) {
   // TODO: Support a session with more than one pre-install hook.
   const ApexFile* hook_file = nullptr;
   for (const ApexFile& f : apexes) {
-    if (!f.GetManifest().GetPreInstallHook().empty()) {
+    if (!(f.GetManifest().*fn)().empty()) {
       if (hook_file != nullptr) {
-        return Status::Fail("Missing support for multiple pre-install hooks");
+        return Status::Fail(StringLog() << "Missing support for multiple "
+                                        << name << " hooks");
       }
       hook_file = &f;
     }
   }
   CHECK(hook_file != nullptr);
-  LOG(VERBOSE) << "Preinstall for " << hook_file->GetPath();
+  LOG(VERBOSE) << name << " for " << hook_file->GetPath();
 
   std::vector<const ApexFile*> mounted_apexes;
   std::vector<std::string> activation_dirs;
@@ -85,8 +86,8 @@ Status StagePreInstall(std::vector<ApexFile>& apexes) {
     for (const ApexFile* f : mounted_apexes) {
       Status st = apexd_private::UnmountPackage(*f);
       if (!st.Ok()) {
-        LOG(ERROR) << "Failed to unmount " << f->GetPath()
-                   << " after preinst: " << st.ErrorMessage();
+        LOG(ERROR) << "Failed to unmount " << f->GetPath() << " after " << name
+                   << ": " << st.ErrorMessage();
       }
     }
     for (const std::string& active_point : activation_dirs) {
@@ -128,7 +129,7 @@ Status StagePreInstall(std::vector<ApexFile>& apexes) {
 
   // 3) Create invocation args.
   std::vector<std::string> args{
-      "/system/bin/apexd", "--pre-install",
+      "/system/bin/apexd", arg,
       hook_file->GetPath(),  // Make the APEX with hook first.
   };
   for (const ApexFile& apex : apexes) {
@@ -142,14 +143,15 @@ Status StagePreInstall(std::vector<ApexFile>& apexes) {
   return res == 0 ? Status::Success() : Status::Fail(error_msg);
 }
 
-int RunPreInstall(char** in_argv) {
+template <typename Fn>
+int RunFnInstall(char** in_argv, Fn fn, const char* name) {
   // 1) Close all file descriptors. They are coming from the caller, we do not
   // want to pass them on across our fork/exec into a different domain.
   PseudoCloseDescriptors();
 
   // 2) Unshare.
   if (unshare(CLONE_NEWNS) != 0) {
-    PLOG(ERROR) << "Failed to unshare() for apex pre-install.";
+    PLOG(ERROR) << "Failed to unshare() for apex " << name;
     _exit(200);
   }
 
@@ -161,19 +163,19 @@ int RunPreInstall(char** in_argv) {
 
   std::string hook_path;
   {
-    auto bind_fn = [](const std::string& apex) {
-      std::string preInstallHook;
+    auto bind_fn = [&fn, name](const std::string& apex) {
+      std::string hook;
       std::string mount_point;
       std::string active_point;
       {
         StatusOr<ApexFile> apex_file = ApexFile::Open(apex);
         if (!apex_file.Ok()) {
-          LOG(ERROR) << "Could not open apex " << apex
-                     << " for pre-install: " << apex_file.ErrorMessage();
+          LOG(ERROR) << "Could not open apex " << apex << " for " << name
+                     << ": " << apex_file.ErrorMessage();
           _exit(202);
         }
         const ApexManifest& manifest = apex_file->GetManifest();
-        preInstallHook = manifest.GetPreInstallHook();
+        hook = (manifest.*fn)();
         mount_point = apexd_private::GetPackageMountPoint(manifest);
         active_point = apexd_private::GetActiveMountPoint(manifest);
       }
@@ -186,12 +188,12 @@ int RunPreInstall(char** in_argv) {
         _exit(203);
       }
 
-      return std::make_pair(active_point, preInstallHook);
+      return std::make_pair(active_point, hook);
     };
 
     // First/main APEX.
-    auto [active_point, preInstallHook] = bind_fn(in_argv[2]);
-    hook_path = active_point + "/" + preInstallHook;
+    auto [active_point, hook] = bind_fn(in_argv[2]);
+    hook_path = active_point + "/" + hook;
 
     for (size_t i = 3;; ++i) {
       if (in_argv[i] == nullptr) {
@@ -219,6 +221,27 @@ int RunPreInstall(char** in_argv) {
   execv(argv[0], const_cast<char**>(argv.data()));
   PLOG(ERROR) << "execv of " << android::base::Join(args, " ") << " failed";
   _exit(204);
+}
+
+}  // namespace
+
+Status StagePreInstall(std::vector<ApexFile>& apexes) {
+  return StageFnInstall(apexes, &ApexManifest::GetPreInstallHook,
+                        "--pre-install", "pre-install");
+}
+
+int RunPreInstall(char** in_argv) {
+  return RunFnInstall(in_argv, &ApexManifest::GetPreInstallHook, "pre-install");
+}
+
+Status StagePostInstall(std::vector<ApexFile>& apexes) {
+  return StageFnInstall(apexes, &ApexManifest::GetPostInstallHook,
+                        "--post-install", "post-install");
+}
+
+int RunPostInstall(char** in_argv) {
+  return RunFnInstall(in_argv, &ApexManifest::GetPostInstallHook,
+                      "post-install");
 }
 
 }  // namespace apex

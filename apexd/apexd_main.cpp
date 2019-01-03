@@ -21,7 +21,7 @@
 #include <android-base/logging.h>
 
 #include "apexd.h"
-#include "apexd_preinstall.h"
+#include "apexd_prepostinstall.h"
 #include "apexservice.h"
 
 namespace {
@@ -30,6 +30,11 @@ int HandleSubcommand(char** argv) {
   if (strcmp("--pre-install", argv[1]) == 0) {
     LOG(INFO) << "Preinstall subcommand detected";
     return android::apex::RunPreInstall(argv);
+  }
+
+  if (strcmp("--post-install", argv[1]) == 0) {
+    LOG(INFO) << "Postinstall subcommand detected";
+    return android::apex::RunPostInstall(argv);
   }
 
   LOG(ERROR) << "Unknown subcommand: " << argv[1];
