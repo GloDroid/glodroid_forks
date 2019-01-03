@@ -174,7 +174,7 @@ class ApexServiceTest : public ::testing::Test {
     std::string package;  // APEX package name.
     uint64_t version;     // APEX version.
 
-    PrepareTestApexForInstall(const std::string& test) {
+    explicit PrepareTestApexForInstall(const std::string& test) {
       test_input = test;
 
       test_file = std::string(kTestDir) + "/" + android::base::Basename(test);
@@ -324,7 +324,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
       << strerror(errno);
   struct Deleter {
     std::string to_delete;
-    Deleter(const std::string& t) : to_delete(t) {}
+    explicit Deleter(const std::string& t) : to_delete(t) {}
     ~Deleter() {
       if (unlink(to_delete.c_str()) != 0) {
         PLOG(ERROR) << "Could not unlink " << to_delete;
