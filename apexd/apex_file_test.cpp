@@ -76,9 +76,6 @@ TEST(ApexFileTest, GetApexManifest) {
   EXPECT_EQ(1UL, apexFile->GetManifest().GetVersion());
 }
 
-// TODO: Provide a way to bundle keys with the test to have a positive test
-//       that works without root (device) and on the host (no /system).
-#if 0
 TEST(ApexFileTest, VerifyApexVerity) {
   const std::string filePath = testDataDir + "apex.apexd_test.apex";
   StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
@@ -89,11 +86,15 @@ TEST(ApexFileTest, VerifyApexVerity) {
 
   const ApexVerityData& data = *verity_or;
   EXPECT_NE(nullptr, data.desc.get());
-  EXPECT_EQ(std::string("salt"), data.salt);
-  EXPECT_EQ(std::string("root_digest"), data.root_digest);
+  EXPECT_EQ(std::string("1772301d454698dd155205b7851959c625d8a3e6"
+                        "d39360122693bad804b70007"),
+            data.salt);
+  EXPECT_EQ(std::string("661751839ac6924b2670f102f41bc5a9b239a0a2"),
+            data.root_digest);
 }
-#endif
 
+// TODO: May consider packaging a debug key in debug builds (again).
+#if 0
 TEST(ApexFileTest, VerifyApexVerityNoKeyDir) {
   const std::string filePath = testDataDir + "apex.apexd_test.apex";
   StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
@@ -102,6 +103,7 @@ TEST(ApexFileTest, VerifyApexVerityNoKeyDir) {
   auto verity_or = apexFile->VerifyApexVerity({"/tmp/"});
   ASSERT_FALSE(verity_or.Ok());
 }
+#endif
 
 TEST(ApexFileTest, VerifyApexVerityNoKeyInst) {
   const std::string filePath = testDataDir + "apex.apexd_test_no_inst_key.apex";

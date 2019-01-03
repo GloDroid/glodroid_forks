@@ -354,12 +354,25 @@ TEST_F(ApexServiceTest, StageFailKey) {
   android::binder::Status st =
       service_->stagePackage(installer.test_file, &success);
   ASSERT_FALSE(st.isOk());
+
+  // May contain one of two errors.
   std::string error = st.toString8().c_str();
+
   constexpr const char* kExpectedError1 = "Failed to get realpath of ";
-  EXPECT_NE(std::string::npos, error.find(kExpectedError1)) << error;
+  const size_t pos1 = error.find(kExpectedError1);
   constexpr const char* kExpectedError2 =
       "/etc/security/apex/com.android.apex.test_package.no_inst_key";
-  EXPECT_NE(std::string::npos, error.find(kExpectedError2)) << error;
+  const size_t pos2 = error.find(kExpectedError2);
+
+  constexpr const char* kExpectedError3 =
+      "Error verifying "
+      "/data/local/apexservice_tmp/apex.apexd_test_no_inst_key.apex: "
+      "couldn't verify public key: Failed to compare the bundled public key "
+      "with key";
+  const size_t pos3 = error.find(kExpectedError3);
+
+  const size_t npos = std::string::npos;
+  EXPECT_TRUE((pos1 != npos && pos2 != npos) || pos3 != npos) << error;
 }
 
 TEST_F(ApexServiceTest, StageSuccess) {
