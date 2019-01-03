@@ -19,6 +19,7 @@ apex_key {
     name: "com.android.apex.test_package.key",
     public_key: "com.android.apex.test_package.avbpubkey",
     private_key: "com.android.apex.test_package.pem",
+    installable: false,
 }
 
 apex {
@@ -43,6 +44,7 @@ apex_key {
     name: "com.android.apex.test_package.preinstall.key",
     public_key: "com.android.apex.test_package.preinstall.avbpubkey",
     private_key: "com.android.apex.test_package.preinstall.pem",
+    installable: false,
 }
 
 apex {
@@ -59,6 +61,7 @@ apex_key {
     name: "com.android.apex.test_package.no_inst_key.key",
     public_key: "com.android.apex.test_package.no_inst_key.avbpubkey",
     private_key: "com.android.apex.test_package.no_inst_key.pem",
+    installable: true, // set to true to prevent bundling into the APEX
 }
 
 apex {
