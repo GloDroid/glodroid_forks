@@ -41,6 +41,12 @@ namespace {
 
 constexpr const char* kImageFilename = "apex_payload.img";
 constexpr const char* kManifestFilename = "apex_manifest.json";
+constexpr const char* kBundledPublicKeyFilename = "apex_pubkey";
+#ifdef DEBUG_ALLOW_BUNDLED_KEY
+constexpr const bool kDebugAllowBundledKey = true;
+#else
+constexpr const bool kDebugAllowBundledKey = false;
+#endif
 
 // Tests if <path>/manifest.json file exists.
 bool isFlattenedApex(const std::string& path) {
@@ -72,6 +78,7 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
   int32_t image_offset;
   size_t image_size;
   std::string manifest_content;
+  std::string pubkey;
 
   if (isFlattenedApex(path)) {
     flattened = true;
@@ -127,6 +134,23 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
                         << ": " << ErrorCodeString(ret);
       return StatusOr<ApexFile>::MakeError(err);
     }
+
+    if (kDebugAllowBundledKey) {
+      ret = FindEntry(handle, ZipString(kBundledPublicKeyFilename), &entry);
+      if (ret >= 0) {
+        LOG(VERBOSE) << "Found bundled key in package " << path;
+        length = entry.uncompressed_length;
+        pubkey.resize(length, '\0');
+        ret = ExtractToMemory(handle, &entry,
+                              reinterpret_cast<uint8_t*>(&(pubkey)[0]), length);
+        if (ret != 0) {
+          std::string err = StringLog()
+                            << "Failed to extract public key from package "
+                            << path << ": " << ErrorCodeString(ret);
+          return StatusOr<ApexFile>::MakeError(err);
+        }
+      }
+    }
   }
 
   StatusOr<ApexManifest> manifest = ApexManifest::Parse(manifest_content);
@@ -134,7 +158,8 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
     return StatusOr<ApexFile>::MakeError(manifest.ErrorMessage());
   }
 
-  ApexFile apexFile(path, flattened, image_offset, image_size, *manifest);
+  ApexFile apexFile(path, flattened, image_offset, image_size, *manifest,
+                    pubkey);
   return StatusOr<ApexFile>(std::move(apexFile));
 }
 
@@ -230,8 +255,21 @@ Status verifyPublicKey(const uint8_t* key, size_t length,
     return Status::Fail(StringLog() << "Can't read from " << acceptedKeyFile);
   }
 
-  if (memcmp(&verifiedKey[0], key, length) != 0) {
+  if (verifiedKey.length() != length ||
+      memcmp(&verifiedKey[0], key, length) != 0) {
     return Status::Fail("Failed to compare verified key with key");
+  }
+  return Status::Success();
+}
+
+Status verifyBundledPublicKey(const uint8_t* key, size_t length,
+                              std::string bundledPublicKey) {
+  if (!kDebugAllowBundledKey) {
+    return Status::Fail("Bundled key must not be used in production builds");
+  }
+  if (bundledPublicKey.length() != length ||
+      memcmp(&bundledPublicKey[0], key, length) != 0) {
+    return Status::Fail("Failed to compare the bundled public key with key");
   }
   return Status::Success();
 }
@@ -309,18 +347,27 @@ Status verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
       break;
     }
   }
-  if (!keyFilePath.Ok()) {
+
+  Status st;
+  if (keyFilePath.Ok()) {
+    // TODO(b/115718846)
+    // We need to decide whether we need rollback protection, and whether
+    // we can use the rollback protection provided by libavb.
+    st = verifyPublicKey(pk, pk_len, *keyFilePath);
+  } else if (kDebugAllowBundledKey) {
+    // Failing to find the matching public key in the built-in partitions
+    // is a hard error for non-debuggable build. For debuggable builds,
+    // the public key bundled in the APEX is used as a fallback.
+    st = verifyBundledPublicKey(pk, pk_len, apex.GetBundledPublicKey());
+  } else {
     return keyFilePath.ErrorStatus();
   }
 
-  // TODO(b/115718846)
-  // We need to decide whether we need rollback protection, and whether
-  // we can use the rollback protection provided by libavb.
-  Status st = verifyPublicKey(pk, pk_len, *keyFilePath);
   if (st.Ok()) {
     LOG(VERBOSE) << apex.GetPath() << ": public key matches.";
     return st;
   }
+
   return Status::Fail(StringLog()
                       << "Error verifying " << apex.GetPath() << ": "
                       << "couldn't verify public key: " << st.ErrorMessage());
