@@ -47,6 +47,7 @@ class BaseStringLog {
   }
 
   // Get the current string.
+  // NOLINTNEXTLINE(google-explicit-constructor)
   operator std::string() const { return os_stream.str(); }
 
  private:
@@ -60,6 +61,7 @@ class PStringLog : public BaseStringLog<PStringLog> {
   PStringLog() : errno_(errno) {}
 
   // Get the current string.
+  // NOLINTNEXTLINE(google-explicit-constructor)
   operator std::string() const {
     return (BaseStringLog::operator std::string())
         .append(": ")

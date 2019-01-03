@@ -310,7 +310,8 @@ std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
 class DmVerityDevice {
  public:
   DmVerityDevice() : cleared_(true) {}
-  DmVerityDevice(const std::string& name) : name_(name), cleared_(false) {}
+  explicit DmVerityDevice(const std::string& name)
+      : name_(name), cleared_(false) {}
   DmVerityDevice(const std::string& name, const std::string& dev_path)
       : name_(name), dev_path_(dev_path), cleared_(false) {}
 
@@ -448,7 +449,7 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
 
     Status readAheadStatus = configureReadAhead(verityDev.GetDevPath());
     if (!readAheadStatus.Ok()) {
-      return readAheadStatus.ErrorMessage();
+      return readAheadStatus;
     }
   }
 
