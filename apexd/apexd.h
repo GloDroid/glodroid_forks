@@ -22,7 +22,9 @@
 
 #include <android-base/macros.h>
 
+#include "apex_file.h"
 #include "status.h"
+#include "status_or.h"
 
 namespace android {
 namespace apex {
@@ -43,7 +45,8 @@ Status stagePackages(const std::vector<std::string>& tmp_paths) WARN_UNUSED;
 Status activatePackage(const std::string& full_path) WARN_UNUSED;
 Status deactivatePackage(const std::string& full_path) WARN_UNUSED;
 
-std::vector<std::pair<std::string, uint64_t>> getActivePackages();
+std::vector<ApexFile> getActivePackages();
+StatusOr<ApexFile> getActivePackage(const std::string& package_name);
 
 void onStart();
 void onAllPackagesReady();
