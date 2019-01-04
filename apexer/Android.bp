@@ -28,7 +28,7 @@ python_binary_host {
         },
     },
     libs: [
-        "apex_schema_proto",
+        "apex_manifest_proto",
     ],
     required: [
         "aapt2",

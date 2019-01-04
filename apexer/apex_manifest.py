@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import json
-import manifest_schema_pb2
+import apex_manifest_pb2
 from google.protobuf.json_format import Parse
 from google.protobuf.json_format import ParseError
 
@@ -27,7 +27,7 @@ class ApexManifestError(Exception):
 def ValidateApexManifest(manifest_raw):
 	try:
 		manifest_json = json.loads(manifest_raw)
-		manifest_pb = Parse(json.dumps(manifest_json), manifest_schema_pb2.ManifestSchema())
+		manifest_pb = Parse(json.dumps(manifest_json), apex_manifest_pb2.ApexManifest())
 	except (ParseError, ValueError) as err:
 		raise ApexManifestError(err)
 	# Checking required fields
