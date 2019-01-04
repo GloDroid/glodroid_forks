@@ -54,6 +54,8 @@ class ApexService : public BnApexService {
                             bool* aidl_return) override;
   BinderStatus stagePackages(const std::vector<std::string>& paths,
                              bool* aidl_return) override;
+  BinderStatus submitStagedSession(int session_id,
+                                   std::vector<ApexInfo>* aidl_return) override;
   BinderStatus activatePackage(const std::string& packagePath) override;
   BinderStatus deactivatePackage(const std::string& packagePath) override;
   BinderStatus getActivePackages(std::vector<ApexInfo>* aidl_return) override;
@@ -101,6 +103,32 @@ BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths,
              << res.ErrorMessage();
   return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
                                          String8(res.ErrorMessage().c_str()));
+}
+
+BinderStatus ApexService::submitStagedSession(
+    int session_id, std::vector<ApexInfo>* aidl_return) {
+  LOG(DEBUG) << "submitStagedSession() received by ApexService, session id "
+             << session_id;
+
+  StatusOr<std::vector<ApexFile>> packages =
+      ::android::apex::submitStagedSession(session_id);
+  if (!packages.Ok()) {
+    // TODO: Get correct binder error status.
+    LOG(ERROR) << "Failed to submit session id " << session_id << ": "
+               << packages.ErrorMessage();
+    return BinderStatus::fromExceptionCode(
+        BinderStatus::EX_ILLEGAL_ARGUMENT,
+        String8(packages.ErrorMessage().c_str()));
+  }
+
+  for (const auto& package : *packages) {
+    ApexInfo out;
+    out.packageName = package.GetManifest().GetName();
+    out.packagePath = package.GetPath();
+    out.versionCode = package.GetManifest().GetVersion();
+    aidl_return->push_back(out);
+  }
+  return BinderStatus::ok();
 }
 
 BinderStatus ApexService::activatePackage(const std::string& packagePath) {
@@ -217,6 +245,12 @@ status_t ApexService::shellCommand(int in, int out, int err,
         << "  help - display this help" << std::endl
         << "  stagePackage [packagePath] - stage package from the given path"
         << std::endl
+        << "  stagePackages [packagePath1] ([packagePath2]...) - stage "
+           "multiple packages from the given path"
+        << std::endl
+        << "  getActivePackage [packageName] - return info for active package "
+           "with given name, if present"
+        << std::endl
         << "  getActivePackages - return the list of active packages"
         << std::endl
         << "  activatePackage [packagePath] - activate package from the "
@@ -224,6 +258,9 @@ status_t ApexService::shellCommand(int in, int out, int err,
         << std::endl
         << "  deactivatePackage [packagePath] - deactivate package from the "
            "given path"
+        << std::endl
+        << "  submitStagedSession [sessionId] - attempts to submit the "
+           "installer session with given id"
         << std::endl;
     dprintf(fd, "%s", log.operator std::string().c_str());
   };
@@ -336,6 +373,37 @@ status_t ApexService::shellCommand(int in, int out, int err,
     std::string msg = StringLog()
             << "Failed to deactivate package: " << status.toString8().string()
             << std::endl;
+    dprintf(err, "%s", msg.c_str());
+    return BAD_VALUE;
+  }
+
+  if (cmd == String16("submitStagedSession")) {
+    if (args.size() != 2) {
+      print_help(err, "submitStagedSession requires one session id");
+      return BAD_VALUE;
+    }
+    int session_id = strtol(String8(args[1]).c_str(), nullptr, 10);
+    if (session_id < 0) {
+      std::string msg = StringLog()
+                        << "Failed to parse session id. Must be an integer.";
+      dprintf(err, "%s", msg.c_str());
+      return BAD_VALUE;
+    }
+
+    std::vector<ApexInfo> list;
+    BinderStatus status = submitStagedSession(session_id, &list);
+    if (status.isOk()) {
+      for (const auto& item : list) {
+        std::string msg = StringLog()
+                          << "Package: " << item.packageName
+                          << " Version: " << item.versionCode
+                          << " Path: " << item.packagePath << std::endl;
+        dprintf(out, "%s", msg.c_str());
+      }
+      return OK;
+    }
+    std::string msg = StringLog() << "Failed to submit session: "
+                                  << status.toString8().string() << std::endl;
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }

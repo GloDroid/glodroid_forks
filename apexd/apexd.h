@@ -39,11 +39,15 @@ void unmountAndDetachExistingImages();
 void scanPackagesDirAndActivate(const char* apex_package_dir);
 void scanStagedSessionsDirAndStage();
 
-Status verifyPackages(const std::vector<std::string>& paths) WARN_UNUSED;
+StatusOr<std::vector<ApexFile>> verifyPackages(
+    const std::vector<std::string>& paths) WARN_UNUSED;
 Status preinstallPackages(const std::vector<std::string>& paths) WARN_UNUSED;
 
 Status stagePackages(const std::vector<std::string>& tmpPaths,
                      bool linkPackages = false) WARN_UNUSED;
+
+StatusOr<std::vector<ApexFile>> submitStagedSession(const int session_id)
+    WARN_UNUSED;
 
 Status activatePackage(const std::string& full_path) WARN_UNUSED;
 Status deactivatePackage(const std::string& full_path) WARN_UNUSED;
