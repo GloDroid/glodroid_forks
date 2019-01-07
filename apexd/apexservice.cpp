@@ -57,6 +57,8 @@ class ApexService : public BnApexService {
   BinderStatus activatePackage(const std::string& packagePath) override;
   BinderStatus deactivatePackage(const std::string& packagePath) override;
   BinderStatus getActivePackages(std::vector<ApexInfo>* aidl_return) override;
+  BinderStatus getActivePackage(const std::string& packageName,
+                                ApexInfo* aidl_return) override;
 
   // Override onTransact so we can handle shellCommand.
   status_t onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
@@ -147,12 +149,25 @@ BinderStatus ApexService::deactivatePackage(const std::string& packagePath) {
 
 BinderStatus ApexService::getActivePackages(
     std::vector<ApexInfo>* aidl_return) {
-  auto data = ::android::apex::getActivePackages();
-  for (const auto& pair : data) {
-    ApexInfo pkg;
-    pkg.packageName = pair.first;
-    pkg.versionCode = pair.second;
-    aidl_return->push_back(pkg);
+  auto packages = ::android::apex::getActivePackages();
+  for (const auto& package : packages) {
+    ApexInfo out;
+    out.packageName = package.GetManifest().GetName();
+    out.packagePath = package.GetPath();
+    out.versionCode = package.GetManifest().GetVersion();
+    aidl_return->push_back(out);
+  }
+
+  return BinderStatus::ok();
+}
+
+BinderStatus ApexService::getActivePackage(const std::string& packageName,
+                                           ApexInfo* aidl_return) {
+  StatusOr<ApexFile> apex = ::android::apex::getActivePackage(packageName);
+  if (apex.Ok()) {
+    aidl_return->packageName = apex->GetManifest().GetName();
+    aidl_return->packagePath = apex->GetPath();
+    aidl_return->versionCode = apex->GetManifest().GetVersion();
   }
 
   return BinderStatus::ok();
@@ -255,8 +270,9 @@ status_t ApexService::shellCommand(int in, int out, int err,
     if (status.isOk()) {
       for (const auto& item : list) {
         std::string msg = StringLog()
-                << "Package: " << item.packageName
-                << " Version: " << item.versionCode << std::endl;
+                          << "Package: " << item.packageName
+                          << " Version: " << item.versionCode
+                          << " Path: " << item.packagePath << std::endl;
         dprintf(out, "%s", msg.c_str());
       }
       return OK;
@@ -264,6 +280,30 @@ status_t ApexService::shellCommand(int in, int out, int err,
     std::string msg = StringLog()
             << "Failed to retrieve packages: " << status.toString8().string()
             << std::endl;
+    dprintf(err, "%s", msg.c_str());
+    return BAD_VALUE;
+  }
+
+  if (cmd == String16("getActivePackage")) {
+    if (args.size() != 2) {
+      print_help(err, "Unrecognized options");
+      return BAD_VALUE;
+    }
+
+    ApexInfo package;
+    BinderStatus status = getActivePackage(String8(args[1]).string(), &package);
+    if (status.isOk()) {
+      std::string msg = StringLog()
+                        << "Package: " << package.packageName
+                        << " Version: " << package.versionCode
+                        << " Path: " << package.packagePath << std::endl;
+      return OK;
+    }
+
+    std::string msg = StringLog() << "Failed to fetch active package: "
+                                  << String8(args[1]).string()
+                                  << ", error: " << status.toString8().string()
+                                  << std::endl;
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
