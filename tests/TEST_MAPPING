@@ -1,7 +1,0 @@
-{
-  "presubmit": [
-    {
-      "name": "apex_e2e_tests"
-    }
-  ]
-}
