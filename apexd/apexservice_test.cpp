@@ -92,13 +92,35 @@ class ApexServiceTest : public ::testing::Test {
     return StatusOr<bool>::MakeError(status.toString8().c_str());
   }
 
+  StatusOr<std::vector<ApexInfo>> GetActivePackages() {
+    std::vector<ApexInfo> list;
+    android::binder::Status status = service_->getActivePackages(&list);
+    if (status.isOk()) {
+      return StatusOr<std::vector<ApexInfo>>(list);
+    }
+
+    return StatusOr<std::vector<ApexInfo>>::MakeError(
+        status.toString8().c_str());
+  }
+
+  StatusOr<ApexInfo> GetActivePackage(const std::string& name) {
+    ApexInfo package;
+    android::binder::Status status = service_->getActivePackage(name, &package);
+    if (status.isOk()) {
+      return StatusOr<ApexInfo>(package);
+    }
+
+    return StatusOr<ApexInfo>::MakeError(status.toString8().c_str());
+  }
+
   std::vector<std::string> GetActivePackagesStrings() {
     std::vector<ApexInfo> list;
     android::binder::Status status = service_->getActivePackages(&list);
     if (status.isOk()) {
       std::vector<std::string> ret;
       for (const ApexInfo& p : list) {
-        ret.push_back(p.packageName + "@" + std::to_string(p.versionCode));
+        ret.push_back(p.packageName + "@" + std::to_string(p.versionCode) +
+                      " [path=" + p.packagePath + "]");
       }
       return ret;
     }
@@ -525,6 +547,42 @@ TEST_F(ApexServiceActivationSuccessTest, Activate) {
         << "Versioned: " << Join(versioned_folder_entries, ',')
         << " Latest: " << Join(latest_folder_entries, ',');
   }
+}
+
+TEST_F(ApexServiceActivationSuccessTest, GetActivePackages) {
+  android::binder::Status st =
+      service_->activatePackage(installer_->test_installed_file);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str() << " "
+                         << GetDebugStr(installer_.get());
+
+  StatusOr<std::vector<ApexInfo>> active = GetActivePackages();
+  ASSERT_TRUE(active.Ok());
+  ApexInfo match;
+
+  for (ApexInfo info : *active) {
+    if (info.packageName == installer_->package) {
+      match = info;
+      break;
+    }
+  }
+
+  ASSERT_EQ(installer_->package, match.packageName);
+  ASSERT_EQ(installer_->version, static_cast<uint64_t>(match.versionCode));
+  ASSERT_EQ(installer_->test_installed_file, match.packagePath);
+}
+
+TEST_F(ApexServiceActivationSuccessTest, GetActivePackage) {
+  android::binder::Status st =
+      service_->activatePackage(installer_->test_installed_file);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str() << " "
+                         << GetDebugStr(installer_.get());
+
+  StatusOr<ApexInfo> active = GetActivePackage(installer_->package);
+  ASSERT_TRUE(active.Ok());
+
+  ASSERT_EQ(installer_->package, active->packageName);
+  ASSERT_EQ(installer_->version, static_cast<uint64_t>(active->versionCode));
+  ASSERT_EQ(installer_->test_installed_file, active->packagePath);
 }
 
 TEST_F(ApexServiceTest, StagePreinstall) {
