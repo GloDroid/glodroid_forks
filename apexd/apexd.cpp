@@ -22,7 +22,7 @@
 #include "apex_database.h"
 #include "apex_file.h"
 #include "apex_manifest.h"
-#include "apexd_preinstall.h"
+#include "apexd_prepostinstall.h"
 #include "status_or.h"
 #include "string_log.h"
 
