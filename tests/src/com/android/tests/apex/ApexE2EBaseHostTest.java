@@ -112,11 +112,11 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         result = getDevice().executeShellV2Command("cmd apexservice getActivePackages");
         Assert.assertEquals(CommandStatus.SUCCESS, result.getStatus());
         String[] lines = result.getStdout().split("\n");
-        Pattern p = Pattern.compile("Package:\\ ([\\S]+)\\ Version:\\ ([\\d]+)");
+        Pattern p = Pattern.compile("Package:\\ ([\\S]+)\\ Version:\\ ([\\d]+) Path:\\ ([\\S]+)");
         boolean found = false;
         for (String l : lines) {
             Matcher m = p.matcher(l);
-            Assert.assertTrue(m.matches());
+            Assert.assertTrue("Output line:: " + l, m.matches());
             String name = m.group(1);
             if (name.equals(mApexPackageName)) {
                 found = true;
@@ -124,7 +124,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             }
         }
         Assert.assertTrue(
-                String.format("Cannot find package %s in the active packages %s",
+                String.format("Cannot find package %s in the active packages\n%s",
                     mApexPackageName, result.getStdout()),
                 found);
 
