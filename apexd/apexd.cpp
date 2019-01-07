@@ -728,25 +728,36 @@ Status deactivatePackage(const std::string& full_path) {
   return st;
 }
 
-std::vector<std::pair<std::string, uint64_t>> getActivePackages() {
-  std::vector<std::pair<std::string, uint64_t>> ret;
-  gMountedApexes.ForallMountedApexes([&](const std::string& package,
-                                         const MountedApexData& data,
-                                         bool latest) {
-    if (!latest) {
-      return;
-    }
+std::vector<ApexFile> getActivePackages() {
+  std::vector<ApexFile> ret;
+  gMountedApexes.ForallMountedApexes(
+      [&](const std::string&, const MountedApexData& data, bool latest) {
+        if (!latest) {
+          return;
+        }
 
-    StatusOr<ApexFile> apexFile = ApexFile::Open(data.full_path);
-    if (!apexFile.Ok()) {
-      // TODO: Fail?
-      return;
-    }
+        StatusOr<ApexFile> apexFile = ApexFile::Open(data.full_path);
+        if (!apexFile.Ok()) {
+          // TODO: Fail?
+          return;
+        }
 
-    ret.emplace_back(package, apexFile->GetManifest().GetVersion());
-  });
+        ret.emplace_back(std::move(*apexFile));
+      });
 
   return ret;
+}
+
+StatusOr<ApexFile> getActivePackage(const std::string& packageName) {
+  std::vector<ApexFile> packages = getActivePackages();
+  for (ApexFile& apex : packages) {
+    if (apex.GetManifest().GetName() == packageName) {
+      return StatusOr<ApexFile>(std::move(apex));
+    }
+  }
+
+  return StatusOr<ApexFile>::MakeError(
+      PStringLog() << "Cannot find matching package for: " << packageName);
 }
 
 void unmountAndDetachExistingImages() {
