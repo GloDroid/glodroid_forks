@@ -30,17 +30,20 @@ namespace android {
 namespace apex {
 
 static constexpr const char* kApexPackageDataDir = "/data/apex";
-static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kApexPackageSystemDir = "/system/apex";
+static constexpr const char* kApexRoot = "/apex";
+static constexpr const char* kStagedSessionsDir = "/data/staging";
 
 void unmountAndDetachExistingImages();
 
 void scanPackagesDirAndActivate(const char* apex_package_dir);
+void scanStagedSessionsDirAndStage();
 
 Status verifyPackages(const std::vector<std::string>& paths) WARN_UNUSED;
 Status preinstallPackages(const std::vector<std::string>& paths) WARN_UNUSED;
 
-Status stagePackages(const std::vector<std::string>& tmp_paths) WARN_UNUSED;
+Status stagePackages(const std::vector<std::string>& tmpPaths,
+                     bool linkPackages = false) WARN_UNUSED;
 
 Status activatePackage(const std::string& full_path) WARN_UNUSED;
 Status deactivatePackage(const std::string& full_path) WARN_UNUSED;
