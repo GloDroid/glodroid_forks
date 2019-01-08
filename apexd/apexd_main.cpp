@@ -58,6 +58,9 @@ int main(int /*argc*/, char** argv) {
   android::apex::binder::CreateAndRegisterService();
 
   android::apex::unmountAndDetachExistingImages();
+
+  android::apex::scanStagedSessionsDirAndStage();
+
   // Scan the directory under /data first, as it may contain updates of APEX
   // packages living in the directory under /system, and we want the former ones
   // to be used over the latter ones.
