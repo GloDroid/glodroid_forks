@@ -28,6 +28,7 @@ aidl_interface {
   name: "apex_aidl_interface",
   srcs: [
     "aidl/android/apex/ApexInfo.aidl",
+    "aidl/android/apex/ApexInfoList.aidl",
     "aidl/android/apex/IApexService.aidl",
   ],
   local_include_dir: "aidl",

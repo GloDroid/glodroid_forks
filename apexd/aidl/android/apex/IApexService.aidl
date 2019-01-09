@@ -17,11 +17,12 @@
 package android.apex;
 
 import android.apex.ApexInfo;
+import android.apex.ApexInfoList;
 
 interface IApexService {
    boolean stagePackage(in @utf8InCpp String package_tmp_path);
    boolean stagePackages(in @utf8InCpp List<String> package_tmp_paths);
-   ApexInfo[] submitStagedSession(int session_id);
+   boolean submitStagedSession(int session_id, out ApexInfoList packages);
    ApexInfo[] getActivePackages();
 
    /**
