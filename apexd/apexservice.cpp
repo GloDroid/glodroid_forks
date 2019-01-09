@@ -610,11 +610,14 @@ void CreateAndRegisterService() {
   defaultServiceManager()->addService(String16(kApexServiceName), apexService);
 }
 
-void JoinThreadPool() {
+void StartThreadPool() {
   sp<ProcessState> ps(ProcessState::self());
 
   // Start threadpool, wait for IPC
   ps->startThreadPool();
+}
+
+void JoinThreadPool() {
   IPCThreadState::self()->joinThreadPool();  // should not return
 }
 
