@@ -24,6 +24,7 @@ cc_library_static {
         "src/algorithm.cpp",
         "src/any.cpp",
         "src/bind.cpp",
+        "src/charconv.cpp",
         "src/chrono.cpp",
         "src/condition_variable.cpp",
         "src/debug.cpp",
