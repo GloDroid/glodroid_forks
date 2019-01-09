@@ -54,8 +54,8 @@ class ApexService : public BnApexService {
                             bool* aidl_return) override;
   BinderStatus stagePackages(const std::vector<std::string>& paths,
                              bool* aidl_return) override;
-  BinderStatus submitStagedSession(int session_id,
-                                   std::vector<ApexInfo>* aidl_return) override;
+  BinderStatus submitStagedSession(int session_id, ApexInfoList* apex_info_list,
+                                   bool* aidl_return) override;
   BinderStatus activatePackage(const std::string& packagePath) override;
   BinderStatus deactivatePackage(const std::string& packagePath) override;
   BinderStatus getActivePackages(std::vector<ApexInfo>* aidl_return) override;
@@ -105,20 +105,19 @@ BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths,
                                          String8(res.ErrorMessage().c_str()));
 }
 
-BinderStatus ApexService::submitStagedSession(
-    int session_id, std::vector<ApexInfo>* aidl_return) {
+BinderStatus ApexService::submitStagedSession(int session_id,
+                                              ApexInfoList* apex_info_list,
+                                              bool* aidl_return) {
   LOG(DEBUG) << "submitStagedSession() received by ApexService, session id "
              << session_id;
 
   StatusOr<std::vector<ApexFile>> packages =
       ::android::apex::submitStagedSession(session_id);
   if (!packages.Ok()) {
-    // TODO: Get correct binder error status.
+    *aidl_return = false;
     LOG(ERROR) << "Failed to submit session id " << session_id << ": "
                << packages.ErrorMessage();
-    return BinderStatus::fromExceptionCode(
-        BinderStatus::EX_ILLEGAL_ARGUMENT,
-        String8(packages.ErrorMessage().c_str()));
+    return BinderStatus::ok();
   }
 
   for (const auto& package : *packages) {
@@ -126,8 +125,9 @@ BinderStatus ApexService::submitStagedSession(
     out.packageName = package.GetManifest().GetName();
     out.packagePath = package.GetPath();
     out.versionCode = package.GetManifest().GetVersion();
-    aidl_return->push_back(out);
+    apex_info_list->apexInfos.push_back(out);
   }
+  *aidl_return = true;
   return BinderStatus::ok();
 }
 
@@ -390,14 +390,21 @@ status_t ApexService::shellCommand(int in, int out, int err,
       return BAD_VALUE;
     }
 
-    std::vector<ApexInfo> list;
-    BinderStatus status = submitStagedSession(session_id, &list);
+    std::unique_ptr<ApexInfoList> list;
+    bool ret_value;
+    BinderStatus status =
+        submitStagedSession(session_id, list.get(), &ret_value);
     if (status.isOk()) {
-      for (const auto& item : list) {
-        std::string msg = StringLog()
-                          << "Package: " << item.packageName
-                          << " Version: " << item.versionCode
-                          << " Path: " << item.packagePath << std::endl;
+      if (ret_value) {
+        for (const auto& item : list->apexInfos) {
+          std::string msg = StringLog()
+                            << "Package: " << item.packageName
+                            << " Version: " << item.versionCode
+                            << " Path: " << item.packagePath << std::endl;
+          dprintf(out, "%s", msg.c_str());
+        }
+      } else {
+        std::string msg = StringLog() << "Verification failed." << std::endl;
         dprintf(out, "%s", msg.c_str());
       }
       return OK;
