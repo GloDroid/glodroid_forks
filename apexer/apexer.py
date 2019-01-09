@@ -73,6 +73,8 @@ def ParseArgs(argv):
   parser.add_argument('--payload_type', metavar='TYPE', required=False, default="image",
                       choices=["zip", "image"],
                       help='type of APEX payload being built "zip" or "image"')
+  parser.add_argument('--override_apk_package_name', required=False,
+                      help='package name of the APK container. Default is the apex name in --manifest.')
   return parser.parse_args(argv)
 
 def FindBinaryPath(binary):
@@ -298,7 +300,11 @@ def CreateApex(args, work_dir):
   if args.verbose:
     print('Creating AndroidManifest ' + android_manifest_file)
   with open(android_manifest_file, 'w+') as f:
-    f.write(PrepareAndroidManifest(manifest_apex.name, manifest_apex.version))
+    app_package_name = manifest_apex.name
+    if args.override_apk_package_name:
+      app_package_name = args.override_apk_package_name
+
+    f.write(PrepareAndroidManifest(app_package_name, manifest_apex.version))
 
   # copy manifest to the content dir so that it is also accessible
   # without mounting the image
