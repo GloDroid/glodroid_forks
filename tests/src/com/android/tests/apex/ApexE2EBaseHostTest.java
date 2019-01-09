@@ -41,6 +41,7 @@ import java.util.regex.Pattern;
  */
 public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     private static final String APEX_DATA_DIR = "/data/apex";
+    private static final String STAGING_DATA_DIR = "/data/staging";
     private static final String OPTION_APEX_PACKAGE_NAME = "apex_package_name";
     private static final String OPTION_APEX_FILE_NAME = "apex_file_name";
 
@@ -69,6 +70,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
                 OPTION_APEX_FILE_NAME));
         }
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
+        getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
         mAdbWasRoot = getDevice().isAdbRoot();
     }
 
@@ -194,6 +196,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     public void tearDown() throws DeviceNotAvailableException {
         Assert.assertTrue(getDevice().enableAdbRoot());
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
+        getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
         if (!mAdbWasRoot) {
             Assert.assertTrue(getDevice().disableAdbRoot());
         }
