@@ -827,6 +827,46 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
   }
 }
 
+StatusOr<std::vector<ApexFile>> verifySessionDir(const int session_id) {
+  std::string sessionDirPath = std::string(kStagedSessionsDir) + "/session_" +
+                               std::to_string(session_id);
+  LOG(INFO) << "Scanning " << sessionDirPath
+            << " looking for packages to be validated";
+  auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(sessionDirPath.c_str()),
+                                               closedir);
+
+  if (!d) {
+    PLOG(WARNING) << "Session directory " << sessionDirPath
+                  << " not found, nothing to do.";
+    return StatusOr<std::vector<ApexFile>>::MakeError(
+        "Cannot scan session directory.");
+  }
+  std::vector<std::string> pathsToVerify;
+  struct dirent* sessionDirP;
+  bool apexFileFound = false;
+  while ((sessionDirP = readdir(d.get())) != NULL) {
+    const std::string sessionFileName(sessionDirP->d_name);
+    if (sessionFileName == "." || sessionFileName == "..") {
+      continue;
+    }
+    // TODO(b/118865310): support sessions of sessions i.e. multi-package
+    // sessions.
+    const bool isApexFile =
+        sessionDirP->d_type == DT_REG &&
+        EndsWith(sessionFileName.c_str(), kApexPackageSuffix);
+    if (apexFileFound) {
+      return StatusOr<std::vector<ApexFile>>::MakeError(
+          "More than one APEX package found in the same session directory.");
+    }
+    apexFileFound = true;
+    if (isApexFile) {
+      pathsToVerify.push_back(android::base::StringPrintf(
+          "%s/%s", sessionDirPath.c_str(), sessionDirP->d_name));
+    }
+  }
+  return verifyPackages(pathsToVerify);
+}
+
 void scanStagedSessionsDirAndStage() {
   LOG(INFO) << "Scanning " << kStagedSessionsDir
             << " looking for sessions to be activated.";
@@ -881,13 +921,14 @@ void scanStagedSessionsDirAndStage() {
   // TODO(b/118865310): mark session as successful
 }
 
-Status verifyPackages(const std::vector<std::string>& paths) {
+StatusOr<std::vector<ApexFile>> verifyPackages(
+    const std::vector<std::string>& paths) {
   LOG(DEBUG) << "verifyPackages() for " << android::base::Join(paths, ',');
 
   if (paths.empty()) {
-    return Status::Fail("Empty set of inputs");
+    return StatusOr<std::vector<ApexFile>>::MakeError("Empty set of inputs");
   }
-
+  std::vector<ApexFile> ret;
   // Note: assume that sessions do not have thousands of paths, so that it is
   //       OK to keep the ApexFile/ApexManifests in memory.
 
@@ -895,16 +936,19 @@ Status verifyPackages(const std::vector<std::string>& paths) {
   for (const std::string& path : paths) {
     StatusOr<ApexFile> apex_file = ApexFile::Open(path);
     if (!apex_file.Ok()) {
-      return apex_file.ErrorStatus();
+      return StatusOr<std::vector<ApexFile>>::MakeError(
+          apex_file.ErrorMessage());
     }
     StatusOr<ApexVerityData> verity_or = apex_file->VerifyApexVerity(
         {kApexKeySystemDirectory, kApexKeyProductDirectory});
     if (!verity_or.Ok()) {
-      return verity_or.ErrorStatus();
+      return StatusOr<std::vector<ApexFile>>::MakeError(
+          verity_or.ErrorMessage());
     }
+    ret.push_back(std::move(*apex_file));
   }
 
-  return Status::Success();
+  return StatusOr<std::vector<ApexFile>>(std::move(ret));
 }
 
 Status preinstallPackages(const std::vector<std::string>& paths) {
@@ -950,9 +994,9 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
   //       it will open ApexFiles multiple times.
 
   // 1) Verify all packages.
-  Status verify_status = verifyPackages(tmpPaths);
+  auto verify_status = verifyPackages(tmpPaths);
   if (!verify_status.Ok()) {
-    return verify_status;
+    return Status::Fail(verify_status.ErrorMessage());
   }
   if (tmpPaths.empty()) {
     return Status::Fail("Empty set of inputs");
@@ -1040,6 +1084,12 @@ void onAllPackagesReady() {
     PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to "
                 << kApexStatusReady;
   }
+}
+
+StatusOr<std::vector<ApexFile>> submitStagedSession(const int session_id) {
+  // TODO(b/118865310): upon successful verification, mark the session as
+  // staged in a checkpoint file.
+  return verifySessionDir(session_id);
 }
 
 }  // namespace apex
