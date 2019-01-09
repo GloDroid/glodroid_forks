@@ -681,15 +681,17 @@ TEST_F(ApexServiceTest, SubmitSessionTestSuccess) {
     FAIL() << GetDebugStr(&installer);
   }
 
-  std::vector<ApexInfo> list;
-  android::binder::Status status = service_->submitStagedSession(123, &list);
+  ApexInfoList list;
+  bool ret_value;
+  android::binder::Status status =
+      service_->submitStagedSession(123, &list, &ret_value);
 
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
-
-  EXPECT_EQ(1u, list.size());
+  EXPECT_TRUE(ret_value);
+  EXPECT_EQ(1u, list.apexInfos.size());
   ApexInfo match;
-  for (ApexInfo info : list) {
+  for (ApexInfo info : list.apexInfos) {
     if (info.packageName == installer.package) {
       match = info;
       break;
@@ -709,11 +711,14 @@ TEST_F(ApexServiceTest, SubmitSessionTestFail) {
     FAIL() << GetDebugStr(&installer);
   }
 
-  std::vector<ApexInfo> list;
-  android::binder::Status status = service_->submitStagedSession(123, &list);
+  ApexInfoList list;
+  bool ret_value;
+  android::binder::Status status =
+      service_->submitStagedSession(123, &list, &ret_value);
 
-  ASSERT_FALSE(status.isOk())
+  ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_FALSE(ret_value);
 }
 
 class LogTestToLogcat : public testing::EmptyTestEventListener {
