@@ -142,6 +142,14 @@ def get_build_cmds(bitness, host):
     return extract_build_cmds(commands, os.path.basename(target))
 
 
+def setup_test_directory():
+    """Prepares a device test directory for use by the shell user."""
+    device_dir = '/data/local/tmp/libcxx'
+    check_call(['adb', 'shell', 'rm', '-rf', device_dir])
+    check_call(['adb', 'shell', 'mkdir', '-p', device_dir])
+    check_call(['adb', 'shell', 'chown', '-R', 'shell:shell', device_dir])
+
+
 def main():
     """Program entry point."""
     logging.basicConfig(level=logging.INFO)
@@ -175,6 +183,9 @@ def main():
 
         have_filter_args = True
         break  # No need to keep scanning.
+
+    if not args.host:
+        setup_test_directory()
 
     lit_args = [
         '-sv', android_mode_arg, cxx_under_test_arg, cxx_template_arg,
