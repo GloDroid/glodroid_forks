@@ -51,6 +51,7 @@ class Configuration(libcxx.test.config.Configuration):
 
     def configure_features(self):
         self.config.available_features.add('long_tests')
+        self.config.available_features.add('c++experimental')
         std_pattern = re.compile(r'-std=(c\+\+\d[0-9x-z])')
         match = std_pattern.search(self.cxx.cxx_template)
         if match:
