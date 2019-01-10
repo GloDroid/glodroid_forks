@@ -89,7 +89,7 @@ TEST(ApexFileTest, VerifyApexVerity) {
   EXPECT_EQ(std::string("1772301d454698dd155205b7851959c625d8a3e6"
                         "d39360122693bad804b70007"),
             data.salt);
-  EXPECT_EQ(std::string("661751839ac6924b2670f102f41bc5a9b239a0a2"),
+  EXPECT_EQ(std::string("29fec5902389fd26ec8e121662df5f40c6eafc76"),
             data.root_digest);
 }
 
