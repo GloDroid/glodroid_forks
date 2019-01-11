@@ -85,7 +85,7 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
     image_offset = 0;
     image_size = 0;
     const std::string manifest_path = path + "/" + kManifestFilename;
-    if (!android::base::ReadFileToString(path, &manifest_content)) {
+    if (!android::base::ReadFileToString(manifest_path, &manifest_content)) {
       std::string err = StringLog()
                         << "Failed to read manifest file: " << manifest_path;
       return StatusOr<ApexFile>::MakeError(err);
