@@ -112,9 +112,17 @@ TEST_CASE(basic_tests)
     {
         std::error_code ec = GetTestEC();
         path ret = temp_directory_path(ec);
+#if defined(__ANDROID__)
+        // Android has no globally writable storage and thus this API does not
+        // work without environment configuration.
+        TEST_CHECK(ec != GetTestEC());
+        TEST_CHECK(ec);
+        TEST_CHECK(ret == "");
+#else
         TEST_CHECK(!ec);
         TEST_CHECK(ret == "/tmp");
         TEST_CHECK(is_directory(ret));
+#endif
     }
 }
 
