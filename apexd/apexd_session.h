@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,21 @@
  * limitations under the License.
  */
 
-python_library_host {
-    name: "apex_manifest_proto",
-    version: {
-        py2: {
-            enabled: true,
-        },
-        py3: {
-            enabled: true,
-        },
-    },
-    srcs: [
-        "apex_manifest.proto",
-    ],
-    proto: {
-        canonical_path_from_root: false,
-    },
-}
+#ifndef ANDROID_APEXD_APEXD_SESSION_H_
+#define ANDROID_APEXD_APEXD_SESSION_H_
 
-cc_library_static {
-    name: "lib_apex_session_state_proto",
-    host_supported: true,
-    proto: {
-        export_proto_headers: true,
-        type: "full",
-    },
-    srcs: ["session_state.proto"],
-}
+#include "status_or.h"
+
+#include "session_state.pb.h"
+
+namespace android {
+namespace apex {
+
+StatusOr<::apex::proto::SessionState> readSessionState(const int session_id);
+Status writeSessionState(const int session_id,
+                         ::apex::proto::SessionState state);
+
+}  // namespace apex
+}  // namespace android
+
+#endif  // ANDROID_APEXD_APEXD_SESSION_H
