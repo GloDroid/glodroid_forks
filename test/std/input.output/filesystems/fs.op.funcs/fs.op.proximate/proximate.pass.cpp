@@ -72,7 +72,11 @@ TEST_CASE(basic_test) {
       {cwd, "a", ".."},
       {parent_cwd, "a", "../.."},
       {"a", cwd, "a"},
+#if !defined(__ANDROID__)
+      // Android tests are run via a RemoteExecutor, where the parent directory
+      // is a temporary directory with no fixed name.
       {"a", parent_cwd, "fs.op.proximate/a"},
+#endif
       {"/", "a", dot_dot_to_root / ".."},
       {"/", "a/b", dot_dot_to_root / "../.."},
       {"/", "a/b/", dot_dot_to_root / "../../.."},
