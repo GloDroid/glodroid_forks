@@ -375,26 +375,47 @@ StatusOr<DmVerityDevice> createVerityDevice(const std::string& name,
   return StatusOr<DmVerityDevice>(std::move(dev));
 }
 
-StatusOr<std::vector<std::string>> getApexRootSubFolders() {
+template <typename FilterFn>
+StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
+                                           FilterFn fn) {
   // This code would be much shorter if C++17's std::filesystem were available,
   // which is not at the time of writing this.
-  auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(kApexRoot), closedir);
+  auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(path.c_str()), closedir);
   if (!d) {
     return StatusOr<std::vector<std::string>>::MakeError(
-        PStringLog() << "Can't open " << kApexRoot << " for reading.");
+        PStringLog() << "Can't open " << path << " for reading.");
   }
 
   std::vector<std::string> ret;
   struct dirent* dp;
   while ((dp = readdir(d.get())) != NULL) {
-    if (dp->d_type != DT_DIR || (strcmp(dp->d_name, ".") == 0) ||
-        (strcmp(dp->d_name, "..") == 0)) {
+    if ((strcmp(dp->d_name, ".") == 0) || (strcmp(dp->d_name, "..") == 0)) {
       continue;
     }
-    ret.push_back(dp->d_name);
+    if (!fn(dp->d_type, dp->d_name)) {
+      continue;
+    }
+    ret.push_back(path + "/" + dp->d_name);
   }
 
   return StatusOr<std::vector<std::string>>(std::move(ret));
+}
+
+template <char kTypeVal>
+bool DTypeFilter(unsigned char d_type, const char* d_name ATTRIBUTE_UNUSED) {
+  return d_type == kTypeVal;
+}
+
+StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
+                                                       bool include_dirs) {
+  auto filter_fn = [include_dirs](unsigned char d_type, const char* d_name) {
+    if (d_type == DT_REG && EndsWith(d_name, kApexPackageSuffix)) {
+      return true;  // APEX file, take.
+    }
+    // Directory and asked to scan for flattened.
+    return d_type == DT_DIR && include_dirs;
+  };
+  return ReadDir(path, filter_fn);
 }
 
 Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
@@ -766,7 +787,8 @@ void unmountAndDetachExistingImages() {
   // becomes an actual daemon. Remove if that's the case.
   LOG(INFO) << "Scanning " << kApexRoot
             << " looking for packages already mounted.";
-  StatusOr<std::vector<std::string>> folders_status = getApexRootSubFolders();
+  StatusOr<std::vector<std::string>> folders_status =
+      ReadDir(kApexRoot, &DTypeFilter<DT_DIR>);
   if (!folders_status.Ok()) {
     LOG(ERROR) << folders_status.ErrorMessage();
     return;
@@ -777,8 +799,7 @@ void unmountAndDetachExistingImages() {
   std::vector<std::string>& folders = *folders_status;
   std::sort(folders.begin(), folders.end());
 
-  for (const std::string& folder : folders) {
-    std::string full_path = std::string(kApexRoot).append("/").append(folder);
+  for (const std::string& full_path : folders) {
     LOG(INFO) << "Unmounting " << full_path;
     // Lazily try to umount whatever is mounted.
     if (umount2(full_path.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
@@ -798,31 +819,22 @@ void unmountAndDetachExistingImages() {
 
 void scanPackagesDirAndActivate(const char* apex_package_dir) {
   LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
-  auto d =
-      std::unique_ptr<DIR, int (*)(DIR*)>(opendir(apex_package_dir), closedir);
 
-  if (!d) {
-    PLOG(WARNING) << "Package directory " << apex_package_dir
-                  << " not found, nothing to do.";
-    return;
-  }
   const bool scanSystemApexes =
       android::base::StartsWith(apex_package_dir, kApexPackageSystemDir);
-  struct dirent* dp;
-  while ((dp = readdir(d.get())) != NULL) {
-    const std::string name(dp->d_name);
-    if (name == "." || name == "..") {
-      continue;
-    }
-    const bool isApexFile =
-        dp->d_type == DT_REG && EndsWith(name, kApexPackageSuffix);
-    if (isApexFile || (dp->d_type == DT_DIR && scanSystemApexes)) {
-      LOG(INFO) << "Found " << name;
+  StatusOr<std::vector<std::string>> scan =
+      FindApexFilesByName(apex_package_dir, scanSystemApexes);
+  if (!scan.Ok()) {
+    LOG(WARNING) << scan.ErrorMessage();
+    return;
+  }
 
-      Status res = activatePackage(std::string(apex_package_dir) + "/" + name);
-      if (!res.Ok()) {
-        LOG(ERROR) << res.ErrorMessage();
-      }
+  for (const std::string& name : *scan) {
+    LOG(INFO) << "Found " << name;
+
+    Status res = activatePackage(name);
+    if (!res.Ok()) {
+      LOG(ERROR) << res.ErrorMessage();
     }
   }
 }
@@ -832,89 +844,57 @@ StatusOr<std::vector<ApexFile>> verifySessionDir(const int session_id) {
                                std::to_string(session_id);
   LOG(INFO) << "Scanning " << sessionDirPath
             << " looking for packages to be validated";
-  auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(sessionDirPath.c_str()),
-                                               closedir);
+  StatusOr<std::vector<std::string>> scan =
+      FindApexFilesByName(sessionDirPath, /* include_dirs=*/false);
+  if (!scan.Ok()) {
+    LOG(WARNING) << scan.ErrorMessage();
+    return StatusOr<std::vector<ApexFile>>::MakeError(scan.ErrorMessage());
+  }
 
-  if (!d) {
-    PLOG(WARNING) << "Session directory " << sessionDirPath
-                  << " not found, nothing to do.";
+  // TODO(b/118865310): support sessions of sessions i.e. multi-package
+  // sessions.
+  if (scan->size() > 1) {
     return StatusOr<std::vector<ApexFile>>::MakeError(
-        "Cannot scan session directory.");
+        "More than one APEX package found in the same session directory.");
   }
-  std::vector<std::string> pathsToVerify;
-  struct dirent* sessionDirP;
-  bool apexFileFound = false;
-  while ((sessionDirP = readdir(d.get())) != NULL) {
-    const std::string sessionFileName(sessionDirP->d_name);
-    if (sessionFileName == "." || sessionFileName == "..") {
-      continue;
-    }
-    // TODO(b/118865310): support sessions of sessions i.e. multi-package
-    // sessions.
-    const bool isApexFile =
-        sessionDirP->d_type == DT_REG &&
-        EndsWith(sessionFileName.c_str(), kApexPackageSuffix);
-    if (apexFileFound) {
-      return StatusOr<std::vector<ApexFile>>::MakeError(
-          "More than one APEX package found in the same session directory.");
-    }
-    apexFileFound = true;
-    if (isApexFile) {
-      pathsToVerify.push_back(android::base::StringPrintf(
-          "%s/%s", sessionDirPath.c_str(), sessionDirP->d_name));
-    }
-  }
-  return verifyPackages(pathsToVerify);
+
+  return verifyPackages(*scan);
 }
 
 void scanStagedSessionsDirAndStage() {
   LOG(INFO) << "Scanning " << kStagedSessionsDir
             << " looking for sessions to be activated.";
-  auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(kStagedSessionsDir),
-                                               closedir);
 
-  if (!d) {
-    PLOG(WARNING) << "Session directory " << kStagedSessionsDir
-                  << " not found, nothing to do.";
+  StatusOr<std::vector<std::string>> sessions =
+      ReadDir(kStagedSessionsDir, [](unsigned char d_type, const char* d_name) {
+        return (d_type == DT_DIR) && StartsWith(d_name, "session_");
+      });
+  if (!sessions.Ok()) {
+    LOG(WARNING) << sessions.ErrorMessage();
     return;
   }
-  struct dirent* dp;
-  while ((dp = readdir(d.get())) != NULL) {
-    const std::string name(dp->d_name);
-    if (name == "." || name == "..") {
+
+  for (const std::string sessionDirPath : *sessions) {
+    // TODO(b/118865310): support sessions of sessions i.e. multi-package
+    // sessions.
+    StatusOr<std::vector<std::string>> apexes =
+        FindApexFilesByName(sessionDirPath, /* include_dirs=*/false);
+    if (!apexes.Ok()) {
+      LOG(WARNING) << apexes.ErrorMessage();
       continue;
     }
-    const bool isSessionDir =
-        StartsWith(name, "session_") && (dp->d_type == DT_DIR);
-    if (isSessionDir) {
-      const std::string sessionDirPath =
-          android::base::StringPrintf("%s/%s", kStagedSessionsDir, dp->d_name);
-      auto sessionDir = std::unique_ptr<DIR, int (*)(DIR*)>(
-          opendir(sessionDirPath.c_str()), closedir);
-      struct dirent* sessionDirP;
-      while ((sessionDirP = readdir(sessionDir.get())) != NULL) {
-        const std::string sessionFileName(sessionDirP->d_name);
-        if (sessionFileName == "." || sessionFileName == "..") {
-          continue;
-        }
-        // TODO(b/118865310): support sessions of sessions i.e. multi-package
-        // sessions.
-        const bool isApexFile = sessionDirP->d_type == DT_REG &&
-                                EndsWith(sessionFileName, kApexPackageSuffix);
-        // TODO(b/118865310): double check that there is only one apex file per
-        // dir?
-        if (isApexFile) {
-          const std::string apexFilePath = android::base::StringPrintf(
-              "%s/%s/%s", kStagedSessionsDir, dp->d_name, sessionDirP->d_name);
-          const Status result =
-              stagePackages({apexFilePath}, /* linkPackages */ true);
-          if (!result.Ok()) {
-            LOG(ERROR) << "Activation failed for package " << apexFilePath
-                       << ": " << result.ErrorMessage();
-            // TODO(b/118865310): mark session as failed, rollback the changes
-            // and reboot the device
-          }
-        }
+
+    // TODO(b/118865310): double check that there is only one apex file per
+    // dir?
+
+    for (const std::string& apexFilePath : *apexes) {
+      const Status result =
+          stagePackages({apexFilePath}, /* linkPackages */ true);
+      if (!result.Ok()) {
+        LOG(ERROR) << "Activation failed for package " << apexFilePath << ": "
+                   << result.ErrorMessage();
+        // TODO(b/118865310): mark session as failed, rollback the changes
+        // and reboot the device
       }
     }
   }
