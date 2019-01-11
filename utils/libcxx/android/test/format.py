@@ -29,8 +29,10 @@ class HostTestFormat(libcxx.test.format.LibcxxTestFormat):
             os.path.join(outdir, 'lib'),
             os.path.join(outdir, 'lib64'),
         ])
-        default_env = {'LD_LIBRARY_PATH': libpath}
-        self.exec_env = default_env if exec_env is None else exec_env
+        env = {'LD_LIBRARY_PATH': libpath}
+        if exec_env is not None:
+            env.update(exec_env)
+        self.exec_env = env
 
 
 class TestFormat(HostTestFormat):
