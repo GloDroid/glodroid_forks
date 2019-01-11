@@ -20,8 +20,10 @@ cc_defaults {
   shared_libs: [
     "libbase",
     "libjsoncpp",
+    "libprotobuf-cpp-full",
     "libziparchive",
   ],
+  static_libs: ["lib_apex_session_state_proto"],
 }
 
 aidl_interface {
@@ -68,6 +70,7 @@ cc_library_static {
     "apexd.cpp",
     "apexd_prepostinstall.cpp",
     "apexd_private.cpp",
+    "apexd_session.cpp"
   ],
   static_libs: [
     "libapex",
