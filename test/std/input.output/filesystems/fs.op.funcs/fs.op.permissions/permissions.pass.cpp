@@ -159,11 +159,12 @@ TEST_CASE(test_no_resolve_symlink_on_symlink)
         {perms::owner_all, perms::group_all, perm_options::remove},
     };
     for (auto const& TC : cases) {
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__ANDROID__)
-        // On OS X symlink permissions are supported. We should get an empty
-        // error code and the expected permissions.
-        const auto expected_link_perms = TC.expected;
-        std::error_code expected_ec;
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) ||       \
+    defined(__ANDROID__)
+      // On OS X symlink permissions are supported. We should get an empty
+      // error code and the expected permissions.
+      const auto expected_link_perms = TC.expected;
+      std::error_code expected_ec;
 #else
         // On linux symlink permissions are not supported. The error code should
         // be 'operation_not_supported' and the symlink permissions should be
