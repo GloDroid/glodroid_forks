@@ -23,6 +23,7 @@
 #include "apex_file.h"
 #include "apex_manifest.h"
 #include "apexd_prepostinstall.h"
+#include "apexd_session.h"
 #include "status_or.h"
 #include "string_log.h"
 
@@ -66,6 +67,8 @@ using android::dm::DeviceMapper;
 using android::dm::DmDeviceState;
 using android::dm::DmTable;
 using android::dm::DmTargetVerity;
+
+using apex::proto::SessionState;
 
 namespace android {
 namespace apex {
@@ -1067,9 +1070,18 @@ void onAllPackagesReady() {
 }
 
 StatusOr<std::vector<ApexFile>> submitStagedSession(const int session_id) {
-  // TODO(b/118865310): upon successful verification, mark the session as
-  // staged in a checkpoint file.
-  return verifySessionDir(session_id);
+  auto verified = verifySessionDir(session_id);
+  if (verified.Ok()) {
+    SessionState sessionState;
+    sessionState.set_state(SessionState::STAGED);
+    sessionState.set_retry_count(0);
+    auto stateWritten = writeSessionState(session_id, sessionState);
+    if (!stateWritten.Ok()) {
+      return StatusOr<std::vector<ApexFile>>::MakeError(
+          stateWritten.ErrorMessage());
+    }
+  }
+  return verified;
 }
 
 }  // namespace apex
