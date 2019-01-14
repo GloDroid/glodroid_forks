@@ -153,7 +153,7 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
     }
   }
 
-  StatusOr<ApexManifest> manifest = ApexManifest::Parse(manifest_content);
+  StatusOr<ApexManifest> manifest = ParseManifest(manifest_content);
   if (!manifest.Ok()) {
     return StatusOr<ApexFile>::MakeError(manifest.ErrorMessage());
   }
@@ -286,10 +286,10 @@ StatusOr<std::string> getPublicKeyFilePath(const ApexFile& apex,
                     << apex.GetPath());
   }
 
-  if (keyName != apex.GetManifest().GetName()) {
+  if (keyName != apex.GetManifest().name()) {
     return StatusOr<std::string>::MakeError(
         StringLog() << "Key mismatch: apex name is '"
-                    << apex.GetManifest().GetName() << "'"
+                    << apex.GetManifest().name() << "'"
                     << " but key name is '" << keyName << "'");
   }
 
