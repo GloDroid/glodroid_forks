@@ -216,8 +216,8 @@ class ApexServiceTest : public ::testing::Test {
       }
 
       const ApexManifest& manifest = apex_file->GetManifest();
-      package = manifest.GetName();
-      version = manifest.GetVersion();
+      package = manifest.name();
+      version = manifest.version();
 
       test_installed_file = std::string(kApexPackageDataDir) + "/" + package +
                             "@" + std::to_string(version) + ".apex";

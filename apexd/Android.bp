@@ -3,6 +3,8 @@ cc_defaults {
   cflags: [
     "-Wall",
     "-Wextra",
+    "-Werror",
+    "-Wno-unused-parameter",
 
     // Some extra flags.
     "-fstrict-aliasing",
@@ -22,8 +24,13 @@ cc_defaults {
     "libjsoncpp",
     "libprotobuf-cpp-full",
     "libziparchive",
+    // Required full for parsing json string to message
+    "libprotobuf-cpp-full",
   ],
-  static_libs: ["lib_apex_session_state_proto"],
+  static_libs: [
+    "lib_apex_session_state_proto",
+    "lib_apex_manifest_proto"
+  ],
 }
 
 aidl_interface {

@@ -103,8 +103,7 @@ Status StageFnInstall(std::vector<ApexFile>& apexes, Fn fn, const char* arg,
     std::string mount_point =
         apexd_private::GetPackageMountPoint(apex.GetManifest());
 
-    if (!apexd_private::IsMounted(apex.GetManifest().GetName(),
-                                  apex.GetPath())) {
+    if (!apexd_private::IsMounted(apex.GetManifest().name(), apex.GetPath())) {
       Status mountStatus = apexd_private::MountPackage(apex, mount_point);
       if (!mountStatus.Ok()) {
         return mountStatus;
@@ -226,22 +225,21 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
 }  // namespace
 
 Status StagePreInstall(std::vector<ApexFile>& apexes) {
-  return StageFnInstall(apexes, &ApexManifest::GetPreInstallHook,
-                        "--pre-install", "pre-install");
+  return StageFnInstall(apexes, &ApexManifest::preinstallhook, "--pre-install",
+                        "pre-install");
 }
 
 int RunPreInstall(char** in_argv) {
-  return RunFnInstall(in_argv, &ApexManifest::GetPreInstallHook, "pre-install");
+  return RunFnInstall(in_argv, &ApexManifest::preinstallhook, "pre-install");
 }
 
 Status StagePostInstall(std::vector<ApexFile>& apexes) {
-  return StageFnInstall(apexes, &ApexManifest::GetPostInstallHook,
+  return StageFnInstall(apexes, &ApexManifest::postinstallhook,
                         "--post-install", "post-install");
 }
 
 int RunPostInstall(char** in_argv) {
-  return RunFnInstall(in_argv, &ApexManifest::GetPostInstallHook,
-                      "post-install");
+  return RunFnInstall(in_argv, &ApexManifest::postinstallhook, "post-install");
 }
 
 }  // namespace apex

@@ -430,7 +430,7 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
                          MountedApexData* apex_data) {
   const ApexManifest& manifest = apex.GetManifest();
   const std::string& full_path = apex.GetPath();
-  const std::string& packageId = manifest.GetPackageId();
+  const std::string& packageId = GetPackageId(manifest);
 
   LoopbackDeviceUniqueFd loopbackDevice;
   for (size_t attempts = 1;; ++attempts) {
@@ -596,20 +596,20 @@ Status MountPackage(const ApexFile& apex, const std::string& mountPoint) {
     return st;
   }
 
-  gMountedApexes.AddMountedApex(apex.GetManifest().GetName(), false,
+  gMountedApexes.AddMountedApex(apex.GetManifest().name(), false,
                                 std::move(data));
   return Status::Success();
 }
 
 Status UnmountPackage(const ApexFile& apex) {
-  LOG(VERBOSE) << "Unmounting " << apex.GetManifest().GetPackageId();
+  LOG(VERBOSE) << "Unmounting " << GetPackageId(apex.GetManifest());
 
   const ApexManifest& manifest = apex.GetManifest();
 
   const MountedApexData* data = nullptr;
   bool latest = false;
 
-  gMountedApexes.ForallMountedApexes(manifest.GetName(),
+  gMountedApexes.ForallMountedApexes(manifest.name(),
                                      [&](const MountedApexData& d, bool l) {
                                        if (d.full_path == apex.GetPath()) {
                                          data = &d;
@@ -636,7 +636,7 @@ Status UnmountPackage(const ApexFile& apex) {
 
   // Clean up gMountedApexes now, even though we're not fully done.
   std::string loop = data->loop_name;
-  gMountedApexes.RemoveMountedApex(manifest.GetName(), apex.GetPath());
+  gMountedApexes.RemoveMountedApex(manifest.name(), apex.GetPath());
 
   // Attempt to delete the folder. If the folder is retained, other
   // data may be incorrect.
@@ -668,11 +668,11 @@ bool IsMounted(const std::string& name, const std::string& full_path) {
 }
 
 std::string GetPackageMountPoint(const ApexManifest& manifest) {
-  return StringPrintf("%s/%s", kApexRoot, manifest.GetPackageId().c_str());
+  return StringPrintf("%s/%s", kApexRoot, GetPackageId(manifest).c_str());
 }
 
 std::string GetActiveMountPoint(const ApexManifest& manifest) {
-  return StringPrintf("%s/%s", kApexRoot, manifest.GetName().c_str());
+  return StringPrintf("%s/%s", kApexRoot, manifest.name().c_str());
 }
 
 }  // namespace apexd_private
@@ -693,20 +693,22 @@ Status activatePackage(const std::string& full_path) {
   bool found_other_version = false;
   bool version_found_mounted = false;
   {
-    uint64_t new_version = manifest.GetVersion();
+    uint64_t new_version = manifest.version();
     bool version_found_active = false;
     gMountedApexes.ForallMountedApexes(
-        manifest.GetName(), [&](const MountedApexData& data, bool latest) {
+        manifest.name(), [&](const MountedApexData& data, bool latest) {
           StatusOr<ApexFile> otherApex = ApexFile::Open(data.full_path);
           if (!otherApex.Ok()) {
             return;
           }
           found_other_version = true;
-          if (otherApex->GetManifest().GetVersion() == new_version) {
+          if (static_cast<uint64_t>(otherApex->GetManifest().version()) ==
+              new_version) {
             version_found_mounted = true;
             version_found_active = latest;
           }
-          if (otherApex->GetManifest().GetVersion() > new_version) {
+          if (static_cast<uint64_t>(otherApex->GetManifest().version()) >
+              new_version) {
             is_newest_version = false;
           }
         });
@@ -735,7 +737,7 @@ Status activatePackage(const std::string& full_path) {
     }
   }
   if (mounted_latest) {
-    gMountedApexes.SetLatest(manifest.GetName(), full_path);
+    gMountedApexes.SetLatest(manifest.name(), full_path);
   }
 
   return Status::Success();
@@ -752,8 +754,7 @@ Status deactivatePackage(const std::string& full_path) {
   Status st = deactivatePackageImpl(*apexFile);
 
   if (st.Ok()) {
-    gMountedApexes.RemoveMountedApex(apexFile->GetManifest().GetName(),
-                                     full_path);
+    gMountedApexes.RemoveMountedApex(apexFile->GetManifest().name(), full_path);
   }
 
   return st;
@@ -772,7 +773,6 @@ std::vector<ApexFile> getActivePackages() {
           // TODO: Fail?
           return;
         }
-
         ret.emplace_back(std::move(*apexFile));
       });
 
@@ -782,7 +782,7 @@ std::vector<ApexFile> getActivePackages() {
 StatusOr<ApexFile> getActivePackage(const std::string& packageName) {
   std::vector<ApexFile> packages = getActivePackages();
   for (ApexFile& apex : packages) {
-    if (apex.GetManifest().GetName() == packageName) {
+    if (apex.GetManifest().name() == packageName) {
       return StatusOr<ApexFile>(std::move(apex));
     }
   }
@@ -958,7 +958,7 @@ Status preinstallPackages(const std::vector<std::string>& paths) {
     if (!apex_file.Ok()) {
       return apex_file.ErrorStatus();
     }
-    if (!apex_file->GetManifest().GetPreInstallHook().empty()) {
+    if (!apex_file->GetManifest().preinstallhook().empty()) {
       has_preInstallHooks = true;
     }
     apex_files.emplace_back(std::move(*apex_file));
@@ -995,7 +995,7 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
 
   auto path_fn = [](const ApexFile& apex_file) {
     return StringPrintf("%s/%s%s", kApexPackageDataDir,
-                        apex_file.GetManifest().GetPackageId().c_str(),
+                        GetPackageId(apex_file.GetManifest()).c_str(),
                         kApexPackageSuffix);
   };
 
