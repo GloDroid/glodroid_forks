@@ -32,6 +32,7 @@
 #include <utils/String16.h>
 
 #include "apexd.h"
+#include "apexd_session.h"
 #include "status.h"
 #include "string_log.h"
 
@@ -56,6 +57,8 @@ class ApexService : public BnApexService {
                              bool* aidl_return) override;
   BinderStatus submitStagedSession(int session_id, ApexInfoList* apex_info_list,
                                    bool* aidl_return) override;
+  BinderStatus getStagedSessionInfo(
+      int session_id, ApexSessionInfo* apex_session_info) override;
   BinderStatus activatePackage(const std::string& packagePath) override;
   BinderStatus deactivatePackage(const std::string& packagePath) override;
   BinderStatus getActivePackages(std::vector<ApexInfo>* aidl_return) override;
@@ -128,6 +131,49 @@ BinderStatus ApexService::submitStagedSession(int session_id,
     apex_info_list->apexInfos.push_back(out);
   }
   *aidl_return = true;
+  return BinderStatus::ok();
+}
+
+BinderStatus ApexService::getStagedSessionInfo(
+    int session_id, ApexSessionInfo* apex_session_info) {
+  LOG(DEBUG) << "getStagedSessionInfo() received by ApexService, session id "
+             << session_id;
+  apex_session_info->isUnknown = true;
+  apex_session_info->isVerified = false;
+  apex_session_info->isStaged = false;
+  apex_session_info->isActivated = false;
+  apex_session_info->isActivationPendingRetry = false;
+  apex_session_info->isActivationFailed = false;
+  auto state = readSessionState(session_id);
+  if (!state.Ok()) {
+    // Unknown session.
+    return BinderStatus::ok();
+  }
+
+  apex_session_info->isUnknown = false;
+  auto session_state = *state;
+  switch (session_state.state()) {
+    case session_state.VERIFIED:
+      apex_session_info->isVerified = true;
+      break;
+    case session_state.STAGED:
+      apex_session_info->isStaged = true;
+      break;
+    case session_state.ACTIVATED:
+      apex_session_info->isActivated = true;
+      break;
+    case session_state.ACTIVATION_PENDING_RETRY:
+      apex_session_info->isActivationPendingRetry = true;
+      break;
+    case session_state.ACTIVATION_FAILED:
+      apex_session_info->isActivationFailed = true;
+      break;
+    case session_state.UNKNOWN:
+    default:
+      apex_session_info->isUnknown = true;
+      break;
+  }
+
   return BinderStatus::ok();
 }
 
@@ -259,6 +305,8 @@ status_t ApexService::shellCommand(int in, int out, int err,
         << "  deactivatePackage [packagePath] - deactivate package from the "
            "given path"
         << std::endl
+        << "  getStagedSessionInfo [sessionId] - displays information about a "
+           "given session previously submitted"
         << "  submitStagedSession [sessionId] - attempts to submit the "
            "installer session with given id"
         << std::endl;
@@ -373,6 +421,41 @@ status_t ApexService::shellCommand(int in, int out, int err,
     std::string msg = StringLog()
             << "Failed to deactivate package: " << status.toString8().string()
             << std::endl;
+    dprintf(err, "%s", msg.c_str());
+    return BAD_VALUE;
+  }
+
+  if (cmd == String16("getStagedSessionInfo")) {
+    if (args.size() != 2) {
+      print_help(err, "getStagedSessionInfo requires one session id");
+      return BAD_VALUE;
+    }
+    int session_id = strtol(String8(args[1]).c_str(), nullptr, 10);
+    if (session_id < 0) {
+      std::string msg = StringLog()
+                        << "Failed to parse session id. Must be an integer.";
+      dprintf(err, "%s", msg.c_str());
+      return BAD_VALUE;
+    }
+
+    ApexSessionInfo session_info;
+    BinderStatus status = getStagedSessionInfo(session_id, &session_info);
+    if (status.isOk()) {
+      std::string msg = StringLog()
+                        << "session_info: "
+                        << " isUnknown: " << session_info.isUnknown
+                        << " isVerified: " << session_info.isVerified
+                        << " isStaged: " << session_info.isStaged
+                        << " isActivated: " << session_info.isActivated
+                        << " isActivationPendingRetry: "
+                        << session_info.isActivationPendingRetry
+                        << " isActivationFailed: "
+                        << session_info.isActivationFailed << std::endl;
+      dprintf(out, "%s", msg.c_str());
+      return OK;
+    }
+    std::string msg = StringLog() << "Failed to query session: "
+                                  << status.toString8().string() << std::endl;
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
