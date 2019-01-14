@@ -575,29 +575,61 @@ Status deactivatePackageImpl(const ApexFile& apex) {
   }
 }
 
-Status PreinstallPackages(const std::vector<ApexFile>& apexes) {
+template <typename HookFn, typename HookCall>
+Status PrePostinstallPackages(const std::vector<ApexFile>& apexes, HookFn fn,
+                              HookCall call) {
   if (apexes.empty()) {
     return Status::Fail("Empty set of inputs");
   }
 
   // 1) Check whether the APEXes have hooks.
-  bool has_preInstallHooks = false;
+  bool has_hooks = false;
   for (const ApexFile& apex_file : apexes) {
-    if (!apex_file.GetManifest().preinstallhook().empty()) {
-      has_preInstallHooks = true;
+    if (!(apex_file.GetManifest().*fn)().empty()) {
+      has_hooks = true;
       break;
     }
   }
 
-  // 2) If we found hooks, run pre-install.
-  if (has_preInstallHooks) {
-    Status preinstall_status = StagePreInstall(apexes);
-    if (!preinstall_status.Ok()) {
-      return preinstall_status;
+  // 2) If we found hooks, run the pre/post-install.
+  if (has_hooks) {
+    Status install_status = (*call)(apexes);
+    if (!install_status.Ok()) {
+      return install_status;
     }
   }
 
   return Status::Success();
+}
+
+Status PreinstallPackages(const std::vector<ApexFile>& apexes) {
+  return PrePostinstallPackages(apexes, &ApexManifest::preinstallhook,
+                                &StagePreInstall);
+}
+
+Status PostinstallPackages(const std::vector<ApexFile>& apexes) {
+  return PrePostinstallPackages(apexes, &ApexManifest::postinstallhook,
+                                &StagePostInstall);
+}
+
+template <typename RetType, typename Fn>
+RetType HandlePackages(const std::vector<std::string>& paths, Fn fn) {
+  if (paths.empty()) {
+    return Status::Fail("Empty set of inputs");
+  }
+
+  // 1) Open all APEXes.
+  std::vector<ApexFile> apex_files;
+  for (const std::string& path : paths) {
+    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
+    if (!apex_file.Ok()) {
+      return apex_file.ErrorStatus();
+    }
+    apex_files.emplace_back(std::move(*apex_file));
+  }
+
+  // 2) Dispatch.
+  return fn(apex_files);
 }
 
 }  // namespace
@@ -917,6 +949,26 @@ void scanStagedSessionsDirAndStage() {
       LOG(WARNING) << apexes.ErrorMessage();
       continue;
     }
+    if (apexes->empty()) {
+      LOG(WARNING) << "Empty session " << sessionDirPath;
+      continue;
+    }
+
+    auto session_failed_fn = [&]() {
+      // TODO(b/118865310): mark session as failed, rollback the changes
+      // and reboot the device.
+    };
+    auto scope_guard = android::base::make_scope_guard(session_failed_fn);
+
+    // Run postinstall, if necessary.
+    // TODO(b/118865310): this should be over the session of sessions,
+    //                    including all packages.
+    Status postinstall_status = postinstallPackages(*apexes);
+    if (!postinstall_status.Ok()) {
+      LOG(ERROR) << "Postinstall failed for session " << sessionDirPath << ": "
+                 << postinstall_status.ErrorMessage();
+      continue;
+    }
 
     // TODO(b/118865310): double check that there is only one apex file per
     // dir?
@@ -927,10 +979,11 @@ void scanStagedSessionsDirAndStage() {
       if (!result.Ok()) {
         LOG(ERROR) << "Activation failed for package " << apexFilePath << ": "
                    << result.ErrorMessage();
-        // TODO(b/118865310): mark session as failed, rollback the changes
-        // and reboot the device
       }
     }
+
+    // Session was OK, release scopeguard.
+    scope_guard.Disable();
   }
   // TODO(b/118865310): mark session as successful
 }
@@ -967,23 +1020,12 @@ StatusOr<std::vector<ApexFile>> verifyPackages(
 
 Status preinstallPackages(const std::vector<std::string>& paths) {
   LOG(DEBUG) << "preinstallPackages() for " << android::base::Join(paths, ',');
+  return HandlePackages<Status>(paths, PreinstallPackages);
+}
 
-  if (paths.empty()) {
-    return Status::Fail("Empty set of inputs");
-  }
-
-  // 1) Open all APEXes.
-  std::vector<ApexFile> apex_files;
-  for (const std::string& path : paths) {
-    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
-    if (!apex_file.Ok()) {
-      return apex_file.ErrorStatus();
-    }
-    apex_files.emplace_back(std::move(*apex_file));
-  }
-
-  // 2) Dispatch Preinstall.
-  return PreinstallPackages(apex_files);
+Status postinstallPackages(const std::vector<std::string>& paths) {
+  LOG(DEBUG) << "postinstallPackages() for " << android::base::Join(paths, ',');
+  return HandlePackages<Status>(paths, PostinstallPackages);
 }
 
 Status stagePackages(const std::vector<std::string>& tmpPaths,
