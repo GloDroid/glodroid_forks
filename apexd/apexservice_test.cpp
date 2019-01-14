@@ -701,12 +701,23 @@ TEST_F(ApexServiceTest, SubmitSessionTestSuccess) {
   ASSERT_EQ(installer.package, match.packageName);
   ASSERT_EQ(installer.version, static_cast<uint64_t>(match.versionCode));
   ASSERT_EQ(installer.test_file, match.packagePath);
+
+  ApexSessionInfo session;
+  status = service_->getStagedSessionInfo(123, &session);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_FALSE(session.isUnknown);
+  EXPECT_FALSE(session.isVerified);
+  EXPECT_TRUE(session.isStaged);
+  EXPECT_FALSE(session.isActivated);
+  EXPECT_FALSE(session.isActivationPendingRetry);
+  EXPECT_FALSE(session.isActivationFailed);
 }
 
 TEST_F(ApexServiceTest, SubmitSessionTestFail) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_no_inst_key.apex"),
-      "/data/staging/session_123", "staging_data_file");
+      "/data/staging/session_456", "staging_data_file");
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
   }
@@ -714,11 +725,22 @@ TEST_F(ApexServiceTest, SubmitSessionTestFail) {
   ApexInfoList list;
   bool ret_value;
   android::binder::Status status =
-      service_->submitStagedSession(123, &list, &ret_value);
+      service_->submitStagedSession(456, &list, &ret_value);
 
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
   EXPECT_FALSE(ret_value);
+
+  ApexSessionInfo session;
+  status = service_->getStagedSessionInfo(456, &session);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_TRUE(session.isUnknown);
+  EXPECT_FALSE(session.isVerified);
+  EXPECT_FALSE(session.isStaged);
+  EXPECT_FALSE(session.isActivated);
+  EXPECT_FALSE(session.isActivationPendingRetry);
+  EXPECT_FALSE(session.isActivationFailed);
 }
 
 class LogTestToLogcat : public testing::EmptyTestEventListener {
