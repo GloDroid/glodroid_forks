@@ -482,6 +482,7 @@ int sensor_get_order (int s, unsigned char map[MAX_CHANNELS])
 int sensor_get_available_frequencies (int s)
 {
 	int dev_num = sensor[s].dev_num, err, i;
+	const char *prefix = sensor_catalog[sensor[s].catalog_index].tag;
 	char avail_sysfs_path[PATH_MAX], freqs_buf[100];
 	char *p, *end;
 	float f;
@@ -492,8 +493,12 @@ int sensor_get_available_frequencies (int s)
 	sprintf(avail_sysfs_path, DEVICE_AVAIL_FREQ_PATH, dev_num);
 
 	err = sysfs_read_str(avail_sysfs_path, freqs_buf, sizeof(freqs_buf));
-	if (err < 0)
-		return 0;
+	if (err < 0) {
+		sprintf(avail_sysfs_path, SENSOR_AVAIL_FREQ_PATH, dev_num, prefix);
+		err = sysfs_read_str(avail_sysfs_path, freqs_buf, sizeof(freqs_buf));
+		if (err < 0)
+			return 0;
+	}
 
 	for (p = freqs_buf, f = strtof(p, &end); p != end; p = end, f = strtof(p, &end))
 		sensor[s].avail_freqs_count++;

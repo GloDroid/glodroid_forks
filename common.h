@@ -40,6 +40,7 @@
 #define SENSOR_OFFSET_PATH	BASE_PATH "in_%s_offset"
 #define SENSOR_SCALE_PATH	BASE_PATH "in_%s_scale"
 #define SENSOR_SAMPLING_PATH	BASE_PATH "in_%s_sampling_frequency"
+#define SENSOR_AVAIL_FREQ_PATH	BASE_PATH "in_%s_sampling_frequency_available"
 #define DEVICE_SAMPLING_PATH	BASE_PATH "sampling_frequency"
 #define DEVICE_AVAIL_FREQ_PATH	BASE_PATH "sampling_frequency_available"
 #define ILLUMINATION_CALIBPATH	BASE_PATH "in_illuminance_calibscale"
