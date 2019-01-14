@@ -17,41 +17,19 @@
 #ifndef ANDROID_APEXD_APEX_MANIFEST_H_
 #define ANDROID_APEXD_APEX_MANIFEST_H_
 
+#include "apex_manifest.pb.h"
 #include "status_or.h"
 
 #include <string>
 
+using ::apex::proto::ApexManifest;
+
 namespace android {
 namespace apex {
-
-// Parses an APEX manifest on construction and exposes its fields.
-class ApexManifest {
- public:
-  static StatusOr<ApexManifest> Parse(const std::string& content);
-  ApexManifest() = delete;
-  ApexManifest(ApexManifest&&) = default;
-
-  const std::string& GetName() const { return name_; }
-  uint64_t GetVersion() const { return version_; }
-  const std::string& GetPackageId() const { return package_id_; }
-  const std::string& GetPreInstallHook() const { return preInstallHook_; }
-  const std::string& GetPostInstallHook() const { return postInstallHook_; }
-
- private:
-  ApexManifest(std::string& name, std::string& preInstallHook,
-               std::string& postInstallHook, uint64_t version)
-      : name_(std::move(name)),
-        preInstallHook_(std::move(preInstallHook)),
-        postInstallHook_(std::move(postInstallHook)),
-        version_(version),
-        package_id_(name_ + "@" + std::to_string(version_)) {}
-
-  std::string name_;
-  std::string preInstallHook_;
-  std::string postInstallHook_;
-  uint64_t version_;
-  std::string package_id_;
-};
+// Parses and validates APEX manifest.
+StatusOr<ApexManifest> ParseManifest(const std::string& content);
+// Returns package id of an ApexManifest
+std::string GetPackageId(const ApexManifest& apex_manifest);
 
 }  // namespace apex
 }  // namespace android

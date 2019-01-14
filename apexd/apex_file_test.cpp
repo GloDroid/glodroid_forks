@@ -72,8 +72,8 @@ TEST(ApexFileTest, GetApexManifest) {
   const std::string filePath = testDataDir + "apex.apexd_test.apex";
   StatusOr<ApexFile> apexFile = ApexFile::Open(filePath);
   ASSERT_TRUE(apexFile.Ok());
-  EXPECT_EQ("com.android.apex.test_package", apexFile->GetManifest().GetName());
-  EXPECT_EQ(1UL, apexFile->GetManifest().GetVersion());
+  EXPECT_EQ("com.android.apex.test_package", apexFile->GetManifest().name());
+  EXPECT_EQ(1u, apexFile->GetManifest().version());
 }
 
 TEST(ApexFileTest, VerifyApexVerity) {

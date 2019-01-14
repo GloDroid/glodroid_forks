@@ -125,9 +125,9 @@ BinderStatus ApexService::submitStagedSession(int session_id,
 
   for (const auto& package : *packages) {
     ApexInfo out;
-    out.packageName = package.GetManifest().GetName();
+    out.packageName = package.GetManifest().name();
     out.packagePath = package.GetPath();
-    out.versionCode = package.GetManifest().GetVersion();
+    out.versionCode = package.GetManifest().version();
     apex_info_list->apexInfos.push_back(out);
   }
   *aidl_return = true;
@@ -226,9 +226,9 @@ BinderStatus ApexService::getActivePackages(
   auto packages = ::android::apex::getActivePackages();
   for (const auto& package : packages) {
     ApexInfo out;
-    out.packageName = package.GetManifest().GetName();
+    out.packageName = package.GetManifest().name();
     out.packagePath = package.GetPath();
-    out.versionCode = package.GetManifest().GetVersion();
+    out.versionCode = package.GetManifest().version();
     aidl_return->push_back(out);
   }
 
@@ -239,9 +239,9 @@ BinderStatus ApexService::getActivePackage(const std::string& packageName,
                                            ApexInfo* aidl_return) {
   StatusOr<ApexFile> apex = ::android::apex::getActivePackage(packageName);
   if (apex.Ok()) {
-    aidl_return->packageName = apex->GetManifest().GetName();
+    aidl_return->packageName = apex->GetManifest().name();
     aidl_return->packagePath = apex->GetPath();
-    aidl_return->versionCode = apex->GetManifest().GetVersion();
+    aidl_return->versionCode = apex->GetManifest().version();
   }
 
   return BinderStatus::ok();

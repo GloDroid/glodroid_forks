@@ -20,13 +20,13 @@
 #include <string>
 
 #include "apex_database.h"
+#include "apex_manifest.h"
 #include "status.h"
 
 namespace android {
 namespace apex {
 
 class ApexFile;
-class ApexManifest;
 
 static constexpr int kMkdirMode = 0755;
 
