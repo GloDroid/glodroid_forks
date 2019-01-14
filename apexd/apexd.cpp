@@ -92,6 +92,11 @@ static constexpr const char* kApexStatusSysprop = "apexd.status";
 static constexpr const char* kApexStatusStarting = "starting";
 static constexpr const char* kApexStatusReady = "ready";
 
+static constexpr const char* kApexVerityOnSystemProp =
+    "persist.apexd.verity_on_system";
+static bool gForceDmVerityOnSystem =
+    android::base::GetBoolProperty(kApexVerityOnSystemProp, false);
+
 MountedApexDatabase gMountedApexes;
 
 struct LoopbackDeviceUniqueFd {
@@ -458,6 +463,7 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
   // However, note that we don't skip verification to ensure that APEXes are
   // correctly signed.
   const bool mountOnVerity =
+      gForceDmVerityOnSystem ||
       !android::base::StartsWith(full_path, kApexPackageSystemDir);
   DmVerityDevice verityDev;
   if (mountOnVerity) {
