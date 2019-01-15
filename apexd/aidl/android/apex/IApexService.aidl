@@ -23,7 +23,7 @@ import android.apex.ApexSessionInfo;
 interface IApexService {
    boolean stagePackage(in @utf8InCpp String package_tmp_path);
    boolean stagePackages(in @utf8InCpp List<String> package_tmp_paths);
-   boolean submitStagedSession(int session_id, out ApexInfoList packages);
+   boolean submitStagedSession(int session_id, in int[] child_session_ids, out ApexInfoList packages);
    ApexSessionInfo getStagedSessionInfo(int session_id);
    ApexInfo[] getActivePackages();
 

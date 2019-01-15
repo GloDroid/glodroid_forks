@@ -46,8 +46,9 @@ Status preinstallPackages(const std::vector<std::string>& paths) WARN_UNUSED;
 Status stagePackages(const std::vector<std::string>& tmpPaths,
                      bool linkPackages = false) WARN_UNUSED;
 
-StatusOr<std::vector<ApexFile>> submitStagedSession(const int session_id)
-    WARN_UNUSED;
+StatusOr<std::vector<ApexFile>> submitStagedSession(
+    const int session_id,
+    const std::vector<int>& child_session_ids) WARN_UNUSED;
 
 Status activatePackage(const std::string& full_path) WARN_UNUSED;
 Status deactivatePackage(const std::string& full_path) WARN_UNUSED;
