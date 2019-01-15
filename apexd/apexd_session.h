@@ -17,12 +17,16 @@
 #ifndef ANDROID_APEXD_APEXD_SESSION_H_
 #define ANDROID_APEXD_APEXD_SESSION_H_
 
+#include "apexd.h"
 #include "status_or.h"
 
 #include "session_state.pb.h"
 
 namespace android {
 namespace apex {
+
+static const std::string kApexSessionsDir =
+    std::string(kApexPackageDataDir) + "/sessions";
 
 StatusOr<::apex::proto::SessionState> readSessionState(const int session_id);
 Status writeSessionState(const int session_id,
