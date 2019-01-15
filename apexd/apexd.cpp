@@ -22,6 +22,7 @@
 #include "apex_database.h"
 #include "apex_file.h"
 #include "apex_manifest.h"
+#include "apexd_loop.h"
 #include "apexd_prepostinstall.h"
 #include "apexd_session.h"
 #include "status_or.h"
@@ -79,14 +80,10 @@ using MountedApexData = MountedApexDatabase::MountedApexData;
 namespace {
 
 static constexpr const char* kApexPackageSuffix = ".apex";
-static constexpr const char* kApexLoopIdPrefix = "apex:";
 static constexpr const char* kApexKeySystemDirectory =
     "/system/etc/security/apex/";
 static constexpr const char* kApexKeyProductDirectory =
     "/product/etc/security/apex/";
-
-// 128 kB read-ahead, which we currently use for /system as well
-static constexpr const char* kReadAheadKb = "128";
 
 // These should be in-sync with system/sepolicy/public/property_contexts
 static constexpr const char* kApexStatusSysprop = "apexd.status";
@@ -99,197 +96,6 @@ static bool gForceDmVerityOnSystem =
     android::base::GetBoolProperty(kApexVerityOnSystemProp, false);
 
 MountedApexDatabase gMountedApexes;
-
-struct LoopbackDeviceUniqueFd {
-  unique_fd device_fd;
-  std::string name;
-
-  LoopbackDeviceUniqueFd() {}
-  LoopbackDeviceUniqueFd(unique_fd&& fd, const std::string& name)
-      : device_fd(std::move(fd)), name(name) {}
-
-  LoopbackDeviceUniqueFd(LoopbackDeviceUniqueFd&& fd) noexcept
-      : device_fd(std::move(fd.device_fd)), name(fd.name) {}
-  LoopbackDeviceUniqueFd& operator=(LoopbackDeviceUniqueFd&& other) noexcept {
-    MaybeCloseBad();
-    device_fd = std::move(other.device_fd);
-    name = std::move(other.name);
-    return *this;
-  }
-
-  ~LoopbackDeviceUniqueFd() { MaybeCloseBad(); }
-
-  void MaybeCloseBad() {
-    if (device_fd.get() != -1) {
-      // Disassociate any files.
-      if (ioctl(device_fd.get(), LOOP_CLR_FD) == -1) {
-        PLOG(ERROR) << "Unable to clear fd for loopback device";
-      }
-    }
-  }
-
-  void CloseGood() { device_fd.reset(-1); }
-
-  int get() { return device_fd.get(); }
-};
-
-Status configureReadAhead(const std::string& device_path) {
-  auto pos = device_path.find("/dev/block/");
-  if (pos != 0) {
-    return Status::Fail(StringLog()
-                        << "Device path does not start with /dev/block.");
-  }
-  pos = device_path.find_last_of("/");
-  std::string device_name = device_path.substr(pos + 1, std::string::npos);
-
-  std::string sysfs_device =
-      StringPrintf("/sys/block/%s/queue/read_ahead_kb", device_name.c_str());
-  unique_fd sysfs_fd(open(sysfs_device.c_str(), O_RDWR | O_CLOEXEC));
-  if (sysfs_fd.get() == -1) {
-    return Status::Fail(PStringLog() << "Failed to open " << sysfs_device);
-  }
-
-  int ret = TEMP_FAILURE_RETRY(
-      write(sysfs_fd.get(), kReadAheadKb, strlen(kReadAheadKb) + 1));
-  if (ret < 0) {
-    return Status::Fail(PStringLog() << "Failed to write to " << sysfs_device);
-  }
-
-  return Status::Success();
-}
-
-StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
-                                                  const int32_t imageOffset,
-                                                  const size_t imageSize) {
-  using Failed = StatusOr<LoopbackDeviceUniqueFd>;
-  unique_fd ctl_fd(open("/dev/loop-control", O_RDWR | O_CLOEXEC));
-  if (ctl_fd.get() == -1) {
-    return Failed::MakeError(PStringLog() << "Failed to open loop-control");
-  }
-
-  int num = ioctl(ctl_fd.get(), LOOP_CTL_GET_FREE);
-  if (num == -1) {
-    return Failed::MakeError(PStringLog() << "Failed LOOP_CTL_GET_FREE");
-  }
-
-  std::string device = StringPrintf("/dev/block/loop%d", num);
-
-  unique_fd target_fd(open(target.c_str(), O_RDONLY | O_CLOEXEC));
-  if (target_fd.get() == -1) {
-    return Failed::MakeError(PStringLog() << "Failed to open " << target);
-  }
-  LoopbackDeviceUniqueFd device_fd(
-      unique_fd(open(device.c_str(), O_RDWR | O_CLOEXEC)), device);
-  if (device_fd.get() == -1) {
-    return Failed::MakeError(PStringLog() << "Failed to open " << device);
-  }
-
-  if (ioctl(device_fd.get(), LOOP_SET_FD, target_fd.get()) == -1) {
-    return Failed::MakeError(PStringLog() << "Failed to LOOP_SET_FD");
-  }
-
-  struct loop_info64 li;
-  memset(&li, 0, sizeof(li));
-  strlcpy((char*)li.lo_crypt_name, kApexLoopIdPrefix, LO_NAME_SIZE);
-  li.lo_offset = imageOffset;
-  li.lo_sizelimit = imageSize;
-  if (ioctl(device_fd.get(), LOOP_SET_STATUS64, &li) == -1) {
-    return Failed::MakeError(PStringLog() << "Failed to LOOP_SET_STATUS64");
-  }
-
-  if (ioctl(device_fd.get(), BLKFLSBUF, 0) == -1) {
-    // This works around a kernel bug where the following happens.
-    // 1) The device runs with a value of loop.max_part > 0
-    // 2) As part of LOOP_SET_FD above, we do a partition scan, which loads
-    //    the first 2 pages of the underlying file into the buffer cache
-    // 3) When we then change the offset with LOOP_SET_STATUS64, those pages
-    //    are not invalidated from the cache.
-    // 4) When we try to mount an ext4 filesystem on the loop device, the ext4
-    //    code will try to find a superblock by reading 4k at offset 0; but,
-    //    because we still have the old pages at offset 0 lying in the cache,
-    //    those pages will be returned directly. However, those pages contain
-    //    the data at offset 0 in the underlying file, not at the offset that
-    //    we configured
-    // 5) the ext4 driver fails to find a superblock in the (wrong) data, and
-    //    fails to mount the filesystem.
-    //
-    // To work around this, explicitly flush the block device, which will flush
-    // the buffer cache and make sure we actually read the data at the correct
-    // offset.
-    return Failed::MakeError(PStringLog()
-                             << "Failed to flush buffers on the loop device.");
-  }
-
-  // Direct-IO requires the loop device to have the same block size as the
-  // underlying filesystem.
-  if (ioctl(device_fd.get(), LOOP_SET_BLOCK_SIZE, 4096) == -1) {
-    PLOG(WARNING) << "Failed to LOOP_SET_BLOCK_SIZE";
-  } else {
-    if (ioctl(device_fd.get(), LOOP_SET_DIRECT_IO, 1) == -1) {
-      PLOG(WARNING) << "Failed to LOOP_SET_DIRECT_IO";
-      // TODO Eventually we'll want to fail on this; right now we can't because
-      // not all devices have the necessary kernel patches.
-    }
-  }
-
-  Status readAheadStatus = configureReadAhead(device);
-  if (!readAheadStatus.Ok()) {
-    return Failed::MakeError(StringLog() << readAheadStatus.ErrorMessage());
-  }
-  return StatusOr<LoopbackDeviceUniqueFd>(std::move(device_fd));
-}
-
-template <typename T>
-void DestroyLoopDevice(const std::string& path, T extra) {
-  unique_fd fd(open(path.c_str(), O_RDWR | O_CLOEXEC));
-  if (fd.get() == -1) {
-    if (errno != ENOENT) {
-      PLOG(WARNING) << "Failed to open " << path;
-    }
-    return;
-  }
-
-  struct loop_info64 li;
-  if (ioctl(fd.get(), LOOP_GET_STATUS64, &li) < 0) {
-    if (errno != ENXIO) {
-      PLOG(WARNING) << "Failed to LOOP_GET_STATUS64 " << path;
-    }
-    return;
-  }
-
-  auto id = std::string((char*)li.lo_crypt_name);
-  if (StartsWith(id, kApexLoopIdPrefix)) {
-    extra(path, id);
-
-    if (ioctl(fd.get(), LOOP_CLR_FD, 0) < 0) {
-      PLOG(WARNING) << "Failed to LOOP_CLR_FD " << path;
-    }
-  }
-}
-
-void destroyAllLoopDevices() {
-  std::string root = "/dev/block/";
-  auto dirp =
-      std::unique_ptr<DIR, int (*)(DIR*)>(opendir(root.c_str()), closedir);
-  if (!dirp) {
-    PLOG(ERROR) << "Failed to open /dev/block/, can't destroy loop devices.";
-    return;
-  }
-
-  // Poke through all devices looking for loop devices.
-  auto log_fn = [](const std::string& path, const std::string& id) {
-    LOG(DEBUG) << "Tearing down stale loop device at " << path << " named "
-               << id;
-  };
-  struct dirent* de;
-  while ((de = readdir(dirp.get()))) {
-    auto test = std::string(de->d_name);
-    if (!StartsWith(test, "loop")) continue;
-
-    auto path = root + de->d_name;
-    DestroyLoopDevice(path, log_fn);
-  }
-}
 
 static constexpr size_t kLoopDeviceSetupAttempts = 3u;
 static constexpr size_t kMountAttempts = 5u;
@@ -433,10 +239,10 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
   const std::string& full_path = apex.GetPath();
   const std::string& packageId = GetPackageId(manifest);
 
-  LoopbackDeviceUniqueFd loopbackDevice;
+  loop::LoopbackDeviceUniqueFd loopbackDevice;
   for (size_t attempts = 1;; ++attempts) {
-    StatusOr<LoopbackDeviceUniqueFd> ret =
-        createLoopDevice(full_path, apex.GetImageOffset(), apex.GetImageSize());
+    StatusOr<loop::LoopbackDeviceUniqueFd> ret = loop::createLoopDevice(
+        full_path, apex.GetImageOffset(), apex.GetImageSize());
     if (ret.Ok()) {
       loopbackDevice = std::move(*ret);
       break;
@@ -478,7 +284,7 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
     verityDev = std::move(*verityDevRes);
     blockDevice = verityDev.GetDevPath();
 
-    Status readAheadStatus = configureReadAhead(verityDev.GetDevPath());
+    Status readAheadStatus = loop::configureReadAhead(verityDev.GetDevPath());
     if (!readAheadStatus.Ok()) {
       return readAheadStatus;
     }
@@ -565,7 +371,7 @@ Status deactivatePackageImpl(const ApexFile& apex) {
   // TODO: Find the loop device connected with the mount. For now, just run the
   //       destroy-all and rely on EBUSY.
   if (!apex.IsFlattened()) {
-    destroyAllLoopDevices();
+    loop::destroyAllLoopDevices();
   }
 
   if (error_msg.empty()) {
@@ -746,7 +552,7 @@ Status UnmountPackage(const ApexFile& apex) {
                      const std::string& id ATTRIBUTE_UNUSED) {
       LOG(VERBOSE) << "Freeing loop device " << path << "for unmount.";
     };
-    DestroyLoopDevice(loop, log_fn);
+    loop::DestroyLoopDevice(loop, log_fn);
   }
 
   return Status::Success();
@@ -919,7 +725,7 @@ void unmountAndDetachExistingImages() {
     }
   }
 
-  destroyAllLoopDevices();
+  loop::destroyAllLoopDevices();
 }
 
 void scanPackagesDirAndActivate(const char* apex_package_dir) {
