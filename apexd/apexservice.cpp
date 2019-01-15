@@ -55,7 +55,9 @@ class ApexService : public BnApexService {
                             bool* aidl_return) override;
   BinderStatus stagePackages(const std::vector<std::string>& paths,
                              bool* aidl_return) override;
-  BinderStatus submitStagedSession(int session_id, ApexInfoList* apex_info_list,
+  BinderStatus submitStagedSession(int session_id,
+                                   const std::vector<int>& child_session_ids,
+                                   ApexInfoList* apex_info_list,
                                    bool* aidl_return) override;
   BinderStatus getStagedSessionInfo(
       int session_id, ApexSessionInfo* apex_session_info) override;
@@ -109,14 +111,14 @@ BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths,
                                          String8(res.ErrorMessage().c_str()));
 }
 
-BinderStatus ApexService::submitStagedSession(int session_id,
-                                              ApexInfoList* apex_info_list,
-                                              bool* aidl_return) {
+BinderStatus ApexService::submitStagedSession(
+    int session_id, const std::vector<int>& child_session_ids,
+    ApexInfoList* apex_info_list, bool* aidl_return) {
   LOG(DEBUG) << "submitStagedSession() received by ApexService, session id "
              << session_id;
 
   StatusOr<std::vector<ApexFile>> packages =
-      ::android::apex::submitStagedSession(session_id);
+      ::android::apex::submitStagedSession(session_id, child_session_ids);
   if (!packages.Ok()) {
     *aidl_return = false;
     LOG(ERROR) << "Failed to submit session id " << session_id << ": "
@@ -493,13 +495,15 @@ status_t ApexService::shellCommand(int in, int out, int err,
       return BAD_VALUE;
     }
 
-    std::unique_ptr<ApexInfoList> list;
+    ApexInfoList list;
+    std::vector<int> empty_child_session_ids;
     bool ret_value;
-    BinderStatus status =
-        submitStagedSession(session_id, list.get(), &ret_value);
+
+    BinderStatus status = submitStagedSession(
+        session_id, empty_child_session_ids, &list, &ret_value);
     if (status.isOk()) {
       if (ret_value) {
-        for (const auto& item : list->apexInfos) {
+        for (const auto& item : list.apexInfos) {
           std::string msg = StringLog()
                             << "Package: " << item.packageName
                             << " Version: " << item.versionCode
