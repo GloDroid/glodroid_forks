@@ -64,6 +64,7 @@ class ApexService : public BnApexService {
   BinderStatus getActivePackages(std::vector<ApexInfo>* aidl_return) override;
   BinderStatus getActivePackage(const std::string& packageName,
                                 ApexInfo* aidl_return) override;
+  status_t dump(int fd, const Vector<String16>& args) override;
 
   // Override onTransact so we can handle shellCommand.
   status_t onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
@@ -275,6 +276,25 @@ status_t ApexService::onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
   }
   return BnApexService::onTransact(_aidl_code, _aidl_data, _aidl_reply,
                                    _aidl_flags);
+}
+status_t ApexService::dump(int fd, const Vector<String16>& args) {
+  // TODO: Extend to add session info
+  std::vector<ApexInfo> list;
+  BinderStatus status = getActivePackages(&list);
+  if (status.isOk()) {
+    for (const auto& item : list) {
+      std::string msg = StringLog()
+                        << "Package: " << item.packageName
+                        << " Version: " << item.versionCode
+                        << " Path: " << item.packagePath << std::endl;
+      dprintf(fd, "%s", msg.c_str());
+    }
+    return OK;
+  }
+  std::string msg = StringLog() << "Failed to retrieve packages: "
+                                << status.toString8().string() << std::endl;
+  dprintf(fd, "%s", msg.c_str());
+  return BAD_VALUE;
 }
 
 status_t ApexService::shellCommand(int in, int out, int err,
