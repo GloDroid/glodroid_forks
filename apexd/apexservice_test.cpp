@@ -673,7 +673,7 @@ TEST_F(ApexServiceTest, MultiStagePreinstall) {
   }
 }
 
-TEST_F(ApexServiceTest, SubmitSessionTestSuccess) {
+TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
                                       "/data/staging/session_123",
                                       "staging_data_file");
@@ -683,8 +683,9 @@ TEST_F(ApexServiceTest, SubmitSessionTestSuccess) {
 
   ApexInfoList list;
   bool ret_value;
-  android::binder::Status status =
-      service_->submitStagedSession(123, &list, &ret_value);
+  std::vector<int> empty_child_session_ids;
+  android::binder::Status status = service_->submitStagedSession(
+      123, empty_child_session_ids, &list, &ret_value);
 
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
@@ -714,7 +715,7 @@ TEST_F(ApexServiceTest, SubmitSessionTestSuccess) {
   EXPECT_FALSE(session.isActivationFailed);
 }
 
-TEST_F(ApexServiceTest, SubmitSessionTestFail) {
+TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_no_inst_key.apex"),
       "/data/staging/session_456", "staging_data_file");
@@ -724,8 +725,9 @@ TEST_F(ApexServiceTest, SubmitSessionTestFail) {
 
   ApexInfoList list;
   bool ret_value;
-  android::binder::Status status =
-      service_->submitStagedSession(456, &list, &ret_value);
+  std::vector<int> empty_child_session_ids;
+  android::binder::Status status = service_->submitStagedSession(
+      456, empty_child_session_ids, &list, &ret_value);
 
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
