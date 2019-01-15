@@ -1075,19 +1075,25 @@ void onAllPackagesReady() {
   }
 }
 
-StatusOr<std::vector<ApexFile>> submitStagedSession(const int session_id) {
-  auto verified = verifySessionDir(session_id);
-  if (verified.Ok()) {
-    SessionState sessionState;
-    sessionState.set_state(SessionState::STAGED);
-    sessionState.set_retry_count(0);
-    auto stateWritten = writeSessionState(session_id, sessionState);
-    if (!stateWritten.Ok()) {
-      return StatusOr<std::vector<ApexFile>>::MakeError(
-          stateWritten.ErrorMessage());
+StatusOr<std::vector<ApexFile>> submitStagedSession(
+    const int session_id, const std::vector<int>& child_session_ids) {
+  if (child_session_ids.size() == 0) {
+    auto verified = verifySessionDir(session_id);
+    if (verified.Ok()) {
+      SessionState sessionState;
+      sessionState.set_state(SessionState::STAGED);
+      sessionState.set_retry_count(0);
+      auto stateWritten = writeSessionState(session_id, sessionState);
+      if (!stateWritten.Ok()) {
+        return StatusOr<std::vector<ApexFile>>::MakeError(
+            stateWritten.ErrorMessage());
+      }
     }
+    return verified;
   }
-  return verified;
+  // TODO(b/118865310): support multi-package sessions.
+  return StatusOr<std::vector<ApexFile>>::MakeError(
+      "Multi-package sessions are not yet supported.");
 }
 
 }  // namespace apex
