@@ -191,6 +191,7 @@ cc_test {
   ],
   srcs: ["apexservice_test.cpp"],
   host_supported: false,
+  compile_multilib: "first",
   static_libs: [
     "apex_aidl_interface-cpp",
     "libapex",
