@@ -59,6 +59,7 @@
 #include <string>
 
 using android::base::EndsWith;
+using android::base::Join;
 using android::base::ReadFullyAtOffset;
 using android::base::StartsWith;
 using android::base::StringPrintf;
@@ -257,7 +258,7 @@ void DestroyLoopDevice(const std::string& path, T extra) {
   }
 
   auto id = std::string((char*)li.lo_crypt_name);
-  if (android::base::StartsWith(id, kApexLoopIdPrefix)) {
+  if (StartsWith(id, kApexLoopIdPrefix)) {
     extra(path, id);
 
     if (ioctl(fd.get(), LOOP_CLR_FD, 0) < 0) {
@@ -283,7 +284,7 @@ void destroyAllLoopDevices() {
   struct dirent* de;
   while ((de = readdir(dirp.get()))) {
     auto test = std::string(de->d_name);
-    if (!android::base::StartsWith(test, "loop")) continue;
+    if (!StartsWith(test, "loop")) continue;
 
     auto path = root + de->d_name;
     DestroyLoopDevice(path, log_fn);
@@ -463,8 +464,7 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
   // However, note that we don't skip verification to ensure that APEXes are
   // correctly signed.
   const bool mountOnVerity =
-      gForceDmVerityOnSystem ||
-      !android::base::StartsWith(full_path, kApexPackageSystemDir);
+      gForceDmVerityOnSystem || !StartsWith(full_path, kApexPackageSystemDir);
   DmVerityDevice verityDev;
   if (mountOnVerity) {
     auto verityTable = createVerityTable(*verityData, loopbackDevice.name);
@@ -512,7 +512,7 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
 
 Status mountFlattened(const ApexFile& apex, const std::string& mountPoint,
                       MountedApexData* apex_data) {
-  if (!android::base::StartsWith(apex.GetPath(), kApexPackageSystemDir)) {
+  if (!StartsWith(apex.GetPath(), kApexPackageSystemDir)) {
     return Status::Fail(StringLog()
                         << "Cannot activate flattened APEX " << apex.GetPath());
   }
@@ -614,22 +614,61 @@ Status PostinstallPackages(const std::vector<ApexFile>& apexes) {
 
 template <typename RetType, typename Fn>
 RetType HandlePackages(const std::vector<std::string>& paths, Fn fn) {
-  if (paths.empty()) {
-    return Status::Fail("Empty set of inputs");
-  }
-
   // 1) Open all APEXes.
   std::vector<ApexFile> apex_files;
   for (const std::string& path : paths) {
     StatusOr<ApexFile> apex_file = ApexFile::Open(path);
     if (!apex_file.Ok()) {
-      return apex_file.ErrorStatus();
+      return RetType::Fail(apex_file.ErrorMessage());
     }
     apex_files.emplace_back(std::move(*apex_file));
   }
 
   // 2) Dispatch.
   return fn(apex_files);
+}
+
+StatusOr<std::vector<ApexFile>> verifyPackages(
+    const std::vector<std::string>& paths) {
+  if (paths.empty()) {
+    return StatusOr<std::vector<ApexFile>>::MakeError("Empty set of inputs");
+  }
+  LOG(DEBUG) << "verifyPackages() for " << Join(paths, ',');
+
+  using StatusT = StatusOr<std::vector<ApexFile>>;
+  auto verify_fn = [](std::vector<ApexFile>& apexes) {
+    for (const ApexFile& apex_file : apexes) {
+      StatusOr<ApexVerityData> verity_or = apex_file.VerifyApexVerity(
+          {kApexKeySystemDirectory, kApexKeyProductDirectory});
+      if (!verity_or.Ok()) {
+        return StatusT::MakeError(verity_or.ErrorMessage());
+      }
+    }
+    return StatusT(std::move(apexes));
+  };
+  return HandlePackages<StatusT>(paths, verify_fn);
+}
+
+StatusOr<std::vector<ApexFile>> verifySessionDir(const int session_id) {
+  std::string sessionDirPath = std::string(kStagedSessionsDir) + "/session_" +
+                               std::to_string(session_id);
+  LOG(INFO) << "Scanning " << sessionDirPath
+            << " looking for packages to be validated";
+  StatusOr<std::vector<std::string>> scan =
+      FindApexFilesByName(sessionDirPath, /* include_dirs=*/false);
+  if (!scan.Ok()) {
+    LOG(WARNING) << scan.ErrorMessage();
+    return StatusOr<std::vector<ApexFile>>::MakeError(scan.ErrorMessage());
+  }
+
+  // TODO(b/118865310): support sessions of sessions i.e. multi-package
+  // sessions.
+  if (scan->size() > 1) {
+    return StatusOr<std::vector<ApexFile>>::MakeError(
+        "More than one APEX package found in the same session directory.");
+  }
+
+  return verifyPackages(*scan);
 }
 
 }  // namespace
@@ -887,7 +926,7 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
   LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
 
   const bool scanSystemApexes =
-      android::base::StartsWith(apex_package_dir, kApexPackageSystemDir);
+      StartsWith(apex_package_dir, kApexPackageSystemDir);
   StatusOr<std::vector<std::string>> scan =
       FindApexFilesByName(apex_package_dir, scanSystemApexes);
   if (!scan.Ok()) {
@@ -903,28 +942,6 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
       LOG(ERROR) << res.ErrorMessage();
     }
   }
-}
-
-StatusOr<std::vector<ApexFile>> verifySessionDir(const int session_id) {
-  std::string sessionDirPath = std::string(kStagedSessionsDir) + "/session_" +
-                               std::to_string(session_id);
-  LOG(INFO) << "Scanning " << sessionDirPath
-            << " looking for packages to be validated";
-  StatusOr<std::vector<std::string>> scan =
-      FindApexFilesByName(sessionDirPath, /* include_dirs=*/false);
-  if (!scan.Ok()) {
-    LOG(WARNING) << scan.ErrorMessage();
-    return StatusOr<std::vector<ApexFile>>::MakeError(scan.ErrorMessage());
-  }
-
-  // TODO(b/118865310): support sessions of sessions i.e. multi-package
-  // sessions.
-  if (scan->size() > 1) {
-    return StatusOr<std::vector<ApexFile>>::MakeError(
-        "More than one APEX package found in the same session directory.");
-  }
-
-  return verifyPackages(*scan);
 }
 
 void scanStagedSessionsDirAndStage() {
@@ -973,13 +990,11 @@ void scanStagedSessionsDirAndStage() {
     // TODO(b/118865310): double check that there is only one apex file per
     // dir?
 
-    for (const std::string& apexFilePath : *apexes) {
-      const Status result =
-          stagePackages({apexFilePath}, /* linkPackages */ true);
-      if (!result.Ok()) {
-        LOG(ERROR) << "Activation failed for package " << apexFilePath << ": "
-                   << result.ErrorMessage();
-      }
+    const Status result = stagePackages(*apexes, /* linkPackages */ true);
+    if (!result.Ok()) {
+      LOG(ERROR) << "Activation failed for packages " << Join(*apexes, ',')
+                 << ": " << result.ErrorMessage();
+      continue;
     }
 
     // Session was OK, release scopeguard.
@@ -988,49 +1003,28 @@ void scanStagedSessionsDirAndStage() {
   // TODO(b/118865310): mark session as successful
 }
 
-StatusOr<std::vector<ApexFile>> verifyPackages(
-    const std::vector<std::string>& paths) {
-  LOG(DEBUG) << "verifyPackages() for " << android::base::Join(paths, ',');
-
-  if (paths.empty()) {
-    return StatusOr<std::vector<ApexFile>>::MakeError("Empty set of inputs");
-  }
-  std::vector<ApexFile> ret;
-  // Note: assume that sessions do not have thousands of paths, so that it is
-  //       OK to keep the ApexFile/ApexManifests in memory.
-
-  // Open all to check they can be opened and have valid manifests etc.
-  for (const std::string& path : paths) {
-    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
-    if (!apex_file.Ok()) {
-      return StatusOr<std::vector<ApexFile>>::MakeError(
-          apex_file.ErrorMessage());
-    }
-    StatusOr<ApexVerityData> verity_or = apex_file->VerifyApexVerity(
-        {kApexKeySystemDirectory, kApexKeyProductDirectory});
-    if (!verity_or.Ok()) {
-      return StatusOr<std::vector<ApexFile>>::MakeError(
-          verity_or.ErrorMessage());
-    }
-    ret.push_back(std::move(*apex_file));
-  }
-
-  return StatusOr<std::vector<ApexFile>>(std::move(ret));
-}
-
 Status preinstallPackages(const std::vector<std::string>& paths) {
-  LOG(DEBUG) << "preinstallPackages() for " << android::base::Join(paths, ',');
+  if (paths.empty()) {
+    return Status::Fail("Empty set of inputs");
+  }
+  LOG(DEBUG) << "preinstallPackages() for " << Join(paths, ',');
   return HandlePackages<Status>(paths, PreinstallPackages);
 }
 
 Status postinstallPackages(const std::vector<std::string>& paths) {
-  LOG(DEBUG) << "postinstallPackages() for " << android::base::Join(paths, ',');
+  if (paths.empty()) {
+    return Status::Fail("Empty set of inputs");
+  }
+  LOG(DEBUG) << "postinstallPackages() for " << Join(paths, ',');
   return HandlePackages<Status>(paths, PostinstallPackages);
 }
 
 Status stagePackages(const std::vector<std::string>& tmpPaths,
                      bool linkPackages) {
-  LOG(DEBUG) << "stagePackages() for " << android::base::Join(tmpPaths, ',');
+  if (tmpPaths.empty()) {
+    return Status::Fail("Empty set of inputs");
+  }
+  LOG(DEBUG) << "stagePackages() for " << Join(tmpPaths, ',');
 
   // Note: this function is temporary. As such the code is not optimized, e.g.,
   //       it will open ApexFiles multiple times.
@@ -1039,9 +1033,6 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
   auto verify_status = verifyPackages(tmpPaths);
   if (!verify_status.Ok()) {
     return Status::Fail(verify_status.ErrorMessage());
-  }
-  if (tmpPaths.empty()) {
-    return Status::Fail("Empty set of inputs");
   }
 
   // 2) Now stage all of them.
@@ -1124,29 +1115,33 @@ void onAllPackagesReady() {
 
 StatusOr<std::vector<ApexFile>> submitStagedSession(
     const int session_id, const std::vector<int>& child_session_ids) {
-  if (child_session_ids.size() == 0) {
-    auto verified = verifySessionDir(session_id);
-    if (verified.Ok()) {
-      // Run preinstall, if necessary.
-      Status preinstall_status = PreinstallPackages(*verified);
-      if (!preinstall_status.Ok()) {
-        return StatusOr<std::vector<ApexFile>>::MakeError(preinstall_status);
-      }
+  if (!child_session_ids.empty()) {
+    // TODO(b/118865310): support multi-package sessions.
+    return StatusOr<std::vector<ApexFile>>::MakeError(
+        "Multi-package sessions are not yet supported.");
+  }
 
-      SessionState sessionState;
-      sessionState.set_state(SessionState::STAGED);
-      sessionState.set_retry_count(0);
-      auto stateWritten = writeSessionState(session_id, sessionState);
-      if (!stateWritten.Ok()) {
-        return StatusOr<std::vector<ApexFile>>::MakeError(
-            stateWritten.ErrorMessage());
-      }
-    }
+  auto verified = verifySessionDir(session_id);
+  if (!verified.Ok()) {
     return verified;
   }
-  // TODO(b/118865310): support multi-package sessions.
-  return StatusOr<std::vector<ApexFile>>::MakeError(
-      "Multi-package sessions are not yet supported.");
+
+  // Run preinstall, if necessary.
+  Status preinstall_status = PreinstallPackages(*verified);
+  if (!preinstall_status.Ok()) {
+    return StatusOr<std::vector<ApexFile>>::MakeError(preinstall_status);
+  }
+
+  SessionState sessionState;
+  sessionState.set_state(SessionState::STAGED);
+  sessionState.set_retry_count(0);
+  auto stateWritten = writeSessionState(session_id, sessionState);
+  if (!stateWritten.Ok()) {
+    return StatusOr<std::vector<ApexFile>>::MakeError(
+        stateWritten.ErrorMessage());
+  }
+
+  return verified;
 }
 
 }  // namespace apex
