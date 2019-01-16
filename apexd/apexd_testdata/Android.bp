@@ -58,6 +58,23 @@ apex {
 }
 
 apex_key {
+    name: "com.android.apex.test_package.postinstall.key",
+    public_key: "com.android.apex.test_package.postinstall.avbpubkey",
+    private_key: "com.android.apex.test_package.postinstall.pem",
+    installable: false,
+}
+
+apex {
+    name: "apex.apexd_test_postinstall",
+    manifest: "manifest_postinstall.json",
+    file_contexts: "apex.test",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.postinstall.key",
+    binaries: ["apex_test_postInstallHook"],
+    installable: false,
+}
+
+apex_key {
     name: "com.android.apex.test_package.no_inst_key.key",
     public_key: "com.android.apex.test_package.no_inst_key.avbpubkey",
     private_key: "com.android.apex.test_package.no_inst_key.pem",
@@ -76,6 +93,15 @@ apex {
 cc_prebuilt_binary {
     name: "apex_test_preInstallHook",
     srcs: ["preInstallHook.sh"],
+    stl: "none",
+    strip: {
+        none: true,
+    },
+}
+
+cc_prebuilt_binary {
+    name: "apex_test_postInstallHook",
+    srcs: ["postInstallHook.sh"],
     stl: "none",
     strip: {
         none: true,
