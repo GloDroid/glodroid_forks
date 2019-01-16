@@ -76,6 +76,7 @@ cc_library_static {
   defaults: ["apex_defaults"],
   srcs: [
     "apexd.cpp",
+    "apexd_loop.cpp",
     "apexd_prepostinstall.cpp",
     "apexd_private.cpp",
     "apexd_session.cpp"
