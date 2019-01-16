@@ -64,8 +64,8 @@ void PseudoCloseDescriptors() {
 }
 
 template <typename Fn>
-Status StageFnInstall(std::vector<ApexFile>& apexes, Fn fn, const char* arg,
-                      const char* name) {
+Status StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
+                      const char* arg, const char* name) {
   // TODO: Support a session with more than one pre-install hook.
   const ApexFile* hook_file = nullptr;
   for (const ApexFile& f : apexes) {
@@ -224,7 +224,7 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
 
 }  // namespace
 
-Status StagePreInstall(std::vector<ApexFile>& apexes) {
+Status StagePreInstall(const std::vector<ApexFile>& apexes) {
   return StageFnInstall(apexes, &ApexManifest::preinstallhook, "--pre-install",
                         "pre-install");
 }
@@ -233,7 +233,7 @@ int RunPreInstall(char** in_argv) {
   return RunFnInstall(in_argv, &ApexManifest::preinstallhook, "pre-install");
 }
 
-Status StagePostInstall(std::vector<ApexFile>& apexes) {
+Status StagePostInstall(const std::vector<ApexFile>& apexes) {
   return StageFnInstall(apexes, &ApexManifest::postinstallhook,
                         "--post-install", "post-install");
 }

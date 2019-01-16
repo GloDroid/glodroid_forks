@@ -29,6 +29,7 @@
 #include <binder/IResultReceiver.h>
 #include <binder/IServiceManager.h>
 #include <binder/ProcessState.h>
+#include <binder/Status.h>
 #include <utils/String16.h>
 
 #include "apexd.h"
@@ -66,6 +67,9 @@ class ApexService : public BnApexService {
   BinderStatus getActivePackages(std::vector<ApexInfo>* aidl_return) override;
   BinderStatus getActivePackage(const std::string& packageName,
                                 ApexInfo* aidl_return) override;
+  BinderStatus preinstallPackages(
+      const std::vector<std::string>& paths) override;
+
   status_t dump(int fd, const Vector<String16>& args) override;
 
   // Override onTransact so we can handle shellCommand.
@@ -250,6 +254,25 @@ BinderStatus ApexService::getActivePackage(const std::string& packageName,
   return BinderStatus::ok();
 }
 
+BinderStatus ApexService::preinstallPackages(
+    const std::vector<std::string>& paths) {
+  BinderStatus debugCheck = CheckDebuggable("preinstallPackages");
+  if (!debugCheck.isOk()) {
+    return debugCheck;
+  }
+
+  Status res = ::android::apex::preinstallPackages(paths);
+  if (res.Ok()) {
+    return BinderStatus::ok();
+  }
+
+  // TODO: Get correct binder error status.
+  LOG(ERROR) << "Failed to preinstall packages "
+             << android::base::Join(paths, ',') << ": " << res.ErrorMessage();
+  return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
+                                         String8(res.ErrorMessage().c_str()));
+}
+
 status_t ApexService::onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
                                  Parcel* _aidl_reply, uint32_t _aidl_flags) {
   switch (_aidl_code) {
@@ -384,9 +407,8 @@ status_t ApexService::shellCommand(int in, int out, int err,
       }
       return OK;
     }
-    std::string msg = StringLog()
-            << "Failed to retrieve packages: " << status.toString8().string()
-            << std::endl;
+    std::string msg = StringLog() << "Failed to retrieve packages: "
+                                  << status.toString8().string() << std::endl;
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
@@ -424,9 +446,8 @@ status_t ApexService::shellCommand(int in, int out, int err,
     if (status.isOk()) {
       return OK;
     }
-    std::string msg = StringLog()
-            << "Failed to activate package: " << status.toString8().string()
-            << std::endl;
+    std::string msg = StringLog() << "Failed to activate package: "
+                                  << status.toString8().string() << std::endl;
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }
@@ -440,9 +461,8 @@ status_t ApexService::shellCommand(int in, int out, int err,
     if (status.isOk()) {
       return OK;
     }
-    std::string msg = StringLog()
-            << "Failed to deactivate package: " << status.toString8().string()
-            << std::endl;
+    std::string msg = StringLog() << "Failed to deactivate package: "
+                                  << status.toString8().string() << std::endl;
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
   }

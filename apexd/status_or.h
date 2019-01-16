@@ -67,6 +67,9 @@ class StatusOr {
   static StatusOr MakeError(const std::string& msg) {
     return StatusOr(msg, StatusOrTag::kDummy);
   }
+  static StatusOr MakeError(const Status& status) {
+    return StatusOr(status.ErrorMessage(), StatusOrTag::kDummy);
+  }
 
  private:
   StatusOr(const std::string& msg, StatusOrTag dummy ATTRIBUTE_UNUSED)
