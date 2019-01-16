@@ -69,6 +69,8 @@ class ApexService : public BnApexService {
                                 ApexInfo* aidl_return) override;
   BinderStatus preinstallPackages(
       const std::vector<std::string>& paths) override;
+  BinderStatus postinstallPackages(
+      const std::vector<std::string>& paths) override;
 
   status_t dump(int fd, const Vector<String16>& args) override;
 
@@ -268,6 +270,25 @@ BinderStatus ApexService::preinstallPackages(
 
   // TODO: Get correct binder error status.
   LOG(ERROR) << "Failed to preinstall packages "
+             << android::base::Join(paths, ',') << ": " << res.ErrorMessage();
+  return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
+                                         String8(res.ErrorMessage().c_str()));
+}
+
+BinderStatus ApexService::postinstallPackages(
+    const std::vector<std::string>& paths) {
+  BinderStatus debugCheck = CheckDebuggable("postinstallPackages");
+  if (!debugCheck.isOk()) {
+    return debugCheck;
+  }
+
+  Status res = ::android::apex::postinstallPackages(paths);
+  if (res.Ok()) {
+    return BinderStatus::ok();
+  }
+
+  // TODO: Get correct binder error status.
+  LOG(ERROR) << "Failed to postinstall packages "
              << android::base::Join(paths, ',') << ": " << res.ErrorMessage();
   return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
                                          String8(res.ErrorMessage().c_str()));

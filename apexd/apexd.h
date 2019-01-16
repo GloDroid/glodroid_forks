@@ -42,6 +42,7 @@ void scanStagedSessionsDirAndStage();
 StatusOr<std::vector<ApexFile>> verifyPackages(
     const std::vector<std::string>& paths) WARN_UNUSED;
 Status preinstallPackages(const std::vector<std::string>& paths) WARN_UNUSED;
+Status postinstallPackages(const std::vector<std::string>& paths) WARN_UNUSED;
 
 Status stagePackages(const std::vector<std::string>& tmpPaths,
                      bool linkPackages = false) WARN_UNUSED;
