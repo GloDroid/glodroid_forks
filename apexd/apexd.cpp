@@ -575,6 +575,31 @@ Status deactivatePackageImpl(const ApexFile& apex) {
   }
 }
 
+Status PreinstallPackages(const std::vector<ApexFile>& apexes) {
+  if (apexes.empty()) {
+    return Status::Fail("Empty set of inputs");
+  }
+
+  // 1) Check whether the APEXes have hooks.
+  bool has_preInstallHooks = false;
+  for (const ApexFile& apex_file : apexes) {
+    if (!apex_file.GetManifest().preinstallhook().empty()) {
+      has_preInstallHooks = true;
+      break;
+    }
+  }
+
+  // 2) If we found hooks, run pre-install.
+  if (has_preInstallHooks) {
+    Status preinstall_status = StagePreInstall(apexes);
+    if (!preinstall_status.Ok()) {
+      return preinstall_status;
+    }
+  }
+
+  return Status::Success();
+}
+
 }  // namespace
 
 namespace apexd_private {
@@ -947,32 +972,18 @@ Status preinstallPackages(const std::vector<std::string>& paths) {
     return Status::Fail("Empty set of inputs");
   }
 
-  // Note: assume that sessions do not have thousands of paths, so that it is
-  //       OK to keep the ApexFile/ApexManifests in memory.
-
-  // 1) Open all APEXes, check whether they have hooks.
-  bool has_preInstallHooks = false;
+  // 1) Open all APEXes.
   std::vector<ApexFile> apex_files;
   for (const std::string& path : paths) {
     StatusOr<ApexFile> apex_file = ApexFile::Open(path);
     if (!apex_file.Ok()) {
       return apex_file.ErrorStatus();
     }
-    if (!apex_file->GetManifest().preinstallhook().empty()) {
-      has_preInstallHooks = true;
-    }
     apex_files.emplace_back(std::move(*apex_file));
   }
 
-  // 2) If we found hooks, run pre-install.
-  if (has_preInstallHooks) {
-    Status preinstall_status = StagePreInstall(apex_files);
-    if (!preinstall_status.Ok()) {
-      return preinstall_status;
-    }
-  }
-
-  return Status::Success();
+  // 2) Dispatch Preinstall.
+  return PreinstallPackages(apex_files);
 }
 
 Status stagePackages(const std::vector<std::string>& tmpPaths,
@@ -1046,12 +1057,6 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
                << dest_path;
   }
 
-  // 3) Run preinstall, if necessary.
-  Status preinstall_status = preinstallPackages(staged);
-  if (!preinstall_status.Ok()) {
-    return preinstall_status;
-  }
-
   scope_guard.Disable();  // Accept the state.
   return Status::Success();
 }
@@ -1080,6 +1085,12 @@ StatusOr<std::vector<ApexFile>> submitStagedSession(
   if (child_session_ids.size() == 0) {
     auto verified = verifySessionDir(session_id);
     if (verified.Ok()) {
+      // Run preinstall, if necessary.
+      Status preinstall_status = PreinstallPackages(*verified);
+      if (!preinstall_status.Ok()) {
+        return StatusOr<std::vector<ApexFile>>::MakeError(preinstall_status);
+      }
+
       SessionState sessionState;
       sessionState.set_state(SessionState::STAGED);
       sessionState.set_retry_count(0);

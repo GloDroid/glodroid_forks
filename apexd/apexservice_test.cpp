@@ -597,18 +597,16 @@ TEST_F(ApexServiceActivationSuccessTest, GetActivePackage) {
   ASSERT_EQ(installer_->test_installed_file, active->packagePath);
 }
 
-TEST_F(ApexServiceTest, StagePreinstall) {
+TEST_F(ApexServiceTest, Preinstall) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_preinstall.apex"));
   if (!installer.Prepare()) {
     return;
   }
 
-  bool success;
   android::binder::Status st =
-      service_->stagePackage(installer.test_file, &success);
+      service_->preinstallPackages({installer.test_file});
   ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
-  ASSERT_TRUE(success);
 
   std::string logcat = GetLogcat();
   constexpr const char* kTestMessage = "sh      : PreInstall Test\n";
@@ -631,7 +629,7 @@ TEST_F(ApexServiceTest, StagePreinstall) {
   }
 }
 
-TEST_F(ApexServiceTest, MultiStagePreinstall) {
+TEST_F(ApexServiceTest, MultiPreinstall) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_preinstall.apex"));
   if (!installer.Prepare()) {
@@ -646,10 +644,8 @@ TEST_F(ApexServiceTest, MultiStagePreinstall) {
       installer.test_file,
       installer2.test_file,
   };
-  bool success;
-  android::binder::Status st = service_->stagePackages(pkgs, &success);
+  android::binder::Status st = service_->preinstallPackages(pkgs);
   ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
-  ASSERT_TRUE(success);
 
   std::string logcat = GetLogcat();
   constexpr const char* kTestMessage =

@@ -27,10 +27,10 @@ namespace apex {
 
 class ApexFile;
 
-Status StagePreInstall(std::vector<ApexFile>& apexes);
+Status StagePreInstall(const std::vector<ApexFile>& apexes);
 int RunPreInstall(char** argv);
 
-Status StagePostInstall(std::vector<ApexFile>& apexes);
+Status StagePostInstall(const std::vector<ApexFile>& apexes);
 int RunPostInstall(char** argv);
 
 }  // namespace apex
