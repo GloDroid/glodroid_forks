@@ -70,6 +70,10 @@ class StatusOr {
   static StatusOr MakeError(const Status& status) {
     return StatusOr(status.ErrorMessage(), StatusOrTag::kDummy);
   }
+  // Added to be compatible with Status, i.e., T::Fail() works for both.
+  static StatusOr Fail(const std::string& msg) {
+    return StatusOr(msg, StatusOrTag::kDummy);
+  }
 
  private:
   StatusOr(const std::string& msg, StatusOrTag dummy ATTRIBUTE_UNUSED)
