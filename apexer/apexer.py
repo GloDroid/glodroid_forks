@@ -123,10 +123,7 @@ def PrepareAndroidManifest(package, version):
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="{package}" android:versionCode="{version}">
   <!-- APEX does not have classes.dex -->
-  <application
-    android:hasCode="false"
-    android:icon="@drawable/ic_app"
-  />
+  <application android:hasCode="false" />
 </manifest>
 """
   return template.format(package=package, version=version)
@@ -317,31 +314,13 @@ def CreateApex(args, work_dir):
   if args.pubkey:
     shutil.copyfile(args.pubkey, os.path.join(content_dir, "apex_pubkey"))
 
-  with TempDirectory() as compiled_res_dir:
-    # TODO: figure out why --dir produced an invalid file
-    cmd = ['aapt2']
-    cmd.append('compile')
-    cmd.extend(['-o', compiled_res_dir])
-    cmd.append('system/apex/apexer/res/drawable/ic_app.xml')
-    RunCommand(cmd, args.verbose)
-
-    cmd = ['aapt2']
-    cmd.append('compile')
-    cmd.extend(['-o', compiled_res_dir])
-    cmd.append('system/apex/apexer/res/drawable/app_icon_foreground.xml')
-    RunCommand(cmd, args.verbose)
-
-    apk_file = os.path.join(work_dir, 'apex.apk')
-    cmd = ['aapt2']
-    cmd.append('link')
-    cmd.append(compiled_res_dir + '/drawable_app_icon_foreground.xml.flat')
-    cmd.append(compiled_res_dir + '/drawable_ic_app.xml.flat')
-    cmd.extend(['--manifest', android_manifest_file])
-    cmd.extend(['-o', apk_file])
-    cmd.extend(['-I', "prebuilts/sdk/current/public/android.jar"])
-    cmd.extend(['--min-sdk-version', '28'])
-    cmd.extend(['--target-sdk-version', '28'])
-    RunCommand(cmd, args.verbose)
+  apk_file = os.path.join(work_dir, 'apex.apk')
+  cmd = ['aapt2']
+  cmd.append('link')
+  cmd.extend(['--manifest', android_manifest_file])
+  cmd.extend(['-o', apk_file])
+  cmd.extend(['-I', "prebuilts/sdk/current/public/android.jar"])
+  RunCommand(cmd, args.verbose)
 
   zip_file = os.path.join(work_dir, 'apex.zip')
   cmd = ['soong_zip']
