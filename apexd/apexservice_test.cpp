@@ -184,7 +184,7 @@ class ApexServiceTest : public ::testing::Test {
   }
 
   struct PrepareTestApexForInstall {
-    static constexpr const char* kTestDir = "/data/local/apexservice_tmp";
+    static constexpr const char* kTestDir = "/data/staging/apexservice_tmp";
 
     // This is given to the constructor.
     std::string test_input;  // Original test file.
@@ -400,7 +400,7 @@ TEST_F(ApexServiceTest, StageFailKey) {
 
   constexpr const char* kExpectedError3 =
       "Error verifying "
-      "/data/local/apexservice_tmp/apex.apexd_test_no_inst_key.apex: "
+      "/data/staging/apexservice_tmp/apex.apexd_test_no_inst_key.apex: "
       "couldn't verify public key: Failed to compare the bundled public key "
       "with key";
   const size_t pos3 = error.find(kExpectedError3);
