@@ -750,12 +750,38 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
   }
 }
 
+int getSessionIdFromSessionDir(const std::string& session_dir) {
+  int sessionId = -1;
+  // Find "session_"
+  auto foundSessionPos = session_dir.find("session_");
+  if (foundSessionPos == std::string::npos) {
+    return -1;
+  }
+  // Find following '/' (if any)
+  auto foundSlashPos = session_dir.find("/", foundSessionPos);
+  auto length = (foundSlashPos == std::string::npos)
+                    ? std::string::npos
+                    : foundSlashPos - foundSessionPos;
+
+  auto sessionString = session_dir.substr(foundSessionPos, length);
+  if (sessionString.empty()) {
+    return -1;
+  }
+  // Not using std::stoi because it throws exceptions when it can't match
+  int numFound = sscanf(sessionString.c_str(), "session_%d", &sessionId);
+  if (numFound == 1) {
+    return sessionId;
+  } else {
+    return -1;
+  }
+}
+
 void scanStagedSessionsDirAndStage() {
-  LOG(INFO) << "Scanning " << kStagedSessionsDir
+  LOG(INFO) << "Scanning " << kApexSessionsDir
             << " looking for sessions to be activated.";
 
   StatusOr<std::vector<std::string>> sessions =
-      ReadDir(kStagedSessionsDir, [](unsigned char d_type, const char* d_name) {
+      ReadDir(kApexSessionsDir, [](unsigned char d_type, const char* d_name) {
         return (d_type == DT_DIR) && StartsWith(d_name, "session_");
       });
   if (!sessions.Ok()) {
@@ -764,10 +790,29 @@ void scanStagedSessionsDirAndStage() {
   }
 
   for (const std::string sessionDirPath : *sessions) {
+    int sessionId = getSessionIdFromSessionDir(sessionDirPath);
+    if (sessionId == -1) {
+      LOG(ERROR) << "Could not parse session ID from path " << sessionDirPath;
+      continue;
+    }
+    auto res = readSessionState(sessionId);
+    if (!res.Ok()) {
+      LOG(WARNING) << "Ignoring session directory " << sessionDirPath
+                   << " because it doesn't have any state.";
+      continue;
+    }
+    auto sessionState = *res;
+    if (sessionState.state() != SessionState::STAGED) {
+      LOG(WARNING) << "Ignoring session directory " << sessionDirPath
+                   << " because its state is not staged.";
+      continue;
+    }
+    const std::string stageDirPath = std::string(kStagedSessionsDir) +
+                                     "/session_" + std::to_string(sessionId);
     // TODO(b/118865310): support sessions of sessions i.e. multi-package
     // sessions.
     StatusOr<std::vector<std::string>> apexes =
-        FindApexFilesByName(sessionDirPath, /* include_dirs=*/false);
+        FindApexFilesByName(stageDirPath, /* include_dirs=*/false);
     if (!apexes.Ok()) {
       LOG(WARNING) << apexes.ErrorMessage();
       continue;
@@ -778,8 +823,11 @@ void scanStagedSessionsDirAndStage() {
     }
 
     auto session_failed_fn = [&]() {
-      // TODO(b/118865310): mark session as failed, rollback the changes
+      // TODO(b/118865310): retry, and if it keeps fialing, rollback the changes
       // and reboot the device.
+      sessionState.set_state(SessionState::ACTIVATION_FAILED);
+      // TODO what if we fail to write the state?
+      writeSessionState(sessionId, sessionState);
     };
     auto scope_guard = android::base::make_scope_guard(session_failed_fn);
 
@@ -805,8 +853,11 @@ void scanStagedSessionsDirAndStage() {
 
     // Session was OK, release scopeguard.
     scope_guard.Disable();
+
+    sessionState.set_state(SessionState::ACTIVATED);
+    // TODO what if we fail to write the state?
+    writeSessionState(sessionId, sessionState);
   }
-  // TODO(b/118865310): mark session as successful
 }
 
 Status preinstallPackages(const std::vector<std::string>& paths) {
