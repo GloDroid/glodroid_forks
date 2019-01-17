@@ -20,10 +20,9 @@ import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
-import com.android.tradefed.util.CommandResult;
-import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
 
@@ -33,8 +32,7 @@ import org.junit.Before;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Set;
 
 /**
  * Base test to check if Apex can be staged, activated and uninstalled successfully.
@@ -44,34 +42,36 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     private static final String STAGING_DATA_DIR = "/data/staging";
     private static final String OPTION_APEX_PACKAGE_NAME = "apex_package_name";
     private static final String OPTION_APEX_FILE_NAME = "apex_file_name";
+    private static final String OPTION_APEX_VERSION = "apex_version_code";
 
     private boolean mAdbWasRoot;
 
     @Option(name = OPTION_APEX_PACKAGE_NAME,
             description = "The package name of the apex module. Specified in manifest.json.",
-            importance = Importance.IF_UNSET
+            importance = Importance.IF_UNSET,
+            mandatory = true
     )
     private String mApexPackageName = null;
 
     @Option(name = OPTION_APEX_FILE_NAME,
             description = "The file name of the apex module.",
-            importance = Importance.IF_UNSET
+            importance = Importance.IF_UNSET,
+            mandatory = true
     )
     private String mApexFileName = null;
 
+    @Option(name = OPTION_APEX_VERSION,
+            description = "The version code of the apex module.",
+            importance = Importance.IF_UNSET,
+            mandatory = true
+    )
+    private long mApexVersion;
+
+
     @Before
     public synchronized void setUp() throws Exception {
-        if (mApexPackageName == null) {
-            throw new IllegalArgumentException(String.format("Missing required option %s",
-                OPTION_APEX_PACKAGE_NAME));
-        }
-        if (mApexFileName == null) {
-            throw new IllegalArgumentException(String.format("Missing required option %s",
-                OPTION_APEX_FILE_NAME));
-        }
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
         getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
-        mAdbWasRoot = getDevice().isAdbRoot();
     }
 
     /**
@@ -80,8 +80,6 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     public void doTestStageActivateUninstallApexPackage()
                                 throws DeviceNotAvailableException, IOException {
 
-        // Test staging APEX module (currently we simply install a sample apk).
-        // TODO: change sample apk to test APEX package and do install using adb.
         File testAppFile = getTestApex();
         CLog.i("Found test apex file: " + testAppFile.getAbsoluteFile());
 
@@ -91,56 +89,16 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
                     mApexFileName, installResult),
                 installResult);
 
-        // TODO: ensure that APEX is staged.
-
-        // Reboot to actually activate the staged APEX.
-        getDevice().nonBlockingReboot();
-        getDevice().waitForDeviceAvailable();
-
-        // Disable SELinux to directly talk to apexservice.
-        // TODO: Remove this by using Package Manager APIs instead.
-        final boolean adbWasRoot = getDevice().isAdbRoot();
-        if (!adbWasRoot) {
-            Assert.assertTrue(getDevice().enableAdbRoot());
-        }
-        CommandResult result = getDevice().executeShellV2Command("getenforce");
-        final boolean selinuxWasEnforcing = result.getStdout().contains("Enforcing");
-        if (selinuxWasEnforcing) {
-            result = getDevice().executeShellV2Command("setenforce 0");
-            Assert.assertEquals(CommandStatus.SUCCESS, result.getStatus());
-        }
+        getDevice().reboot();
 
         // Check that the APEX is actually activated
-        result = getDevice().executeShellV2Command("cmd apexservice getActivePackages");
-        Assert.assertEquals(CommandStatus.SUCCESS, result.getStatus());
-        String[] lines = result.getStdout().split("\n");
-        Pattern p = Pattern.compile("Package:\\ ([\\S]+)\\ Version:\\ ([\\d]+) Path:\\ ([\\S]+)");
-        boolean found = false;
-        for (String l : lines) {
-            Matcher m = p.matcher(l);
-            Assert.assertTrue("Output line:: " + l, m.matches());
-            String name = m.group(1);
-            if (name.equals(mApexPackageName)) {
-                found = true;
-                break;
-            }
-        }
+        ApexInfo testApexInfo = new ApexInfo(mApexPackageName, mApexVersion);
+        Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
         Assert.assertTrue(
-                String.format("Cannot find package %s in the active packages\n%s",
-                    mApexPackageName, result.getStdout()),
-                found);
+                String.format("Failed to activate %s", mApexPackageName),
+                activatedApexes.contains(testApexInfo));
 
         additionalCheck();
-
-        // Enable SELinux back on
-        // TODO: don't change SElinux enforcement at all
-        if (selinuxWasEnforcing) {
-            result = getDevice().executeShellV2Command("setenforce 1");
-            Assert.assertEquals(CommandStatus.SUCCESS, result.getStatus());
-        }
-        if (!adbWasRoot) {
-            Assert.assertTrue(getDevice().disableAdbRoot());
-        }
     }
 
     /**
@@ -194,12 +152,8 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
 
     @After
     public void tearDown() throws DeviceNotAvailableException {
-        Assert.assertTrue(getDevice().enableAdbRoot());
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
         getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
-        if (!mAdbWasRoot) {
-            Assert.assertTrue(getDevice().disableAdbRoot());
-        }
         getDevice().reboot();
     }
 }
