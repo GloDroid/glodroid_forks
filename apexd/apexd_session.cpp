@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "apexd_session.h"
 #include "apexd.h"
 #include "apexd_private.h"
 #include "status_or.h"
@@ -32,11 +33,8 @@ namespace apex {
 
 namespace {
 
-static const std::string kSessionsDir =
-    std::string(kApexPackageDataDir) + "/sessions";
-
 std::string getSessionDir(const int session_id) {
-  return kSessionsDir + "/session_" + std::to_string(session_id);
+  return kApexSessionsDir + "/session_" + std::to_string(session_id);
 }
 
 std::string getSessionStateFile(const int session_id) {
@@ -67,7 +65,7 @@ Status createDirIfNeeded(const std::string& path) {
 
 StatusOr<std::string> createSessionDirIfNeeded(const int session_id) {
   // create /data/sessions
-  auto res = createDirIfNeeded(kSessionsDir);
+  auto res = createDirIfNeeded(kApexSessionsDir);
   if (!res.Ok()) {
     return StatusOr<std::string>(res.ErrorMessage());
   }
