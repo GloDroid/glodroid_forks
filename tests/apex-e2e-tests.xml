@@ -16,11 +16,13 @@
 <configuration description="Config for apex install/uninstall test cases">
     <option name="test-suite-tag" value="apex_e2e_tests" />
     <option name="test-suite-tag" value="apct" />
-
+    
+    <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer"/>
     <test class="com.android.tradefed.testtype.HostTest" >
         <option name="jar" value="apex_e2e_tests.jar" />
         <option name="set-option" value="apex_package_name:com.android.apex.test" />
         <option name="set-option" value="apex_file_name:apex.test.apex" />
+        <option name="set-option" value="apex_version_code:1" />
     </test>
 </configuration>
 
