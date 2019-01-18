@@ -206,13 +206,13 @@ StatusOr<std::unique_ptr<AvbFooter>> getAvbFooter(const ApexFile& apex,
   int ret = lseek(fd, offset, SEEK_SET);
   if (ret == -1) {
     return StatusOr<std::unique_ptr<AvbFooter>>::MakeError(
-        PStringLog() << "Couldn't seek to AVB footer.");
+        PStringLog() << "Couldn't seek to AVB footer");
   }
 
   ret = read(fd, footer_data.data(), AVB_FOOTER_SIZE);
   if (ret != AVB_FOOTER_SIZE) {
     return StatusOr<std::unique_ptr<AvbFooter>>::MakeError(
-        PStringLog() << "Couldn't read AVB footer.");
+        PStringLog() << "Couldn't read AVB footer");
   }
 
   if (!avb_footer_validate_and_byteswap((const AvbFooter*)footer_data.data(),
@@ -386,7 +386,7 @@ StatusOr<std::unique_ptr<uint8_t[]>> verifyVbMeta(
 
   if (!ReadFullyAtOffset(fd, vbmeta_buf.get(), footer.vbmeta_size, offset)) {
     return StatusOr<std::unique_ptr<uint8_t[]>>::MakeError(
-        PStringLog() << "Couldn't read AVB meta-data.");
+        PStringLog() << "Couldn't read AVB meta-data");
   }
 
   Status st = verifyVbMetaSignature(apex, vbmeta_buf.get(), footer.vbmeta_size,
