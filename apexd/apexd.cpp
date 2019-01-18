@@ -198,7 +198,7 @@ StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
   auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(path.c_str()), closedir);
   if (!d) {
     return StatusOr<std::vector<std::string>>::MakeError(
-        PStringLog() << "Can't open " << path << " for reading.");
+        PStringLog() << "Can't open " << path << " for reading");
   }
 
   std::vector<std::string> ret;
