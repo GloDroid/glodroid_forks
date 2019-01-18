@@ -141,7 +141,7 @@ StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
     // the buffer cache and make sure we actually read the data at the correct
     // offset.
     return Failed::MakeError(PStringLog()
-                             << "Failed to flush buffers on the loop device.");
+                             << "Failed to flush buffers on the loop device");
   }
 
   // Direct-IO requires the loop device to have the same block size as the
