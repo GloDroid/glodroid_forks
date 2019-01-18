@@ -48,6 +48,13 @@ static constexpr const char* kApexLoopIdPrefix = "apex:";
 // 128 kB read-ahead, which we currently use for /system as well
 static constexpr const char* kReadAheadKb = "128";
 
+// TODO(b/122059364): Even though the kernel has created the loop
+// device, we still depend on ueventd to run to actually create the
+// device node in userspace. To solve this properly we should listen on
+// the netlink socket for uevents, or use inotify. For now, this will
+// have to do.
+static constexpr size_t kLoopDeviceRetryAttempts = 3u;
+
 void LoopbackDeviceUniqueFd::MaybeCloseBad() {
   if (device_fd.get() != -1) {
     // Disassociate any files.
@@ -102,10 +109,22 @@ StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
   if (target_fd.get() == -1) {
     return Failed::MakeError(PStringLog() << "Failed to open " << target);
   }
-  LoopbackDeviceUniqueFd device_fd(
-      unique_fd(open(device.c_str(), O_RDWR | O_CLOEXEC)), device);
-  if (device_fd.get() == -1) {
-    return Failed::MakeError(PStringLog() << "Failed to open " << device);
+  LoopbackDeviceUniqueFd device_fd;
+  {
+    // See comment on kLoopDeviceRetryAttempts.
+    unique_fd sysfs_fd;
+    for (size_t i = 0; i != kLoopDeviceRetryAttempts; ++i) {
+      sysfs_fd.reset(open(device.c_str(), O_RDWR | O_CLOEXEC));
+      if (sysfs_fd.get() != -1) {
+        break;
+      }
+      usleep(50000);
+    }
+    if (sysfs_fd.get() == -1) {
+      return Failed::MakeError(PStringLog() << "Failed to open " << device);
+    }
+    device_fd = LoopbackDeviceUniqueFd(std::move(sysfs_fd), device);
+    CHECK_NE(device_fd.get(), -1);
   }
 
   if (ioctl(device_fd.get(), LOOP_SET_FD, target_fd.get()) == -1) {
