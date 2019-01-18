@@ -602,6 +602,22 @@ class ApexServicePrePostInstallTest : public ApexServiceTest {
   template <typename Fn>
   void RunPrePost(Fn fn, const std::vector<std::string>& apex_names,
                   const char* test_message) {
+    int old_selinux_state = security_getenforce();
+    if (old_selinux_state == -1) {
+      LOG(ERROR) << "Could not determine selinux enforcement";
+    } else if (old_selinux_state == 1) {
+      int res = security_setenforce(0);
+      if (res != 0) {
+        LOG(ERROR) << "Unable to disable selinux enforcement";
+      }
+    }
+    auto scope_guard = android::base::make_scope_guard([&]() {
+      if (old_selinux_state != -1 &&
+          security_setenforce(old_selinux_state) != 0) {
+        LOG(ERROR) << "Unable to reset selinux enforcement to "
+                   << old_selinux_state;
+      }
+    });
     // Using unique_ptr is just the easiest here.
     using InstallerUPtr = std::unique_ptr<PrepareTestApexForInstall>;
     std::vector<InstallerUPtr> installers;
