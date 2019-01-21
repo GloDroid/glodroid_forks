@@ -118,12 +118,14 @@ def RoundUp(size, unit):
 
 
 def PrepareAndroidManifest(package, version):
+  # TODO(b/122578966) Specify min/max API level for APEX.
   template = """\
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="{package}" android:versionCode="{version}">
   <!-- APEX does not have classes.dex -->
   <application android:hasCode="false" />
+  <uses-sdk android:minSdkVersion="Q" android:targetSdkVersion="Q" />
 </manifest>
 """
   return template.format(package=package, version=version)
