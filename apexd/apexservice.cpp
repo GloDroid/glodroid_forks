@@ -49,6 +49,7 @@ using BinderStatus = ::android::binder::Status;
 class ApexService : public BnApexService {
  public:
   using BinderStatus = ::android::binder::Status;
+  using SessionState = ::apex::proto::SessionState;
 
   ApexService(){};
 
@@ -153,31 +154,29 @@ BinderStatus ApexService::getStagedSessionInfo(
   apex_session_info->isActivated = false;
   apex_session_info->isActivationPendingRetry = false;
   apex_session_info->isActivationFailed = false;
-  auto state = readSessionState(session_id);
-  if (!state.Ok()) {
+  auto session = ApexSession::GetSession(session_id);
+  if (!session.Ok()) {
     // Unknown session.
     return BinderStatus::ok();
   }
-
   apex_session_info->isUnknown = false;
-  auto session_state = *state;
-  switch (session_state.state()) {
-    case session_state.VERIFIED:
+  switch ((*session).GetState()) {
+    case SessionState::VERIFIED:
       apex_session_info->isVerified = true;
       break;
-    case session_state.STAGED:
+    case SessionState::STAGED:
       apex_session_info->isStaged = true;
       break;
-    case session_state.ACTIVATED:
+    case SessionState::ACTIVATED:
       apex_session_info->isActivated = true;
       break;
-    case session_state.ACTIVATION_PENDING_RETRY:
+    case SessionState::ACTIVATION_PENDING_RETRY:
       apex_session_info->isActivationPendingRetry = true;
       break;
-    case session_state.ACTIVATION_FAILED:
+    case SessionState::ACTIVATION_FAILED:
       apex_session_info->isActivationFailed = true;
       break;
-    case session_state.UNKNOWN:
+    case SessionState::UNKNOWN:
     default:
       apex_session_info->isUnknown = true;
       break;
