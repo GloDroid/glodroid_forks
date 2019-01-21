@@ -170,6 +170,17 @@ SessionState::State ApexSession::GetState() const { return state_.state(); }
 
 int ApexSession::GetId() const { return id_; }
 
+const google::protobuf::RepeatedField<int> ApexSession::GetChildSessionIds()
+    const {
+  return state_.child_session_ids();
+}
+
+void ApexSession::SetChildSessionIds(
+    const std::vector<int>& child_session_ids) {
+  *(state_.mutable_child_session_ids()) = {child_session_ids.begin(),
+                                           child_session_ids.end()};
+}
+
 Status ApexSession::UpdateStateAndCommit(SessionState::State session_state) {
   state_.set_state(session_state);
 

@@ -34,4 +34,7 @@ message SessionState {
 
   // Current retry counter for the session
   int32 retry_count = 2;
+
+  // Child session ids
+  repeated int32 child_session_ids = 3;
 }
