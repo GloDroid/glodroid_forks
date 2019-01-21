@@ -90,6 +90,22 @@ apex {
     installable: false,
 }
 
+apex_key {
+    name: "com.android.apex.test_package_2.key",
+    public_key: "com.android.apex.test_package_2.avbpubkey",
+    private_key: "com.android.apex.test_package_2.pem",
+    installable: false,
+}
+
+apex {
+    name: "apex.apexd_test_different_app",
+    manifest: "manifest_different_app.json",
+    file_contexts: "apex.test",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package_2.key",
+    installable: false,
+}
+
 cc_prebuilt_binary {
     name: "apex_test_preInstallHook",
     srcs: ["preInstallHook.sh"],

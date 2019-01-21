@@ -186,6 +186,7 @@ cc_test {
   defaults: ["apex_defaults"],
   data: [
     ":apex.apexd_test",
+    ":apex.apexd_test_different_app",
     ":apex.apexd_test_v2",
     ":apex.apexd_test_no_inst_key",
     ":apex.apexd_test_preinstall",

@@ -37,9 +37,11 @@ class ApexSession {
       ::apex::proto::SessionState::State state);
   ApexSession() = delete;
 
+  const google::protobuf::RepeatedField<int> GetChildSessionIds() const;
   ::apex::proto::SessionState::State GetState() const;
   int GetId() const;
 
+  void SetChildSessionIds(const std::vector<int>& child_session_ids);
   Status UpdateStateAndCommit(::apex::proto::SessionState::State state);
 
  private:

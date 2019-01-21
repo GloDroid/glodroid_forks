@@ -756,6 +756,86 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   EXPECT_FALSE(session.isActivationFailed);
 }
 
+TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
+  // Parent session id: 10
+  // Children session ids: 20 30
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
+                                      "/data/staging/session_20",
+                                      "staging_data_file");
+  PrepareTestApexForInstall installer2(
+      GetTestFile("apex.apexd_test_different_app.apex"),
+      "/data/staging/session_30", "staging_data_file");
+  if (!installer.Prepare() || !installer2.Prepare()) {
+    FAIL() << GetDebugStr(&installer) << GetDebugStr(&installer2);
+  }
+
+  ApexInfoList list;
+  bool ret_value;
+  std::vector<int> child_session_ids = {20, 30};
+  android::binder::Status status =
+      service_->submitStagedSession(10, child_session_ids, &list, &ret_value);
+
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(ret_value);
+  EXPECT_EQ(2u, list.apexInfos.size());
+  ApexInfo match;
+  bool package1_found = false;
+  bool package2_found = false;
+  for (ApexInfo info : list.apexInfos) {
+    if (info.packageName == installer.package) {
+      ASSERT_EQ(installer.package, info.packageName);
+      ASSERT_EQ(installer.version, static_cast<uint64_t>(info.versionCode));
+      ASSERT_EQ(installer.test_file, info.packagePath);
+      package1_found = true;
+    } else if (info.packageName == installer2.package) {
+      ASSERT_EQ(installer2.package, info.packageName);
+      ASSERT_EQ(installer2.version, static_cast<uint64_t>(info.versionCode));
+      ASSERT_EQ(installer2.test_file, info.packagePath);
+      package2_found = true;
+    } else {
+      FAIL() << "Unexpected package found " << info.packageName
+             << GetDebugStr(&installer) << GetDebugStr(&installer2);
+    }
+  }
+  ASSERT_TRUE(package1_found);
+  ASSERT_TRUE(package2_found);
+
+  ApexSessionInfo session;
+  status = service_->getStagedSessionInfo(10, &session);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_FALSE(session.isUnknown);
+  EXPECT_FALSE(session.isVerified);
+  EXPECT_TRUE(session.isStaged);
+  EXPECT_FALSE(session.isActivated);
+  EXPECT_FALSE(session.isActivationPendingRetry);
+  EXPECT_FALSE(session.isActivationFailed);
+}
+
+TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
+  // Parent session id: 11
+  // Children session ids: 21 31
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
+                                      "/data/staging/session_21",
+                                      "staging_data_file");
+  PrepareTestApexForInstall installer2(
+      GetTestFile("apex.apexd_test_no_inst_key.apex"),
+      "/data/staging/session_31", "staging_data_file");
+  if (!installer.Prepare() || !installer2.Prepare()) {
+    FAIL() << GetDebugStr(&installer) << GetDebugStr(&installer2);
+  }
+  ApexInfoList list;
+  bool ret_value;
+  std::vector<int> child_session_ids = {21, 31};
+  android::binder::Status status =
+      service_->submitStagedSession(11, child_session_ids, &list, &ret_value);
+
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_FALSE(ret_value);
+}
+
 class LogTestToLogcat : public testing::EmptyTestEventListener {
   void OnTestStart(const testing::TestInfo& test_info) override {
 #ifdef __ANDROID__
