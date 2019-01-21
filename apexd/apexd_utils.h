@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include <dirent.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -72,6 +73,31 @@ inline int ForkAndRun(const std::vector<std::string>& args,
     *error_msg = StringLog() << "Failed run: status=" << rc;
   }
   return rc;
+}
+
+template <typename FilterFn>
+StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
+                                           FilterFn fn) {
+  // TODO use C++17's std::filesystem instead
+  auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(path.c_str()), closedir);
+  if (!d) {
+    return StatusOr<std::vector<std::string>>::MakeError(
+        PStringLog() << "Can't open " << path << " for reading");
+  }
+
+  std::vector<std::string> ret;
+  struct dirent* dp;
+  while ((dp = readdir(d.get())) != NULL) {
+    if ((strcmp(dp->d_name, ".") == 0) || (strcmp(dp->d_name, "..") == 0)) {
+      continue;
+    }
+    if (!fn(dp->d_type, dp->d_name)) {
+      continue;
+    }
+    ret.push_back(path + "/" + dp->d_name);
+  }
+
+  return StatusOr<std::vector<std::string>>(std::move(ret));
 }
 
 }  // namespace apex

@@ -28,9 +28,25 @@ namespace apex {
 static const std::string kApexSessionsDir =
     std::string(kApexPackageDataDir) + "/sessions";
 
-StatusOr<::apex::proto::SessionState> readSessionState(const int session_id);
-Status writeSessionState(const int session_id,
-                         ::apex::proto::SessionState state);
+class ApexSession {
+ public:
+  static StatusOr<ApexSession> CreateSession(int session_id);
+  static StatusOr<ApexSession> GetSession(int session_id);
+  static std::vector<ApexSession> GetSessions();
+  static std::vector<ApexSession> GetSessionsInState(
+      ::apex::proto::SessionState::State state);
+  ApexSession() = delete;
+
+  ::apex::proto::SessionState::State GetState() const;
+  int GetId() const;
+
+  Status UpdateStateAndCommit(::apex::proto::SessionState::State state);
+
+ private:
+  ApexSession(int id, ::apex::proto::SessionState state);
+  int id_;
+  ::apex::proto::SessionState state_;
+};
 
 }  // namespace apex
 }  // namespace android
