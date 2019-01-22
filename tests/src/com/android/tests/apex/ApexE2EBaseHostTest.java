@@ -88,7 +88,12 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
                 String.format("failed to install test app %s. Reason: %s",
                     mApexFileName, installResult),
                 installResult);
-
+        // TODO(b/122882120) wait for the "isReady" broadcast.
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         getDevice().reboot();
 
         // Check that the APEX is actually activated
