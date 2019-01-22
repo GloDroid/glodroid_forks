@@ -69,6 +69,7 @@ apex {
     compile_multilib: "both",
     key: "apex.test.key",
     certificate: ":apex.test.certificate",
+    installable: false,
 }
 
 apex_key {
