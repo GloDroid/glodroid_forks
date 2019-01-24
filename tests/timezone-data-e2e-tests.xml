@@ -22,9 +22,7 @@
     <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer"/>
     <test class="com.android.tradefed.testtype.HostTest" >
         <option name="jar" value="timezone_data_e2e_tests.jar" />
-        <option name="set-option" value="apex_package_name:com.android.tzdata" />
         <option name="set-option" value="apex_file_name:test1_com.android.tzdata.apex" />
-        <option name="set-option" value="apex_version_code:2" />
     </test>
 </configuration>
 
