@@ -49,6 +49,8 @@ Aborting.
 tool_path = os.environ['APEXER_TOOL_PATH']
 tool_path_list = tool_path.split(":")
 
+BLOCK_SIZE = 4096
+
 def ParseArgs(argv):
   parser = argparse.ArgumentParser(description='Create an APEX file')
   parser.add_argument('-f', '--force', action='store_true',
@@ -103,19 +105,23 @@ def RunCommand(cmd, verbose=False, env=None):
 
   return (output, p.returncode)
 
-
 def GetDirSize(dir_name):
   size = 0
   for dirpath, _, filenames in os.walk(dir_name):
+    size += RoundUp(os.path.getsize(dirpath), BLOCK_SIZE)
     for f in filenames:
-      size += os.path.getsize(os.path.join(dirpath, f))
+      size += RoundUp(os.path.getsize(os.path.join(dirpath, f)), BLOCK_SIZE)
   return size
 
+def GetFilesAndDirsCount(dir_name):
+  count = 0;
+  for root, dirs, files in os.walk(dir_name):
+    count += (len(dirs) + len(files))
+  return count
 
 def RoundUp(size, unit):
   assert unit & (unit - 1) == 0
   return (size + unit - 1) & (~(unit - 1))
-
 
 def PrepareAndroidManifest(package, version):
   template = """\
@@ -185,11 +191,8 @@ def CreateApex(args, work_dir):
     return False
 
   # create an empty ext4 image that is sufficiently big
-  # Sufficiently big = twice the size of the input directory
-  # For the case when the input directory is really small, the minimum of the
-  # size is set to 10MB that is sufficiently large for filesystem metadata
-  # and manifests
-  size_in_mb = max(10, GetDirSize(args.input_dir) * 2 / (1024*1024))
+  # sufficiently big = size + 16MB margin
+  size_in_mb = (GetDirSize(args.input_dir) / (1024*1024)) + 16
 
   content_dir = os.path.join(work_dir, 'content')
   os.mkdir(content_dir)
@@ -212,11 +215,21 @@ def CreateApex(args, work_dir):
       return False
     img_file = os.path.join(content_dir, 'apex_payload.img')
 
+    # margin is for files that are not under args.input_dir. this consists of
+    # one inode for apex_manifest.json and 11 reserved inodes for ext4.
+    # TOBO(b/122991714) eliminate these details. use build_image.py which
+    # determines the optimal inode count by first building an image and then
+    # count the inodes actually used.
+    inode_num_margin = 12
+    inode_num = GetFilesAndDirsCount(args.input_dir) + inode_num_margin
+
     cmd = ['mke2fs']
     cmd.extend(['-O', '^has_journal']) # because image is read-only
-    cmd.extend(['-b', '4096']) # block size
+    cmd.extend(['-b', str(BLOCK_SIZE)])
     cmd.extend(['-m', '0']) # reserved block percentage
     cmd.extend(['-t', 'ext4'])
+    cmd.extend(['-I', '256']) # inode size
+    cmd.extend(['-N', str(inode_num)])
     uu = str(uuid.uuid5(uuid.NAMESPACE_URL, "www.android.com"))
     cmd.extend(['-U', uu])
     cmd.extend(['-E', 'hash_seed=' + uu])
@@ -238,6 +251,7 @@ def CreateApex(args, work_dir):
     cmd.extend(['-T', '0']) # time is set to epoch
     cmd.extend(['-S', compiled_file_contexts])
     cmd.extend(['-C', args.canned_fs_config])
+    cmd.append('-s') # share dup blocks
     cmd.append(img_file)
     RunCommand(cmd, args.verbose)
 
@@ -247,6 +261,7 @@ def CreateApex(args, work_dir):
     cmd.extend(['-T', '0']) # time is set to epoch
     cmd.extend(['-S', compiled_file_contexts])
     cmd.extend(['-C', args.canned_fs_config])
+    cmd.append('-s') # share dup blocks
     cmd.append(img_file)
     RunCommand(cmd, args.verbose, {"E2FSPROGS_FAKE_TIME": "1"})
 
@@ -275,7 +290,7 @@ def CreateApex(args, work_dir):
     info, _ = RunCommand(['avbtool', 'info_image', '--image', img_file], args.verbose)
     vbmeta_offset = int(re.search('VBMeta\ offset:\ *([0-9]+)', info).group(1))
     vbmeta_size = int(re.search('VBMeta\ size:\ *([0-9]+)', info).group(1))
-    partition_size = RoundUp(vbmeta_offset + vbmeta_size, 4096) + 4096
+    partition_size = RoundUp(vbmeta_offset + vbmeta_size, BLOCK_SIZE) + BLOCK_SIZE
 
     # Resize to the minimum size
     # TODO(b/113320014) eliminate this step
@@ -344,7 +359,7 @@ def CreateApex(args, work_dir):
   # Align the files at page boundary for efficient access
   cmd = ['zipalign']
   cmd.append('-f')
-  cmd.append('4096') # 4k alignment
+  cmd.append(str(BLOCK_SIZE))
   cmd.append(unaligned_apex_file)
   cmd.append(args.output)
   RunCommand(cmd, args.verbose)
