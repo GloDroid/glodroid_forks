@@ -206,8 +206,6 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
 
   // For now, just run sh. But this probably needs to run the new linker.
   std::vector<std::string> args{
-      "/system/bin/sh",
-      "-c",
       hook_path,
   };
   std::vector<const char*> argv;
