@@ -719,6 +719,37 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
   EXPECT_FALSE(session.isUnknown);
+  EXPECT_TRUE(session.isVerified);
+  EXPECT_FALSE(session.isStaged);
+  EXPECT_FALSE(session.isActivated);
+  EXPECT_FALSE(session.isActivationPendingRetry);
+  EXPECT_FALSE(session.isActivationFailed);
+
+  status = service_->markStagedSessionReady(123, &ret_value);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(ret_value);
+
+  status = service_->getStagedSessionInfo(123, &session);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_FALSE(session.isUnknown);
+  EXPECT_FALSE(session.isVerified);
+  EXPECT_TRUE(session.isStaged);
+  EXPECT_FALSE(session.isActivated);
+  EXPECT_FALSE(session.isActivationPendingRetry);
+  EXPECT_FALSE(session.isActivationFailed);
+
+  // Call markStagedSessionReady again. Should be a no-op.
+  status = service_->markStagedSessionReady(123, &ret_value);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(ret_value);
+
+  status = service_->getStagedSessionInfo(123, &session);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_FALSE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
   EXPECT_TRUE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
@@ -806,6 +837,21 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
   EXPECT_FALSE(session.isUnknown);
+  EXPECT_TRUE(session.isVerified);
+  EXPECT_FALSE(session.isStaged);
+  EXPECT_FALSE(session.isActivated);
+  EXPECT_FALSE(session.isActivationPendingRetry);
+  EXPECT_FALSE(session.isActivationFailed);
+
+  status = service_->markStagedSessionReady(10, &ret_value);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(ret_value);
+
+  status = service_->getStagedSessionInfo(10, &session);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_FALSE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
   EXPECT_TRUE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
@@ -834,6 +880,24 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
   ASSERT_FALSE(ret_value);
+}
+
+TEST_F(ApexServiceTest, MarkStagedSessionReadyFail) {
+  // We should fail if we ask information about a session we don't know.
+  bool ret_value;
+  auto status = service_->markStagedSessionReady(666, &ret_value);
+  ASSERT_TRUE(status.isOk()) << status.toString8().c_str();
+  ASSERT_FALSE(ret_value);
+
+  ApexSessionInfo session;
+  status = service_->getStagedSessionInfo(666, &session);
+  ASSERT_TRUE(status.isOk()) << status.toString8().c_str();
+  EXPECT_TRUE(session.isUnknown);
+  EXPECT_FALSE(session.isVerified);
+  EXPECT_FALSE(session.isStaged);
+  EXPECT_FALSE(session.isActivated);
+  EXPECT_FALSE(session.isActivationPendingRetry);
+  EXPECT_FALSE(session.isActivationFailed);
 }
 
 class LogTestToLogcat : public testing::EmptyTestEventListener {
