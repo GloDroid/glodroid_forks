@@ -228,7 +228,9 @@ def CreateApex(args, work_dir):
     cmd.extend(['-b', str(BLOCK_SIZE)])
     cmd.extend(['-m', '0']) # reserved block percentage
     cmd.extend(['-t', 'ext4'])
-    cmd.extend(['-I', '256']) # inode size
+    # TODO(b/122991714) setting the inode size makes the image root digest
+    # non-deterministic, figure out why.
+    # cmd.extend(['-I', '256']) # inode size
     cmd.extend(['-N', str(inode_num)])
     uu = str(uuid.uuid5(uuid.NAMESPACE_URL, "www.android.com"))
     cmd.extend(['-U', uu])
