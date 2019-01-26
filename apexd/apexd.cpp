@@ -908,6 +908,7 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
 }
 
 void onStart() {
+  LOG(INFO) << "Marking APEXd as starting";
   if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusStarting)) {
     PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to "
                 << kApexStatusStarting;
@@ -920,6 +921,7 @@ void onAllPackagesReady() {
   // they can query this system property to ensure that they are okay to
   // access. Or they may have a on-property trigger to delay a task until
   // APEXs become ready.
+  LOG(INFO) << "Marking APEXd as ready";
   if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusReady)) {
     PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to "
                 << kApexStatusReady;
