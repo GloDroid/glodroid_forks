@@ -24,6 +24,8 @@ interface IApexService {
    boolean stagePackage(in @utf8InCpp String package_tmp_path);
    boolean stagePackages(in @utf8InCpp List<String> package_tmp_paths);
    boolean submitStagedSession(int session_id, in int[] child_session_ids, out ApexInfoList packages);
+   boolean markStagedSessionReady(int session_id);
+
    ApexSessionInfo getStagedSessionInfo(int session_id);
    ApexInfo[] getActivePackages();
 
