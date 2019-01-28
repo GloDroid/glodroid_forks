@@ -1,0 +1,10 @@
+{
+  "imports": [
+    {
+      "path": "system/apex/tests"
+    },
+    {
+      "path": "system/apex/apexd"
+    }
+  ]
+}
