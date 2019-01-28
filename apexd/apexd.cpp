@@ -789,8 +789,6 @@ void scanStagedSessionsDirAndStage() {
     }
 
     // Run postinstall, if necessary.
-    // TODO(b/118865310): this should be over the session of sessions,
-    //                    including all packages.
     Status postinstall_status = postinstallPackages(apexes);
     if (!postinstall_status.Ok()) {
       LOG(ERROR) << "Postinstall failed for session "
@@ -798,9 +796,6 @@ void scanStagedSessionsDirAndStage() {
                  << postinstall_status.ErrorMessage();
       continue;
     }
-
-    // TODO(b/118865310): double check that there is only one apex file per
-    // dir?
 
     const Status result = stagePackages(apexes, /* linkPackages */ true);
     if (!result.Ok()) {
