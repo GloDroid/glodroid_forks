@@ -49,6 +49,10 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     private static final String OPTION_APEX_FILE_NAME = "apex_file_name";
     private static final String APEX_INFO_EXTRACT_REGEX =
             ".*package:\\sname='(\\S+)\\'\\sversionCode='(\\d+)'\\s.*";
+    private final Pattern mAppPackageNamePattern =
+            Pattern.compile("appPackageName = com\\.android\\.apex\\.test;");
+    private final Pattern mIsSessionReadyPattern = Pattern.compile("isSessionReady = true;");
+    private final Pattern mIsSessionAppliedPattern = Pattern.compile("isSessionApplied = true;");
 
     @Option(name = OPTION_APEX_FILE_NAME,
             description = "The file name of the apex module.",
@@ -63,6 +67,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     public synchronized void setUp() throws Exception {
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
         getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
+        getDevice().reboot(); // for the above commands to take affect
     }
 
     /**
@@ -87,10 +92,25 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             e.printStackTrace();
         }
 
+        // Ensure APEX is staged
+        CommandResult result = getDevice().executeShellV2Command("pm get-stagedsessions");
+        Assert.assertEquals("", result.getStderr());
+        Matcher matcher = mAppPackageNamePattern.matcher(result.getStdout());
+        // TODO: Look into why appPackageInfo is null? or should it be null?
+        // Assert.assertTrue(matcher.find());
+        matcher = mIsSessionReadyPattern.matcher(result.getStdout());
+        Assert.assertTrue(matcher.find());
+
         ApexInfo testApexInfo = getApexInfo(testAppFile);
         Assert.assertNotNull(testApexInfo);
 
         getDevice().reboot();
+
+        // This checks that the staged package was activated on reboot
+        result = getDevice().executeShellV2Command("pm get-stagedsessions");
+        Assert.assertEquals("", result.getStderr());
+        matcher = mIsSessionAppliedPattern.matcher(result.getStdout());
+        Assert.assertTrue(matcher.find());
 
         Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
         Assert.assertTrue(
