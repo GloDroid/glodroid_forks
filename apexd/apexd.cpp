@@ -902,6 +902,12 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
   return Status::Success();
 }
 
+Status rollbackLastSession() {
+  // TODO Unstage newly staged packages and call Checkpoint#abortCheckpoint
+  LOG(INFO) << "Rolling back last session";
+  return Status::Success();
+}
+
 void onStart() {
   LOG(INFO) << "Marking APEXd as starting";
   if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusStarting)) {

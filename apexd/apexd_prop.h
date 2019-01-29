@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_APEX_APEX_SERVICE_H
-#define ANDROID_APEX_APEX_SERVICE_H
+#ifndef ANDROID_APEXD_APEXD_PROP_H_
+#define ANDROID_APEXD_APEXD_PROP_H_
+
+#include "status_or.h"
 
 namespace android {
 namespace apex {
-namespace binder {
 
-void CreateAndRegisterService();
-void StartThreadPool();
-void JoinThreadPool();
+void waitForBootStatus(Status (&rollback_fn)());
 
-}  // namespace binder
 }  // namespace apex
 }  // namespace android
 
-#endif  // ANDROID_APEX_APEX_SERVICE_H
+#endif  // ANDROID_APEXD_APEXD_PROP_H
