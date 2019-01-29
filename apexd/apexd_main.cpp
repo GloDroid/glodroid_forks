@@ -22,6 +22,7 @@
 
 #include "apexd.h"
 #include "apexd_prepostinstall.h"
+#include "apexd_prop.h"
 #include "apexservice.h"
 
 namespace {
@@ -85,6 +86,10 @@ int main(int /*argc*/, char** argv) {
   // Notify other components (e.g. init) that all APEXs are correctly mounted
   // and are ready to be used.
   android::apex::onAllPackagesReady();
+
+  android::apex::binder::StartThreadPool();
+
+  android::apex::waitForBootStatus(android::apex::rollbackLastSession);
 
   android::apex::binder::JoinThreadPool();
 
