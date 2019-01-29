@@ -79,6 +79,7 @@ cc_library_static {
     "apexd_loop.cpp",
     "apexd_prepostinstall.cpp",
     "apexd_private.cpp",
+    "apexd_prop.cpp",
     "apexd_session.cpp"
   ],
   static_libs: [
