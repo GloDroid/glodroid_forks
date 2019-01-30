@@ -213,7 +213,7 @@ Status RemovePreviouslyActiveApexFiles(
     const std::unordered_set<std::string>& affected_packages,
     const std::unordered_set<std::string>& files_to_keep) {
   auto all_active_apex_files =
-      FindApexFilesByName(kApexPackageDataDir, false /* include_dirs */);
+      FindApexFilesByName(kActiveApexPackagesDataDir, false /* include_dirs */);
 
   if (!all_active_apex_files.Ok()) {
     return all_active_apex_files.ErrorStatus();
@@ -884,8 +884,15 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
 
   // 2) Now stage all of them.
 
+  // Make sure that kActiveApexPackagesDataDir exists.
+  auto create_dir_status =
+      createDirIfNeeded(std::string(kActiveApexPackagesDataDir), 0750);
+  if (!create_dir_status.Ok()) {
+    return Status::Fail(create_dir_status.ErrorMessage());
+  }
+
   auto path_fn = [](const ApexFile& apex_file) {
-    return StringPrintf("%s/%s%s", kApexPackageDataDir,
+    return StringPrintf("%s/%s%s", kActiveApexPackagesDataDir,
                         GetPackageId(apex_file.GetManifest()).c_str(),
                         kApexPackageSuffix);
   };

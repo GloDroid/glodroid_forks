@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <dirent.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -98,6 +99,32 @@ StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
   }
 
   return StatusOr<std::vector<std::string>>(std::move(ret));
+}
+
+inline Status createDirIfNeeded(const std::string& path, mode_t mode) {
+  struct stat stat_data;
+
+  if (stat(path.c_str(), &stat_data) != 0) {
+    if (errno == ENOENT) {
+      if (mkdir(path.c_str(), mode) != 0) {
+        return Status::Fail(PStringLog() << "Could not mkdir " << path);
+      }
+    } else {
+      return Status::Fail(PStringLog() << "Could not stat " << path);
+    }
+  } else {
+    if (!S_ISDIR(stat_data.st_mode)) {
+      return Status::Fail(path + " exists and is not a directory.");
+    }
+  }
+
+  // Need to manually call chmod because mkdir will create a folder with
+  // permissions mode & ~umask.
+  if (chmod(path.c_str(), mode) != 0) {
+    return Status::Fail(PStringLog() << "Could not chmod " << path);
+  }
+
+  return Status::Success();
 }
 
 }  // namespace apex
