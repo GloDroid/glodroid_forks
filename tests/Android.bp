@@ -45,6 +45,18 @@ java_test_host {
     test_suites: ["general-tests"],
 }
 
+java_test_host {
+    name: "apex_targetprep_tests",
+
+    libs: ["tradefed"],
+
+    data: [":apex.test"],
+
+    test_config: "apex-targetprep-tests.xml",
+
+    test_suites: ["general-tests"],
+}
+
 java_library_host {
     name: "apex_e2e_base_test",
     srcs: ["src/**/ApexE2EBaseHostTest.java"],
