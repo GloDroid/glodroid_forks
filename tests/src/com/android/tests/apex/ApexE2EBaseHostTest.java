@@ -67,7 +67,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     public synchronized void setUp() throws Exception {
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
         getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
-        getDevice().reboot(); // For the above commands to take effect
+        getDevice().reboot(); // for the above commands to take affect
     }
 
     /**
@@ -92,16 +92,17 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             e.printStackTrace();
         }
 
-        ApexInfo testApexInfo = getApexInfo(testAppFile);
-        Assert.assertNotNull(testApexInfo);
-
+        // Ensure APEX is staged
         CommandResult result = getDevice().executeShellV2Command("pm get-stagedsessions");
         Assert.assertEquals("", result.getStderr());
         Matcher matcher = mAppPackageNamePattern.matcher(result.getStdout());
-        // TODO: Look into why appPackageInfo is null
+        // TODO: Look into why appPackageInfo is null? or should it be null?
         // Assert.assertTrue(matcher.find());
         matcher = mIsSessionReadyPattern.matcher(result.getStdout());
         Assert.assertTrue(matcher.find());
+
+        ApexInfo testApexInfo = getApexInfo(testAppFile);
+        Assert.assertNotNull(testApexInfo);
 
         getDevice().reboot();
 
