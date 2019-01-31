@@ -63,6 +63,7 @@ class ApexService : public BnApexService {
                                    bool* aidl_return) override;
   BinderStatus markStagedSessionReady(int session_id,
                                       bool* aidl_return) override;
+  BinderStatus getSessions(std::vector<ApexSessionInfo>* aidl_return) override;
   BinderStatus getStagedSessionInfo(
       int session_id, ApexSessionInfo* apex_session_info) override;
   BinderStatus activatePackage(const std::string& packagePath) override;
@@ -161,43 +162,71 @@ BinderStatus ApexService::markStagedSessionReady(int session_id,
   return BinderStatus::ok();
 }
 
+void convertToApexSessionInfo(const ApexSession& session,
+                              ApexSessionInfo* session_info) {
+  using SessionState = ::apex::proto::SessionState;
+
+  session_info->sessionId = session.GetId();
+  session_info->isUnknown = false;
+  session_info->isVerified = false;
+  session_info->isStaged = false;
+  session_info->isActivated = false;
+  session_info->isActivationPendingRetry = false;
+  session_info->isActivationFailed = false;
+
+  switch (session.GetState()) {
+    case SessionState::VERIFIED:
+      session_info->isVerified = true;
+      break;
+    case SessionState::STAGED:
+      session_info->isStaged = true;
+      break;
+    case SessionState::ACTIVATED:
+      session_info->isActivated = true;
+      break;
+    case SessionState::ACTIVATION_PENDING_RETRY:
+      session_info->isActivationPendingRetry = true;
+      break;
+    case SessionState::ACTIVATION_FAILED:
+      session_info->isActivationFailed = true;
+      break;
+    case SessionState::UNKNOWN:
+    default:
+      session_info->isUnknown = true;
+      break;
+  }
+}
+
+BinderStatus ApexService::getSessions(
+    std::vector<ApexSessionInfo>* aidl_return) {
+  auto sessions = ApexSession::GetSessions();
+  for (const auto& session : sessions) {
+    ApexSessionInfo sessionInfo;
+    convertToApexSessionInfo(session, &sessionInfo);
+    aidl_return->push_back(sessionInfo);
+  }
+
+  return BinderStatus::ok();
+}
+
 BinderStatus ApexService::getStagedSessionInfo(
     int session_id, ApexSessionInfo* apex_session_info) {
   LOG(DEBUG) << "getStagedSessionInfo() received by ApexService, session id "
              << session_id;
-  apex_session_info->isUnknown = true;
-  apex_session_info->isVerified = false;
-  apex_session_info->isStaged = false;
-  apex_session_info->isActivated = false;
-  apex_session_info->isActivationPendingRetry = false;
-  apex_session_info->isActivationFailed = false;
   auto session = ApexSession::GetSession(session_id);
   if (!session.Ok()) {
     // Unknown session.
+    apex_session_info->sessionId = -1;
+    apex_session_info->isUnknown = true;
+    apex_session_info->isVerified = false;
+    apex_session_info->isStaged = false;
+    apex_session_info->isActivated = false;
+    apex_session_info->isActivationPendingRetry = false;
+    apex_session_info->isActivationFailed = false;
     return BinderStatus::ok();
   }
-  apex_session_info->isUnknown = false;
-  switch ((*session).GetState()) {
-    case SessionState::VERIFIED:
-      apex_session_info->isVerified = true;
-      break;
-    case SessionState::STAGED:
-      apex_session_info->isStaged = true;
-      break;
-    case SessionState::ACTIVATED:
-      apex_session_info->isActivated = true;
-      break;
-    case SessionState::ACTIVATION_PENDING_RETRY:
-      apex_session_info->isActivationPendingRetry = true;
-      break;
-    case SessionState::ACTIVATION_FAILED:
-      apex_session_info->isActivationFailed = true;
-      break;
-    case SessionState::UNKNOWN:
-    default:
-      apex_session_info->isUnknown = true;
-      break;
-  }
+
+  convertToApexSessionInfo(*session, apex_session_info);
 
   return BinderStatus::ok();
 }

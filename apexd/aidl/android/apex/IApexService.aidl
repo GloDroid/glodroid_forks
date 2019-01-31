@@ -26,6 +26,7 @@ interface IApexService {
    boolean submitStagedSession(int session_id, in int[] child_session_ids, out ApexInfoList packages);
    boolean markStagedSessionReady(int session_id);
 
+   ApexSessionInfo[] getSessions();
    ApexSessionInfo getStagedSessionInfo(int session_id);
    ApexInfo[] getActivePackages();
 

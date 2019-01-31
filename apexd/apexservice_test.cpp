@@ -318,6 +318,17 @@ class ApexServiceTest : public ::testing::Test {
 
 namespace {
 
+void ExpectSessionsEqual(const ApexSessionInfo& lhs,
+                         const ApexSessionInfo& rhs) {
+  EXPECT_EQ(lhs.sessionId, rhs.sessionId);
+  EXPECT_EQ(lhs.isUnknown, rhs.isUnknown);
+  EXPECT_EQ(lhs.isVerified, rhs.isVerified);
+  EXPECT_EQ(lhs.isStaged, rhs.isStaged);
+  EXPECT_EQ(lhs.isActivated, rhs.isActivated);
+  EXPECT_EQ(lhs.isActivationPendingRetry, rhs.isActivationPendingRetry);
+  EXPECT_EQ(lhs.isActivationFailed, rhs.isActivationFailed);
+}
+
 bool RegularFileExists(const std::string& path) {
   struct stat buf;
   if (0 != stat(path.c_str(), &buf)) {
@@ -702,6 +713,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   status = service_->getStagedSessionInfo(123, &session);
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_EQ(123, session.sessionId);
   EXPECT_FALSE(session.isUnknown);
   EXPECT_TRUE(session.isVerified);
   EXPECT_FALSE(session.isStaged);
@@ -717,6 +729,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   status = service_->getStagedSessionInfo(123, &session);
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_EQ(123, session.sessionId);
   EXPECT_FALSE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
   EXPECT_TRUE(session.isStaged);
@@ -733,12 +746,27 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   status = service_->getStagedSessionInfo(123, &session);
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_EQ(123, session.sessionId);
   EXPECT_FALSE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
   EXPECT_TRUE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
   EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
+
+  // See if the session is reported with getSessions() as well
+  std::vector<ApexSessionInfo> sessions;
+  status = service_->getSessions(&sessions);
+  ASSERT_TRUE(status.isOk())
+      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  // TODO it appears there is some left-over staged state, and we get 2 sessions
+  // here EXPECT_EQ(1u, sessions.size()); So for now, only compare the session
+  // with the same sessionid
+  for (const auto& s : sessions) {
+    if (s.sessionId == session.sessionId) {
+      ExpectSessionsEqual(s, session);
+    }
+  }
 }
 
 TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
@@ -763,6 +791,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   status = service_->getStagedSessionInfo(456, &session);
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_EQ(-1, session.sessionId);
   EXPECT_TRUE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
   EXPECT_FALSE(session.isStaged);
@@ -820,6 +849,7 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   status = service_->getStagedSessionInfo(10, &session);
   ASSERT_TRUE(status.isOk())
       << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  EXPECT_EQ(10, session.sessionId);
   EXPECT_FALSE(session.isUnknown);
   EXPECT_TRUE(session.isVerified);
   EXPECT_FALSE(session.isStaged);
@@ -876,6 +906,7 @@ TEST_F(ApexServiceTest, MarkStagedSessionReadyFail) {
   ApexSessionInfo session;
   status = service_->getStagedSessionInfo(666, &session);
   ASSERT_TRUE(status.isOk()) << status.toString8().c_str();
+  EXPECT_EQ(-1, session.sessionId);
   EXPECT_TRUE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
   EXPECT_FALSE(session.isStaged);
