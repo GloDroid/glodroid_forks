@@ -17,6 +17,7 @@
 package android.apex;
 
 parcelable ApexSessionInfo {
+    int sessionId;
     // Maps to apex::proto::SessionState::State enum.
     boolean isUnknown;
     boolean isVerified;
