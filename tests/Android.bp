@@ -21,11 +21,22 @@ java_test_host {
 
     static_libs: ["apex_e2e_base_test"],
 
-    data: [":apex.test"],
+    data: [
+            ":apex.test",
+            ":BroadcastReceiverApp"
+    ],
 
     test_config: "apex-e2e-tests.xml",
 
     test_suites: ["general-tests"],
+}
+
+android_app {
+    name: "BroadcastReceiverApp",
+
+    srcs: ["broadcastapp/src/android/apex/broadcastreceiver/*.java"],
+
+    sdk_version: "current",
 }
 
 // Need to build test1_com.android.tzdata.apex and copy it to
