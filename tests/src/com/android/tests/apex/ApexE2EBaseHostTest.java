@@ -47,12 +47,15 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     private static final String APEX_DATA_DIR = "/data/apex";
     private static final String STAGING_DATA_DIR = "/data/staging";
     private static final String OPTION_APEX_FILE_NAME = "apex_file_name";
+    private static final String OPTION_BROADCASTAPP_APK_NAME = "broadcastapp_apk_name";
     private static final String APEX_INFO_EXTRACT_REGEX =
             ".*package:\\sname='(\\S+)\\'\\sversionCode='(\\d+)'\\s.*";
     private final Pattern mAppPackageNamePattern =
             Pattern.compile("appPackageName = com\\.android\\.apex\\.test;");
-    private final Pattern mIsSessionReadyPattern = Pattern.compile("isSessionReady = true;");
+    private final Pattern mIsSessionReadyPattern = Pattern.compile("isSessionReady = true");
     private final Pattern mIsSessionAppliedPattern = Pattern.compile("isSessionApplied = true;");
+    private final Pattern mSessionBroadcastReceiver =
+            Pattern.compile("BroadcastReceiver: Action: android.content.pm.action.SESSION_UPDATED");
 
     @Option(name = OPTION_APEX_FILE_NAME,
             description = "The file name of the apex module.",
@@ -60,6 +63,13 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             mandatory = true
     )
     private String mApexFileName = null;
+
+    @Option(name = OPTION_BROADCASTAPP_APK_NAME,
+            description = "The APK file name of the BroadcastReceiver app.",
+            importance = Importance.IF_UNSET,
+            mandatory = true
+    )
+    private String mBroadcastAppApkName = null;
 
     private IRunUtil mRunUtil = new RunUtil();
 
@@ -76,33 +86,56 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     public void doTestStageActivateUninstallApexPackage()
                                 throws DeviceNotAvailableException, IOException {
 
-        File testAppFile = getTestApex();
+        File testAppFile = getTestFile(mApexFileName);
         CLog.i("Found test apex file: " + testAppFile.getAbsoluteFile());
 
-        String installResult = getDevice().installPackage(testAppFile, false);
+        // Install broadcast receiver app
+        String installResult = getDevice().installPackage(
+                getTestFile(mBroadcastAppApkName), false);
+        Assert.assertNull(
+                String.format("failed to install test app %s. Reason: %s",
+                    mBroadcastAppApkName, installResult),
+                installResult);
+        // Make MainActivity foreground service
+        getDevice().executeShellV2Command(
+                "am start -n android.apex.broadcastreceiver/.MainActivity");
+
+        // Assert that there are no session updates to begin with
+        CommandResult result = getDevice().executeShellV2Command("logcat -d");
+        Matcher matcher = mSessionBroadcastReceiver.matcher(result.getStdout());
+        Assert.assertFalse(matcher.find());
+
+        // Install apex package
+        installResult = getDevice().installPackage(testAppFile, false);
         Assert.assertNull(
                 String.format("failed to install test app %s. Reason: %s",
                     mApexFileName, installResult),
                 installResult);
 
-        // TODO(b/122882120) wait for the "isReady" broadcast.
         try {
             Thread.sleep(10000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
-        // Ensure APEX is staged
-        CommandResult result = getDevice().executeShellV2Command("pm get-stagedsessions");
+        ApexInfo testApexInfo = getApexInfo(testAppFile);
+        Assert.assertNotNull(testApexInfo);
+
+        // Assert isSessionReady is true
+        result = getDevice().executeShellV2Command("pm get-stagedsessions");
         Assert.assertEquals("", result.getStderr());
-        Matcher matcher = mAppPackageNamePattern.matcher(result.getStdout());
-        // TODO: Look into why appPackageInfo is null? or should it be null?
+        matcher = mAppPackageNamePattern.matcher(result.getStdout());
+        // TODO: Look into why appPackageInfo is null
         // Assert.assertTrue(matcher.find());
         matcher = mIsSessionReadyPattern.matcher(result.getStdout());
         Assert.assertTrue(matcher.find());
 
-        ApexInfo testApexInfo = getApexInfo(testAppFile);
-        Assert.assertNotNull(testApexInfo);
+        // Assert session update broadcast was sent to apps listening to it.
+        result = getDevice().executeShellV2Command("logcat -d");
+        matcher = mSessionBroadcastReceiver.matcher(result.getStdout());
+        Assert.assertTrue(matcher.find());
+        matcher = mIsSessionReadyPattern.matcher(result.getStdout());
+        Assert.assertTrue(matcher.find());
 
         getDevice().reboot();
 
@@ -156,44 +189,44 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     public abstract void additionalCheck();
 
     /**
-     * Helper method to get the test apex.
+     * Helper method to get the test file.
      */
-    private File getTestApex() throws IOException {
-        File apexFile = null;
+    private File getTestFile(String testFileName) throws IOException {
+        File testFile = null;
 
         String testcasesPath = System.getenv(EnvVariable.ANDROID_HOST_OUT_TESTCASES.toString());
         if (testcasesPath != null) {
-            apexFile = searchApexFile(new File(testcasesPath), mApexFileName);
+            testFile = searchTestFile(new File(testcasesPath), testFileName);
         }
-        if (apexFile != null) {
-            return apexFile;
+        if (testFile != null) {
+            return testFile;
         }
 
         File hostLinkedDir = getBuild().getFile(BuildInfoFileKey.HOST_LINKED_DIR);
         if (hostLinkedDir != null) {
-            apexFile = searchApexFile(hostLinkedDir, mApexFileName);
+            testFile = searchTestFile(hostLinkedDir, testFileName);
         }
-        if (apexFile != null) {
-            return apexFile;
+        if (testFile != null) {
+            return testFile;
         }
 
-        // Find the apex file in the buildinfo.
-        File tzdataFile = getBuild().getFile(mApexFileName);
+        // Find the file in the buildinfo.
+        File tzdataFile = getBuild().getFile(testFileName);
         if (tzdataFile != null) {
             return tzdataFile;
         }
 
-        throw new IOException("Cannot find " + mApexFileName);
+        throw new IOException("Cannot find " + testFileName);
     }
 
     /**
      * Searches the file with the given name under the given directory, returns null if not found.
      */
-    private File searchApexFile(File baseSearchFile, String apexFileName) {
+    private File searchTestFile(File baseSearchFile, String testFileName) {
         if (baseSearchFile != null && baseSearchFile.isDirectory()) {
-            File apexFile = FileUtil.findFile(baseSearchFile, apexFileName);
-            if (apexFile != null && apexFile.isFile()) {
-                return apexFile;
+            File testFile = FileUtil.findFile(baseSearchFile, testFileName);
+            if (testFile != null && testFile.isFile()) {
+                return testFile;
             }
         }
         return null;
