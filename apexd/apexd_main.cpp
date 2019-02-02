@@ -22,10 +22,14 @@
 
 #include "apexd.h"
 #include "apexd_prepostinstall.h"
-#include "apexd_prop.h"
 #include "apexservice.h"
 
+#include <android-base/properties.h>
+
 namespace {
+
+static constexpr const char* kApexDataStatusSysprop = "apexd.data.status";
+static constexpr const char* kApexDataStatusReady = "ready";
 
 int HandleSubcommand(char** argv) {
   if (strcmp("--pre-install", argv[1]) == 0) {
@@ -70,29 +74,12 @@ int main(int /*argc*/, char** argv) {
   // TODO: add a -v flag or an external setting to change LogSeverity.
   android::base::SetMinimumLogSeverity(android::base::VERBOSE);
 
+  // Wait for /data/apex. The property is set by init.
+  android::base::WaitForProperty(kApexDataStatusSysprop, kApexDataStatusReady);
+  android::apex::startBootSequence();
+
   android::apex::binder::CreateAndRegisterService();
-
-  android::apex::unmountAndDetachExistingImages();
-
-  android::apex::scanStagedSessionsDirAndStage();
-
-  // Scan the directory under /data first, as it may contain updates of APEX
-  // packages living in the directory under /system, and we want the former ones
-  // to be used over the latter ones.
-  android::apex::scanPackagesDirAndActivate(
-      android::apex::kActiveApexPackagesDataDir);
-  android::apex::scanPackagesDirAndActivate(
-      android::apex::kApexPackageSystemDir);
-
-  // Notify other components (e.g. init) that all APEXs are correctly mounted
-  // and are ready to be used.
-  android::apex::onAllPackagesReady();
-
   android::apex::binder::StartThreadPool();
-
-  android::apex::waitForBootStatus(android::apex::rollbackLastSession);
-
   android::apex::binder::JoinThreadPool();
-
   return 1;
 }
