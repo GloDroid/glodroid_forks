@@ -435,6 +435,32 @@ TEST_F(ApexServiceTest, StageSuccess) {
   EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
 }
 
+TEST_F(ApexServiceTest, StageSuccess_ClearsPreviouslyActivePackage) {
+  PrepareTestApexForInstall installer1(GetTestFile("apex.apexd_test_v2.apex"));
+  PrepareTestApexForInstall installer2(
+      GetTestFile("apex.apexd_test_different_app.apex"));
+  PrepareTestApexForInstall installer3(GetTestFile("apex.apexd_test.apex"));
+  auto install_fn = [&](PrepareTestApexForInstall& installer) {
+    if (!installer.Prepare()) {
+      return;
+    }
+    bool success;
+    android::binder::Status st =
+        service_->stagePackage(installer.test_file, &success);
+    ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+    ASSERT_TRUE(success);
+    EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
+  };
+  install_fn(installer1);
+  install_fn(installer2);
+  // Simulating a rollback. After this call test_v2_apex_path should be removed.
+  install_fn(installer3);
+
+  EXPECT_FALSE(RegularFileExists(installer1.test_installed_file));
+  EXPECT_TRUE(RegularFileExists(installer2.test_installed_file));
+  EXPECT_TRUE(RegularFileExists(installer3.test_installed_file));
+}
+
 TEST_F(ApexServiceTest, MultiStageSuccess) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
   if (!installer.Prepare()) {
