@@ -124,26 +124,22 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         // Assert isSessionReady is true
         result = getDevice().executeShellV2Command("pm get-stagedsessions");
         Assert.assertEquals("", result.getStderr());
-        matcher = mAppPackageNamePattern.matcher(result.getStdout());
-        // TODO: Look into why appPackageInfo is null
-        // Assert.assertTrue(matcher.find());
-        matcher = mIsSessionReadyPattern.matcher(result.getStdout());
-        Assert.assertTrue(matcher.find());
+        // TODO: Look into why appPackageInfo is null? or should it be null?
+        // assertMatchesRegex(result.getStdout(), mAppPackageNamePattern);
+        assertMatchesRegex(result.getStdout(), mIsSessionReadyPattern);
 
         // Assert session update broadcast was sent to apps listening to it.
         result = getDevice().executeShellV2Command("logcat -d");
-        matcher = mSessionBroadcastReceiver.matcher(result.getStdout());
-        Assert.assertTrue(matcher.find());
+        assertMatchesRegex(result.getStdout(), mSessionBroadcastReceiver);
         matcher = mIsSessionReadyPattern.matcher(result.getStdout());
-        Assert.assertTrue(matcher.find());
+        assertMatchesRegex(result.getStdout(), mIsSessionReadyPattern);
 
         getDevice().reboot();
 
         // This checks that the staged package was activated on reboot
         result = getDevice().executeShellV2Command("pm get-stagedsessions");
         Assert.assertEquals("", result.getStderr());
-        matcher = mIsSessionAppliedPattern.matcher(result.getStdout());
-        Assert.assertTrue(matcher.find());
+        assertMatchesRegex(result.getStdout(), mIsSessionAppliedPattern);
 
         Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
         Assert.assertTrue(
@@ -237,5 +233,12 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
         getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
         getDevice().reboot();
+    }
+
+    private static void assertMatchesRegex(String text, Pattern pattern) {
+        Matcher matcher = pattern.matcher(text);
+        Assert.assertTrue(
+                String.format("Not true that '%s' matches regexp '%s'", text, pattern),
+                matcher.find());
     }
 }
