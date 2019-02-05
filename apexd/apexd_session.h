@@ -26,7 +26,7 @@ namespace android {
 namespace apex {
 
 static const std::string kApexSessionsDir =
-    std::string(kApexPackageDataDir) + "/sessions";
+    std::string(kApexDataDir) + "/sessions";
 
 class ApexSession {
  public:
