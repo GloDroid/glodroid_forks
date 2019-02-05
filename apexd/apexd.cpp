@@ -59,6 +59,7 @@
 #include <iomanip>
 #include <memory>
 #include <string>
+#include <unordered_set>
 
 using android::base::EndsWith;
 using android::base::Join;
@@ -206,6 +207,44 @@ StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
     return d_type == DT_DIR && include_dirs;
   };
   return ReadDir(path, filter_fn);
+}
+
+Status RemovePreviouslyActiveApexFiles(
+    const std::unordered_set<std::string>& affected_packages,
+    const std::unordered_set<std::string>& files_to_keep) {
+  auto all_active_apex_files =
+      FindApexFilesByName(kApexPackageDataDir, false /* include_dirs */);
+
+  if (!all_active_apex_files.Ok()) {
+    return all_active_apex_files.ErrorStatus();
+  }
+
+  for (const std::string& path : *all_active_apex_files) {
+    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
+    if (!apex_file.Ok()) {
+      return apex_file.ErrorStatus();
+    }
+
+    const std::string& package_name = apex_file->GetManifest().name();
+    if (affected_packages.find(package_name) == affected_packages.end()) {
+      // This apex belongs to a package that wasn't part of this stage sessions,
+      // hence it should be kept.
+      continue;
+    }
+
+    if (files_to_keep.find(apex_file->GetPath()) != files_to_keep.end()) {
+      // This is a path that was staged and should be kept.
+      continue;
+    }
+
+    LOG(DEBUG) << "Deleting previously active apex " << apex_file->GetPath();
+    if (unlink(apex_file->GetPath().c_str()) != 0) {
+      return Status::Fail(PStringLog()
+                          << "Failed to unlink " << apex_file->GetPath());
+    }
+  }
+
+  return Status::Success();
 }
 
 Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
@@ -852,9 +891,9 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
   };
 
   // Ensure the APEX gets removed on failure.
-  std::vector<std::string> staged;
-  auto deleter = [&staged]() {
-    for (const std::string& staged_path : staged) {
+  std::unordered_set<std::string> staged_files;
+  auto deleter = [&staged_files]() {
+    for (const std::string& staged_path : staged_files) {
       if (TEMP_FAILURE_RETRY(unlink(staged_path.c_str())) != 0) {
         PLOG(ERROR) << "Unable to unlink " << staged_path;
       }
@@ -862,6 +901,7 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
   };
   auto scope_guard = android::base::make_scope_guard(deleter);
 
+  std::unordered_set<std::string> staged_packages;
   for (const std::string& path : tmpPaths) {
     StatusOr<ApexFile> apex_file = ApexFile::Open(path);
     if (!apex_file.Ok()) {
@@ -884,7 +924,8 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
                             << " to " << dest_path);
       }
     }
-    staged.push_back(dest_path);
+    staged_files.insert(dest_path);
+    staged_packages.insert(apex_file->GetManifest().name());
 
     if (!linkPackages) {
       // TODO(b/112669193,b/118865310) remove this. Link files from staging
@@ -899,7 +940,8 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
   }
 
   scope_guard.Disable();  // Accept the state.
-  return Status::Success();
+
+  return RemovePreviouslyActiveApexFiles(staged_packages, staged_files);
 }
 
 Status rollbackLastSession() {
