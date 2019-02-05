@@ -43,37 +43,15 @@ std::string getSessionStateFilePath(int session_id) {
   return getSessionDir(session_id) + "/state";
 }
 
-Status createDirIfNeeded(const std::string& path) {
-  struct stat stat_data;
-
-  if (stat(path.c_str(), &stat_data) != 0) {
-    if (errno == ENOENT) {
-      if (mkdir(path.c_str(), 0700) != 0) {
-        return Status::Fail(PStringLog() << "Could not mkdir " << path);
-      }
-
-      return Status::Success();
-    } else {
-      return Status::Fail(PStringLog() << "Could not stat " << path);
-    }
-  }
-
-  if (!S_ISDIR(stat_data.st_mode)) {
-    return Status::Fail(path + " exists and is not a directory.");
-  }
-
-  return Status::Success();
-}
-
 StatusOr<std::string> createSessionDirIfNeeded(int session_id) {
   // create /data/sessions
-  auto res = createDirIfNeeded(kApexSessionsDir);
+  auto res = createDirIfNeeded(kApexSessionsDir, 0700);
   if (!res.Ok()) {
     return StatusOr<std::string>(res.ErrorMessage());
   }
   // create /data/sessions/session_id
   std::string sessionDir = getSessionDir(session_id);
-  res = createDirIfNeeded(sessionDir);
+  res = createDirIfNeeded(sessionDir, 0700);
   if (!res.Ok()) {
     return StatusOr<std::string>(res.ErrorMessage());
   }
