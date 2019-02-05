@@ -219,8 +219,8 @@ class ApexServiceTest : public ::testing::Test {
       package = manifest.name();
       version = manifest.version();
 
-      test_installed_file = std::string(kApexPackageDataDir) + "/" + package +
-                            "@" + std::to_string(version) + ".apex";
+      test_installed_file = std::string(kActiveApexPackagesDataDir) + "/" +
+                            package + "@" + std::to_string(version) + ".apex";
     }
 
     bool Prepare() {
@@ -306,8 +306,8 @@ class ApexServiceTest : public ::testing::Test {
     }
 
     log << "active=[" << Join(GetActivePackagesStrings(), ',') << "] ";
-    log << kApexPackageDataDir << "=["
-        << Join(ListDir(kApexPackageDataDir), ',') << "] ";
+    log << kActiveApexPackagesDataDir << "=["
+        << Join(ListDir(kActiveApexPackagesDataDir), ',') << "] ";
     log << kApexRoot << "=[" << Join(ListDir(kApexRoot), ',') << "]";
 
     return log;

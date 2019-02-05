@@ -79,7 +79,8 @@ int main(int /*argc*/, char** argv) {
   // Scan the directory under /data first, as it may contain updates of APEX
   // packages living in the directory under /system, and we want the former ones
   // to be used over the latter ones.
-  android::apex::scanPackagesDirAndActivate(android::apex::kApexPackageDataDir);
+  android::apex::scanPackagesDirAndActivate(
+      android::apex::kActiveApexPackagesDataDir);
   android::apex::scanPackagesDirAndActivate(
       android::apex::kApexPackageSystemDir);
 
