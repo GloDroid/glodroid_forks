@@ -638,7 +638,7 @@ class ApexServicePrePostInstallTest : public ApexServiceTest {
  public:
   template <typename Fn>
   void RunPrePost(Fn fn, const std::vector<std::string>& apex_names,
-                  const char* test_message) {
+                  const char* test_message, bool expect_success = true) {
     // Using unique_ptr is just the easiest here.
     using InstallerUPtr = std::unique_ptr<PrepareTestApexForInstall>;
     std::vector<InstallerUPtr> installers;
@@ -654,10 +654,16 @@ class ApexServicePrePostInstallTest : public ApexServiceTest {
       installers.emplace_back(std::move(installer));
     }
     android::binder::Status st = (service_.get()->*fn)(pkgs);
-    ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+    if (expect_success) {
+      ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+    } else {
+      ASSERT_FALSE(st.isOk());
+    }
 
-    std::string logcat = GetLogcat();
-    EXPECT_NE(std::string::npos, logcat.find(test_message)) << logcat;
+    if (test_message != nullptr) {
+      std::string logcat = GetLogcat();
+      EXPECT_NE(std::string::npos, logcat.find(test_message)) << logcat;
+    }
 
     // Ensure that the package is neither active nor mounted.
     for (const InstallerUPtr& installer : installers) {
@@ -691,6 +697,12 @@ TEST_F(ApexServicePrePostInstallTest, MultiPreinstall) {
              kLogcatText);
 }
 
+TEST_F(ApexServicePrePostInstallTest, PreinstallFail) {
+  RunPrePost(&IApexService::preinstallPackages,
+             {"apex.apexd_test_prepostinstall.fail.apex"},
+             /* test_message= */ nullptr, /* expect_success= */ false);
+}
+
 TEST_F(ApexServicePrePostInstallTest, Postinstall) {
   RunPrePost(&IApexService::postinstallPackages,
              {"apex.apexd_test_postinstall.apex"},
@@ -703,6 +715,12 @@ TEST_F(ApexServicePrePostInstallTest, MultiPostinstall) {
   RunPrePost(&IApexService::postinstallPackages,
              {"apex.apexd_test_postinstall.apex", "apex.apexd_test.apex"},
              kLogcatText);
+}
+
+TEST_F(ApexServicePrePostInstallTest, PostinstallFail) {
+  RunPrePost(&IApexService::postinstallPackages,
+             {"apex.apexd_test_prepostinstall.fail.apex"},
+             /* test_message= */ nullptr, /* expect_success= */ false);
 }
 
 TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {

@@ -24,6 +24,7 @@
         <option name="push" value="apex.apexd_test.apex->/data/local/tmp/apex_file_test/apex.apexd_test.apex" />
         <option name="push" value="apex.apexd_test_v2.apex->/data/local/tmp/apex_file_test/apex.apexd_test_v2.apex" />
         <option name="push" value="apex.apexd_test_preinstall.apex->/data/local/tmp/apex_file_test/apex.apexd_test_preinstall.apex" />
+        <option name="push" value="apex.apexd_test_prepostinstall.fail.apex->/data/local/tmp/apex_file_test/apex.apexd_test_prepostinstall.fail.apex" />
     </target_preparer>
 
     <!-- The test runs as root to prepare the temporary directory, make selinux adjustments
