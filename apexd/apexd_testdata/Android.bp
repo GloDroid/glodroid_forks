@@ -75,6 +75,23 @@ apex {
 }
 
 apex_key {
+    name: "com.android.apex.test_package.prepostinstall.fail.key",
+    public_key: "com.android.apex.test_package.prepostinstall.fail.avbpubkey",
+    private_key: "com.android.apex.test_package.prepostinstall.fail.pem",
+    installable: false,
+}
+
+apex {
+    name: "apex.apexd_test_prepostinstall.fail",
+    manifest: "manifest_prepostinstall.fail.json",
+    file_contexts: "apex.test",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.prepostinstall.fail.key",
+    binaries: ["apex_test_prePostInstallHookFail"],
+    installable: false,
+}
+
+apex_key {
     name: "com.android.apex.test_package.no_inst_key.key",
     public_key: "com.android.apex.test_package.no_inst_key.avbpubkey",
     private_key: "com.android.apex.test_package.no_inst_key.pem",
@@ -118,6 +135,15 @@ cc_prebuilt_binary {
 cc_prebuilt_binary {
     name: "apex_test_postInstallHook",
     srcs: ["postInstallHook.sh"],
+    stl: "none",
+    strip: {
+        none: true,
+    },
+}
+
+cc_prebuilt_binary {
+    name: "apex_test_prePostInstallHookFail",
+    srcs: ["fail.sh"],
     stl: "none",
     strip: {
         none: true,
