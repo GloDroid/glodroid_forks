@@ -437,6 +437,12 @@ status_t ApexService::shellCommand(int in, int out, int err,
         << "  deactivatePackage [packagePath] - deactivate package from the "
            "given path"
         << std::endl
+        << "  preinstallPackages [packagePath1] ([packagePath2]...) - run "
+           "pre-install hooks of the given packages"
+        << std::endl
+        << "  postinstallPackages [packagePath1] ([packagePath2]...) - run "
+           "post-install hooks of the given packages"
+        << std::endl
         << "  getStagedSessionInfo [sessionId] - displays information about a "
            "given session previously submitted"
         << "  submitStagedSession [sessionId] - attempts to submit the "
@@ -624,6 +630,31 @@ status_t ApexService::shellCommand(int in, int out, int err,
       return OK;
     }
     std::string msg = StringLog() << "Failed to submit session: "
+                                  << status.toString8().string() << std::endl;
+    dprintf(err, "%s", msg.c_str());
+    return BAD_VALUE;
+  }
+
+  if (cmd == String16("preinstallPackages") ||
+      cmd == String16("postinstallPackages")) {
+    if (args.size() < 2) {
+      print_help(err,
+                 "preinstallPackages/postinstallPackages requires at least"
+                 " one packagePath");
+      return BAD_VALUE;
+    }
+    std::vector<std::string> pkgs;
+    pkgs.reserve(args.size() - 1);
+    for (size_t i = 1; i != args.size(); ++i) {
+      pkgs.emplace_back(String8(args[i]).string());
+    }
+    BinderStatus status = cmd == String16("preinstallPackages")
+                              ? preinstallPackages(pkgs)
+                              : postinstallPackages(pkgs);
+    if (status.isOk()) {
+      return OK;
+    }
+    std::string msg = StringLog() << "Failed to pre/postinstall package(s): "
                                   << status.toString8().string() << std::endl;
     dprintf(err, "%s", msg.c_str());
     return BAD_VALUE;
