@@ -369,10 +369,15 @@ status_t ApexService::onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
                                    _aidl_flags);
 }
 status_t ApexService::dump(int fd, const Vector<String16>& args) {
-  // TODO: Extend to add session info
   std::vector<ApexInfo> list;
   BinderStatus status = getActivePackages(&list);
-  if (status.isOk()) {
+  dprintf(fd, "ACTIVE PACKAGES:\n");
+  if (!status.isOk()) {
+    std::string msg = StringLog() << "Failed to retrieve packages: "
+                                  << status.toString8().string() << std::endl;
+    dprintf(fd, "%s", msg.c_str());
+    return BAD_VALUE;
+  } else {
     for (const auto& item : list) {
       std::string msg = StringLog()
                         << "Package: " << item.packageName
@@ -380,12 +385,28 @@ status_t ApexService::dump(int fd, const Vector<String16>& args) {
                         << " Path: " << item.packagePath << std::endl;
       dprintf(fd, "%s", msg.c_str());
     }
-    return OK;
   }
-  std::string msg = StringLog() << "Failed to retrieve packages: "
-                                << status.toString8().string() << std::endl;
-  dprintf(fd, "%s", msg.c_str());
-  return BAD_VALUE;
+
+  dprintf(fd, "SESSIONS:\n");
+  std::vector<ApexSession> sessions = ApexSession::GetSessions();
+
+  for (const auto& session : sessions) {
+    std::string child_ids_str = "";
+    auto child_ids = session.GetChildSessionIds();
+    if (child_ids.size() > 0) {
+      child_ids_str = "Child IDs:";
+      for (auto childSessionId : session.GetChildSessionIds()) {
+        child_ids_str += " " + std::to_string(childSessionId);
+      }
+    }
+    std::string msg =
+        StringLog() << "Session ID: " << session.GetId() << child_ids_str
+                    << " State: " << SessionState_State_Name(session.GetState())
+                    << std::endl;
+    dprintf(fd, "%s", msg.c_str());
+  }
+
+  return OK;
 }
 
 status_t ApexService::shellCommand(int in, int out, int err,
