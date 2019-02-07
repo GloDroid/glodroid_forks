@@ -75,6 +75,7 @@ class ApexService : public BnApexService {
       const std::vector<std::string>& paths) override;
   BinderStatus postinstallPackages(
       const std::vector<std::string>& paths) override;
+  BinderStatus abortActiveSession() override;
 
   status_t dump(int fd, const Vector<String16>& args) override;
 
@@ -337,6 +338,11 @@ BinderStatus ApexService::postinstallPackages(
              << android::base::Join(paths, ',') << ": " << res.ErrorMessage();
   return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
                                          String8(res.ErrorMessage().c_str()));
+}
+
+BinderStatus ApexService::abortActiveSession() {
+  // TODO: Implement.
+  return BinderStatus::ok();
 }
 
 status_t ApexService::onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
