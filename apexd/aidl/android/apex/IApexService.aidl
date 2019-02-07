@@ -30,6 +30,8 @@ interface IApexService {
    ApexSessionInfo getStagedSessionInfo(int session_id);
    ApexInfo[] getActivePackages();
 
+   void abortActiveSession();
+
    /**
     * Returns the active package corresponding to |package_name| and null
     * if none exists.
