@@ -123,29 +123,17 @@ apex {
     installable: false,
 }
 
-cc_prebuilt_binary {
+sh_binary {
     name: "apex_test_preInstallHook",
-    srcs: ["preInstallHook.sh"],
-    stl: "none",
-    strip: {
-        none: true,
-    },
+    src: "preInstallHook.sh",
 }
 
-cc_prebuilt_binary {
+sh_binary {
     name: "apex_test_postInstallHook",
-    srcs: ["postInstallHook.sh"],
-    stl: "none",
-    strip: {
-        none: true,
-    },
+    src: "postInstallHook.sh",
 }
 
-cc_prebuilt_binary {
+sh_binary {
     name: "apex_test_prePostInstallHookFail",
-    srcs: ["fail.sh"],
-    stl: "none",
-    strip: {
-        none: true,
-    },
+    src: "fail.sh",
 }
