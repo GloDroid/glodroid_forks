@@ -33,11 +33,18 @@ class MountedApexDatabase {
     std::string loop_name;  // Loop device used (fs path).
     std::string full_path;  // Full path to the apex file.
 
+    MountedApexData() {}
     MountedApexData(const std::string& loop_name, const std::string& full_path)
         : loop_name(loop_name), full_path(full_path) {}
 
     inline bool operator<(const MountedApexData& rhs) const {
-      return (loop_name < rhs.loop_name) && (full_path < rhs.full_path);
+      int compare_val = loop_name.compare(rhs.loop_name);
+      if (compare_val < 0) {
+        return true;
+      } else if (compare_val > 0) {
+        return false;
+      }
+      return full_path < rhs.full_path;
     }
   };
 
@@ -123,7 +130,7 @@ class MountedApexDatabase {
 
   template <typename T>
   inline void ForallMountedApexes(const std::string& package,
-                                  const T& handler) {
+                                  const T& handler) const {
     auto it = mounted_apexes_.find(package);
     if (it == mounted_apexes_.end()) {
       return;
@@ -134,7 +141,7 @@ class MountedApexDatabase {
   }
 
   template <typename T>
-  inline void ForallMountedApexes(const T& handler) {
+  inline void ForallMountedApexes(const T& handler) const {
     for (const auto& pkg : mounted_apexes_) {
       for (const auto& pair : pkg.second) {
         handler(pkg.first, pair.first, pair.second);
