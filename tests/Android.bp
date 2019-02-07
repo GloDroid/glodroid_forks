@@ -89,7 +89,7 @@ apex {
     name: "apex_test_build_features",
     file_contexts: "apex.test",
     manifest: "testdata/apex_manifest.json",
-    // binaries: ["surfaceflinger", "vold"],
+    binaries: ["surfaceflinger", "vold"],
     multilib: {
         prefer32: {
             binaries: ["dex2oat"],
