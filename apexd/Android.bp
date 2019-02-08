@@ -1,5 +1,5 @@
 cc_defaults {
-  name: "apex_defaults",
+  name: "apex_flags_defaults",
   cflags: [
     "-Wall",
     "-Wextra",
@@ -19,6 +19,12 @@ cc_defaults {
     "-Wunused",
     "-Wused-but-marked-unused",
   ],
+}
+
+
+cc_defaults {
+  name: "apex_defaults",
+  defaults: ["apex_flags_defaults"],
   shared_libs: [
     "libbase",
     "libjsoncpp",
@@ -136,6 +142,20 @@ cc_library_static {
       cflags: ["-DDEBUG_ALLOW_BUNDLED_KEY"],
     },
   },
+}
+
+cc_test {
+  name: "apex_database_test",
+  defaults: ["apex_defaults"],
+  srcs: ["apex_database_test.cpp"],
+  host_supported: true,
+  target: {
+    darwin: {
+      enabled: false,
+    },
+  },
+  shared_libs: ["libbase"],
+  test_suites: ["device-tests"],
 }
 
 cc_test {
