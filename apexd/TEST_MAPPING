@@ -1,6 +1,9 @@
 {
   "presubmit": [
     {
+      "name": "apex_database_test"
+    },
+    {
       "name": "apex_file_test"
     },
     {
