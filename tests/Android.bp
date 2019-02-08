@@ -51,6 +51,8 @@ java_test_host {
 
     static_libs: ["apex_e2e_base_test"],
 
+    data: [":BroadcastReceiverApp"],
+
     test_config: "timezone-data-e2e-tests.xml",
 
     test_suites: ["general-tests"],

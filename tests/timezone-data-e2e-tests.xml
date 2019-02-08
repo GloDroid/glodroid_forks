@@ -21,6 +21,7 @@
     <test class="com.android.tradefed.testtype.HostTest" >
         <option name="jar" value="timezone_data_e2e_tests.jar" />
         <option name="set-option" value="apex_file_name:test1_com.android.tzdata.apex" />
+        <option name="set-option" value="broadcastapp_apk_name:BroadcastReceiverApp.apk" />
     </test>
 </configuration>
 
