@@ -41,8 +41,13 @@
 #include "apex_manifest.h"
 #include "apexd.h"
 #include "apexd_private.h"
+#include "apexd_session.h"
 #include "apexd_utils.h"
 #include "status_or.h"
+
+#include "session_state.pb.h"
+
+using apex::proto::SessionState;
 
 namespace android {
 namespace apex {
@@ -318,6 +323,18 @@ class ApexServiceTest : public ::testing::Test {
 
 namespace {
 
+ApexSessionInfo createSessionInfo(int session_id) {
+  ApexSessionInfo info;
+  info.sessionId = session_id;
+  info.isUnknown = false;
+  info.isVerified = false;
+  info.isStaged = false;
+  info.isActivated = false;
+  info.isActivationPendingRetry = false;
+  info.isActivationFailed = false;
+  return info;
+}
+
 void ExpectSessionsEqual(const ApexSessionInfo& lhs,
                          const ApexSessionInfo& rhs) {
   EXPECT_EQ(lhs.sessionId, rhs.sessionId);
@@ -327,6 +344,28 @@ void ExpectSessionsEqual(const ApexSessionInfo& lhs,
   EXPECT_EQ(lhs.isActivated, rhs.isActivated);
   EXPECT_EQ(lhs.isActivationPendingRetry, rhs.isActivationPendingRetry);
   EXPECT_EQ(lhs.isActivationFailed, rhs.isActivationFailed);
+}
+
+void ExpectSessionsContainAllOf(const std::vector<ApexSessionInfo>& actual,
+                                const std::vector<ApexSessionInfo>& expected) {
+  for (const auto& se : expected) {
+    bool found = false;
+    for (const auto& sa : actual) {
+      if (se.sessionId == sa.sessionId) {
+        found = true;
+        ExpectSessionsEqual(se, sa);
+        break;
+      }
+    }
+    EXPECT_TRUE(found) << "Session " << se.sessionId << " not found";
+  }
+}
+
+void ExpectSessionsContainExactly(
+    const std::vector<ApexSessionInfo>& actual,
+    const std::vector<ApexSessionInfo>& expected) {
+  EXPECT_EQ(actual.size(), expected.size());
+  ExpectSessionsContainAllOf(actual, expected);
 }
 
 bool RegularFileExists(const std::string& path) {
@@ -811,6 +850,60 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
       ExpectSessionsEqual(s, session);
     }
   }
+}
+
+TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
+                                      "/data/staging/session_239",
+                                      "staging_data_file");
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+
+  // First simulate existence of a bunch of sessions.
+  auto session1 = ApexSession::CreateSession(37);
+  ASSERT_TRUE(session1.Ok()) << session1.ErrorMessage();
+  auto session2 = ApexSession::CreateSession(57);
+  ASSERT_TRUE(session2.Ok()) << session2.ErrorMessage();
+  auto session3 = ApexSession::CreateSession(73);
+  ASSERT_TRUE(session3.Ok()) << session3.ErrorMessage();
+  auto update_status = session1->UpdateStateAndCommit(SessionState::VERIFIED);
+  ASSERT_TRUE(update_status.Ok()) << update_status.ErrorMessage();
+  update_status = session2->UpdateStateAndCommit(SessionState::STAGED);
+  ASSERT_TRUE(update_status.Ok()) << update_status.ErrorMessage();
+  update_status = session3->UpdateStateAndCommit(SessionState::ACTIVATED);
+  ASSERT_TRUE(update_status.Ok()) << update_status.ErrorMessage();
+
+  std::vector<ApexSessionInfo> sessions;
+  auto status = service_->getSessions(&sessions);
+  ASSERT_TRUE(status.isOk()) << status.toString8().c_str();
+
+  ApexSessionInfo expected_session1 = createSessionInfo(37);
+  expected_session1.isVerified = true;
+  ApexSessionInfo expected_session2 = createSessionInfo(57);
+  expected_session2.isStaged = true;
+  ApexSessionInfo expected_session3 = createSessionInfo(73);
+  expected_session3.isActivated = true;
+  std::vector<ApexSessionInfo> expected{expected_session1, expected_session2,
+                                        expected_session3};
+  ExpectSessionsContainAllOf(sessions, expected);
+
+  ApexInfoList list;
+  bool ret_value;
+  std::vector<int> empty_child_session_ids;
+  status = service_->submitStagedSession(239, empty_child_session_ids, &list,
+                                         &ret_value);
+  EXPECT_TRUE(status.isOk()) << status.toString8().c_str();
+  EXPECT_TRUE(ret_value);
+
+  sessions.clear();
+  status = service_->getSessions(&sessions);
+  EXPECT_TRUE(status.isOk()) << status.toString8().c_str();
+
+  ApexSessionInfo expected_session4 = createSessionInfo(239);
+  expected_session4.isVerified = true;
+  ExpectSessionsContainExactly(sessions,
+                               {expected_session3, expected_session4});
 }
 
 TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
