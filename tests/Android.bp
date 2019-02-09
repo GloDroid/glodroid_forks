@@ -39,9 +39,6 @@ android_app {
     sdk_version: "current",
 }
 
-// Need to build test1_com.android.tzdata.apex and copy it to
-// $ANDROID_HOST_OUT_TESTCASES, then run
-// "atest timezone_data_e2e_tests".
 java_test_host {
     name: "timezone_data_e2e_tests",
 
@@ -51,7 +48,10 @@ java_test_host {
 
     static_libs: ["apex_e2e_base_test"],
 
-    data: [":BroadcastReceiverApp"],
+    data: [
+        ":test1_com.android.tzdata",
+        ":BroadcastReceiverApp",
+    ],
 
     test_config: "timezone-data-e2e-tests.xml",
 
