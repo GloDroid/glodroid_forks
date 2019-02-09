@@ -154,8 +154,9 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
     _exit(200);
   }
 
-  // 3) Make /apex private, so that our changes don't propagate.
-  if (mount("", kApexRoot, nullptr, MS_PRIVATE, nullptr) != 0) {
+  // 3) Make everything private, so that our (and hook's) changes do not
+  //    propagate.
+  if (mount(nullptr, "/", nullptr, MS_PRIVATE | MS_REC, nullptr) == -1) {
     PLOG(ERROR) << "Failed to mount private.";
     _exit(201);
   }
