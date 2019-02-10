@@ -19,6 +19,11 @@ cc_defaults {
     "-Wunused",
     "-Wused-but-marked-unused",
   ],
+  tidy: true,
+  tidy_flags: [
+    "-format-style='file'",
+    "--header-filter='system/apex/'",
+  ],
 }
 
 

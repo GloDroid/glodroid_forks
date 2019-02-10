@@ -228,7 +228,7 @@ StatusOr<std::unique_ptr<AvbFooter>> getAvbFooter(const ApexFile& apex,
 // TODO We'll want to cache the verified key to avoid having to read it every
 // time.
 Status verifyPublicKey(const uint8_t* key, size_t length,
-                       std::string acceptedKeyFile) {
+                       const std::string& acceptedKeyFile) {
   std::ifstream pubkeyFile(acceptedKeyFile, std::ios::binary | std::ios::ate);
   if (pubkeyFile.bad()) {
     return Status::Fail(StringLog() << "Can't open " << acceptedKeyFile);
