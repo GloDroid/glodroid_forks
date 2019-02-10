@@ -22,6 +22,8 @@
 
 #include "session_state.pb.h"
 
+#include <optional>
+
 namespace android {
 namespace apex {
 
@@ -35,16 +37,18 @@ class ApexSession {
   static std::vector<ApexSession> GetSessions();
   static std::vector<ApexSession> GetSessionsInState(
       ::apex::proto::SessionState::State state);
+  static StatusOr<std::optional<ApexSession>> GetActiveSession();
   ApexSession() = delete;
 
   const google::protobuf::RepeatedField<int> GetChildSessionIds() const;
   ::apex::proto::SessionState::State GetState() const;
   int GetId() const;
+  bool IsFinalized() const;
 
   void SetChildSessionIds(const std::vector<int>& child_session_ids);
   Status UpdateStateAndCommit(const ::apex::proto::SessionState::State& state);
 
-  Status DeleteSession();
+  Status DeleteSession() const;
 
  private:
   ApexSession(const ::apex::proto::SessionState& state);
