@@ -1078,5 +1078,25 @@ Status markStagedSessionReady(const int session_id) {
                                   << ". Cannot mark it as ready.");
 }
 
+Status markStagedSessionSuccessful(const int session_id) {
+  auto session = ApexSession::GetSession(session_id);
+  if (!session.Ok()) {
+    return session.ErrorStatus();
+  }
+  // Only SessionState::ACTIVATED or SessionState::SUCCESS states are accepted.
+  // In the SessionState::SUCCESS state, this function is a no-op.
+  switch (session->GetState()) {
+    case SessionState::SUCCESS:
+      return Status::Success();
+    case SessionState::ACTIVATED:
+      // TODO(b/123622800): also cleanup a backup.
+      // TODO(b/124215327): maybe crash system_server if state update fails.
+      return session->UpdateStateAndCommit(SessionState::SUCCESS);
+    default:
+      return Status::Fail(StringLog() << "Session " << *session
+                                      << " can not be marked successful");
+  }
+}
+
 }  // namespace apex
 }  // namespace android

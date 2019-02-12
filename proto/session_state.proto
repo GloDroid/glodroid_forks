@@ -25,16 +25,13 @@ message SessionState {
     VERIFIED = 1;
     STAGED = 2;
     ACTIVATED = 3;
-    ACTIVATION_PENDING_RETRY = 4;
-    ACTIVATION_FAILED = 5;
+    ACTIVATION_FAILED = 4;
+    SUCCESS = 5;
   }
 
   // Current state of the session
   State state = 1;
 
-  // Current retry counter for the session
-  int32 retry_count = 2;
-
   // Child session ids
-  repeated int32 child_session_ids = 3;
+  repeated int32 child_session_ids = 2;
 }

@@ -42,7 +42,7 @@ class ApexSession {
   int GetId() const;
 
   void SetChildSessionIds(const std::vector<int>& child_session_ids);
-  Status UpdateStateAndCommit(::apex::proto::SessionState::State state);
+  Status UpdateStateAndCommit(const ::apex::proto::SessionState::State& state);
 
   Status DeleteSession();
 
@@ -51,6 +51,8 @@ class ApexSession {
   int id_;
   ::apex::proto::SessionState state_;
 };
+
+std::ostream& operator<<(std::ostream& out, const ApexSession& session);
 
 }  // namespace apex
 }  // namespace android
