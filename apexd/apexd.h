@@ -35,6 +35,8 @@ static constexpr const char* kApexPackageSystemDir = "/system/apex";
 static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kStagedSessionsDir = "/data/staging";
 
+void startBootSequence();
+
 void unmountAndDetachExistingImages();
 
 void scanPackagesDirAndActivate(const char* apex_package_dir);
