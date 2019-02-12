@@ -134,14 +134,14 @@ class DmVerityDevice {
   DmVerityDevice(const std::string& name, const std::string& dev_path)
       : name_(name), dev_path_(dev_path), cleared_(false) {}
 
-  DmVerityDevice(DmVerityDevice&& other)
-      : name_(other.name_),
-        dev_path_(other.dev_path_),
+  DmVerityDevice(DmVerityDevice&& other) noexcept
+      : name_(std::move(other.name_)),
+        dev_path_(std::move(other.dev_path_)),
         cleared_(other.cleared_) {
     other.cleared_ = true;
   }
 
-  DmVerityDevice& operator=(DmVerityDevice&& other) {
+  DmVerityDevice& operator=(DmVerityDevice&& other) noexcept {
     name_ = other.name_;
     dev_path_ = other.dev_path_;
     cleared_ = other.cleared_;
@@ -815,7 +815,7 @@ void scanStagedSessionsDirAndStage() {
 
     std::vector<std::string> apexes;
     bool scanSuccessful = true;
-    for (auto dirToScan : dirsToScan) {
+    for (const auto& dirToScan : dirsToScan) {
       StatusOr<std::vector<std::string>> scan =
           FindApexFilesByName(dirToScan, /* include_dirs=*/false);
       if (!scan.Ok()) {

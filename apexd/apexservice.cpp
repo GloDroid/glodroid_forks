@@ -81,7 +81,7 @@ class ApexService : public BnApexService {
 
   // Override onTransact so we can handle shellCommand.
   status_t onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
-                      Parcel* _aidl_reply, uint32_t _aidl_flags = 0) override;
+                      Parcel* _aidl_reply, uint32_t _aidl_flags) override;
 
   status_t shellCommand(int in, int out, int err, const Vector<String16>& args);
 };
