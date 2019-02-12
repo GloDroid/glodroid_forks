@@ -66,7 +66,7 @@ StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
 
 using DestroyLoopFn =
     std::function<void(const std::string&, const std::string&)>;
-void DestroyLoopDevice(const std::string& path, DestroyLoopFn extra);
+void DestroyLoopDevice(const std::string& path, const DestroyLoopFn& extra);
 
 void destroyAllLoopDevices();
 

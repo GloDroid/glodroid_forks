@@ -70,7 +70,7 @@ Status configureReadAhead(const std::string& device_path) {
     return Status::Fail(StringLog()
                         << "Device path does not start with /dev/block.");
   }
-  pos = device_path.find_last_of("/");
+  pos = device_path.find_last_of('/');
   std::string device_name = device_path.substr(pos + 1, std::string::npos);
 
   std::string sysfs_device =
@@ -209,7 +209,7 @@ StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
   return StatusOr<LoopbackDeviceUniqueFd>(std::move(device_fd));
 }
 
-void DestroyLoopDevice(const std::string& path, DestroyLoopFn extra) {
+void DestroyLoopDevice(const std::string& path, const DestroyLoopFn& extra) {
   unique_fd fd(open(path.c_str(), O_RDWR | O_CLOEXEC));
   if (fd.get() == -1) {
     if (errno != ENOENT) {
