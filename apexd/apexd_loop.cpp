@@ -89,6 +89,31 @@ Status configureReadAhead(const std::string& device_path) {
   return Status::Success();
 }
 
+Status preAllocateLoopDevices(int num) {
+  unique_fd ctl_fd(
+      TEMP_FAILURE_RETRY(open("/dev/loop-control", O_RDWR | O_CLOEXEC)));
+  if (ctl_fd.get() == -1) {
+    return Status::Fail(PStringLog() << "Failed to open loop-control");
+  }
+
+  int i = num;
+  while (i-- > 0) {
+    int id = ioctl(ctl_fd.get(), LOOP_CTL_GET_FREE);
+    if (id == -1) {
+      return Status::Fail(PStringLog() << "Failed LOOP_CTL_GET_FREE");
+    }
+  }
+  // Don't wait until the dev nodes are actually created, which
+  // will delay the boot. By simply returing here, the creation of the dev
+  // nodes will be done in parallel with other boot processes, and we
+  // just optimistally hope that they are all created when we actually
+  // access them for activating APEXes. If the dev nodes are not ready
+  // even then, we wait 50ms and warning message will be printed (see below
+  // createLoopDevice()).
+  LOG(INFO) << "Pre-allocated " << num << " loopback devices";
+  return Status::Success();
+}
+
 StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
                                                   const int32_t imageOffset,
                                                   const size_t imageSize) {
@@ -118,6 +143,8 @@ StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
       if (sysfs_fd.get() != -1) {
         break;
       }
+      PLOG(WARNING) << "Loopback device " << device
+                    << " not ready. Waiting 50ms...";
       usleep(50000);
     }
     if (sysfs_fd.get() == -1) {
