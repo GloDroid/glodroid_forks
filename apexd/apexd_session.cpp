@@ -75,7 +75,8 @@ int getSessionIdFromSessionDir(const std::string& session_dir) {
 
 }  // namespace
 
-ApexSession::ApexSession(int id, SessionState state) : id_(id), state_(state) {}
+ApexSession::ApexSession(int id, const SessionState& state)
+    : id_(id), state_(state) {}
 
 StatusOr<ApexSession> ApexSession::CreateSession(int session_id) {
   // Create session directory
@@ -115,7 +116,7 @@ std::vector<ApexSession> ApexSession::GetSessions() {
     return sessions;
   }
 
-  for (const std::string sessionDirPath : *sessionPaths) {
+  for (const std::string& sessionDirPath : *sessionPaths) {
     // Try to read session state
     int sessionId = getSessionIdFromSessionDir(sessionDirPath);
     if (sessionId == -1) {
