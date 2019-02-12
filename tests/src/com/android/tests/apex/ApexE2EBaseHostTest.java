@@ -48,6 +48,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     private static final String STAGING_DATA_DIR = "/data/staging";
     private static final String OPTION_APEX_FILE_NAME = "apex_file_name";
     private static final String OPTION_BROADCASTAPP_APK_NAME = "broadcastapp_apk_name";
+    private static final String BROADCASTAPP_PACKAGE_NAME = "android.apex.broadcastreceiver";
     private static final String APEX_INFO_EXTRACT_REGEX =
             ".*package:\\sname='(\\S+)\\'\\sversionCode='(\\d+)'\\s.*";
     private final Pattern mAppPackageNamePattern =
@@ -78,6 +79,13 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
         getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
         getDevice().reboot(); // for the above commands to take affect
+        // Install broadcast receiver app
+        String installResult = getDevice().installPackage(
+                getTestFile(mBroadcastAppApkName), false);
+        Assert.assertNull(
+                String.format("failed to install test app %s. Reason: %s",
+                    mBroadcastAppApkName, installResult),
+                installResult);
     }
 
     /**
@@ -89,13 +97,6 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         File testAppFile = getTestFile(mApexFileName);
         CLog.i("Found test apex file: " + testAppFile.getAbsoluteFile());
 
-        // Install broadcast receiver app
-        String installResult = getDevice().installPackage(
-                getTestFile(mBroadcastAppApkName), false);
-        Assert.assertNull(
-                String.format("failed to install test app %s. Reason: %s",
-                    mBroadcastAppApkName, installResult),
-                installResult);
         // Make MainActivity foreground service
         getDevice().executeShellV2Command(
                 "am start -n android.apex.broadcastreceiver/.MainActivity");
@@ -106,7 +107,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         Assert.assertFalse(matcher.find());
 
         // Install apex package
-        installResult = getDevice().installPackage(testAppFile, false);
+        String installResult = getDevice().installPackage(testAppFile, false);
         Assert.assertNull(
                 String.format("failed to install test app %s. Reason: %s",
                     mApexFileName, installResult),
@@ -232,6 +233,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     public void tearDown() throws DeviceNotAvailableException {
         getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
         getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
+        getDevice().uninstallPackage(BROADCASTAPP_PACKAGE_NAME);
         getDevice().reboot();
     }
 
