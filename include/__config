@@ -1219,12 +1219,7 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
 
 #if defined(_LIBCPP_ENABLE_THREAD_SAFETY_ANNOTATIONS)
 #  if defined(__clang__) && __has_attribute(acquire_capability)
-// Work around the attribute handling in clang.  When both __declspec and
-// __attribute__ are present, the processing goes awry preventing the definition
-// of the types.
-#    if !defined(_LIBCPP_OBJECT_FORMAT_COFF)
-#      define _LIBCPP_HAS_THREAD_SAFETY_ANNOTATIONS
-#    endif
+#    define _LIBCPP_HAS_THREAD_SAFETY_ANNOTATIONS
 #  endif
 #endif
 
