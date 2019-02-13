@@ -22,6 +22,7 @@
 
 #include "apexd.h"
 #include "apexd_prepostinstall.h"
+#include "apexd_prop.h"
 #include "apexservice.h"
 
 #include <android-base/properties.h>
@@ -80,6 +81,9 @@ int main(int /*argc*/, char** argv) {
 
   android::apex::binder::CreateAndRegisterService();
   android::apex::binder::StartThreadPool();
+
+  android::apex::waitForBootStatus(android::apex::rollbackLastSession);
+
   android::apex::binder::JoinThreadPool();
   return 1;
 }
