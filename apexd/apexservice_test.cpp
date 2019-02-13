@@ -15,9 +15,11 @@
  */
 
 #include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <grp.h>
@@ -56,6 +58,35 @@ using android::sp;
 using android::String16;
 using android::base::Join;
 
+struct SessionsCleaner {
+  std::unordered_set<std::string> original_sessions_;
+
+  SessionsCleaner() {}
+
+  void Init() {
+    auto sessions =
+        ReadDir(kApexSessionsDir, [](auto _, auto __) { return true; });
+    ASSERT_TRUE(sessions.Ok()) << sessions.ErrorMessage();
+    std::copy(sessions->begin(), sessions->end(),
+              std::inserter(original_sessions_, original_sessions_.end()));
+  }
+
+  void Clear() {
+    auto sessions =
+        ReadDir(kApexSessionsDir, [](auto _, auto __) { return true; });
+    ASSERT_TRUE(sessions.Ok()) << "Failed to list " << kApexSessionsDir << " : "
+                               << sessions.ErrorMessage();
+    for (const auto& session : *sessions) {
+      if (original_sessions_.find(session) == original_sessions_.end()) {
+        std::error_code error_code;
+        std::filesystem::remove_all(std::filesystem::path(session), error_code);
+        ASSERT_FALSE(error_code)
+            << "Failed to delete " << session << " : " << error_code;
+      }
+    }
+  }
+};
+
 class ApexServiceTest : public ::testing::Test {
  public:
   ApexServiceTest() {
@@ -69,9 +100,14 @@ class ApexServiceTest : public ::testing::Test {
     }
   }
 
-  void SetUp() override { ASSERT_NE(nullptr, service_.get()); }
-
  protected:
+  void SetUp() override {
+    ASSERT_NE(nullptr, service_.get());
+    cleaner_.Init();
+  }
+
+  void TearDown() override { cleaner_.Clear(); }
+
   static std::string GetTestDataDir() {
     return android::base::GetExecutableDirectory();
   }
@@ -319,6 +355,7 @@ class ApexServiceTest : public ::testing::Test {
   }
 
   sp<IApexService> service_;
+  SessionsCleaner cleaner_;
 };
 
 namespace {
@@ -332,6 +369,7 @@ ApexSessionInfo createSessionInfo(int session_id) {
   info.isActivated = false;
   info.isActivationPendingRetry = false;
   info.isActivationFailed = false;
+  info.isSuccess = false;
   return info;
 }
 
@@ -344,6 +382,7 @@ void ExpectSessionsEqual(const ApexSessionInfo& lhs,
   EXPECT_EQ(lhs.isActivated, rhs.isActivated);
   EXPECT_EQ(lhs.isActivationPendingRetry, rhs.isActivationPendingRetry);
   EXPECT_EQ(lhs.isActivationFailed, rhs.isActivationFailed);
+  EXPECT_EQ(lhs.isSuccess, rhs.isSuccess);
 }
 
 void ExpectSessionsContainAllOf(const std::vector<ApexSessionInfo>& actual,
@@ -803,6 +842,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_FALSE(session.isActivated);
   EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
+  EXPECT_FALSE(session.isSuccess);
 
   status = service_->markStagedSessionReady(123, &ret_value);
   ASSERT_TRUE(status.isOk())
@@ -819,6 +859,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_FALSE(session.isActivated);
   EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
+  EXPECT_FALSE(session.isSuccess);
 
   // Call markStagedSessionReady again. Should be a no-op.
   status = service_->markStagedSessionReady(123, &ret_value);
@@ -836,6 +877,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_FALSE(session.isActivated);
   EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
+  EXPECT_FALSE(session.isSuccess);
 
   // See if the session is reported with getSessions() as well
   std::vector<ApexSessionInfo> sessions;
@@ -935,6 +977,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   EXPECT_FALSE(session.isActivated);
   EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
+  EXPECT_FALSE(session.isSuccess);
 }
 
 TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
@@ -993,6 +1036,7 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   EXPECT_FALSE(session.isActivated);
   EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
+  EXPECT_FALSE(session.isSuccess);
 
   status = service_->markStagedSessionReady(10, &ret_value);
   ASSERT_TRUE(status.isOk())
@@ -1008,6 +1052,7 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   EXPECT_FALSE(session.isActivated);
   EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
+  EXPECT_FALSE(session.isSuccess);
 }
 
 TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
@@ -1050,6 +1095,85 @@ TEST_F(ApexServiceTest, MarkStagedSessionReadyFail) {
   EXPECT_FALSE(session.isActivated);
   EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
+  EXPECT_FALSE(session.isSuccess);
+}
+
+TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsNoSession) {
+  android::binder::Status st = service_->markStagedSessionSuccessful(37);
+  ASSERT_FALSE(st.isOk());
+  ApexSessionInfo session_info;
+  st = service_->getStagedSessionInfo(37, &session_info);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  EXPECT_EQ(-1, session_info.sessionId);
+  EXPECT_TRUE(session_info.isUnknown);
+  EXPECT_FALSE(session_info.isVerified);
+  EXPECT_FALSE(session_info.isStaged);
+  EXPECT_FALSE(session_info.isActivated);
+  EXPECT_FALSE(session_info.isActivationPendingRetry);
+  EXPECT_FALSE(session_info.isActivationFailed);
+  EXPECT_FALSE(session_info.isSuccess);
+}
+
+TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsSessionInWrongState) {
+  auto session = ApexSession::CreateSession(73);
+  ASSERT_TRUE(session.Ok()) << session.ErrorMessage();
+  auto ret = session->UpdateStateAndCommit(::apex::proto::SessionState::STAGED);
+  ASSERT_TRUE(ret.Ok()) << ret.ErrorMessage();
+  android::binder::Status st = service_->markStagedSessionSuccessful(73);
+  ASSERT_FALSE(st.isOk());
+  ApexSessionInfo session_info;
+  st = service_->getStagedSessionInfo(73, &session_info);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  EXPECT_EQ(73, session_info.sessionId);
+  EXPECT_FALSE(session_info.isUnknown);
+  EXPECT_FALSE(session_info.isVerified);
+  EXPECT_TRUE(session_info.isStaged);
+  EXPECT_FALSE(session_info.isActivated);
+  EXPECT_FALSE(session_info.isActivationPendingRetry);
+  EXPECT_FALSE(session_info.isActivationFailed);
+  EXPECT_FALSE(session_info.isSuccess);
+}
+
+TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulActivatedSession) {
+  auto session = ApexSession::CreateSession(239);
+  ASSERT_TRUE(session.Ok()) << session.ErrorMessage();
+  auto ret =
+      session->UpdateStateAndCommit(::apex::proto::SessionState::ACTIVATED);
+  ASSERT_TRUE(ret.Ok()) << ret.ErrorMessage();
+  android::binder::Status st = service_->markStagedSessionSuccessful(239);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ApexSessionInfo session_info;
+  st = service_->getStagedSessionInfo(239, &session_info);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  EXPECT_EQ(239, session_info.sessionId);
+  EXPECT_FALSE(session_info.isUnknown);
+  EXPECT_FALSE(session_info.isVerified);
+  EXPECT_FALSE(session_info.isStaged);
+  EXPECT_FALSE(session_info.isActivated);
+  EXPECT_FALSE(session_info.isActivationPendingRetry);
+  EXPECT_FALSE(session_info.isActivationFailed);
+  EXPECT_TRUE(session_info.isSuccess);
+}
+
+TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulNoOp) {
+  auto session = ApexSession::CreateSession(1543);
+  ASSERT_TRUE(session.Ok()) << session.ErrorMessage();
+  auto ret =
+      session->UpdateStateAndCommit(::apex::proto::SessionState::SUCCESS);
+  ASSERT_TRUE(ret.Ok()) << ret.ErrorMessage();
+  android::binder::Status st = service_->markStagedSessionSuccessful(1543);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ApexSessionInfo session_info;
+  st = service_->getStagedSessionInfo(1543, &session_info);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  EXPECT_EQ(1543, session_info.sessionId);
+  EXPECT_FALSE(session_info.isUnknown);
+  EXPECT_FALSE(session_info.isVerified);
+  EXPECT_FALSE(session_info.isStaged);
+  EXPECT_FALSE(session_info.isActivated);
+  EXPECT_FALSE(session_info.isActivationPendingRetry);
+  EXPECT_FALSE(session_info.isActivationFailed);
+  EXPECT_TRUE(session_info.isSuccess);
 }
 
 class LogTestToLogcat : public testing::EmptyTestEventListener {
