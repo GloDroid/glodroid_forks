@@ -635,8 +635,6 @@ void startBootSequence() {
   // Notify other components (e.g. init) that all APEXs are correctly mounted
   // and are ready to be used.
   onAllPackagesReady();
-
-  waitForBootStatus(rollbackLastSession);
 }
 
 Status activatePackage(const std::string& full_path) {
