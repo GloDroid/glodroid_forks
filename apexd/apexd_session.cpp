@@ -27,7 +27,9 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include <filesystem>
 #include <fstream>
+
 using apex::proto::SessionState;
 
 namespace android {
@@ -71,6 +73,19 @@ int getSessionIdFromSessionDir(const std::string& session_dir) {
   } else {
     return -1;
   }
+}
+
+Status deleteSessionDir(int session_id) {
+  std::string session_dir = getSessionDir(session_id);
+  LOG(DEBUG) << "Deleting " << session_dir;
+  auto path = std::filesystem::path(session_dir);
+  std::error_code error_code;
+  std::filesystem::remove_all(path, error_code);
+  if (error_code) {
+    return Status::Fail(StringLog() << "Failed to delete " << session_dir
+                                    << " : " << error_code);
+  }
+  return Status::Success();
 }
 
 }  // namespace
@@ -172,6 +187,18 @@ Status ApexSession::UpdateStateAndCommit(SessionState::State session_state) {
   }
 
   return Status::Success();
+}
+
+Status ApexSession::DeleteSession() {
+  switch (GetState()) {
+    case SessionState::STAGED:
+      [[clang::fallthrough]];
+    case SessionState::VERIFIED:
+      return deleteSessionDir(GetId());
+    default:
+      return Status::Fail(StringLog()
+                          << "Can't delete session in state " << GetState());
+  }
 }
 
 }  // namespace apex
