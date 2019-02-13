@@ -206,7 +206,7 @@ class ApexServiceTest : public ::testing::Test {
     explicit PrepareTestApexForInstall(
         const std::string& test,
         const std::string& test_dir = std::string(kTestDir),
-        const std::string& selinux_label = "apex_data_file") {
+        const std::string& selinux_label = "staging_data_file") {
       test_input = test;
       selinux_label_input = selinux_label;
       test_dir_input = test_dir;
