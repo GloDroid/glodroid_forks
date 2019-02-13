@@ -880,7 +880,7 @@ void scanStagedSessionsDirAndStage() {
       continue;
     }
 
-    const Status result = stagePackages(apexes, /* linkPackages */ true);
+    const Status result = stagePackages(apexes);
     if (!result.Ok()) {
       LOG(ERROR) << "Activation failed for packages " << Join(apexes, ',')
                  << ": " << result.ErrorMessage();
@@ -910,8 +910,7 @@ Status postinstallPackages(const std::vector<std::string>& paths) {
   return HandlePackages<Status>(paths, PostinstallPackages);
 }
 
-Status stagePackages(const std::vector<std::string>& tmpPaths,
-                     bool linkPackages) {
+Status stagePackages(const std::vector<std::string>& tmpPaths) {
   if (tmpPaths.empty()) {
     return Status::Fail("Empty set of inputs");
   }
@@ -960,32 +959,15 @@ Status stagePackages(const std::vector<std::string>& tmpPaths,
     }
     std::string dest_path = path_fn(*apex_file);
 
-    if (linkPackages) {
-      if (link(apex_file->GetPath().c_str(), dest_path.c_str()) != 0) {
-        // TODO: Get correct binder error status.
-        return Status::Fail(PStringLog()
-                            << "Unable to link " << apex_file->GetPath()
-                            << " to " << dest_path);
-      }
-    } else {
-      if (rename(apex_file->GetPath().c_str(), dest_path.c_str()) != 0) {
-        // TODO: Get correct binder error status.
-        return Status::Fail(PStringLog()
-                            << "Unable to rename " << apex_file->GetPath()
-                            << " to " << dest_path);
-      }
+    if (link(apex_file->GetPath().c_str(), dest_path.c_str()) != 0) {
+      // TODO: Get correct binder error status.
+      return Status::Fail(PStringLog()
+                          << "Unable to link " << apex_file->GetPath() << " to "
+                          << dest_path);
     }
     staged_files.insert(dest_path);
     staged_packages.insert(apex_file->GetManifest().name());
 
-    if (!linkPackages) {
-      // TODO(b/112669193,b/118865310) remove this. Link files from staging
-      // directory should be the only method allowed.
-      if (selinux_android_restorecon(dest_path.c_str(), 0) < 0) {
-        return Status::Fail(PStringLog()
-                            << "Failed to restorecon " << dest_path);
-      }
-    }
     LOG(DEBUG) << "Success linking " << apex_file->GetPath() << " to "
                << dest_path;
   }
