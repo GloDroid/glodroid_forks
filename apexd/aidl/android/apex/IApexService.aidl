@@ -21,8 +21,6 @@ import android.apex.ApexInfoList;
 import android.apex.ApexSessionInfo;
 
 interface IApexService {
-   boolean stagePackage(in @utf8InCpp String package_tmp_path);
-   boolean stagePackages(in @utf8InCpp List<String> package_tmp_paths);
    boolean submitStagedSession(int session_id, in int[] child_session_ids, out ApexInfoList packages);
    boolean markStagedSessionReady(int session_id);
 
@@ -58,4 +56,14 @@ interface IApexService {
     * functional on user builds.
     */
    void postinstallPackages(in @utf8InCpp List<String> package_tmp_paths);
+   /**
+    * Not meant for use outside of testing. The call will not be
+    * functional on user builds.
+    */
+   boolean stagePackage(in @utf8InCpp String package_tmp_path);
+   /**
+    * Not meant for use outside of testing. The call will not be
+    * functional on user builds.
+    */
+   boolean stagePackages(in @utf8InCpp List<String> package_tmp_paths);
 }
