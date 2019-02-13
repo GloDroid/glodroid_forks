@@ -29,9 +29,11 @@ message SessionState {
     SUCCESS = 5;
   }
 
+  int32 id = 1;
+
   // Current state of the session
-  State state = 1;
+  State state = 2;
 
   // Child session ids
-  repeated int32 child_session_ids = 2;
+  repeated int32 child_session_ids = 3;
 }
