@@ -63,6 +63,7 @@ class ApexService : public BnApexService {
                                    bool* aidl_return) override;
   BinderStatus markStagedSessionReady(int session_id,
                                       bool* aidl_return) override;
+  BinderStatus markStagedSessionSuccessful(int session_id) override;
   BinderStatus getSessions(std::vector<ApexSessionInfo>* aidl_return) override;
   BinderStatus getStagedSessionInfo(
       int session_id, ApexSessionInfo* apex_session_info) override;
@@ -171,6 +172,20 @@ BinderStatus ApexService::markStagedSessionReady(int session_id,
   return BinderStatus::ok();
 }
 
+BinderStatus ApexService::markStagedSessionSuccessful(int session_id) {
+  LOG(DEBUG)
+      << "markStagedSessionSuccessful() received by ApexService, session id "
+      << session_id;
+  Status ret = ::android::apex::markStagedSessionSuccessful(session_id);
+  if (!ret.Ok()) {
+    LOG(ERROR) << "Failed to mark session " << session_id
+               << " as SUCCESS: " << ret.ErrorMessage();
+    return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
+                                           String8(ret.ErrorMessage().c_str()));
+  }
+  return BinderStatus::ok();
+}
+
 void convertToApexSessionInfo(const ApexSession& session,
                               ApexSessionInfo* session_info) {
   using SessionState = ::apex::proto::SessionState;
@@ -182,6 +197,7 @@ void convertToApexSessionInfo(const ApexSession& session,
   session_info->isActivated = false;
   session_info->isActivationPendingRetry = false;
   session_info->isActivationFailed = false;
+  session_info->isSuccess = false;
 
   switch (session.GetState()) {
     case SessionState::VERIFIED:
@@ -193,11 +209,11 @@ void convertToApexSessionInfo(const ApexSession& session,
     case SessionState::ACTIVATED:
       session_info->isActivated = true;
       break;
-    case SessionState::ACTIVATION_PENDING_RETRY:
-      session_info->isActivationPendingRetry = true;
-      break;
     case SessionState::ACTIVATION_FAILED:
       session_info->isActivationFailed = true;
+      break;
+    case SessionState::SUCCESS:
+      session_info->isSuccess = true;
       break;
     case SessionState::UNKNOWN:
     default:
@@ -232,6 +248,7 @@ BinderStatus ApexService::getStagedSessionInfo(
     apex_session_info->isActivated = false;
     apex_session_info->isActivationPendingRetry = false;
     apex_session_info->isActivationFailed = false;
+    apex_session_info->isSuccess = false;
     return BinderStatus::ok();
   }
 

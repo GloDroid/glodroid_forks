@@ -175,7 +175,8 @@ void ApexSession::SetChildSessionIds(
                                            child_session_ids.end()};
 }
 
-Status ApexSession::UpdateStateAndCommit(SessionState::State session_state) {
+Status ApexSession::UpdateStateAndCommit(
+    const SessionState::State& session_state) {
   state_.set_state(session_state);
 
   auto stateFilePath = getSessionStateFilePath(id_);
@@ -199,6 +200,12 @@ Status ApexSession::DeleteSession() {
       return Status::Fail(StringLog()
                           << "Can't delete session in state " << GetState());
   }
+}
+
+std::ostream& operator<<(std::ostream& out, const ApexSession& session) {
+  return out << "[id = " << session.GetId()
+             << "; state = " << SessionState::State_Name(session.GetState())
+             << "]";
 }
 
 }  // namespace apex
