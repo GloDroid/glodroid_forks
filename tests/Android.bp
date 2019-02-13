@@ -91,6 +91,7 @@ apex {
     name: "apex_test_build_features",
     file_contexts: "apex.test",
     manifest: "testdata/apex_manifest.json",
+    androidManifest: "testdata/AndroidManifest.xml",
     binaries: ["surfaceflinger", "vold"],
     multilib: {
         prefer32: {
