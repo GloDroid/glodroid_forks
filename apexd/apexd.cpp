@@ -494,6 +494,33 @@ StatusOr<ApexFile> verifySessionDir(const int session_id) {
   return StatusOr<ApexFile>(std::move((*verified)[0]));
 }
 
+Status AbortNonFinalizedSessions() {
+  auto sessions = ApexSession::GetSessions();
+  int cnt = 0;
+  for (ApexSession& session : sessions) {
+    Status status;
+    switch (session.GetState()) {
+      case SessionState::VERIFIED:
+        [[clang::fallthrough]];
+      case SessionState::STAGED:
+        cnt++;
+        status = session.DeleteSession();
+        if (!status.Ok()) {
+          return Status::Fail(status.ErrorMessage());
+        }
+        if (cnt > 1) {
+          LOG(WARNING) << "More than one non-finalized session!";
+        }
+        break;
+      // TODO(b/124215327): fail if session is in ACTIVATED state.
+      default:
+        break;
+    }
+  }
+  LOG(DEBUG) << "Aborted " << cnt << " non-finalized sessions";
+  return Status::Success();
+}
+
 }  // namespace
 
 namespace apexd_private {
@@ -1011,6 +1038,11 @@ void onAllPackagesReady() {
 
 StatusOr<std::vector<ApexFile>> submitStagedSession(
     const int session_id, const std::vector<int>& child_session_ids) {
+  Status cleanup_status = AbortNonFinalizedSessions();
+  if (!cleanup_status.Ok()) {
+    return StatusOr<std::vector<ApexFile>>::MakeError(cleanup_status);
+  }
+
   std::vector<int> ids_to_scan;
   if (!child_session_ids.empty()) {
     ids_to_scan = child_session_ids;
