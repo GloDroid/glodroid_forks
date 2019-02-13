@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+import xml.etree.ElementTree as ET
 from apex_manifest import ValidateApexManifest
 from apex_manifest import ApexManifestError
 
@@ -59,6 +60,8 @@ def ParseArgs(argv):
                       help='verbose execution')
   parser.add_argument('--manifest', default='apex_manifest.json',
                       help='path to the APEX manifest file')
+  parser.add_argument('--android_manifest',
+                      help='path to the AndroidManifest file. If omitted, a default one is created and used')
   parser.add_argument('--file_contexts',
                       help='selinux file contexts file. Required for "image" APEXs.')
   parser.add_argument('--canned_fs_config',
@@ -136,6 +139,13 @@ def PrepareAndroidManifest(package, version):
 """
   return template.format(package=package, version=version)
 
+def ValidateAndroidManifest(package, android_manifest):
+  tree = ET.parse(android_manifest)
+  manifest_tag = tree.getroot()
+  package_in_xml = manifest_tag.attrib['package']
+  if package_in_xml != package:
+    raise Exception("Package name '" + package_in_xml + "' in '" + android_manifest +
+                    " differ from package name '" + package + "' in the apex_manifest.json")
 
 def ValidateArgs(args):
   if not os.path.exists(args.manifest):
@@ -145,6 +155,15 @@ def ValidateArgs(args):
   if not os.path.isfile(args.manifest):
     print("Manifest file '" + args.manifest + "' is not a file")
     return False
+
+  if args.android_manifest is not None:
+    if not os.path.exists(args.android_manifest):
+      print("Android Manifest file '" + args.android_manifest + "' does not exist")
+      return False
+
+    if not os.path.isfile(args.android_manifest):
+      print("Android Manifest file '" + args.android_manifest + "' is not a file")
+      return False
 
   if not os.path.exists(args.input_dir):
     print("Input directory '" + args.input_dir + "' does not exist")
@@ -314,16 +333,17 @@ def CreateApex(args, work_dir):
     RunCommand(cmd, args.verbose)
 
   # package the image file and APEX manifest as an APK.
-  # The AndroidManifest file is automatically generated.
+  # The AndroidManifest file is automatically generated if not given.
   android_manifest_file = os.path.join(work_dir, 'AndroidManifest.xml')
-  if args.verbose:
-    print('Creating AndroidManifest ' + android_manifest_file)
-  with open(android_manifest_file, 'w+') as f:
-    app_package_name = manifest_apex.name
-    if args.override_apk_package_name:
-      app_package_name = args.override_apk_package_name
-
-    f.write(PrepareAndroidManifest(app_package_name, manifest_apex.version))
+  if not args.android_manifest:
+    if args.verbose:
+      print('Creating AndroidManifest ' + android_manifest_file)
+    with open(android_manifest_file, 'w+') as f:
+      app_package_name = manifest_apex.name
+      f.write(PrepareAndroidManifest(app_package_name, manifest_apex.version))
+  else:
+    ValidateAndroidManifest(manifest_apex.name, args.android_manifest)
+    shutil.copyfile(args.android_manifest, android_manifest_file)
 
   # copy manifest to the content dir so that it is also accessible
   # without mounting the image
@@ -337,6 +357,11 @@ def CreateApex(args, work_dir):
   cmd = ['aapt2']
   cmd.append('link')
   cmd.extend(['--manifest', android_manifest_file])
+  if args.override_apk_package_name:
+    cmd.extend(['--rename-manifest-package', args.override_apk_package_name])
+  # This version from apex_manifest.json is used when versionCode isn't
+  # specified in AndroidManifest.xml
+  cmd.extend(['--version-code', str(manifest_apex.version)])
   cmd.extend(['-o', apk_file])
   cmd.extend(['-I', "prebuilts/sdk/current/public/android.jar"])
   RunCommand(cmd, args.verbose)
