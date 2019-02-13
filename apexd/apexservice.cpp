@@ -97,6 +97,10 @@ BinderStatus CheckDebuggable(const std::string& name) {
 
 BinderStatus ApexService::stagePackage(const std::string& packageTmpPath,
                                        bool* aidl_return) {
+  BinderStatus debugCheck = CheckDebuggable("stagePackage");
+  if (!debugCheck.isOk()) {
+    return debugCheck;
+  }
   std::vector<std::string> tmp;
   tmp.push_back(packageTmpPath);
   return stagePackages(tmp, aidl_return);
@@ -104,6 +108,10 @@ BinderStatus ApexService::stagePackage(const std::string& packageTmpPath,
 
 BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths,
                                         bool* aidl_return) {
+  BinderStatus debugCheck = CheckDebuggable("stagePackages");
+  if (!debugCheck.isOk()) {
+    return debugCheck;
+  }
   LOG(DEBUG) << "stagePackages() received by ApexService, paths "
              << android::base::Join(paths, ',');
 
