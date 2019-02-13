@@ -44,6 +44,8 @@ class ApexSession {
   void SetChildSessionIds(const std::vector<int>& child_session_ids);
   Status UpdateStateAndCommit(::apex::proto::SessionState::State state);
 
+  Status DeleteSession();
+
  private:
   ApexSession(int id, const ::apex::proto::SessionState& state);
   int id_;
