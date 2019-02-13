@@ -16,13 +16,25 @@
 
 package com.android.tests.apex;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import android.service.runtime.DebugEntryProto;
+import android.service.runtime.RuntimeServiceInfoProto;
+
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
+import com.android.tradefed.util.CommandResult;
+
+import com.google.protobuf.InvalidProtocolBufferException;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Test to check if Apex can be staged, activated and uninstalled successfully.
@@ -40,7 +52,53 @@ public class TimezoneDataHostTest extends ApexE2EBaseHostTest {
 
     @Override
     public void additionalCheck() {
-        // TODO: Add the additional check for timezonedata module.
+        // Check that the device reports the expected information for when the test APEX is
+        // installed.
+        RuntimeServiceInfoProto runtimeServiceInfo = getRuntimeServiceInfoProto();
+        List<DebugEntryProto> debugEntries = runtimeServiceInfo.getDebugEntryList();
+
+        // Check the status of APK update (can't be present) and time zone data module
+        // (must be present).
+        assertEntryValue(debugEntries, "core_library.timezone.source.data_status", "NOT_FOUND");
+        assertEntryValue(debugEntries, "core_library.timezone.source.tzdata_module_status", "OK");
+
+        // Check the time zone data module has the expected version for test1_com.android.tzdata.
+        String testDataVersion = "2030a";
+        assertEntryValue(debugEntries, "core_library.timezone.source.tzdata_module_rulesVersion",
+                testDataVersion);
+
+        // Check all the libraries are reporting the same version.
+        assertEntryValue(debugEntries, "core_library.timezone.lib.icu4j.tzdb_version",
+                testDataVersion);
+        assertEntryValue(debugEntries, "core_library.timezone.lib.libcore.tzdb_version",
+                testDataVersion);
+        assertEntryValue(debugEntries, "core_library.timezone.lib.icu4c.tzdb_version",
+                testDataVersion);
     }
 
+    private RuntimeServiceInfoProto getRuntimeServiceInfoProto() {
+        try {
+            CommandResult commandResult =
+                    getDevice().executeShellV2Command("dumpsys runtime --proto");
+            assertEquals(0, (int) commandResult.getExitCode());
+
+            String outputString = commandResult.getStdout();
+            byte[] outputBytes = outputString.getBytes(StandardCharsets.US_ASCII);
+            return RuntimeServiceInfoProto.parseFrom(outputBytes);
+        } catch (DeviceNotAvailableException e) {
+            throw new AssertionError("Unable to run dumpsys", e);
+        } catch (InvalidProtocolBufferException e) {
+            throw new AssertionError("Unable to parse dumpsys output", e);
+        }
+    }
+
+    private static void assertEntryValue(
+            List<DebugEntryProto> entries, String entryKey, String expectedValue) {
+        Optional<DebugEntryProto> matchingEntry =
+                entries.stream().filter(x -> x.getKey().equals(entryKey)).findFirst();
+        assertTrue("DebugEntryProto with key " + entryKey + " not found.",
+                matchingEntry.isPresent());
+        assertEquals("DebugEntryProto with key " + entryKey + " has bad value",
+                expectedValue, matchingEntry.get().getStringValue());
+    }
 }
