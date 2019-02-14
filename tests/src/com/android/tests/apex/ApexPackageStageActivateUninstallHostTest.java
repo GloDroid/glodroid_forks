@@ -17,6 +17,7 @@
 package com.android.tests.apex;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 
 import org.junit.Test;
@@ -36,6 +37,13 @@ public class ApexPackageStageActivateUninstallHostTest extends ApexE2EBaseHostTe
     @Test
     public void testStageActivateUninstallApexPackage()
                                 throws DeviceNotAvailableException, IOException {
+        doTestStageActivateUninstallApexPackage();
+    }
+
+    @Test
+    public void testStageActivatUninstallTwice() throws Exception {
+        doTestStageActivateUninstallApexPackage();
+        CLog.i("Installing the same apex second time");
         doTestStageActivateUninstallApexPackage();
     }
 
