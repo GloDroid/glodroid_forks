@@ -47,9 +47,10 @@ class ApexSession {
   Status DeleteSession();
 
  private:
-  ApexSession(int id, const ::apex::proto::SessionState& state);
-  int id_;
+  ApexSession(const ::apex::proto::SessionState& state);
   ::apex::proto::SessionState state_;
+
+  static StatusOr<ApexSession> GetSessionFromFile(const std::string& path);
 };
 
 std::ostream& operator<<(std::ostream& out, const ApexSession& session);
