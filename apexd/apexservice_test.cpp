@@ -539,6 +539,27 @@ TEST_F(ApexServiceTest, StageSuccess_ClearsPreviouslyActivePackage) {
   EXPECT_TRUE(RegularFileExists(installer3.test_installed_file));
 }
 
+TEST_F(ApexServiceTest, StageAlreadyActivePackageSuccess) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+  ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
+
+  bool success = false;
+  android::binder::Status st =
+      service_->stagePackage(installer.test_file, &success);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(success);
+  ASSERT_TRUE(RegularFileExists(installer.test_installed_file));
+
+  success = false;
+  st = service_->stagePackage(installer.test_file, &success);
+  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(success);
+  ASSERT_TRUE(RegularFileExists(installer.test_installed_file));
+}
+
 TEST_F(ApexServiceTest, MultiStageSuccess) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
   if (!installer.Prepare()) {
