@@ -957,6 +957,12 @@ Status stagePackages(const std::vector<std::string>& tmpPaths) {
     }
     std::string dest_path = path_fn(*apex_file);
 
+    if (access(dest_path.c_str(), F_OK) == 0) {
+      LOG(DEBUG) << dest_path << " already exists. Unlinking it";
+      if (unlink(dest_path.c_str()) != 0) {
+        return Status::Fail(PStringLog() << "Failed to unlink " << dest_path);
+      }
+    }
     if (link(apex_file->GetPath().c_str(), dest_path.c_str()) != 0) {
       // TODO: Get correct binder error status.
       return Status::Fail(PStringLog()
