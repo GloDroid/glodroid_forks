@@ -523,6 +523,77 @@ Status AbortNonFinalizedSessions() {
   return Status::Success();
 }
 
+Status BackupActivePackages() {
+  LOG(DEBUG) << "Initializing  backup of " << kActiveApexPackagesDataDir;
+
+  // Previous restore might've delete backups folder.
+  auto create_status = createDirIfNeeded(kApexBackupDir, 0700);
+  if (!create_status.Ok()) {
+    return Status::Fail(StringLog()
+                        << "Backup failed : " << create_status.ErrorMessage());
+  }
+
+  namespace fs = std::filesystem;
+  std::error_code ec;
+  if (!fs::exists(fs::path(kActiveApexPackagesDataDir))) {
+    if (ec) {
+      return Status::Fail(StringLog()
+                          << "Failed to access " << kActiveApexPackagesDataDir
+                          << " : " << ec);
+    } else {
+      LOG(DEBUG) << kActiveApexPackagesDataDir
+                 << " does not exist. Nothing to backup";
+      return Status::Success();
+    }
+  }
+
+  // TODO: should we check if /data/apex/active exists? Technically it is
+  // created in init, which means that it always should be there, but in tests
+  // we might wipe out everything under /data/apex/*.
+  auto active_packages =
+      FindApexFilesByName(kActiveApexPackagesDataDir, false /* include_dirs */);
+  if (!active_packages.Ok()) {
+    return Status::Fail(StringLog() << "Backup failed : "
+                                    << active_packages.ErrorMessage());
+  }
+
+  auto cleanup_status = DeleteDirContent(std::string(kApexBackupDir));
+  if (!cleanup_status.Ok()) {
+    return Status::Fail(StringLog()
+                        << "Backup failed : " << cleanup_status.ErrorMessage());
+  }
+
+  auto backup_path_fn = [](const ApexFile& apex_file) {
+    return StringPrintf("%s/%s%s", kApexBackupDir,
+                        GetPackageId(apex_file.GetManifest()).c_str(),
+                        kApexPackageSuffix);
+  };
+
+  auto deleter = []() {
+    auto status = DeleteDirContent(std::string(kApexBackupDir));
+    if (!status.Ok()) {
+      LOG(ERROR) << "Failed to cleanup " << kApexBackupDir << " : "
+                 << status.ErrorMessage();
+    }
+  };
+  auto scope_guard = android::base::make_scope_guard(deleter);
+
+  for (const std::string& path : *active_packages) {
+    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
+    if (!apex_file.Ok()) {
+      return Status::Fail("Backup failed : " + apex_file.ErrorMessage());
+    }
+    const auto& dest_path = backup_path_fn(*apex_file);
+    if (link(apex_file->GetPath().c_str(), dest_path.c_str()) != 0) {
+      return Status::Fail(PStringLog()
+                          << "Failed to backup " << apex_file->GetPath());
+    }
+  }
+
+  scope_guard.Disable();  // Accept the backup.
+  return Status::Success();
+}
+
 }  // namespace
 
 namespace apexd_private {
@@ -834,16 +905,11 @@ void scanStagedSessionsDirAndStage() {
   LOG(INFO) << "Scanning " << kApexSessionsDir
             << " looking for sessions to be activated.";
 
-  // TODO(b/118865310): Checkpoint the existing set of active packages in case
-  // we need to rollback the session.
-  // TODO(b/118865310) also get sessions in PENDING_RETRY state
   auto stagedSessions = ApexSession::GetSessionsInState(SessionState::STAGED);
   for (auto& session : stagedSessions) {
     auto sessionId = session.GetId();
 
     auto session_failed_fn = [&]() {
-      // TODO(b/118865310): retry, and if it keeps failing, rollback the changes
-      // and reboot the device.
       LOG(WARNING) << "Marking session " << sessionId << " as failed.";
       session.UpdateStateAndCommit(SessionState::ACTIVATION_FAILED);
     };
@@ -1049,6 +1115,11 @@ StatusOr<std::vector<ApexFile>> submitStagedSession(
   Status cleanup_status = AbortNonFinalizedSessions();
   if (!cleanup_status.Ok()) {
     return StatusOr<std::vector<ApexFile>>::MakeError(cleanup_status);
+  }
+
+  Status backup_status = BackupActivePackages();
+  if (!backup_status.Ok()) {
+    return StatusOr<std::vector<ApexFile>>::MakeError(backup_status);
   }
 
   std::vector<int> ids_to_scan;
