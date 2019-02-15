@@ -226,7 +226,7 @@ class ApexServiceTest : public ::testing::Test {
   }
 
   struct PrepareTestApexForInstall {
-    static constexpr const char* kTestDir = "/data/staging/apexservice_tmp";
+    static constexpr const char* kTestDir = "/data/pkg_staging/apexservice_tmp";
 
     // This is given to the constructor.
     std::string test_input;  // Original test file.
@@ -490,7 +490,7 @@ TEST_F(ApexServiceTest, StageFailKey) {
 
   constexpr const char* kExpectedError3 =
       "Error verifying "
-      "/data/staging/apexservice_tmp/apex.apexd_test_no_inst_key.apex: "
+      "/data/pkg_staging/apexservice_tmp/apex.apexd_test_no_inst_key.apex: "
       "couldn't verify public key: Failed to compare the bundled public key "
       "with key";
   const size_t pos3 = error.find(kExpectedError3);
@@ -811,7 +811,7 @@ TEST_F(ApexServicePrePostInstallTest, PostinstallFail) {
 
 TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
-                                      "/data/staging/session_123",
+                                      "/data/pkg_staging/session_123",
                                       "staging_data_file");
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
@@ -896,7 +896,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
 
 TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
-                                      "/data/staging/session_239",
+                                      "/data/pkg_staging/session_239",
                                       "staging_data_file");
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
@@ -945,7 +945,7 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
 TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_no_inst_key.apex"),
-      "/data/staging/session_456", "staging_data_file");
+      "/data/pkg_staging/session_456", "staging_data_file");
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
   }
@@ -975,11 +975,11 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   // Parent session id: 10
   // Children session ids: 20 30
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
-                                      "/data/staging/session_20",
+                                      "/data/pkg_staging/session_20",
                                       "staging_data_file");
   PrepareTestApexForInstall installer2(
       GetTestFile("apex.apexd_test_different_app.apex"),
-      "/data/staging/session_30", "staging_data_file");
+      "/data/pkg_staging/session_30", "staging_data_file");
   if (!installer.Prepare() || !installer2.Prepare()) {
     FAIL() << GetDebugStr(&installer) << GetDebugStr(&installer2);
   }
@@ -1045,11 +1045,11 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
   // Parent session id: 11
   // Children session ids: 21 31
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
-                                      "/data/staging/session_21",
+                                      "/data/pkg_staging/session_21",
                                       "staging_data_file");
   PrepareTestApexForInstall installer2(
       GetTestFile("apex.apexd_test_no_inst_key.apex"),
-      "/data/staging/session_31", "staging_data_file");
+      "/data/pkg_staging/session_31", "staging_data_file");
   if (!installer.Prepare() || !installer2.Prepare()) {
     FAIL() << GetDebugStr(&installer) << GetDebugStr(&installer2);
   }
