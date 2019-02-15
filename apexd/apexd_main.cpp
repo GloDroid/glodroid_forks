@@ -81,6 +81,11 @@ int main(int /*argc*/, char** argv) {
 
   android::apex::binder::CreateAndRegisterService();
   android::apex::binder::StartThreadPool();
+  // Notify other components (e.g. init) that all APEXs are correctly mounted
+  // and are ready to be used. Note that it's important that the binder service
+  // is registered at this point, since other system services might depend on
+  // it.
+  android::apex::onAllPackagesReady();
 
   android::apex::waitForBootStatus(android::apex::rollbackLastSession);
 
