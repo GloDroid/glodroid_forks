@@ -21,10 +21,13 @@
     <target_preparer class="com.android.tradefed.targetprep.PushFilePreparer">
         <option name="cleanup" value="true" />
         <option name="push" value="apexservice_test->/data/local/tmp/apexservice_test/apexservice_test" />
-        <option name="push" value="apex.apexd_test.apex->/data/local/tmp/apex_file_test/apex.apexd_test.apex" />
-        <option name="push" value="apex.apexd_test_v2.apex->/data/local/tmp/apex_file_test/apex.apexd_test_v2.apex" />
-        <option name="push" value="apex.apexd_test_preinstall.apex->/data/local/tmp/apex_file_test/apex.apexd_test_preinstall.apex" />
-        <option name="push" value="apex.apexd_test_prepostinstall.fail.apex->/data/local/tmp/apex_file_test/apex.apexd_test_prepostinstall.fail.apex" />
+        <option name="push" value="apex.apexd_test.apex->/data/local/tmp/apexservice_test/apex.apexd_test.apex" />
+        <option name="push" value="apex.apexd_test_v2.apex->/data/local/tmp/apexservice_test/apex.apexd_test_v2.apex" />
+        <option name="push" value="apex.apexd_test_no_inst_key.apex->/data/local/tmp/apexservice_test/apex.apexd_test_no_inst_key.apex" />
+        <option name="push" value="apex.apexd_test_different_app.apex->/data/local/tmp/apexservice_test/apex.apexd_test_different_app.apex" />
+        <option name="push" value="apex.apexd_test_preinstall.apex->/data/local/tmp/apexservice_test/apex.apexd_test_preinstall.apex" />
+        <option name="push" value="apex.apexd_test_postinstall.apex->/data/local/tmp/apexservice_test/apex.apexd_test_postinstall.apex" />
+        <option name="push" value="apex.apexd_test_prepostinstall.fail.apex->/data/local/tmp/apexservice_test/apex.apexd_test_prepostinstall.fail.apex" />
     </target_preparer>
 
     <!-- The test runs as root to prepare the temporary directory, make selinux adjustments
