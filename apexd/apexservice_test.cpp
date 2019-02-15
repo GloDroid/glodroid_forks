@@ -33,6 +33,7 @@
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 #include <binder/IServiceManager.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <selinux/selinux.h>
 
@@ -59,6 +60,8 @@ using android::sp;
 using android::String16;
 using android::apex::testing::IsOk;
 using android::base::Join;
+using android::base::StringPrintf;
+using ::testing::UnorderedElementsAre;
 
 namespace fs = std::filesystem;
 
@@ -1166,6 +1169,154 @@ TEST_F(ApexServiceTest, AbortActiveSession) {
   sessions.clear();
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
   ASSERT_EQ(0u, sessions.size());
+}
+
+TEST_F(ApexServiceTest, BackupActivePackages) {
+  PrepareTestApexForInstall installer1(GetTestFile("apex.apexd_test.apex"));
+  PrepareTestApexForInstall installer2(
+      GetTestFile("apex.apexd_test_different_app.apex"));
+  PrepareTestApexForInstall installer3(GetTestFile("apex.apexd_test_v2.apex"),
+                                       "/data/staging/session_23",
+                                       "staging_data_file");
+
+  if (!installer1.Prepare() || !installer2.Prepare() || !installer3.Prepare()) {
+    return;
+  }
+
+  // Activate some packages, in order to backup them later.
+  bool ret = false;
+  std::vector<std::string> pkgs = {installer1.test_file, installer2.test_file};
+  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs, &ret)));
+  ASSERT_TRUE(ret);
+
+  // Make sure that /data/apex/active has activated packages.
+  auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
+                             [](auto _, auto __) { return true; });
+  ASSERT_TRUE(IsOk(active_pkgs));
+  ASSERT_THAT(*active_pkgs,
+              UnorderedElementsAre(installer1.test_installed_file,
+                                   installer2.test_installed_file));
+
+  ApexInfoList list;
+  std::vector<int> empty_child_session_ids;
+  ASSERT_TRUE(IsOk(
+      service_->submitStagedSession(23, empty_child_session_ids, &list, &ret)));
+  ASSERT_TRUE(ret);
+
+  auto backups = ReadDir(std::string(kApexBackupDir),
+                         [](auto _, auto __) { return true; });
+  ASSERT_TRUE(IsOk(backups));
+  auto backup1 =
+      StringPrintf("%s/com.android.apex.test_package@1.apex", kApexBackupDir);
+  auto backup2 =
+      StringPrintf("%s/com.android.apex.test_package_2@1.apex", kApexBackupDir);
+  ASSERT_THAT(*backups, UnorderedElementsAre(backup1, backup2));
+}
+
+TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
+  PrepareTestApexForInstall installer1(GetTestFile("apex.apexd_test.apex"));
+  PrepareTestApexForInstall installer2(
+      GetTestFile("apex.apexd_test_different_app.apex"));
+  PrepareTestApexForInstall installer3(GetTestFile("apex.apexd_test_v2.apex"),
+                                       "/data/staging/session_43",
+                                       "staging_data_file");
+
+  if (!installer1.Prepare() || !installer2.Prepare() || !installer3.Prepare()) {
+    return;
+  }
+
+  // Make sure /data/apex/backups exists.
+  ASSERT_TRUE(IsOk(createDirIfNeeded(std::string(kApexBackupDir), 0700)));
+  // Create some bogus files in /data/apex/backups.
+  std::ofstream old_backup(StringPrintf("%s/file1", kApexBackupDir));
+  ASSERT_TRUE(old_backup.good());
+  old_backup.close();
+
+  bool ret = false;
+  std::vector<std::string> pkgs = {installer1.test_file, installer2.test_file};
+  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs, &ret)));
+  ASSERT_TRUE(ret);
+
+  // Make sure that /data/apex/active has activated packages.
+  auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
+                             [](auto _, auto __) { return true; });
+  ASSERT_TRUE(IsOk(active_pkgs));
+  ASSERT_THAT(*active_pkgs,
+              UnorderedElementsAre(installer1.test_installed_file,
+                                   installer2.test_installed_file));
+
+  ApexInfoList list;
+  std::vector<int> empty_child_session_ids;
+  ASSERT_TRUE(IsOk(
+      service_->submitStagedSession(43, empty_child_session_ids, &list, &ret)));
+  ASSERT_TRUE(ret);
+
+  auto backups = ReadDir(std::string(kApexBackupDir),
+                         [](auto _, auto __) { return true; });
+  ASSERT_TRUE(IsOk(backups));
+  auto backup1 =
+      StringPrintf("%s/com.android.apex.test_package@1.apex", kApexBackupDir);
+  auto backup2 =
+      StringPrintf("%s/com.android.apex.test_package_2@1.apex", kApexBackupDir);
+  ASSERT_THAT(*backups, UnorderedElementsAre(backup1, backup2));
+}
+
+TEST_F(ApexServiceTest, BackupActivePackagesZeroActivePackages) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"),
+                                      "/data/staging/session_41",
+                                      "staging_data_file");
+
+  if (!installer.Prepare()) {
+    return;
+  }
+
+  // Make sure that /data/apex/active exists and is empty
+  ASSERT_TRUE(
+      IsOk(createDirIfNeeded(std::string(kActiveApexPackagesDataDir), 0750)));
+  auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
+                             [](auto _, auto __) { return true; });
+  ASSERT_TRUE(IsOk(active_pkgs));
+  ASSERT_EQ(0u, active_pkgs->size());
+
+  ApexInfoList list;
+  std::vector<int> empty_child_session_ids;
+  bool ret = false;
+  ASSERT_TRUE(IsOk(
+      service_->submitStagedSession(41, empty_child_session_ids, &list, &ret)));
+  ASSERT_TRUE(ret);
+
+  auto backups = ReadDir(std::string(kApexBackupDir),
+                         [](auto _, auto __) { return true; });
+  ASSERT_TRUE(IsOk(backups));
+  ASSERT_EQ(0u, backups->size());
+}
+
+TEST_F(ApexServiceTest, ActivePackagesFolderDoesNotExist) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"),
+                                      "/data/staging/session_41",
+                                      "staging_data_file");
+
+  if (!installer.Prepare()) {
+    return;
+  }
+
+  // Make sure that /data/apex/active does not exist
+  namespace fs = std::filesystem;
+  std::error_code ec;
+  fs::remove_all(fs::path(kActiveApexPackagesDataDir), ec);
+  ASSERT_FALSE(ec) << "Failed to delete " << kActiveApexPackagesDataDir;
+
+  ApexInfoList list;
+  std::vector<int> empty_child_session_ids;
+  bool ret = false;
+  ASSERT_TRUE(IsOk(
+      service_->submitStagedSession(41, empty_child_session_ids, &list, &ret)));
+  ASSERT_TRUE(ret);
+
+  auto backups = ReadDir(std::string(kApexBackupDir),
+                         [](auto _, auto __) { return true; });
+  ASSERT_TRUE(IsOk(backups));
+  ASSERT_EQ(0u, backups->size());
 }
 
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
