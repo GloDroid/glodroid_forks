@@ -44,6 +44,7 @@
 #include "apexd.h"
 #include "apexd_private.h"
 #include "apexd_session.h"
+#include "apexd_test_utils.h"
 #include "apexd_utils.h"
 #include "status_or.h"
 
@@ -56,6 +57,7 @@ namespace apex {
 
 using android::sp;
 using android::String16;
+using android::apex::testing::IsOk;
 using android::base::Join;
 
 struct SessionsCleaner {
@@ -66,7 +68,7 @@ struct SessionsCleaner {
   void Init() {
     auto sessions =
         ReadDir(kApexSessionsDir, [](auto _, auto __) { return true; });
-    ASSERT_TRUE(sessions.Ok()) << sessions.ErrorMessage();
+    ASSERT_TRUE(IsOk(sessions));
     std::copy(sessions->begin(), sessions->end(),
               std::inserter(original_sessions_, original_sessions_.end()));
   }
@@ -74,8 +76,7 @@ struct SessionsCleaner {
   void Clear() {
     auto sessions =
         ReadDir(kApexSessionsDir, [](auto _, auto __) { return true; });
-    ASSERT_TRUE(sessions.Ok()) << "Failed to list " << kApexSessionsDir << " : "
-                               << sessions.ErrorMessage();
+    ASSERT_TRUE(IsOk(sessions)) << "Failed to list " << kApexSessionsDir;
     for (const auto& session : *sessions) {
       if (original_sessions_.find(session) == original_sessions_.end()) {
         std::error_code error_code;
@@ -269,7 +270,7 @@ class ApexServiceTest : public ::testing::Test {
         // Failure in constructor. Redo work to get error message.
         auto fail_fn = [&]() {
           StatusOr<ApexFile> apex_file = ApexFile::Open(test_input);
-          ASSERT_FALSE(apex_file.Ok());
+          ASSERT_FALSE(IsOk(apex_file));
           ASSERT_TRUE(apex_file.Ok())
               << test_input << " failed to load: " << apex_file.ErrorMessage();
         };
@@ -458,7 +459,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
 
   bool success;
   android::binder::Status st = service_->stagePackage(test_file, &success);
-  ASSERT_FALSE(st.isOk());
+  ASSERT_FALSE(IsOk(st));
   std::string error = st.toString8().c_str();
   EXPECT_NE(std::string::npos, error.find("Failed to open package")) << error;
   EXPECT_NE(std::string::npos, error.find("I/O error")) << error;
@@ -476,7 +477,7 @@ TEST_F(ApexServiceTest, StageFailKey) {
   bool success;
   android::binder::Status st =
       service_->stagePackage(installer.test_file, &success);
-  ASSERT_FALSE(st.isOk());
+  ASSERT_FALSE(IsOk(st));
 
   // May contain one of two errors.
   std::string error = st.toString8().c_str();
@@ -506,9 +507,7 @@ TEST_F(ApexServiceTest, StageSuccess) {
   ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
 
   bool success;
-  android::binder::Status st =
-      service_->stagePackage(installer.test_file, &success);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &success)));
   ASSERT_TRUE(success);
   EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
 }
@@ -523,9 +522,7 @@ TEST_F(ApexServiceTest, StageSuccess_ClearsPreviouslyActivePackage) {
       return;
     }
     bool success;
-    android::binder::Status st =
-        service_->stagePackage(installer.test_file, &success);
-    ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+    ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &success)));
     ASSERT_TRUE(success);
     EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
   };
@@ -547,15 +544,12 @@ TEST_F(ApexServiceTest, StageAlreadyActivePackageSuccess) {
   ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
 
   bool success = false;
-  android::binder::Status st =
-      service_->stagePackage(installer.test_file, &success);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &success)));
   ASSERT_TRUE(success);
   ASSERT_TRUE(RegularFileExists(installer.test_installed_file));
 
   success = false;
-  st = service_->stagePackage(installer.test_file, &success);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &success)));
   ASSERT_TRUE(success);
   ASSERT_TRUE(RegularFileExists(installer.test_installed_file));
 }
@@ -579,8 +573,7 @@ TEST_F(ApexServiceTest, MultiStageSuccess) {
   packages.push_back(installer2.test_file);
 
   bool success;
-  android::binder::Status st = service_->stagePackages(packages, &success);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->stagePackages(packages, &success)));
   ASSERT_TRUE(success);
   EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
   EXPECT_TRUE(RegularFileExists(installer2.test_installed_file));
@@ -604,15 +597,14 @@ class ApexServiceActivationTest : public ApexServiceTest {
       // Check package is not active.
       StatusOr<bool> active =
           IsActive(installer_->package, installer_->version);
-      ASSERT_TRUE(active.Ok());
+      ASSERT_TRUE(IsOk(active));
       ASSERT_FALSE(*active);
     }
 
     {
       bool success;
-      android::binder::Status st =
-          service_->stagePackage(installer_->test_file, &success);
-      ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+      ASSERT_TRUE(
+          IsOk(service_->stagePackage(installer_->test_file, &success)));
       ASSERT_TRUE(success);
     }
   }
@@ -640,15 +632,13 @@ class ApexServiceActivationSuccessTest
     : public ApexServiceActivationTest<SuccessNameProvider> {};
 
 TEST_F(ApexServiceActivationSuccessTest, Activate) {
-  android::binder::Status st =
-      service_->activatePackage(installer_->test_installed_file);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str() << " "
-                         << GetDebugStr(installer_.get());
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
 
   {
     // Check package is active.
     StatusOr<bool> active = IsActive(installer_->package, installer_->version);
-    ASSERT_TRUE(active.Ok());
+    ASSERT_TRUE(IsOk(active));
     ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
   }
 
@@ -698,13 +688,11 @@ TEST_F(ApexServiceActivationSuccessTest, Activate) {
 }
 
 TEST_F(ApexServiceActivationSuccessTest, GetActivePackages) {
-  android::binder::Status st =
-      service_->activatePackage(installer_->test_installed_file);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str() << " "
-                         << GetDebugStr(installer_.get());
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
 
   StatusOr<std::vector<ApexInfo>> active = GetActivePackages();
-  ASSERT_TRUE(active.Ok());
+  ASSERT_TRUE(IsOk(active));
   ApexInfo match;
 
   for (ApexInfo info : *active) {
@@ -720,13 +708,11 @@ TEST_F(ApexServiceActivationSuccessTest, GetActivePackages) {
 }
 
 TEST_F(ApexServiceActivationSuccessTest, GetActivePackage) {
-  android::binder::Status st =
-      service_->activatePackage(installer_->test_installed_file);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str() << " "
-                         << GetDebugStr(installer_.get());
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
 
   StatusOr<ApexInfo> active = GetActivePackage(installer_->package);
-  ASSERT_TRUE(active.Ok());
+  ASSERT_TRUE(IsOk(active));
 
   ASSERT_EQ(installer_->package, active->packageName);
   ASSERT_EQ(installer_->version, static_cast<uint64_t>(active->versionCode));
@@ -754,9 +740,9 @@ class ApexServicePrePostInstallTest : public ApexServiceTest {
     }
     android::binder::Status st = (service_.get()->*fn)(pkgs);
     if (expect_success) {
-      ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+      ASSERT_TRUE(IsOk(st));
     } else {
-      ASSERT_FALSE(st.isOk());
+      ASSERT_FALSE(IsOk(st));
     }
 
     if (test_message != nullptr) {
@@ -767,12 +753,12 @@ class ApexServicePrePostInstallTest : public ApexServiceTest {
     // Ensure that the package is neither active nor mounted.
     for (const InstallerUPtr& installer : installers) {
       StatusOr<bool> active = IsActive(installer->package, installer->version);
-      ASSERT_TRUE(active.Ok());
+      ASSERT_TRUE(IsOk(active));
       EXPECT_FALSE(*active);
     }
     for (const InstallerUPtr& installer : installers) {
       StatusOr<ApexFile> apex = ApexFile::Open(installer->test_input);
-      ASSERT_TRUE(apex.Ok());
+      ASSERT_TRUE(IsOk(apex));
       std::string path =
           apexd_private::GetPackageMountPoint(apex->GetManifest());
       std::string entry = std::string("[dir]").append(path);
@@ -833,11 +819,9 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   ApexInfoList list;
   bool ret_value;
   std::vector<int> empty_child_session_ids;
-  android::binder::Status status = service_->submitStagedSession(
-      123, empty_child_session_ids, &list, &ret_value);
-
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(123, empty_child_session_ids,
+                                                 &list, &ret_value)))
+      << GetDebugStr(&installer);
   EXPECT_TRUE(ret_value);
   EXPECT_EQ(1u, list.apexInfos.size());
   ApexInfo match;
@@ -853,9 +837,8 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   ASSERT_EQ(installer.test_file, match.packagePath);
 
   ApexSessionInfo session;
-  status = service_->getStagedSessionInfo(123, &session);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(123, &session)))
+      << GetDebugStr(&installer);
   EXPECT_EQ(123, session.sessionId);
   EXPECT_FALSE(session.isUnknown);
   EXPECT_TRUE(session.isVerified);
@@ -865,14 +848,12 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_FALSE(session.isActivationFailed);
   EXPECT_FALSE(session.isSuccess);
 
-  status = service_->markStagedSessionReady(123, &ret_value);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(123, &ret_value)))
+      << GetDebugStr(&installer);
   ASSERT_TRUE(ret_value);
 
-  status = service_->getStagedSessionInfo(123, &session);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(123, &session)))
+      << GetDebugStr(&installer);
   EXPECT_EQ(123, session.sessionId);
   EXPECT_FALSE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
@@ -883,14 +864,12 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_FALSE(session.isSuccess);
 
   // Call markStagedSessionReady again. Should be a no-op.
-  status = service_->markStagedSessionReady(123, &ret_value);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(123, &ret_value)))
+      << GetDebugStr(&installer);
   ASSERT_TRUE(ret_value);
 
-  status = service_->getStagedSessionInfo(123, &session);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(123, &session)))
+      << GetDebugStr(&installer);
   EXPECT_EQ(123, session.sessionId);
   EXPECT_FALSE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
@@ -902,9 +881,8 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
 
   // See if the session is reported with getSessions() as well
   std::vector<ApexSessionInfo> sessions;
-  status = service_->getSessions(&sessions);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)))
+      << GetDebugStr(&installer);
   // TODO it appears there is some left-over staged state, and we get 2 sessions
   // here EXPECT_EQ(1u, sessions.size()); So for now, only compare the session
   // with the same sessionid
@@ -925,21 +903,17 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
 
   // First simulate existence of a bunch of sessions.
   auto session1 = ApexSession::CreateSession(37);
-  ASSERT_TRUE(session1.Ok()) << session1.ErrorMessage();
+  ASSERT_TRUE(IsOk(session1));
   auto session2 = ApexSession::CreateSession(57);
-  ASSERT_TRUE(session2.Ok()) << session2.ErrorMessage();
+  ASSERT_TRUE(IsOk(session2));
   auto session3 = ApexSession::CreateSession(73);
-  ASSERT_TRUE(session3.Ok()) << session3.ErrorMessage();
-  auto update_status = session1->UpdateStateAndCommit(SessionState::VERIFIED);
-  ASSERT_TRUE(update_status.Ok()) << update_status.ErrorMessage();
-  update_status = session2->UpdateStateAndCommit(SessionState::STAGED);
-  ASSERT_TRUE(update_status.Ok()) << update_status.ErrorMessage();
-  update_status = session3->UpdateStateAndCommit(SessionState::ACTIVATED);
-  ASSERT_TRUE(update_status.Ok()) << update_status.ErrorMessage();
+  ASSERT_TRUE(IsOk(session3));
+  ASSERT_TRUE(IsOk(session1->UpdateStateAndCommit(SessionState::VERIFIED)));
+  ASSERT_TRUE(IsOk(session2->UpdateStateAndCommit(SessionState::STAGED)));
+  ASSERT_TRUE(IsOk(session3->UpdateStateAndCommit(SessionState::ACTIVATED)));
 
   std::vector<ApexSessionInfo> sessions;
-  auto status = service_->getSessions(&sessions);
-  ASSERT_TRUE(status.isOk()) << status.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
 
   ApexSessionInfo expected_session1 = createSessionInfo(37);
   expected_session1.isVerified = true;
@@ -954,14 +928,12 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
   ApexInfoList list;
   bool ret_value;
   std::vector<int> empty_child_session_ids;
-  status = service_->submitStagedSession(239, empty_child_session_ids, &list,
-                                         &ret_value);
-  EXPECT_TRUE(status.isOk()) << status.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(239, empty_child_session_ids,
+                                                 &list, &ret_value)));
   EXPECT_TRUE(ret_value);
 
   sessions.clear();
-  status = service_->getSessions(&sessions);
-  EXPECT_TRUE(status.isOk()) << status.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
 
   ApexSessionInfo expected_session4 = createSessionInfo(239);
   expected_session4.isVerified = true;
@@ -980,17 +952,14 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   ApexInfoList list;
   bool ret_value;
   std::vector<int> empty_child_session_ids;
-  android::binder::Status status = service_->submitStagedSession(
-      456, empty_child_session_ids, &list, &ret_value);
-
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(456, empty_child_session_ids,
+                                                 &list, &ret_value)))
+      << GetDebugStr(&installer);
   EXPECT_FALSE(ret_value);
 
   ApexSessionInfo session;
-  status = service_->getStagedSessionInfo(456, &session);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(456, &session)))
+      << GetDebugStr(&installer);
   EXPECT_EQ(-1, session.sessionId);
   EXPECT_TRUE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
@@ -1017,11 +986,9 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   ApexInfoList list;
   bool ret_value;
   std::vector<int> child_session_ids = {20, 30};
-  android::binder::Status status =
-      service_->submitStagedSession(10, child_session_ids, &list, &ret_value);
-
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(
+      service_->submitStagedSession(10, child_session_ids, &list, &ret_value)))
+      << GetDebugStr(&installer);
   ASSERT_TRUE(ret_value);
   EXPECT_EQ(2u, list.apexInfos.size());
   ApexInfo match;
@@ -1047,9 +1014,8 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   ASSERT_TRUE(package2_found);
 
   ApexSessionInfo session;
-  status = service_->getStagedSessionInfo(10, &session);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(10, &session)))
+      << GetDebugStr(&installer);
   EXPECT_EQ(10, session.sessionId);
   EXPECT_FALSE(session.isUnknown);
   EXPECT_TRUE(session.isVerified);
@@ -1059,14 +1025,12 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   EXPECT_FALSE(session.isActivationFailed);
   EXPECT_FALSE(session.isSuccess);
 
-  status = service_->markStagedSessionReady(10, &ret_value);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(10, &ret_value)))
+      << GetDebugStr(&installer);
   ASSERT_TRUE(ret_value);
 
-  status = service_->getStagedSessionInfo(10, &session);
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(10, &session)))
+      << GetDebugStr(&installer);
   EXPECT_FALSE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
   EXPECT_TRUE(session.isStaged);
@@ -1091,24 +1055,20 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
   ApexInfoList list;
   bool ret_value;
   std::vector<int> child_session_ids = {21, 31};
-  android::binder::Status status =
-      service_->submitStagedSession(11, child_session_ids, &list, &ret_value);
-
-  ASSERT_TRUE(status.isOk())
-      << status.toString8().c_str() << " " << GetDebugStr(&installer);
+  ASSERT_TRUE(IsOk(
+      service_->submitStagedSession(11, child_session_ids, &list, &ret_value)))
+      << GetDebugStr(&installer);
   ASSERT_FALSE(ret_value);
 }
 
 TEST_F(ApexServiceTest, MarkStagedSessionReadyFail) {
   // We should fail if we ask information about a session we don't know.
   bool ret_value;
-  auto status = service_->markStagedSessionReady(666, &ret_value);
-  ASSERT_TRUE(status.isOk()) << status.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(666, &ret_value)));
   ASSERT_FALSE(ret_value);
 
   ApexSessionInfo session;
-  status = service_->getStagedSessionInfo(666, &session);
-  ASSERT_TRUE(status.isOk()) << status.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(666, &session)));
   EXPECT_EQ(-1, session.sessionId);
   EXPECT_TRUE(session.isUnknown);
   EXPECT_FALSE(session.isVerified);
@@ -1120,11 +1080,10 @@ TEST_F(ApexServiceTest, MarkStagedSessionReadyFail) {
 }
 
 TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsNoSession) {
-  android::binder::Status st = service_->markStagedSessionSuccessful(37);
-  ASSERT_FALSE(st.isOk());
+  ASSERT_FALSE(IsOk(service_->markStagedSessionSuccessful(37)));
+
   ApexSessionInfo session_info;
-  st = service_->getStagedSessionInfo(37, &session_info);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(37, &session_info)));
   EXPECT_EQ(-1, session_info.sessionId);
   EXPECT_TRUE(session_info.isUnknown);
   EXPECT_FALSE(session_info.isVerified);
@@ -1137,14 +1096,14 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsNoSession) {
 
 TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsSessionInWrongState) {
   auto session = ApexSession::CreateSession(73);
-  ASSERT_TRUE(session.Ok()) << session.ErrorMessage();
-  auto ret = session->UpdateStateAndCommit(::apex::proto::SessionState::STAGED);
-  ASSERT_TRUE(ret.Ok()) << ret.ErrorMessage();
-  android::binder::Status st = service_->markStagedSessionSuccessful(73);
-  ASSERT_FALSE(st.isOk());
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(
+      IsOk(session->UpdateStateAndCommit(::apex::proto::SessionState::STAGED)));
+
+  ASSERT_FALSE(IsOk(service_->markStagedSessionSuccessful(73)));
+
   ApexSessionInfo session_info;
-  st = service_->getStagedSessionInfo(73, &session_info);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(73, &session_info)));
   EXPECT_EQ(73, session_info.sessionId);
   EXPECT_FALSE(session_info.isUnknown);
   EXPECT_FALSE(session_info.isVerified);
@@ -1157,15 +1116,14 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsSessionInWrongState) {
 
 TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulActivatedSession) {
   auto session = ApexSession::CreateSession(239);
-  ASSERT_TRUE(session.Ok()) << session.ErrorMessage();
-  auto ret =
-      session->UpdateStateAndCommit(::apex::proto::SessionState::ACTIVATED);
-  ASSERT_TRUE(ret.Ok()) << ret.ErrorMessage();
-  android::binder::Status st = service_->markStagedSessionSuccessful(239);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(IsOk(
+      session->UpdateStateAndCommit(::apex::proto::SessionState::ACTIVATED)));
+
+  ASSERT_TRUE(IsOk(service_->markStagedSessionSuccessful(239)));
+
   ApexSessionInfo session_info;
-  st = service_->getStagedSessionInfo(239, &session_info);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(239, &session_info)));
   EXPECT_EQ(239, session_info.sessionId);
   EXPECT_FALSE(session_info.isUnknown);
   EXPECT_FALSE(session_info.isVerified);
@@ -1178,15 +1136,14 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulActivatedSession) {
 
 TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulNoOp) {
   auto session = ApexSession::CreateSession(1543);
-  ASSERT_TRUE(session.Ok()) << session.ErrorMessage();
-  auto ret =
-      session->UpdateStateAndCommit(::apex::proto::SessionState::SUCCESS);
-  ASSERT_TRUE(ret.Ok()) << ret.ErrorMessage();
-  android::binder::Status st = service_->markStagedSessionSuccessful(1543);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(IsOk(
+      session->UpdateStateAndCommit(::apex::proto::SessionState::SUCCESS)));
+
+  ASSERT_TRUE(IsOk(service_->markStagedSessionSuccessful(1543)));
+
   ApexSessionInfo session_info;
-  st = service_->getStagedSessionInfo(1543, &session_info);
-  ASSERT_TRUE(st.isOk()) << st.toString8().c_str();
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(1543, &session_info)));
   EXPECT_EQ(1543, session_info.sessionId);
   EXPECT_FALSE(session_info.isUnknown);
   EXPECT_FALSE(session_info.isVerified);
@@ -1197,8 +1154,8 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulNoOp) {
   EXPECT_TRUE(session_info.isSuccess);
 }
 
-class LogTestToLogcat : public testing::EmptyTestEventListener {
-  void OnTestStart(const testing::TestInfo& test_info) override {
+class LogTestToLogcat : public ::testing::EmptyTestEventListener {
+  void OnTestStart(const ::testing::TestInfo& test_info) override {
 #ifdef __ANDROID__
     using base::LogId;
     using base::LogSeverity;
@@ -1221,7 +1178,7 @@ class LogTestToLogcat : public testing::EmptyTestEventListener {
 int main(int argc, char** argv) {
   android::base::InitLogging(argv, &android::base::StderrLogger);
   ::testing::InitGoogleTest(&argc, argv);
-  testing::UnitTest::GetInstance()->listeners().Append(
+  ::testing::UnitTest::GetInstance()->listeners().Append(
       new android::apex::LogTestToLogcat());
   return RUN_ALL_TESTS();
 }
