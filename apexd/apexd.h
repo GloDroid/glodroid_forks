@@ -60,6 +60,8 @@ Status deactivatePackage(const std::string& full_path) WARN_UNUSED;
 std::vector<ApexFile> getActivePackages();
 StatusOr<ApexFile> getActivePackage(const std::string& package_name);
 
+Status abortActiveSession();
+
 void onStart();
 void onAllPackagesReady();
 

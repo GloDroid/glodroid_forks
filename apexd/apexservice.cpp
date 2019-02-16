@@ -366,7 +366,12 @@ BinderStatus ApexService::postinstallPackages(
 }
 
 BinderStatus ApexService::abortActiveSession() {
-  // TODO: Implement.
+  LOG(DEBUG) << "abortActiveSession() received by ApexService.";
+  Status res = ::android::apex::abortActiveSession();
+  if (!res.Ok()) {
+    return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
+                                           String8(res.ErrorMessage().c_str()));
+  }
   return BinderStatus::ok();
 }
 
