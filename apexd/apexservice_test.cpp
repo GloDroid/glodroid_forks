@@ -610,6 +610,7 @@ class ApexServiceActivationTest : public ApexServiceTest {
   }
 
   void TearDown() override {
+    ApexServiceTest::TearDown();
     // Attempt to deactivate.
     if (installer_ != nullptr) {
       service_->deactivatePackage(installer_->test_installed_file);
@@ -910,7 +911,7 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
   ASSERT_TRUE(IsOk(session3));
   ASSERT_TRUE(IsOk(session1->UpdateStateAndCommit(SessionState::VERIFIED)));
   ASSERT_TRUE(IsOk(session2->UpdateStateAndCommit(SessionState::STAGED)));
-  ASSERT_TRUE(IsOk(session3->UpdateStateAndCommit(SessionState::ACTIVATED)));
+  ASSERT_TRUE(IsOk(session3->UpdateStateAndCommit(SessionState::SUCCESS)));
 
   std::vector<ApexSessionInfo> sessions;
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
@@ -920,7 +921,7 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
   ApexSessionInfo expected_session2 = createSessionInfo(57);
   expected_session2.isStaged = true;
   ApexSessionInfo expected_session3 = createSessionInfo(73);
-  expected_session3.isActivated = true;
+  expected_session3.isSuccess = true;
   std::vector<ApexSessionInfo> expected{expected_session1, expected_session2,
                                         expected_session3};
   ExpectSessionsContainAllOf(sessions, expected);
@@ -1152,6 +1153,29 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulNoOp) {
   EXPECT_FALSE(session_info.isActivationPendingRetry);
   EXPECT_FALSE(session_info.isActivationFailed);
   EXPECT_TRUE(session_info.isSuccess);
+}
+
+TEST_F(ApexServiceTest, AbortActiveSessionNoSessions) {
+  // First ensure there are no sessions.
+  std::vector<ApexSessionInfo> sessions;
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ASSERT_EQ(0u, sessions.size());
+  ASSERT_TRUE(IsOk(service_->abortActiveSession()));
+}
+
+TEST_F(ApexServiceTest, AbortActiveSession) {
+  auto session = ApexSession::CreateSession(239);
+  session->UpdateStateAndCommit(SessionState::VERIFIED);
+
+  std::vector<ApexSessionInfo> sessions;
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ASSERT_EQ(1u, sessions.size());
+
+  ASSERT_TRUE(IsOk(service_->abortActiveSession()));
+
+  sessions.clear();
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ASSERT_EQ(0u, sessions.size());
 }
 
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {

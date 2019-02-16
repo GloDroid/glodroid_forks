@@ -747,6 +747,30 @@ StatusOr<ApexFile> getActivePackage(const std::string& packageName) {
       PStringLog() << "Cannot find matching package for: " << packageName);
 }
 
+Status abortActiveSession() {
+  auto session_or_none = ApexSession::GetActiveSession();
+  if (!session_or_none.Ok()) {
+    return session_or_none.ErrorStatus();
+  }
+  if (session_or_none->has_value()) {
+    const auto& session = session_or_none->value();
+    LOG(DEBUG) << "Aborting active session " << session;
+    switch (session.GetState()) {
+      case SessionState::VERIFIED:
+        [[clang::fallthrough]];
+      case SessionState::STAGED:
+        return session.DeleteSession();
+      // TODO(b/123622800): if state is ACTIVATED do a rollback.
+      default:
+        return Status::Fail(StringLog()
+                            << "Session " << session << " can't be aborted");
+    }
+  } else {
+    LOG(DEBUG) << "There are no active sessions";
+    return Status::Success();
+  }
+}
+
 void unmountAndDetachExistingImages() {
   // TODO: this procedure should probably not be needed anymore when apexd
   // becomes an actual daemon. Remove if that's the case.

@@ -29,6 +29,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <optional>
 
 using apex::proto::SessionState;
 
@@ -148,9 +149,35 @@ std::vector<ApexSession> ApexSession::GetSessionsInState(
   return sessions;
 }
 
+StatusOr<std::optional<ApexSession>> ApexSession::GetActiveSession() {
+  auto sessions = GetSessions();
+  std::optional<ApexSession> ret = std::nullopt;
+  for (const ApexSession& session : sessions) {
+    if (!session.IsFinalized()) {
+      if (ret) {
+        return StatusOr<std::optional<ApexSession>>::MakeError(
+            "More than one active session");
+      }
+      ret.emplace(session);
+    }
+  }
+  return StatusOr<std::optional<ApexSession>>(std::move(ret));
+}
+
 SessionState::State ApexSession::GetState() const { return state_.state(); }
 
 int ApexSession::GetId() const { return state_.id(); }
+
+bool ApexSession::IsFinalized() const {
+  switch (GetState()) {
+    case SessionState::SUCCESS:
+      [[fallthrough]];
+    case SessionState::ACTIVATION_FAILED:
+      return true;
+    default:
+      return false;
+  }
+}
 
 const google::protobuf::RepeatedField<int> ApexSession::GetChildSessionIds()
     const {
@@ -178,7 +205,7 @@ Status ApexSession::UpdateStateAndCommit(
   return Status::Success();
 }
 
-Status ApexSession::DeleteSession() {
+Status ApexSession::DeleteSession() const {
   switch (GetState()) {
     case SessionState::STAGED:
       [[clang::fallthrough]];
