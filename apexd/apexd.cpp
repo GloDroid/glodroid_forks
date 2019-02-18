@@ -517,7 +517,9 @@ Status AbortNonFinalizedSessions() {
         break;
     }
   }
-  LOG(DEBUG) << "Aborted " << cnt << " non-finalized sessions";
+  if (cnt > 0) {
+    LOG(DEBUG) << "Aborted " << cnt << " non-finalized sessions";
+  }
   return Status::Success();
 }
 
