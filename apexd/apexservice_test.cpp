@@ -133,7 +133,7 @@ class ApexServiceTest : public ::testing::Test {
     std::vector<ApexInfo> list;
     android::binder::Status status = service_->getActivePackages(&list);
     if (status.isOk()) {
-      std::vector<std::string> ret;
+      std::vector<std::string> ret(list.size());
       for (const ApexInfo& p : list) {
         ret.push_back(p.packageName + "@" + std::to_string(p.versionCode) +
                       " [path=" + p.packagePath + "]");
@@ -686,7 +686,7 @@ TEST_F(ApexServiceActivationSuccessTest, GetActivePackages) {
   ASSERT_TRUE(IsOk(active));
   ApexInfo match;
 
-  for (ApexInfo info : *active) {
+  for (const ApexInfo& info : *active) {
     if (info.packageName == installer_->package) {
       match = info;
       break;
@@ -816,7 +816,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_TRUE(ret_value);
   EXPECT_EQ(1u, list.apexInfos.size());
   ApexInfo match;
-  for (ApexInfo info : list.apexInfos) {
+  for (const ApexInfo& info : list.apexInfos) {
     if (info.packageName == installer.package) {
       match = info;
       break;
@@ -985,7 +985,7 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   ApexInfo match;
   bool package1_found = false;
   bool package2_found = false;
-  for (ApexInfo info : list.apexInfos) {
+  for (const ApexInfo& info : list.apexInfos) {
     if (info.packageName == installer.package) {
       ASSERT_EQ(installer.package, info.packageName);
       ASSERT_EQ(installer.version, static_cast<uint64_t>(info.versionCode));
