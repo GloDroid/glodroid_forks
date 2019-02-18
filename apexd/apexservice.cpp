@@ -195,7 +195,6 @@ void convertToApexSessionInfo(const ApexSession& session,
   session_info->isVerified = false;
   session_info->isStaged = false;
   session_info->isActivated = false;
-  session_info->isActivationPendingRetry = false;
   session_info->isActivationFailed = false;
   session_info->isSuccess = false;
 
@@ -246,7 +245,6 @@ BinderStatus ApexService::getStagedSessionInfo(
     apex_session_info->isVerified = false;
     apex_session_info->isStaged = false;
     apex_session_info->isActivated = false;
-    apex_session_info->isActivationPendingRetry = false;
     apex_session_info->isActivationFailed = false;
     apex_session_info->isSuccess = false;
     return BinderStatus::ok();
@@ -618,8 +616,6 @@ status_t ApexService::shellCommand(int in, int out, int err,
                         << " isVerified: " << session_info.isVerified
                         << " isStaged: " << session_info.isStaged
                         << " isActivated: " << session_info.isActivated
-                        << " isActivationPendingRetry: "
-                        << session_info.isActivationPendingRetry
                         << " isActivationFailed: "
                         << session_info.isActivationFailed << std::endl;
       dprintf(out, "%s", msg.c_str());
