@@ -173,6 +173,8 @@ bool ApexSession::IsFinalized() const {
     case SessionState::SUCCESS:
       [[fallthrough]];
     case SessionState::ACTIVATION_FAILED:
+      [[fallthrough]];
+    case SessionState::ROLLED_BACK:
       return true;
     default:
       return false;
