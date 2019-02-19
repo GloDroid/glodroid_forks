@@ -60,33 +60,7 @@ using android::String16;
 using android::apex::testing::IsOk;
 using android::base::Join;
 
-struct SessionsCleaner {
-  std::unordered_set<std::string> original_sessions_;
-
-  SessionsCleaner() {}
-
-  void Init() {
-    auto sessions =
-        ReadDir(kApexSessionsDir, [](auto _, auto __) { return true; });
-    ASSERT_TRUE(IsOk(sessions));
-    std::copy(sessions->begin(), sessions->end(),
-              std::inserter(original_sessions_, original_sessions_.end()));
-  }
-
-  void Clear() {
-    auto sessions =
-        ReadDir(kApexSessionsDir, [](auto _, auto __) { return true; });
-    ASSERT_TRUE(IsOk(sessions)) << "Failed to list " << kApexSessionsDir;
-    for (const auto& session : *sessions) {
-      if (original_sessions_.find(session) == original_sessions_.end()) {
-        std::error_code error_code;
-        std::filesystem::remove_all(std::filesystem::path(session), error_code);
-        ASSERT_FALSE(error_code)
-            << "Failed to delete " << session << " : " << error_code;
-      }
-    }
-  }
-};
+namespace fs = std::filesystem;
 
 class ApexServiceTest : public ::testing::Test {
  public:
@@ -104,10 +78,10 @@ class ApexServiceTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ASSERT_NE(nullptr, service_.get());
-    cleaner_.Init();
+    CleanUp();
   }
 
-  void TearDown() override { cleaner_.Clear(); }
+  void TearDown() override { CleanUp(); }
 
   static std::string GetTestDataDir() {
     return android::base::GetExecutableDirectory();
@@ -356,7 +330,20 @@ class ApexServiceTest : public ::testing::Test {
   }
 
   sp<IApexService> service_;
-  SessionsCleaner cleaner_;
+
+ private:
+  void CleanUp() {
+    for (const auto& p : fs::directory_iterator(kApexDataDir)) {
+      std::error_code ec;
+      if (p.is_directory()) {
+        fs::remove_all(p.path(), ec);
+        ASSERT_FALSE(ec) << "Failed to delete " << p.path() << " : " << ec;
+      } else {
+        fs::remove(p.path(), ec);
+        ASSERT_FALSE(ec) << "Failed to delete " << p.path() << " : " << ec;
+      }
+    }
+  }
 };
 
 namespace {
@@ -610,13 +597,16 @@ class ApexServiceActivationTest : public ApexServiceTest {
   }
 
   void TearDown() override {
-    ApexServiceTest::TearDown();
     // Attempt to deactivate.
     if (installer_ != nullptr) {
       service_->deactivatePackage(installer_->test_installed_file);
     }
 
     installer_.reset();
+    // ApexServiceTest::TearDown will wipe out everything under /data/apex.
+    // Since some of that information is required for deactivePackage binder
+    // call, it's required to be called after deactivating package.
+    ApexServiceTest::TearDown();
   }
 
   std::unique_ptr<PrepareTestApexForInstall> installer_;
