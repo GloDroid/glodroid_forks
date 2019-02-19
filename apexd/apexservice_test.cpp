@@ -58,7 +58,9 @@ namespace apex {
 
 using android::sp;
 using android::String16;
+using android::apex::testing::CreateSessionInfo;
 using android::apex::testing::IsOk;
+using android::apex::testing::SessionInfoEq;
 using android::base::Join;
 using android::base::StringPrintf;
 using ::testing::UnorderedElementsAre;
@@ -350,51 +352,6 @@ class ApexServiceTest : public ::testing::Test {
 };
 
 namespace {
-
-ApexSessionInfo createSessionInfo(int session_id) {
-  ApexSessionInfo info;
-  info.sessionId = session_id;
-  info.isUnknown = false;
-  info.isVerified = false;
-  info.isStaged = false;
-  info.isActivated = false;
-  info.isActivationFailed = false;
-  info.isSuccess = false;
-  return info;
-}
-
-void ExpectSessionsEqual(const ApexSessionInfo& lhs,
-                         const ApexSessionInfo& rhs) {
-  EXPECT_EQ(lhs.sessionId, rhs.sessionId);
-  EXPECT_EQ(lhs.isUnknown, rhs.isUnknown);
-  EXPECT_EQ(lhs.isVerified, rhs.isVerified);
-  EXPECT_EQ(lhs.isStaged, rhs.isStaged);
-  EXPECT_EQ(lhs.isActivated, rhs.isActivated);
-  EXPECT_EQ(lhs.isActivationFailed, rhs.isActivationFailed);
-  EXPECT_EQ(lhs.isSuccess, rhs.isSuccess);
-}
-
-void ExpectSessionsContainAllOf(const std::vector<ApexSessionInfo>& actual,
-                                const std::vector<ApexSessionInfo>& expected) {
-  for (const auto& se : expected) {
-    bool found = false;
-    for (const auto& sa : actual) {
-      if (se.sessionId == sa.sessionId) {
-        found = true;
-        ExpectSessionsEqual(se, sa);
-        break;
-      }
-    }
-    EXPECT_TRUE(found) << "Session " << se.sessionId << " not found";
-  }
-}
-
-void ExpectSessionsContainExactly(
-    const std::vector<ApexSessionInfo>& actual,
-    const std::vector<ApexSessionInfo>& expected) {
-  EXPECT_EQ(actual.size(), expected.size());
-  ExpectSessionsContainAllOf(actual, expected);
-}
 
 bool RegularFileExists(const std::string& path) {
   struct stat buf;
@@ -831,13 +788,9 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   ApexSessionInfo session;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(123, &session)))
       << GetDebugStr(&installer);
-  EXPECT_EQ(123, session.sessionId);
-  EXPECT_FALSE(session.isUnknown);
-  EXPECT_TRUE(session.isVerified);
-  EXPECT_FALSE(session.isStaged);
-  EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationFailed);
-  EXPECT_FALSE(session.isSuccess);
+  ApexSessionInfo expected = CreateSessionInfo(123);
+  expected.isVerified = true;
+  EXPECT_THAT(session, SessionInfoEq(expected));
 
   ASSERT_TRUE(IsOk(service_->markStagedSessionReady(123, &ret_value)))
       << GetDebugStr(&installer);
@@ -845,13 +798,9 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
 
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(123, &session)))
       << GetDebugStr(&installer);
-  EXPECT_EQ(123, session.sessionId);
-  EXPECT_FALSE(session.isUnknown);
-  EXPECT_FALSE(session.isVerified);
-  EXPECT_TRUE(session.isStaged);
-  EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationFailed);
-  EXPECT_FALSE(session.isSuccess);
+  expected.isVerified = false;
+  expected.isStaged = true;
+  EXPECT_THAT(session, SessionInfoEq(expected));
 
   // Call markStagedSessionReady again. Should be a no-op.
   ASSERT_TRUE(IsOk(service_->markStagedSessionReady(123, &ret_value)))
@@ -860,26 +809,13 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
 
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(123, &session)))
       << GetDebugStr(&installer);
-  EXPECT_EQ(123, session.sessionId);
-  EXPECT_FALSE(session.isUnknown);
-  EXPECT_FALSE(session.isVerified);
-  EXPECT_TRUE(session.isStaged);
-  EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationFailed);
-  EXPECT_FALSE(session.isSuccess);
+  EXPECT_THAT(session, SessionInfoEq(expected));
 
   // See if the session is reported with getSessions() as well
   std::vector<ApexSessionInfo> sessions;
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)))
       << GetDebugStr(&installer);
-  // TODO it appears there is some left-over staged state, and we get 2 sessions
-  // here EXPECT_EQ(1u, sessions.size()); So for now, only compare the session
-  // with the same sessionid
-  for (const auto& s : sessions) {
-    if (s.sessionId == session.sessionId) {
-      ExpectSessionsEqual(s, session);
-    }
-  }
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
 }
 
 TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
@@ -904,15 +840,15 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
   std::vector<ApexSessionInfo> sessions;
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
 
-  ApexSessionInfo expected_session1 = createSessionInfo(37);
+  ApexSessionInfo expected_session1 = CreateSessionInfo(37);
   expected_session1.isVerified = true;
-  ApexSessionInfo expected_session2 = createSessionInfo(57);
+  ApexSessionInfo expected_session2 = CreateSessionInfo(57);
   expected_session2.isStaged = true;
-  ApexSessionInfo expected_session3 = createSessionInfo(73);
+  ApexSessionInfo expected_session3 = CreateSessionInfo(73);
   expected_session3.isSuccess = true;
-  std::vector<ApexSessionInfo> expected{expected_session1, expected_session2,
-                                        expected_session3};
-  ExpectSessionsContainAllOf(sessions, expected);
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected_session1),
+                                             SessionInfoEq(expected_session2),
+                                             SessionInfoEq(expected_session3)));
 
   ApexInfoList list;
   bool ret_value;
@@ -924,10 +860,10 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
   sessions.clear();
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
 
-  ApexSessionInfo expected_session4 = createSessionInfo(239);
+  ApexSessionInfo expected_session4 = CreateSessionInfo(239);
   expected_session4.isVerified = true;
-  ExpectSessionsContainExactly(sessions,
-                               {expected_session3, expected_session4});
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected_session3),
+                                             SessionInfoEq(expected_session4)));
 }
 
 TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
@@ -949,13 +885,9 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   ApexSessionInfo session;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(456, &session)))
       << GetDebugStr(&installer);
-  EXPECT_EQ(-1, session.sessionId);
-  EXPECT_TRUE(session.isUnknown);
-  EXPECT_FALSE(session.isVerified);
-  EXPECT_FALSE(session.isStaged);
-  EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationFailed);
-  EXPECT_FALSE(session.isSuccess);
+  ApexSessionInfo expected = CreateSessionInfo(-1);
+  expected.isUnknown = true;
+  EXPECT_THAT(session, SessionInfoEq(expected));
 }
 
 TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
@@ -1004,13 +936,9 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   ApexSessionInfo session;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(10, &session)))
       << GetDebugStr(&installer);
-  EXPECT_EQ(10, session.sessionId);
-  EXPECT_FALSE(session.isUnknown);
-  EXPECT_TRUE(session.isVerified);
-  EXPECT_FALSE(session.isStaged);
-  EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationFailed);
-  EXPECT_FALSE(session.isSuccess);
+  ApexSessionInfo expected = CreateSessionInfo(10);
+  expected.isVerified = true;
+  ASSERT_THAT(session, SessionInfoEq(expected));
 
   ASSERT_TRUE(IsOk(service_->markStagedSessionReady(10, &ret_value)))
       << GetDebugStr(&installer);
@@ -1018,12 +946,9 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
 
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(10, &session)))
       << GetDebugStr(&installer);
-  EXPECT_FALSE(session.isUnknown);
-  EXPECT_FALSE(session.isVerified);
-  EXPECT_TRUE(session.isStaged);
-  EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationFailed);
-  EXPECT_FALSE(session.isSuccess);
+  expected.isVerified = false;
+  expected.isStaged = true;
+  ASSERT_THAT(session, SessionInfoEq(expected));
 }
 
 TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
@@ -1055,13 +980,9 @@ TEST_F(ApexServiceTest, MarkStagedSessionReadyFail) {
 
   ApexSessionInfo session;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(666, &session)));
-  EXPECT_EQ(-1, session.sessionId);
-  EXPECT_TRUE(session.isUnknown);
-  EXPECT_FALSE(session.isVerified);
-  EXPECT_FALSE(session.isStaged);
-  EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationFailed);
-  EXPECT_FALSE(session.isSuccess);
+  ApexSessionInfo expected = CreateSessionInfo(-1);
+  expected.isUnknown = true;
+  ASSERT_THAT(session, SessionInfoEq(expected));
 }
 
 TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsNoSession) {
@@ -1069,13 +990,9 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsNoSession) {
 
   ApexSessionInfo session_info;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(37, &session_info)));
-  EXPECT_EQ(-1, session_info.sessionId);
-  EXPECT_TRUE(session_info.isUnknown);
-  EXPECT_FALSE(session_info.isVerified);
-  EXPECT_FALSE(session_info.isStaged);
-  EXPECT_FALSE(session_info.isActivated);
-  EXPECT_FALSE(session_info.isActivationFailed);
-  EXPECT_FALSE(session_info.isSuccess);
+  ApexSessionInfo expected = CreateSessionInfo(-1);
+  expected.isUnknown = true;
+  ASSERT_THAT(session_info, SessionInfoEq(expected));
 }
 
 TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsSessionInWrongState) {
@@ -1088,13 +1005,9 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsSessionInWrongState) {
 
   ApexSessionInfo session_info;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(73, &session_info)));
-  EXPECT_EQ(73, session_info.sessionId);
-  EXPECT_FALSE(session_info.isUnknown);
-  EXPECT_FALSE(session_info.isVerified);
-  EXPECT_TRUE(session_info.isStaged);
-  EXPECT_FALSE(session_info.isActivated);
-  EXPECT_FALSE(session_info.isActivationFailed);
-  EXPECT_FALSE(session_info.isSuccess);
+  ApexSessionInfo expected = CreateSessionInfo(73);
+  expected.isStaged = true;
+  ASSERT_THAT(session_info, SessionInfoEq(expected));
 }
 
 TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulActivatedSession) {
@@ -1107,13 +1020,9 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulActivatedSession) {
 
   ApexSessionInfo session_info;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(239, &session_info)));
-  EXPECT_EQ(239, session_info.sessionId);
-  EXPECT_FALSE(session_info.isUnknown);
-  EXPECT_FALSE(session_info.isVerified);
-  EXPECT_FALSE(session_info.isStaged);
-  EXPECT_FALSE(session_info.isActivated);
-  EXPECT_FALSE(session_info.isActivationFailed);
-  EXPECT_TRUE(session_info.isSuccess);
+  ApexSessionInfo expected = CreateSessionInfo(239);
+  expected.isSuccess = true;
+  ASSERT_THAT(session_info, SessionInfoEq(expected));
 }
 
 TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulNoOp) {
@@ -1126,13 +1035,9 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulNoOp) {
 
   ApexSessionInfo session_info;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(1543, &session_info)));
-  EXPECT_EQ(1543, session_info.sessionId);
-  EXPECT_FALSE(session_info.isUnknown);
-  EXPECT_FALSE(session_info.isVerified);
-  EXPECT_FALSE(session_info.isStaged);
-  EXPECT_FALSE(session_info.isActivated);
-  EXPECT_FALSE(session_info.isActivationFailed);
-  EXPECT_TRUE(session_info.isSuccess);
+  ApexSessionInfo expected = CreateSessionInfo(1543);
+  expected.isSuccess = true;
+  ASSERT_THAT(session_info, SessionInfoEq(expected));
 }
 
 TEST_F(ApexServiceTest, AbortActiveSessionNoSessions) {
