@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
  */
 public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     private static final String APEX_DATA_DIR = "/data/apex";
-    private static final String STAGING_DATA_DIR = "/data/staging";
+    private static final String STAGING_DATA_DIR = "/data/pkg_staging";
     private static final String OPTION_APEX_FILE_NAME = "apex_file_name";
     private static final String OPTION_BROADCASTAPP_APK_NAME = "broadcastapp_apk_name";
     private static final String BROADCASTAPP_PACKAGE_NAME = "android.apex.broadcastreceiver";
