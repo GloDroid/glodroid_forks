@@ -31,6 +31,7 @@ namespace apex {
 
 static constexpr const char* kApexDataDir = "/data/apex";
 static constexpr const char* kActiveApexPackagesDataDir = "/data/apex/active";
+static constexpr const char* kApexBackupDir = "/data/apex/backup";
 static constexpr const char* kApexPackageSystemDir = "/system/apex";
 static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kStagedSessionsDir = "/data/staging";
