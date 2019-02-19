@@ -46,7 +46,10 @@ java_test_host {
 
     libs: ["tradefed"],
 
-    static_libs: ["apex_e2e_base_test"],
+    static_libs: [
+        "apex_e2e_base_test",
+        "platformprotos",
+    ],
 
     data: [
         ":test1_com.android.tzdata",
