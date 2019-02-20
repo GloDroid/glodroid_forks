@@ -211,10 +211,6 @@ cc_test {
 cc_test {
   name: "apexservice_test",
   defaults: ["apex_defaults"],
-  cflags: [
-    // Otherwise libgmock won't compile.
-    "-Wno-used-but-marked-unused",
-  ],
   data: [
     ":apex.apexd_test",
     ":apex.apexd_test_different_app",
@@ -232,7 +228,6 @@ cc_test {
     "libapex",
     "libapexd",
     "libavb",
-    "libgmock",
   ],
   shared_libs: [
     "libbinder",
