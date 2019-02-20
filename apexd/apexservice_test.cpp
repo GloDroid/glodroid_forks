@@ -355,7 +355,6 @@ ApexSessionInfo createSessionInfo(int session_id) {
   info.isVerified = false;
   info.isStaged = false;
   info.isActivated = false;
-  info.isActivationPendingRetry = false;
   info.isActivationFailed = false;
   info.isSuccess = false;
   return info;
@@ -368,7 +367,6 @@ void ExpectSessionsEqual(const ApexSessionInfo& lhs,
   EXPECT_EQ(lhs.isVerified, rhs.isVerified);
   EXPECT_EQ(lhs.isStaged, rhs.isStaged);
   EXPECT_EQ(lhs.isActivated, rhs.isActivated);
-  EXPECT_EQ(lhs.isActivationPendingRetry, rhs.isActivationPendingRetry);
   EXPECT_EQ(lhs.isActivationFailed, rhs.isActivationFailed);
   EXPECT_EQ(lhs.isSuccess, rhs.isSuccess);
 }
@@ -835,7 +833,6 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_TRUE(session.isVerified);
   EXPECT_FALSE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
   EXPECT_FALSE(session.isSuccess);
 
@@ -850,7 +847,6 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_FALSE(session.isVerified);
   EXPECT_TRUE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
   EXPECT_FALSE(session.isSuccess);
 
@@ -866,7 +862,6 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_FALSE(session.isVerified);
   EXPECT_TRUE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
   EXPECT_FALSE(session.isSuccess);
 
@@ -956,7 +951,6 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   EXPECT_FALSE(session.isVerified);
   EXPECT_FALSE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
   EXPECT_FALSE(session.isSuccess);
 }
@@ -1012,7 +1006,6 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   EXPECT_TRUE(session.isVerified);
   EXPECT_FALSE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
   EXPECT_FALSE(session.isSuccess);
 
@@ -1026,7 +1019,6 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   EXPECT_FALSE(session.isVerified);
   EXPECT_TRUE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
   EXPECT_FALSE(session.isSuccess);
 }
@@ -1065,7 +1057,6 @@ TEST_F(ApexServiceTest, MarkStagedSessionReadyFail) {
   EXPECT_FALSE(session.isVerified);
   EXPECT_FALSE(session.isStaged);
   EXPECT_FALSE(session.isActivated);
-  EXPECT_FALSE(session.isActivationPendingRetry);
   EXPECT_FALSE(session.isActivationFailed);
   EXPECT_FALSE(session.isSuccess);
 }
@@ -1080,7 +1071,6 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsNoSession) {
   EXPECT_FALSE(session_info.isVerified);
   EXPECT_FALSE(session_info.isStaged);
   EXPECT_FALSE(session_info.isActivated);
-  EXPECT_FALSE(session_info.isActivationPendingRetry);
   EXPECT_FALSE(session_info.isActivationFailed);
   EXPECT_FALSE(session_info.isSuccess);
 }
@@ -1100,7 +1090,6 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulFailsSessionInWrongState) {
   EXPECT_FALSE(session_info.isVerified);
   EXPECT_TRUE(session_info.isStaged);
   EXPECT_FALSE(session_info.isActivated);
-  EXPECT_FALSE(session_info.isActivationPendingRetry);
   EXPECT_FALSE(session_info.isActivationFailed);
   EXPECT_FALSE(session_info.isSuccess);
 }
@@ -1120,7 +1109,6 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulActivatedSession) {
   EXPECT_FALSE(session_info.isVerified);
   EXPECT_FALSE(session_info.isStaged);
   EXPECT_FALSE(session_info.isActivated);
-  EXPECT_FALSE(session_info.isActivationPendingRetry);
   EXPECT_FALSE(session_info.isActivationFailed);
   EXPECT_TRUE(session_info.isSuccess);
 }
@@ -1140,7 +1128,6 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulNoOp) {
   EXPECT_FALSE(session_info.isVerified);
   EXPECT_FALSE(session_info.isStaged);
   EXPECT_FALSE(session_info.isActivated);
-  EXPECT_FALSE(session_info.isActivationPendingRetry);
   EXPECT_FALSE(session_info.isActivationFailed);
   EXPECT_TRUE(session_info.isSuccess);
 }
