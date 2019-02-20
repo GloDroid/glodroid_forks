@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
+#include <android/apex/ApexSessionInfo.h>
 #include <binder/IServiceManager.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "status.h"
 
@@ -50,6 +53,39 @@ inline ::testing::AssertionResult IsOk(const android::binder::Status& status) {
     return ::testing::AssertionFailure()
            << " failed with " << status.toString8().c_str();
   }
+}
+
+MATCHER_P(SessionInfoEq, other, "") {
+  using ::testing::AllOf;
+  using ::testing::Eq;
+  using ::testing::ExplainMatchResult;
+  using ::testing::Field;
+
+  return ExplainMatchResult(
+      AllOf(
+          Field("sessionId", &ApexSessionInfo::sessionId, Eq(other.sessionId)),
+          Field("isUnknown", &ApexSessionInfo::isUnknown, Eq(other.isUnknown)),
+          Field("isVerified", &ApexSessionInfo::isVerified,
+                Eq(other.isVerified)),
+          Field("isStaged", &ApexSessionInfo::isStaged, Eq(other.isStaged)),
+          Field("isActivated", &ApexSessionInfo::isActivated,
+                Eq(other.isActivated)),
+          Field("isActivationFailed", &ApexSessionInfo::isActivationFailed,
+                Eq(other.isActivationFailed)),
+          Field("isSuccess", &ApexSessionInfo::isSuccess, Eq(other.isSuccess))),
+      arg, result_listener);
+}
+
+inline ApexSessionInfo CreateSessionInfo(int session_id) {
+  ApexSessionInfo info;
+  info.sessionId = session_id;
+  info.isUnknown = false;
+  info.isVerified = false;
+  info.isStaged = false;
+  info.isActivated = false;
+  info.isActivationFailed = false;
+  info.isSuccess = false;
+  return info;
 }
 
 }  // namespace testing
