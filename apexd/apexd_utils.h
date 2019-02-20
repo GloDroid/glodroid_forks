@@ -17,6 +17,7 @@
 #ifndef ANDROID_APEXD_APEXD_UTILS_H_
 #define ANDROID_APEXD_APEXD_UTILS_H_
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -124,6 +125,20 @@ inline Status createDirIfNeeded(const std::string& path, mode_t mode) {
     return Status::Fail(PStringLog() << "Could not chmod " << path);
   }
 
+  return Status::Success();
+}
+
+inline Status DeleteDirContent(const std::string& path) {
+  auto files = ReadDir(path, [](auto _, auto __) { return true; });
+  if (!files.Ok()) {
+    return Status::Fail(StringLog() << "Failed to delete " << path << " : "
+                                    << files.ErrorMessage());
+  }
+  for (const std::string& file : *files) {
+    if (unlink(file.c_str()) != 0) {
+      return Status::Fail(PStringLog() << "Failed to delete " << file);
+    }
+  }
   return Status::Success();
 }
 
