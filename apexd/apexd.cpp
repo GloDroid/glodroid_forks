@@ -305,6 +305,7 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
     }
   }
 
+  int last_errno = 0;
   for (size_t count = 0; count < kMountAttempts; ++count) {
     if (mount(blockDevice.c_str(), mountPoint.c_str(), "ext4",
               MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, NULL) == 0) {
@@ -319,6 +320,10 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
 
       return Status::Success();
     } else {
+      last_errno = errno;
+      PLOG(VERBOSE) << "Attempt [" << count + 1 << " / " << kMountAttempts
+                    << "]. Failed to mount " << blockDevice.c_str() << " to "
+                    << mountPoint.c_str();
       // TODO(b/122059364): Even though the kernel has created the verity
       // device, we still depend on ueventd to run to actually create the
       // device node in userspace. To solve this properly we should listen on
@@ -327,8 +332,8 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
       usleep(50000);
     }
   }
-  return Status::Fail(PStringLog()
-                      << "Mounting failed for package " << full_path);
+  return Status::Fail(StringLog() << "Mounting failed for package " << full_path
+                                  << " : " << strerror(last_errno));
 }
 
 Status mountFlattened(const ApexFile& apex, const std::string& mountPoint,
