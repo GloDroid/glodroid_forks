@@ -17,6 +17,8 @@
 package com.android.tests.apex;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice.ApexInfo;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 
 import org.junit.Test;
@@ -35,7 +37,14 @@ public class MediaSwCodecHostTest extends ApexE2EBaseHostTest {
     @Test
     public void testStageActivateUninstallApexPackage()
                                 throws DeviceNotAvailableException, IOException {
-        doTestStageActivateUninstallApexPackage();
+        // Run tests only when the device has swcodec apex installed.
+        for (ApexInfo info : getDevice().getActiveApexes()) {
+            if (info.name.equals("com.android.media.swcodec")) {
+                doTestStageActivateUninstallApexPackage();
+                return;
+            }
+        }
+        CLog.i("The device does not have swcodec apex installed. Skipping the test.");
     }
 
     @Override
