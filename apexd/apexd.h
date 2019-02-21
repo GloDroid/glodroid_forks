@@ -40,7 +40,7 @@ void startBootSequence();
 
 void unmountAndDetachExistingImages();
 
-void scanPackagesDirAndActivate(const char* apex_package_dir);
+Status scanPackagesDirAndActivate(const char* apex_package_dir);
 void scanStagedSessionsDirAndStage();
 
 Status preinstallPackages(const std::vector<std::string>& paths) WARN_UNUSED;
