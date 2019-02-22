@@ -37,9 +37,6 @@ static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kStagedSessionsDir = "/data/pkg_staging";
 
 Status resumeRollbackIfNeeded();
-
-void startBootSequence();
-
 void unmountAndDetachExistingImages();
 
 Status scanPackagesDirAndActivate(const char* apex_package_dir);
@@ -65,6 +62,7 @@ StatusOr<ApexFile> getActivePackage(const std::string& package_name);
 
 Status abortActiveSession();
 
+int onBootstrap();
 void onStart();
 void onAllPackagesReady();
 
