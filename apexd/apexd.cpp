@@ -538,23 +538,16 @@ Status BackupActivePackages() {
                         << "Backup failed : " << create_status.ErrorMessage());
   }
 
-  namespace fs = std::filesystem;
-  std::error_code ec;
-  if (!fs::exists(fs::path(kActiveApexPackagesDataDir))) {
-    if (ec) {
-      return Status::Fail(StringLog()
-                          << "Failed to access " << kActiveApexPackagesDataDir
-                          << " : " << ec);
-    } else {
-      LOG(DEBUG) << kActiveApexPackagesDataDir
-                 << " does not exist. Nothing to backup";
-      return Status::Success();
-    }
+  auto apex_active_exists = PathExists(std::string(kActiveApexPackagesDataDir));
+  if (!apex_active_exists.Ok()) {
+    return Status::Fail("Backup failed : " + apex_active_exists.ErrorMessage());
+  }
+  if (!*apex_active_exists) {
+    LOG(DEBUG) << kActiveApexPackagesDataDir
+               << " does not exist. Nothing to backup";
+    return Status::Success();
   }
 
-  // TODO: should we check if /data/apex/active exists? Technically it is
-  // created in init, which means that it always should be there, but in tests
-  // we might wipe out everything under /data/apex/*.
   auto active_packages =
       FindApexFilesByName(kActiveApexPackagesDataDir, false /* include_dirs */);
   if (!active_packages.Ok()) {
@@ -596,6 +589,85 @@ Status BackupActivePackages() {
   }
 
   scope_guard.Disable();  // Accept the backup.
+  return Status::Success();
+}
+
+Status DoRollback() {
+  auto backup_exists = PathExists(std::string(kApexBackupDir));
+  if (!backup_exists.Ok()) {
+    return backup_exists.ErrorStatus();
+  }
+  if (!*backup_exists) {
+    return Status::Fail(StringLog() << kApexBackupDir << " does not exist");
+  }
+
+  struct stat stat_data;
+  if (stat(kActiveApexPackagesDataDir, &stat_data) != 0) {
+    return Status::Fail(PStringLog()
+                        << "Failed to access " << kActiveApexPackagesDataDir);
+  }
+
+  LOG(DEBUG) << "Deleting existing packages in " << kActiveApexPackagesDataDir;
+  auto delete_status =
+      DeleteDirContent(std::string(kActiveApexPackagesDataDir));
+  if (!delete_status.Ok()) {
+    return delete_status;
+  }
+
+  LOG(DEBUG) << "Renaming " << kApexBackupDir << " to "
+             << kActiveApexPackagesDataDir;
+  if (rename(kApexBackupDir, kActiveApexPackagesDataDir) != 0) {
+    return Status::Fail(PStringLog() << "Failed to rename " << kApexBackupDir
+                                     << " to " << kActiveApexPackagesDataDir);
+  }
+
+  LOG(DEBUG) << "Restoring original permissions for "
+             << kActiveApexPackagesDataDir;
+  if (chmod(kActiveApexPackagesDataDir, stat_data.st_mode & ALLPERMS) != 0) {
+    // TODO: should we wipe out /data/apex/active if chmod fails?
+    return Status::Fail(PStringLog()
+                        << "Failed to restore original permissions for "
+                        << kActiveApexPackagesDataDir);
+  }
+
+  return Status::Success();
+}
+
+Status RollbackSession(ApexSession& session) {
+  LOG(DEBUG) << "Initializing rollback of " << session;
+
+  switch (session.GetState()) {
+    case SessionState::ROLLBACK_IN_PROGRESS:
+      [[clang::fallthrough]];
+    case SessionState::ROLLED_BACK:
+      return Status::Success();
+    case SessionState::ACTIVATED:
+      break;
+    default:
+      return Status::Fail(StringLog() << "Can't restore session " << session
+                                      << " : session is in a wrong state");
+  }
+
+  auto status =
+      session.UpdateStateAndCommit(SessionState::ROLLBACK_IN_PROGRESS);
+  if (!status.Ok()) {
+    // TODO: should we continue with a rollback?
+    return Status::Fail(StringLog() << "Rollback of session " << session
+                                    << " failed : " << status.ErrorMessage());
+  }
+
+  status = DoRollback();
+  if (!status.Ok()) {
+    return Status::Fail(StringLog() << "Rollback of session " << session
+                                    << " failed : " << status.ErrorMessage());
+  }
+
+  status = session.UpdateStateAndCommit(SessionState::ROLLED_BACK);
+  if (!status.Ok()) {
+    LOG(WARNING) << "Failed to mark session " << session
+                 << " as rolled back : " << status.ErrorMessage();
+  }
+
   return Status::Success();
 }
 
@@ -708,6 +780,7 @@ void startBootSequence() {
   // packages living in the directory under /system, and we want the former ones
   // to be used over the latter ones.
   scanPackagesDirAndActivate(kActiveApexPackagesDataDir);
+  // TODO(b/123622800): if activation failed, rollback and reboot.
   scanPackagesDirAndActivate(kApexPackageSystemDir);
 }
 
@@ -838,14 +911,15 @@ Status abortActiveSession() {
     return session_or_none.ErrorStatus();
   }
   if (session_or_none->has_value()) {
-    const auto& session = session_or_none->value();
+    auto& session = session_or_none->value();
     LOG(DEBUG) << "Aborting active session " << session;
     switch (session.GetState()) {
       case SessionState::VERIFIED:
         [[clang::fallthrough]];
       case SessionState::STAGED:
         return session.DeleteSession();
-      // TODO(b/123622800): if state is ACTIVATED do a rollback.
+      case SessionState::ACTIVATED:
+        return RollbackSession(session);
       default:
         return Status::Fail(StringLog()
                             << "Session " << session << " can't be aborted");
@@ -1094,9 +1168,17 @@ Status stagePackages(const std::vector<std::string>& tmpPaths) {
 }
 
 Status rollbackLastSession() {
-  // TODO Unstage newly staged packages and call Checkpoint#abortCheckpoint
-  LOG(INFO) << "Rolling back last session";
-  return Status::Success();
+  // TODO: call Checkpoint#abortCheckpoint after rollback succeeds.
+  auto session = ApexSession::GetActiveSession();
+  if (!session.Ok()) {
+    LOG(ERROR) << "Failed to get active session : " << session.ErrorMessage();
+    return DoRollback();
+  } else if (!session->has_value()) {
+    return Status::Fail(
+        "Rollback requested, when there are no active sessions.");
+  } else {
+    return RollbackSession(*(*session));
+  }
 }
 
 void onStart() {
