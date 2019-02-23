@@ -37,6 +37,7 @@ cc_defaults {
     "libziparchive",
     // Required full for parsing json string to message
     "libprotobuf-cpp-full",
+    "libcutils",
   ],
   static_libs: [
     "lib_apex_session_state_proto",

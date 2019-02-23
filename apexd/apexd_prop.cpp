@@ -21,6 +21,8 @@
 #include <android-base/logging.h>
 #include <android-base/properties.h>
 
+#include "apexd_utils.h"
+
 namespace android {
 namespace apex {
 void waitForBootStatus(Status (&rollback_fn)()) {
@@ -37,8 +39,10 @@ void waitForBootStatus(Status (&rollback_fn)()) {
       auto status = rollback_fn();
       if (!status.Ok()) {
         LOG(ERROR) << "Rollback failed : " << status.ErrorMessage();
+      } else {
+        LOG(INFO) << "Successfuly rolled back. Rebooting device";
+        Reboot();
       }
-      // TODO: reboot after rollback finishes.
       return;
     }
     if (android::base::GetProperty("sys.boot_completed", "") == "1") {

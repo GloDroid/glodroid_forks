@@ -27,6 +27,7 @@
 #include <sys/wait.h>
 
 #include <android-base/logging.h>
+#include <cutils/android_reboot.h>
 
 #include "string_log.h"
 
@@ -155,6 +156,13 @@ inline StatusOr<bool> PathExists(const std::string& path) {
     }
   }
   return StatusOr<bool>(true);
+}
+
+inline void Reboot() {
+  LOG(INFO) << "Rebooting device";
+  if (android_reboot(ANDROID_RB_RESTART2, 0, nullptr) != 0) {
+    LOG(ERROR) << "Failed to reboot device";
+  }
 }
 
 }  // namespace apex
