@@ -53,8 +53,9 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             ".*package:\\sname='(\\S+)\\'\\sversionCode='(\\d+)'\\s.*";
     private final Pattern mAppPackageNamePattern =
             Pattern.compile("appPackageName = com\\.android\\.apex\\.test;");
-    private final Pattern mIsSessionReadyPattern = Pattern.compile("isSessionReady = true");
-    private final Pattern mIsSessionAppliedPattern = Pattern.compile("isSessionApplied = true;");
+    private final Pattern mIsSessionReadyPattern = Pattern.compile("isStagedSessionReady = true");
+    private final Pattern mIsSessionAppliedPattern =
+            Pattern.compile("isStagedSessionApplied = true;");
     private final Pattern mSessionBroadcastReceiver =
             Pattern.compile("BroadcastReceiver: Action: android.content.pm.action.SESSION_UPDATED");
 
@@ -122,7 +123,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         ApexInfo testApexInfo = getApexInfo(testAppFile);
         Assert.assertNotNull(testApexInfo);
 
-        // Assert isSessionReady is true
+        // Assert isStagedSessionReady is true
         result = getDevice().executeShellV2Command("pm get-stagedsessions");
         Assert.assertEquals("", result.getStderr());
         // TODO: Look into why appPackageInfo is null? or should it be null?
