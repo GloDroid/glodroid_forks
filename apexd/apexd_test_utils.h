@@ -88,6 +88,18 @@ inline ApexSessionInfo CreateSessionInfo(int session_id) {
   return info;
 }
 
+inline void PrintTo(const ApexSessionInfo& session, std::ostream* os) {
+  *os << "apex_session: {\n";
+  *os << "  sessionId : " << session.sessionId << "\n";
+  *os << "  isUnknown : " << session.isUnknown << "\n";
+  *os << "  isVerified : " << session.isVerified << "\n";
+  *os << "  isStaged : " << session.isStaged << "\n";
+  *os << "  isActivated : " << session.isActivated << "\n";
+  *os << "  isActivationFailed : " << session.isActivationFailed << "\n";
+  *os << "  isSuccess : " << session.isSuccess << "\n";
+  *os << "}";
+}
+
 }  // namespace testing
 }  // namespace apex
 }  // namespace android
