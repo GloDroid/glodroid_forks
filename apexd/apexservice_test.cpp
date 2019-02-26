@@ -1219,15 +1219,15 @@ class ApexServiceRollbackTest : public ApexServiceTest {
   void PrepareBackup(const std::vector<std::string> pkgs) {
     ASSERT_TRUE(IsOk(createDirIfNeeded(std::string(kApexBackupDir), 0700)));
     for (const auto& pkg : pkgs) {
-      auto apex_file = ApexFile::Open(pkg);
-      ASSERT_TRUE(IsOk(apex_file));
-      const ApexManifest& manifest = apex_file->GetManifest();
-      auto to = StringPrintf("%s/%s@%lld.apex", kApexBackupDir,
-                             manifest.name().c_str(), manifest.version());
+      PrepareTestApexForInstall installer(pkg);
+      ASSERT_TRUE(installer.Prepare()) << " failed to prepare " << pkg;
+      const std::string& from = installer.test_file;
+      std::string to = std::string(kApexBackupDir) + "/" + installer.package +
+                       "@" + std::to_string(installer.version) + ".apex";
       std::error_code ec;
-      fs::copy(fs::path(pkg), fs::path(to), fs::copy_options::create_hard_links,
-               ec);
-      ASSERT_FALSE(ec) << "Failed to copy " << pkg << " to " << to << " : "
+      fs::copy(fs::path(from), fs::path(to),
+               fs::copy_options::create_hard_links, ec);
+      ASSERT_FALSE(ec) << "Failed to copy " << from << " to " << to << " : "
                        << ec;
     }
   }
@@ -1333,6 +1333,19 @@ TEST_F(ApexServiceRollbackTest, RollbackFailsNoBackupFolder) {
 TEST_F(ApexServiceRollbackTest, RollbackFailsNoActivePackagesFolder) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
   ASSERT_FALSE(IsOk(rollbackLastSession()));
+}
+
+TEST_F(ApexServiceRollbackTest, MarkStagedSessionSuccessfulCleanupBackup) {
+  PrepareBackup({GetTestFile("apex.apexd_test.apex"),
+                 GetTestFile("apex.apexd_test_different_app.apex")});
+
+  auto session = ApexSession::CreateSession(101);
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::ACTIVATED)));
+
+  ASSERT_TRUE(IsOk(service_->markStagedSessionSuccessful(101)));
+
+  ASSERT_TRUE(fs::is_empty(fs::path(kApexBackupDir)));
 }
 
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {

@@ -528,6 +528,19 @@ Status AbortNonFinalizedSessions() {
   return Status::Success();
 }
 
+Status DeleteBackup() {
+  auto exists = PathExists(std::string(kApexBackupDir));
+  if (!exists.Ok()) {
+    return Status::Fail(StringLog() << "Can't clean " << kApexBackupDir << " : "
+                                    << exists.ErrorMessage());
+  }
+  if (!*exists) {
+    LOG(DEBUG) << kApexBackupDir << " does not exist. Nothing to clean";
+    return Status::Success();
+  }
+  return DeleteDirContent(std::string(kApexBackupDir));
+}
+
 Status BackupActivePackages() {
   LOG(DEBUG) << "Initializing  backup of " << kActiveApexPackagesDataDir;
 
@@ -555,7 +568,7 @@ Status BackupActivePackages() {
                                     << active_packages.ErrorMessage());
   }
 
-  auto cleanup_status = DeleteDirContent(std::string(kApexBackupDir));
+  auto cleanup_status = DeleteBackup();
   if (!cleanup_status.Ok()) {
     return Status::Fail(StringLog()
                         << "Backup failed : " << cleanup_status.ErrorMessage());
@@ -1290,16 +1303,19 @@ Status markStagedSessionSuccessful(const int session_id) {
   }
   // Only SessionState::ACTIVATED or SessionState::SUCCESS states are accepted.
   // In the SessionState::SUCCESS state, this function is a no-op.
-  switch (session->GetState()) {
-    case SessionState::SUCCESS:
-      return Status::Success();
-    case SessionState::ACTIVATED:
-      // TODO(b/123622800): also cleanup a backup.
-      // TODO(b/124215327): maybe crash system_server if state update fails.
-      return session->UpdateStateAndCommit(SessionState::SUCCESS);
-    default:
-      return Status::Fail(StringLog() << "Session " << *session
-                                      << " can not be marked successful");
+  if (session->GetState() == SessionState::SUCCESS) {
+    return Status::Success();
+  } else if (session->GetState() == SessionState::ACTIVATED) {
+    auto cleanup_status = DeleteBackup();
+    if (!cleanup_status.Ok()) {
+      return Status::Fail(StringLog() << "Failed to mark session " << *session
+                                      << " as successful : "
+                                      << cleanup_status.ErrorMessage());
+    }
+    return session->UpdateStateAndCommit(SessionState::SUCCESS);
+  } else {
+    return Status::Fail(StringLog() << "Session " << *session
+                                    << " can not be marked successful");
   }
 }
 
