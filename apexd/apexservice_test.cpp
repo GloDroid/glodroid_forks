@@ -64,6 +64,7 @@ using android::apex::testing::SessionInfoEq;
 using android::base::Join;
 using android::base::StringPrintf;
 using ::testing::UnorderedElementsAre;
+using ::testing::UnorderedElementsAreArray;
 
 namespace fs = std::filesystem;
 
@@ -1209,6 +1210,129 @@ TEST_F(ApexServiceTest, ActivePackagesFolderDoesNotExist) {
                          [](auto _, auto __) { return true; });
   ASSERT_TRUE(IsOk(backups));
   ASSERT_EQ(0u, backups->size());
+}
+
+class ApexServiceRollbackTest : public ApexServiceTest {
+ protected:
+  void SetUp() override { ApexServiceTest::SetUp(); }
+
+  void PrepareBackup(const std::vector<std::string> pkgs) {
+    ASSERT_TRUE(IsOk(createDirIfNeeded(std::string(kApexBackupDir), 0700)));
+    for (const auto& pkg : pkgs) {
+      auto apex_file = ApexFile::Open(pkg);
+      ASSERT_TRUE(IsOk(apex_file));
+      const ApexManifest& manifest = apex_file->GetManifest();
+      auto to = StringPrintf("%s/%s@%lld.apex", kApexBackupDir,
+                             manifest.name().c_str(), manifest.version());
+      std::error_code ec;
+      fs::copy(fs::path(pkg), fs::path(to), fs::copy_options::create_hard_links,
+               ec);
+      ASSERT_FALSE(ec) << "Failed to copy " << pkg << " to " << to << " : "
+                       << ec;
+    }
+  }
+
+  void CheckRollbackWasPerformed(
+      const std::vector<std::string>& expected_pkgs) {
+    // First check that /data/apex/active exists and has correct permissions.
+    struct stat sd;
+    ASSERT_EQ(0, stat(kActiveApexPackagesDataDir, &sd));
+    ASSERT_EQ(0750u, sd.st_mode & ALLPERMS);
+
+    // Now read content and check it contains expected values.
+    auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
+                               [](auto _, auto __) { return true; });
+    ASSERT_TRUE(IsOk(active_pkgs));
+    ASSERT_THAT(*active_pkgs, UnorderedElementsAreArray(expected_pkgs));
+  }
+};
+
+TEST_F(ApexServiceRollbackTest, AbortActiveSessionSuccessfulRollback) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+
+  auto session = ApexSession::CreateSession(239);
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::ACTIVATED)));
+
+  // Make sure /data/apex/active is non-empty.
+  bool ret;
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &ret)));
+  ASSERT_TRUE(ret);
+
+  PrepareBackup({GetTestFile("apex.apexd_test.apex"),
+                 GetTestFile("apex.apexd_test_different_app.apex")});
+
+  ASSERT_TRUE(IsOk(service_->abortActiveSession()));
+
+  auto pkg1 = StringPrintf("%s/com.android.apex.test_package@1.apex",
+                           kActiveApexPackagesDataDir);
+  auto pkg2 = StringPrintf("%s/com.android.apex.test_package_2@1.apex",
+                           kActiveApexPackagesDataDir);
+  SCOPED_TRACE("");
+  CheckRollbackWasPerformed({pkg1, pkg2});
+
+  std::vector<ApexSessionInfo> sessions;
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ApexSessionInfo expected = CreateSessionInfo(239);
+  expected.isRolledBack = true;
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
+}
+
+TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledSuccessfulRollback) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+
+  auto session = ApexSession::CreateSession(1543);
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::ACTIVATED)));
+
+  // Make sure /data/apex/active is non-empty.
+  bool ret;
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &ret)));
+  ASSERT_TRUE(ret);
+
+  PrepareBackup({GetTestFile("apex.apexd_test.apex")});
+
+  ASSERT_TRUE(IsOk(rollbackLastSession()));
+
+  auto pkg = StringPrintf("%s/com.android.apex.test_package@1.apex",
+                          kActiveApexPackagesDataDir);
+  SCOPED_TRACE("");
+  CheckRollbackWasPerformed({pkg});
+}
+
+TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledNoActiveSession) {
+  // This test simulates a situation that should never happen on user builds:
+  // abortLastSession was called, but there are no active sessions.
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+
+  // Make sure /data/apex/active is non-empty.
+  bool ret;
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &ret)));
+  ASSERT_TRUE(ret);
+
+  PrepareBackup({GetTestFile("apex.apexd_test.apex")});
+
+  // Even though backup is there, no sessions are active, hence rollback request
+  // should fail.
+  ASSERT_FALSE(IsOk(rollbackLastSession()));
+}
+
+TEST_F(ApexServiceRollbackTest, RollbackFailsNoBackupFolder) {
+  ASSERT_FALSE(IsOk(rollbackLastSession()));
+}
+
+TEST_F(ApexServiceRollbackTest, RollbackFailsNoActivePackagesFolder) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
+  ASSERT_FALSE(IsOk(rollbackLastSession()));
 }
 
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {

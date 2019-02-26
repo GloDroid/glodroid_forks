@@ -186,17 +186,24 @@ BinderStatus ApexService::markStagedSessionSuccessful(int session_id) {
   return BinderStatus::ok();
 }
 
-void convertToApexSessionInfo(const ApexSession& session,
-                              ApexSessionInfo* session_info) {
-  using SessionState = ::apex::proto::SessionState;
-
-  session_info->sessionId = session.GetId();
+static void ClearSessionInfo(ApexSessionInfo* session_info) {
+  session_info->sessionId = -1;
   session_info->isUnknown = false;
   session_info->isVerified = false;
   session_info->isStaged = false;
   session_info->isActivated = false;
+  session_info->isRollbackInProgress = false;
   session_info->isActivationFailed = false;
   session_info->isSuccess = false;
+  session_info->isRolledBack = false;
+}
+
+void convertToApexSessionInfo(const ApexSession& session,
+                              ApexSessionInfo* session_info) {
+  using SessionState = ::apex::proto::SessionState;
+
+  ClearSessionInfo(session_info);
+  session_info->sessionId = session.GetId();
 
   switch (session.GetState()) {
     case SessionState::VERIFIED:
@@ -213,6 +220,12 @@ void convertToApexSessionInfo(const ApexSession& session,
       break;
     case SessionState::SUCCESS:
       session_info->isSuccess = true;
+      break;
+    case SessionState::ROLLBACK_IN_PROGRESS:
+      session_info->isRollbackInProgress = true;
+      break;
+    case SessionState::ROLLED_BACK:
+      session_info->isRolledBack = true;
       break;
     case SessionState::UNKNOWN:
     default:
@@ -240,13 +253,8 @@ BinderStatus ApexService::getStagedSessionInfo(
   auto session = ApexSession::GetSession(session_id);
   if (!session.Ok()) {
     // Unknown session.
-    apex_session_info->sessionId = -1;
+    ClearSessionInfo(apex_session_info);
     apex_session_info->isUnknown = true;
-    apex_session_info->isVerified = false;
-    apex_session_info->isStaged = false;
-    apex_session_info->isActivated = false;
-    apex_session_info->isActivationFailed = false;
-    apex_session_info->isSuccess = false;
     return BinderStatus::ok();
   }
 
