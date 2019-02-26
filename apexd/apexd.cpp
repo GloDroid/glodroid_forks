@@ -684,6 +684,25 @@ Status RollbackSession(ApexSession& session) {
   return Status::Success();
 }
 
+Status ResumeRollback(ApexSession& session) {
+  auto backup_exists = PathExists(std::string(kApexBackupDir));
+  if (!backup_exists.Ok()) {
+    return backup_exists.ErrorStatus();
+  }
+  if (*backup_exists) {
+    auto rollback_status = DoRollback();
+    if (!rollback_status.Ok()) {
+      return rollback_status;
+    }
+  }
+  auto status = session.UpdateStateAndCommit(SessionState::ROLLED_BACK);
+  if (!status.Ok()) {
+    LOG(WARNING) << "Failed to mark session " << session
+                 << " as rolled back : " << status.ErrorMessage();
+  }
+  return Status::Success();
+}
+
 }  // namespace
 
 namespace apexd_private {
@@ -786,13 +805,32 @@ std::string GetActiveMountPoint(const ApexManifest& manifest) {
 
 }  // namespace apexd_private
 
+Status resumeRollbackIfNeeded() {
+  auto session = ApexSession::GetActiveSession();
+  if (!session.Ok()) {
+    return session.ErrorStatus();
+  }
+  if (!session->has_value()) {
+    return Status::Success();
+  }
+  if ((**session).GetState() == SessionState::ROLLBACK_IN_PROGRESS) {
+    // This means that phone was rebooted during the rollback. Resuming it.
+    return ResumeRollback(**session);
+  }
+  return Status::Success();
+}
+
 void startBootSequence() {
   unmountAndDetachExistingImages();
   scanStagedSessionsDirAndStage();
+  Status status = resumeRollbackIfNeeded();
+  if (!status.Ok()) {
+    LOG(ERROR) << "Failed to resume rollback : " << status.ErrorMessage();
+  }
   // Scan the directory under /data first, as it may contain updates of APEX
   // packages living in the directory under /system, and we want the former ones
   // to be used over the latter ones.
-  Status status = scanPackagesDirAndActivate(kActiveApexPackagesDataDir);
+  status = scanPackagesDirAndActivate(kActiveApexPackagesDataDir);
   if (!status.Ok()) {
     LOG(ERROR) << "Failed to activate packages from "
                << kActiveApexPackagesDataDir << " : " << status.ErrorMessage();

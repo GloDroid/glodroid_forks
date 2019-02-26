@@ -1348,6 +1348,72 @@ TEST_F(ApexServiceRollbackTest, MarkStagedSessionSuccessfulCleanupBackup) {
   ASSERT_TRUE(fs::is_empty(fs::path(kApexBackupDir)));
 }
 
+TEST_F(ApexServiceRollbackTest, ResumesRollback) {
+  PrepareBackup({GetTestFile("apex.apexd_test.apex"),
+                 GetTestFile("apex.apexd_test_different_app.apex")});
+
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+
+  // Make sure /data/apex/active is non-empty.
+  bool ret;
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &ret)));
+  ASSERT_TRUE(ret);
+
+  auto session = ApexSession::CreateSession(17239);
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(
+      IsOk(session->UpdateStateAndCommit(SessionState::ROLLBACK_IN_PROGRESS)));
+
+  ASSERT_TRUE(IsOk(resumeRollbackIfNeeded()));
+
+  auto pkg1 = StringPrintf("%s/com.android.apex.test_package@1.apex",
+                           kActiveApexPackagesDataDir);
+  auto pkg2 = StringPrintf("%s/com.android.apex.test_package_2@1.apex",
+                           kActiveApexPackagesDataDir);
+  SCOPED_TRACE("");
+  CheckRollbackWasPerformed({pkg1, pkg2});
+
+  std::vector<ApexSessionInfo> sessions;
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ApexSessionInfo expected = CreateSessionInfo(17239);
+  expected.isRolledBack = true;
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
+}
+
+TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+
+  // Make sure /data/apex/active is non-empty.
+  bool ret;
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &ret)));
+  ASSERT_TRUE(ret);
+
+  auto session = ApexSession::CreateSession(53);
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::SUCCESS)));
+
+  ASSERT_TRUE(IsOk(resumeRollbackIfNeeded()));
+
+  // Check that rollback wasn't resumed.
+  auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
+                             [](auto _, auto __) { return true; });
+  ASSERT_TRUE(IsOk(active_pkgs));
+  ASSERT_THAT(*active_pkgs,
+              UnorderedElementsAre(installer.test_installed_file));
+
+  std::vector<ApexSessionInfo> sessions;
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ApexSessionInfo expected = CreateSessionInfo(53);
+  expected.isSuccess = true;
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
+}
+
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
   void OnTestStart(const ::testing::TestInfo& test_info) override {
 #ifdef __ANDROID__
