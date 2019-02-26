@@ -45,15 +45,15 @@ public class BroadcastReceiverActivity extends BroadcastReceiver {
         PackageInstaller.SessionInfo p = intent.getParcelableExtra(PackageInstaller.EXTRA_SESSION);
         Log.d(TAG, "Session Info: " + p.toString());
         try {
-            Method m = PackageInstaller.SessionInfo.class.getMethod("isSessionReady");
-            boolean isSessionReady = (boolean) m.invoke(p);
-            Log.d(TAG, "Session isSessionReady = " + isSessionReady);
-            m = PackageInstaller.SessionInfo.class.getMethod("isSessionFailed");
-            boolean isSessionFailed = (boolean) m.invoke(p);
-            Log.d(TAG, "Session isSessionFailed = " + isSessionFailed);
-            m = PackageInstaller.SessionInfo.class.getMethod("isSessionApplied");
-            boolean isSessionApplied = (boolean) m.invoke(p);
-            Log.d(TAG, "Session isSessionApplied = " + isSessionApplied);
+            Method m = PackageInstaller.SessionInfo.class.getMethod("isStagedSessionReady");
+            boolean isStagedSessionReady = (boolean) m.invoke(p);
+            Log.d(TAG, "Session isStagedSessionReady = " + isStagedSessionReady);
+            m = PackageInstaller.SessionInfo.class.getMethod("isStagedSessionFailed");
+            boolean isStagedSessionFailed = (boolean) m.invoke(p);
+            Log.d(TAG, "Session isStagedSessionFailed = " + isStagedSessionFailed);
+            m = PackageInstaller.SessionInfo.class.getMethod("isStagedSessionApplied");
+            boolean isStagedSessionApplied = (boolean) m.invoke(p);
+            Log.d(TAG, "Session isStagedSessionApplied = " + isStagedSessionApplied);
 
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
