@@ -88,6 +88,9 @@ inline ApexSessionInfo CreateSessionInfo(int session_id) {
   return info;
 }
 
+}  // namespace testing
+
+// Must be in apex::android namespace, otherwise gtest won't be able to find it.
 inline void PrintTo(const ApexSessionInfo& session, std::ostream* os) {
   *os << "apex_session: {\n";
   *os << "  sessionId : " << session.sessionId << "\n";
@@ -100,6 +103,5 @@ inline void PrintTo(const ApexSessionInfo& session, std::ostream* os) {
   *os << "}";
 }
 
-}  // namespace testing
 }  // namespace apex
 }  // namespace android
