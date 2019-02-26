@@ -747,7 +747,9 @@ Status activatePackage(const std::string& full_path) {
           }
         });
     if (version_found_active) {
-      return Status::Fail("Package is already active.");
+      LOG(DEBUG) << "Package " << manifest.name() << " with version "
+                 << manifest.version() << " already active";
+      return Status::Success();
     }
   }
 
@@ -766,14 +768,19 @@ Status activatePackage(const std::string& full_path) {
         apexd_private::GetActiveMountPoint(manifest), mountPoint);
     mounted_latest = update_st.Ok();
     if (!update_st.Ok()) {
-      // TODO: Fail?
-      LOG(ERROR) << update_st.ErrorMessage();
+      return Status::Fail(StringLog()
+                          << "Failed to update package " << manifest.name()
+                          << " to version " << manifest.version() << " : "
+                          << update_st.ErrorMessage());
     }
   }
   if (mounted_latest) {
     gMountedApexes.SetLatest(manifest.name(), full_path);
   }
 
+  LOG(DEBUG) << "Successfully activated " << full_path
+             << " package_name: " << manifest.name()
+             << " version: " << manifest.version();
   return Status::Success();
 }
 
@@ -884,7 +891,7 @@ void unmountAndDetachExistingImages() {
   loop::destroyAllLoopDevices();
 }
 
-void scanPackagesDirAndActivate(const char* apex_package_dir) {
+Status scanPackagesDirAndActivate(const char* apex_package_dir) {
   LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
 
   const bool scanSystemApexes =
@@ -892,18 +899,30 @@ void scanPackagesDirAndActivate(const char* apex_package_dir) {
   StatusOr<std::vector<std::string>> scan =
       FindApexFilesByName(apex_package_dir, scanSystemApexes);
   if (!scan.Ok()) {
-    LOG(WARNING) << scan.ErrorMessage();
-    return;
+    return Status::Fail(StringLog() << "Failed to scan " << apex_package_dir
+                                    << " : " << scan.ErrorMessage());
   }
 
+  std::vector<std::string> failed_pkgs;
   for (const std::string& name : *scan) {
     LOG(INFO) << "Found " << name;
 
     Status res = activatePackage(name);
     if (!res.Ok()) {
-      LOG(ERROR) << res.ErrorMessage();
+      LOG(ERROR) << "Failed to activate " << name << " : "
+                 << res.ErrorMessage();
+      failed_pkgs.push_back(name);
     }
   }
+
+  if (!failed_pkgs.empty()) {
+    return Status::Fail(StringLog()
+                        << "Failed to activate following packages : "
+                        << Join(failed_pkgs, ','));
+  }
+
+  LOG(INFO) << "Activated " << scan->size() << " packages";
+  return Status::Success();
 }
 
 void scanStagedSessionsDirAndStage() {
