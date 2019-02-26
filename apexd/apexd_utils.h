@@ -142,6 +142,21 @@ inline Status DeleteDirContent(const std::string& path) {
   return Status::Success();
 }
 
+inline StatusOr<bool> PathExists(const std::string& path) {
+  namespace fs = std::filesystem;
+
+  std::error_code ec;
+  if (!fs::exists(fs::path(path), ec)) {
+    if (ec) {
+      return StatusOr<bool>::MakeError(StringLog() << "Failed to access "
+                                                   << path << " : " << ec);
+    } else {
+      return StatusOr<bool>(false);
+    }
+  }
+  return StatusOr<bool>(true);
+}
+
 }  // namespace apex
 }  // namespace android
 

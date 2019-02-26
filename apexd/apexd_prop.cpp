@@ -34,7 +34,11 @@ void waitForBootStatus(Status (&rollback_fn)()) {
     if (android::base::WaitForProperty("ro.init.updatable_crashing", "1",
                                        std::chrono::seconds(30))) {
       LOG(INFO) << "Updatable crashing, attempting rollback";
-      rollback_fn();
+      auto status = rollback_fn();
+      if (!status.Ok()) {
+        LOG(ERROR) << "Rollback failed : " << status.ErrorMessage();
+      }
+      // TODO: reboot after rollback finishes.
       return;
     }
     if (android::base::GetProperty("sys.boot_completed", "") == "1") {
