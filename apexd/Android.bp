@@ -186,7 +186,6 @@ cc_test {
   ],
   shared_libs: ["libziparchive"],
   test_suites: ["device-tests"],
-  test_config: "apex_file_test_config.xml",  // TODO: Remove after b/117891984.
 }
 
 cc_test {
@@ -240,5 +239,5 @@ cc_test {
     "libutils",
   ],
   test_suites: ["device-tests"],
-  test_config: "apexservice_test_config.xml",  // TODO: Remove after b/117891984.
+  test_config: "apexservice_test_config.xml",
 }
