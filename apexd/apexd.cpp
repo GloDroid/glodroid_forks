@@ -792,9 +792,27 @@ void startBootSequence() {
   // Scan the directory under /data first, as it may contain updates of APEX
   // packages living in the directory under /system, and we want the former ones
   // to be used over the latter ones.
-  scanPackagesDirAndActivate(kActiveApexPackagesDataDir);
+  Status status = scanPackagesDirAndActivate(kActiveApexPackagesDataDir);
+  if (!status.Ok()) {
+    LOG(ERROR) << "Failed to activate packages from "
+               << kActiveApexPackagesDataDir << " : " << status.ErrorMessage();
+    Status rollback_status = rollbackLastSession();
+    if (rollback_status.Ok()) {
+      LOG(ERROR) << "Successfully rolled back. Time to reboot device.";
+      Reboot();
+    } else {
+      // TODO: should we kill apexd in this case?
+      LOG(ERROR) << "Failed to rollback : " << rollback_status.ErrorMessage();
+    }
+  }
   // TODO(b/123622800): if activation failed, rollback and reboot.
-  scanPackagesDirAndActivate(kApexPackageSystemDir);
+  status = scanPackagesDirAndActivate(kApexPackageSystemDir);
+  if (!status.Ok()) {
+    // This should never happen. Like **really** never.
+    // TODO: should we kill apexd in this case?
+    LOG(ERROR) << "Failed to activate packages from " << kApexPackageSystemDir
+               << " : " << status.ErrorMessage();
+  }
 }
 
 Status activatePackage(const std::string& full_path) {
