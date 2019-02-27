@@ -100,6 +100,25 @@ java_test_host {
 }
 
 java_test_host {
+    name: "conscrypt_e2e_tests",
+
+    srcs:  ["src/**/ConscryptHostTest.java"],
+
+    libs: ["tradefed"],
+
+    static_libs: ["apex_e2e_base_test"],
+
+    data: [
+        ":test_com.android.conscrypt",
+        ":BroadcastReceiverApp",
+    ],
+
+    test_config: "conscrypt-e2e-tests.xml",
+
+    test_suites: ["general-tests"],
+}
+
+java_test_host {
     name: "apex_targetprep_tests",
 
     libs: ["tradefed"],
