@@ -28,12 +28,14 @@
 #include <android-base/scopeguard.h>
 #include <android-base/strings.h>
 #include <android-base/unique_fd.h>
+#include <google/protobuf/util/message_differencer.h>
 #include <libavb/libavb.h>
 
 #include "string_log.h"
 
 using android::base::ReadFullyAtOffset;
 using android::base::unique_fd;
+using google::protobuf::util::MessageDifferencer;
 
 namespace android {
 namespace apex {
@@ -484,6 +486,29 @@ StatusOr<ApexVerityData> ApexFile::VerifyApexVerity(
   verityData.root_digest = getDigest(*verityData.desc, trailingData);
 
   return StatusOr<ApexVerityData>(std::move(verityData));
+}
+
+Status ApexFile::VerifyManifestMatches(const std::string& mount_path) const {
+  std::string manifest_content;
+  const std::string manifest_path = mount_path + "/" + kManifestFilename;
+
+  if (!android::base::ReadFileToString(manifest_path, &manifest_content)) {
+    std::string err = StringLog()
+                      << "Failed to read manifest file: " << manifest_path;
+    return Status::Fail(err);
+  }
+
+  StatusOr<ApexManifest> verifiedManifest = ParseManifest(manifest_content);
+  if (!verifiedManifest.Ok()) {
+    return Status::Fail(verifiedManifest.ErrorMessage());
+  }
+
+  if (!MessageDifferencer::Equals(manifest_, *verifiedManifest)) {
+    return Status::Fail(
+        "Manifest inside filesystem does not match manifest outside it");
+  }
+
+  return Status::Success();
 }
 
 }  // namespace apex
