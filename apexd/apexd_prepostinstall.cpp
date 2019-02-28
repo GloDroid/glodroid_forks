@@ -44,23 +44,12 @@ namespace apex {
 
 namespace {
 
-void PseudoCloseDescriptors() {
-  int write_fd = open("/dev/null", O_WRONLY);
-  int read_fd = open("/dev/zero", O_RDONLY);
-  if (write_fd == -1 || read_fd == -1) {
-    PLOG(FATAL) << "Error opening fds " << write_fd << " " << read_fd;
-  }
-  auto dup_or_close = [](int new_fd, int old_fd) {
-    int rc = TEMP_FAILURE_RETRY(dup2(new_fd, old_fd));
-    if (rc != 0) {
-      if (errno != EBADF) {
-        rc = close(old_fd);
-      }
-    }
-  };
-  dup_or_close(read_fd, STDIN_FILENO);
-  dup_or_close(write_fd, STDOUT_FILENO);
-  dup_or_close(write_fd, STDERR_FILENO);
+void CloseSTDDescriptors() {
+  // exec()d process will reopen STD* file descriptors as
+  // /dev/null
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
 }
 
 template <typename Fn>
@@ -144,17 +133,13 @@ Status StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
 
 template <typename Fn>
 int RunFnInstall(char** in_argv, Fn fn, const char* name) {
-  // 1) Close all file descriptors. They are coming from the caller, we do not
-  // want to pass them on across our fork/exec into a different domain.
-  PseudoCloseDescriptors();
-
-  // 2) Unshare.
+  // 1) Unshare.
   if (unshare(CLONE_NEWNS) != 0) {
     PLOG(ERROR) << "Failed to unshare() for apex " << name;
     _exit(200);
   }
 
-  // 3) Make everything private, so that our (and hook's) changes do not
+  // 2) Make everything private, so that our (and hook's) changes do not
   //    propagate.
   if (mount(nullptr, "/", nullptr, MS_PRIVATE | MS_REC, nullptr) == -1) {
     PLOG(ERROR) << "Failed to mount private.";
@@ -180,7 +165,7 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
         active_point = apexd_private::GetActiveMountPoint(manifest);
       }
 
-      // 4) Activate the new apex.
+      // 3) Activate the new apex.
       Status bind_status = apexd_private::BindMount(active_point, mount_point);
       if (!bind_status.Ok()) {
         LOG(ERROR) << "Failed to bind-mount " << mount_point << " to "
@@ -203,7 +188,7 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
     }
   }
 
-  // 5) Run the hook.
+  // 4) Run the hook.
 
   // For now, just run sh. But this probably needs to run the new linker.
   std::vector<std::string> args{
@@ -215,6 +200,10 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
                  [](const std::string& in) { return in.c_str(); });
 
   LOG(ERROR) << "execv of " << android::base::Join(args, " ");
+
+  // Close all file descriptors. They are coming from the caller, we do not
+  // want to pass them on across our fork/exec into a different domain.
+  CloseSTDDescriptors();
 
   execv(argv[0], const_cast<char**>(argv.data()));
   PLOG(ERROR) << "execv of " << android::base::Join(args, " ") << " failed";
