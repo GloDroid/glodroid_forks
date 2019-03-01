@@ -578,6 +578,34 @@ struct SuccessNameProvider {
   }
 };
 
+struct ManifestMismatchNameProvider {
+  static std::string GetTestName() {
+    return "apex.apexd_test_manifest_mismatch.apex";
+  }
+  static std::string GetPackageName() {
+    return "com.android.apex.test_package";
+  }
+};
+
+class ApexServiceActivationManifestMismatchFailure
+    : public ApexServiceActivationTest<ManifestMismatchNameProvider> {};
+
+TEST_F(ApexServiceActivationManifestMismatchFailure,
+       ActivateFailsWithManifestMismatch) {
+  android::binder::Status st =
+      service_->activatePackage(installer_->test_installed_file);
+  ASSERT_FALSE(IsOk(st));
+
+  std::string error = st.toString8().c_str();
+
+  constexpr const char* kExpectedError =
+      "Failed to verify apex manifest for "
+      "/data/apex/active/com.android.apex.test_package@137.apex: "
+      "Manifest inside filesystem does not match manifest outside it";
+
+  EXPECT_TRUE(error.find(kExpectedError) != std::string::npos) << error;
+}
+
 class ApexServiceActivationSuccessTest
     : public ApexServiceActivationTest<SuccessNameProvider> {};
 
