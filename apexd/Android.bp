@@ -208,6 +208,22 @@ cc_test {
   test_suites: ["device-tests"],
 }
 
+genrule {
+  // Generates an apex which has a different manifest outside the filesystem
+  // image.
+  name: "gen_bad_apexes",
+  out: ["apex.apexd_test_manifest_mismatch.apex"],
+  srcs: [":apex.apexd_test"],
+  tools: ["soong_zip", "zipalign"],
+  cmd: "unzip -q $(in) -d $(genDir) && " +
+       "sed -i -e 's/\"version\": 1/\"version\": 137/' $(genDir)/apex_manifest.json && " +
+       "$(location soong_zip) -d -C $(genDir) -D $(genDir) " +
+       "-s apex_manifest.json -s apex_payload.img -s apex_pubkey " +
+       "-o $(genDir)/unaligned.apex && " +
+       "$(location zipalign) -f 4096 $(genDir)/unaligned.apex " +
+       "$(genDir)/apex.apexd_test_manifest_mismatch.apex"
+}
+
 cc_test {
   name: "apexservice_test",
   defaults: ["apex_defaults"],
@@ -223,6 +239,7 @@ cc_test {
     ":apex.apexd_test_preinstall",
     ":apex.apexd_test_postinstall",
     ":apex.apexd_test_prepostinstall.fail",
+    ":gen_bad_apexes",
   ],
   srcs: ["apexservice_test.cpp"],
   host_supported: false,

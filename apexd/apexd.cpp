@@ -311,7 +311,15 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
               MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, NULL) == 0) {
       LOG(INFO) << "Successfully mounted package " << full_path << " on "
                 << mountPoint;
-
+      // Verify the manifest inside the APEX filesystem matches the one outside
+      // it.
+      auto status = apex.VerifyManifestMatches(mountPoint);
+      if (!status.Ok()) {
+        umount2(mountPoint.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH);
+        return Status(StringLog()
+                      << "Failed to verify apex manifest for " << full_path
+                      << ": " << status.ErrorMessage());
+      }
       // Time to accept the temporaries as good.
       if (mountOnVerity) {
         verityDev.Release();
