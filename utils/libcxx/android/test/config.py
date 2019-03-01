@@ -107,6 +107,7 @@ class Configuration(libcxx.test.config.Configuration):
         self.config.available_features.add('c++experimental')
         self.config.available_features.add('c++fs')
         self.config.available_features.add('c++filesystem')
+        self.config.available_features.add('fcoroutines-ts')
         std_pattern = re.compile(r'-std=(c\+\+\d[0-9x-z])')
         match = std_pattern.search(self.cxx.cxx_template)
         if match:
