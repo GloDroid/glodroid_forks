@@ -132,7 +132,7 @@ java_test_host {
 
 java_library_host {
     name: "apex_e2e_base_test",
-    srcs: ["src/**/ApexE2EBaseHostTest.java"],
+    srcs: ["src/**/ApexE2EBaseHostTest.java","src/**/ApexTestUtils.java"],
     libs: ["tradefed"],
 }
 
