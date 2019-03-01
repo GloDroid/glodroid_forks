@@ -140,8 +140,6 @@ int proc_time_in_state_show(struct seq_file *m, struct pid_namespace *ns,
 
 		seq_printf(m, "cpu%u\n", cpu);
 		for (i = 0; i < freqs->max_state; i++) {
-			if (freqs->freq_table[i] == CPUFREQ_ENTRY_INVALID)
-				continue;
 			cputime = 0;
 			if (freqs->offset + i < p->max_state &&
 			    p->time_in_state)
@@ -221,9 +219,19 @@ void cpufreq_acct_update_power(struct task_struct *p, u64 cputime)
 	rcu_read_unlock();
 }
 
+static int cpufreq_times_get_index(struct cpu_freqs *freqs, unsigned int freq)
+{
+	int index;
+        for (index = 0; index < freqs->max_state; ++index) {
+		if (freqs->freq_table[index] == freq)
+			return index;
+        }
+	return -1;
+}
+
 void cpufreq_times_create_policy(struct cpufreq_policy *policy)
 {
-	int cpu, index;
+	int cpu, index = 0;
 	unsigned int count = 0;
 	struct cpufreq_frequency_table *pos, *table;
 	struct cpu_freqs *freqs;
@@ -236,7 +244,7 @@ void cpufreq_times_create_policy(struct cpufreq_policy *policy)
 	if (!table)
 		return;
 
-	cpufreq_for_each_entry(pos, table)
+	cpufreq_for_each_valid_entry(pos, table)
 		count++;
 
 	tmp =  kzalloc(sizeof(*freqs) + sizeof(freqs->freq_table[0]) * count,
@@ -247,12 +255,12 @@ void cpufreq_times_create_policy(struct cpufreq_policy *policy)
 	freqs = tmp;
 	freqs->max_state = count;
 
-	index = cpufreq_frequency_table_get_index(policy, policy->cur);
+	cpufreq_for_each_valid_entry(pos, table)
+		freqs->freq_table[index++] = pos->frequency;
+
+	index = cpufreq_times_get_index(freqs, policy->cur);
 	if (index >= 0)
 		WRITE_ONCE(freqs->last_index, index);
-
-	cpufreq_for_each_entry(pos, table)
-		freqs->freq_table[pos - table] = pos->frequency;
 
 	freqs->offset = next_offset;
 	WRITE_ONCE(next_offset, freqs->offset + count);
@@ -297,7 +305,7 @@ void cpufreq_times_record_transition(struct cpufreq_policy *policy,
 	if (!freqs)
 		return;
 
-	index = cpufreq_frequency_table_get_index(policy, new_freq);
+	index = cpufreq_times_get_index(freqs, new_freq);
 	if (index >= 0)
 		WRITE_ONCE(freqs->last_index, index);
 }
