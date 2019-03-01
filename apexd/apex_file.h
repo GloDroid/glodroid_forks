@@ -20,7 +20,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
 #include <ziparchive/zip_archive.h>
 
 #include "apex_manifest.h"
@@ -55,6 +54,7 @@ class ApexFile {
 
   StatusOr<ApexVerityData> VerifyApexVerity(
       const std::vector<std::string>& apex_key_dirs) const;
+  Status VerifyManifestMatches(const std::string& mount_path) const;
 
  private:
   ApexFile(const std::string& apex_path, bool flattened, int32_t image_offset,
