@@ -12,6 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+apexer_tools = [
+      "apexer",
+      "aapt2",
+      "avbtool",
+      "e2fsdroid",
+      "merge_zips",
+      "mke2fs",
+      "resize2fs",
+      "sefcontext_compile",
+      "soong_zip",
+      "zipalign",
+      // TODO(b/124439236) apex doesn't follow 'required' dependencies so we need to include this
+      // manually for 'avbtool'.
+      "fec",
+]
+
 python_binary_host {
     name: "apexer",
     srcs: [
@@ -30,15 +46,24 @@ python_binary_host {
     libs: [
         "apex_manifest_proto",
     ],
-    required: [
-        "aapt2",
-        "avbtool",
-        "e2fsdroid",
-        "merge_zips",
-        "mke2fs",
-        "resize2fs",
-        "sefcontext_compile",
-        "soong_zip",
-        "zipalign",
-    ],
+    required: apexer_tools,
+}
+
+apex_key {
+  name: "com.android.support.apexer.key",
+  public_key: "etc/com.android.support.apexer.avbpubkey",
+  private_key: "etc/com.android.support.apexer.pem",
+}
+
+// This is a host-apex that contains all the binaries needed to create new apex's seprate from
+// soong.
+apex_test {
+  name: "com.android.support.apexer",
+  payload_type: "zip",
+  host_supported: true,
+  device_supported: false,
+  manifest: "etc/manifest.json",
+  ignore_system_library_special_case: true,
+  key: "com.android.support.apexer.key",
+  binaries: apexer_tools,
 }
