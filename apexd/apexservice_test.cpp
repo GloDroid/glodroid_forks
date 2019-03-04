@@ -850,7 +850,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
 }
 
-TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
+TEST_F(ApexServiceTest, SubmitSingleStagedSessionDeletesPreviousSessions) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
                                       "/data/pkg_staging/session_239",
                                       "staging_data_file");
@@ -892,10 +892,9 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSession_AbortsNonFinalSessions) {
   sessions.clear();
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
 
-  ApexSessionInfo expected_session4 = CreateSessionInfo(239);
-  expected_session4.isVerified = true;
-  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected_session3),
-                                             SessionInfoEq(expected_session4)));
+  ApexSessionInfo new_session = CreateSessionInfo(239);
+  new_session.isVerified = true;
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(new_session)));
 }
 
 TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
