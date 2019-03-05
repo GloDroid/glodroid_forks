@@ -513,31 +513,18 @@ StatusOr<ApexFile> verifySessionDir(const int session_id) {
   return StatusOr<ApexFile>(std::move((*verified)[0]));
 }
 
-Status AbortNonFinalizedSessions() {
+Status ClearSessions() {
   auto sessions = ApexSession::GetSessions();
   int cnt = 0;
   for (ApexSession& session : sessions) {
-    Status status;
-    switch (session.GetState()) {
-      case SessionState::VERIFIED:
-        [[clang::fallthrough]];
-      case SessionState::STAGED:
-        cnt++;
-        status = session.DeleteSession();
-        if (!status.Ok()) {
-          return Status::Fail(status.ErrorMessage());
-        }
-        if (cnt > 1) {
-          LOG(WARNING) << "More than one non-finalized session!";
-        }
-        break;
-      // TODO(b/124215327): fail if session is in ACTIVATED state.
-      default:
-        break;
+    Status status = session.DeleteSession();
+    if (!status.Ok()) {
+      return status;
     }
+    cnt++;
   }
   if (cnt > 0) {
-    LOG(DEBUG) << "Aborted " << cnt << " non-finalized sessions";
+    LOG(DEBUG) << "Deleted " << cnt << " sessions";
   }
   return Status::Success();
 }
@@ -1332,7 +1319,7 @@ void onAllPackagesReady() {
 
 StatusOr<std::vector<ApexFile>> submitStagedSession(
     const int session_id, const std::vector<int>& child_session_ids) {
-  Status cleanup_status = AbortNonFinalizedSessions();
+  Status cleanup_status = ClearSessions();
   if (!cleanup_status.Ok()) {
     return StatusOr<std::vector<ApexFile>>::MakeError(cleanup_status);
   }
