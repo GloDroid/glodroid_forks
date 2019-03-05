@@ -207,17 +207,7 @@ Status ApexSession::UpdateStateAndCommit(
   return Status::Success();
 }
 
-Status ApexSession::DeleteSession() const {
-  switch (GetState()) {
-    case SessionState::STAGED:
-      [[clang::fallthrough]];
-    case SessionState::VERIFIED:
-      return deleteSessionDir(GetId());
-    default:
-      return Status::Fail(StringLog()
-                          << "Can't delete session in state " << GetState());
-  }
-}
+Status ApexSession::DeleteSession() const { return deleteSessionDir(GetId()); }
 
 std::ostream& operator<<(std::ostream& out, const ApexSession& session) {
   return out << "[id = " << session.GetId()
