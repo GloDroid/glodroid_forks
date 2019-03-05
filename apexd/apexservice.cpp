@@ -57,6 +57,7 @@ class ApexService : public BnApexService {
                             bool* aidl_return) override;
   BinderStatus stagePackages(const std::vector<std::string>& paths,
                              bool* aidl_return) override;
+  BinderStatus unstagePackages(const std::vector<std::string>& paths) override;
   BinderStatus submitStagedSession(int session_id,
                                    const std::vector<int>& child_session_ids,
                                    ApexInfoList* apex_info_list,
@@ -126,6 +127,20 @@ BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths,
 
   // TODO: Get correct binder error status.
   LOG(ERROR) << "Failed to stage " << android::base::Join(paths, ',') << ": "
+             << res.ErrorMessage();
+  return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
+                                         String8(res.ErrorMessage().c_str()));
+}
+
+BinderStatus ApexService::unstagePackages(
+    const std::vector<std::string>& paths) {
+  Status res = ::android::apex::unstagePackages(paths);
+  if (res.Ok()) {
+    return BinderStatus::ok();
+  }
+
+  // TODO: Get correct binder error status.
+  LOG(ERROR) << "Failed to unstage " << android::base::Join(paths, ',') << ": "
              << res.ErrorMessage();
   return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
                                          String8(res.ErrorMessage().c_str()));
