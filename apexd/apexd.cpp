@@ -103,6 +103,12 @@ MountedApexDatabase gMountedApexes;
 static constexpr size_t kLoopDeviceSetupAttempts = 3u;
 static constexpr size_t kMountAttempts = 5u;
 
+bool gBootstrap = false;
+static const std::vector<const std::string> kBootstrapApexes = {
+    "com.android.runtime",
+    "com.android.tzdata",
+};
+
 std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
                                            const std::string& loop) {
   AvbHashtreeDescriptor* desc = verity_data.desc.get();
@@ -852,6 +858,12 @@ Status activatePackage(const std::string& full_path) {
   }
   const ApexManifest& manifest = apexFile->GetManifest();
 
+  if (gBootstrap && std::find(kBootstrapApexes.begin(), kBootstrapApexes.end(),
+                              manifest.name()) == kBootstrapApexes.end()) {
+    LOG(INFO) << "Skipped when bootstrapping";
+    return Status::Success();
+  }
+
   // See whether we think it's active, and do not allow to activate the same
   // version. Also detect whether this is the highest version.
   // We roll this into a single check.
@@ -1245,6 +1257,8 @@ Status rollbackLastSession() {
 }
 
 int onBootstrap() {
+  gBootstrap = true;
+
   // Scan /system/apex to get the number of (non-flattened) APEXes and
   // pre-allocated loopback devices so that we don't have to wait for it
   // later when actually activating APEXes.
@@ -1260,7 +1274,6 @@ int onBootstrap() {
   }
 
   // Activate built-in APEXes for processes launched before /data is mounted.
-  // TODO(jiyong): only activate whitelisted built-in APEXes
   scanPackagesDirAndActivate(kApexPackageSystemDir);
   LOG(INFO) << "Bootstrapping done";
   return 0;
@@ -1275,7 +1288,6 @@ void onStart() {
 
   // Activate APEXes from /data/apex. If one in the directory is newer than the
   // system one, the new one will eclipse the old one.
-  // TODO(jiyong): try to activate non-whitelisted built-in APEXes
   scanStagedSessionsDirAndStage();
   Status status = resumeRollbackIfNeeded();
   if (!status.Ok()) {
