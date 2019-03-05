@@ -42,8 +42,13 @@ cc_defaults {
   static_libs: [
     "lib_apex_session_state_proto",
     "lib_apex_manifest_proto",
-    "libc++fs",
   ],
+  static: {
+    whole_static_libs: ["libc++fs"],
+  },
+  shared: {
+    static_libs: ["libc++fs"],
+  },
 }
 
 aidl_interface {
@@ -82,6 +87,15 @@ cc_binary {
     "libselinux",
   ],
   init_rc: ["apexd.rc"],
+  // Just like the init, apexd should be able to run without
+  // any APEX activated. To do so, it uses the bootstrap linker
+  // and the bootstrap bionic libraries.
+  bootstrap: true,
+  target: {
+    android: {
+      ldflags: ["-Wl,--rpath,/system/${LIB}/bootstrap"],
+    },
+  },
 }
 
 cc_library_static {

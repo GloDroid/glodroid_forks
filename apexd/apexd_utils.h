@@ -103,6 +103,11 @@ StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
   return StatusOr<std::vector<std::string>>(std::move(ret));
 }
 
+inline bool IsEmptyDirectory(const std::string& path) {
+  auto res = ReadDir(path, [](auto _, auto __) { return true; });
+  return res.Ok() && res->empty();
+}
+
 inline Status createDirIfNeeded(const std::string& path, mode_t mode) {
   struct stat stat_data;
 

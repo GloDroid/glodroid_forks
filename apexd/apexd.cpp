@@ -717,9 +717,24 @@ namespace apexd_private {
 
 Status MountPackage(const ApexFile& apex, const std::string& mountPoint) {
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
-  if (mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
+  // Note: the mount point could exist in case when the APEX was activated
+  // during the bootstrap phase (e.g., the runtime or tzdata APEX).
+  // Although we have separate mount namespaces to separate the early activated
+  // APEXes from the normally activate APEXes, the mount points themselves
+  // are shared across the two mount namespaces because /apex (a tmpfs) itself
+  // mounted at / which is (and has to be) a shared mount. Therefore, if apexd
+  // finds an empty directory under /apex, it's not a problem and apexd can use
+  // it.
+  auto exists = PathExists(mountPoint);
+  if (!exists.Ok()) {
+    return exists.ErrorStatus();
+  }
+  if (!*exists && mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
     return Status::Fail(PStringLog()
                         << "Could not create mount point " << mountPoint);
+  }
+  if (!IsEmptyDirectory(mountPoint)) {
+    return Status::Fail(PStringLog() << mountPoint << " is not empty");
   }
 
   MountedApexData data("", apex.GetPath());
@@ -826,39 +841,6 @@ Status resumeRollbackIfNeeded() {
     return ResumeRollback(**session);
   }
   return Status::Success();
-}
-
-void startBootSequence() {
-  unmountAndDetachExistingImages();
-  scanStagedSessionsDirAndStage();
-  Status status = resumeRollbackIfNeeded();
-  if (!status.Ok()) {
-    LOG(ERROR) << "Failed to resume rollback : " << status.ErrorMessage();
-  }
-  // Scan the directory under /data first, as it may contain updates of APEX
-  // packages living in the directory under /system, and we want the former ones
-  // to be used over the latter ones.
-  status = scanPackagesDirAndActivate(kActiveApexPackagesDataDir);
-  if (!status.Ok()) {
-    LOG(ERROR) << "Failed to activate packages from "
-               << kActiveApexPackagesDataDir << " : " << status.ErrorMessage();
-    Status rollback_status = rollbackLastSession();
-    if (rollback_status.Ok()) {
-      LOG(ERROR) << "Successfully rolled back. Time to reboot device.";
-      Reboot();
-    } else {
-      // TODO: should we kill apexd in this case?
-      LOG(ERROR) << "Failed to rollback : " << rollback_status.ErrorMessage();
-    }
-  }
-  // TODO(b/123622800): if activation failed, rollback and reboot.
-  status = scanPackagesDirAndActivate(kApexPackageSystemDir);
-  if (!status.Ok()) {
-    // This should never happen. Like **really** never.
-    // TODO: should we kill apexd in this case?
-    LOG(ERROR) << "Failed to activate packages from " << kApexPackageSystemDir
-               << " : " << status.ErrorMessage();
-  }
 }
 
 Status activatePackage(const std::string& full_path) {
@@ -1012,8 +994,14 @@ void unmountAndDetachExistingImages() {
   // becomes an actual daemon. Remove if that's the case.
   LOG(INFO) << "Scanning " << kApexRoot
             << " looking for packages already mounted.";
+  // Find directories having apex manifest in it. This is to exclude
+  // the empty directories (mount points) that were created by the bootstrap
+  // apexd on the /apex tmpfs.
   StatusOr<std::vector<std::string>> folders_status =
-      ReadDir(kApexRoot, &DTypeFilter<DT_DIR>);
+      ReadDir(kApexRoot, [](unsigned char d_type, const char* d_name) {
+        return d_type == DT_DIR &&
+               ApexFile::Open(std::string(kApexRoot) + "/" + d_name).Ok();
+      });
   if (!folders_status.Ok()) {
     LOG(ERROR) << folders_status.ErrorMessage();
     return;
@@ -1256,13 +1244,7 @@ Status rollbackLastSession() {
   }
 }
 
-void onStart() {
-  LOG(INFO) << "Marking APEXd as starting";
-  if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusStarting)) {
-    PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to "
-                << kApexStatusStarting;
-  }
-
+int onBootstrap() {
   // Scan /system/apex to get the number of (non-flattened) APEXes and
   // pre-allocated loopback devices so that we don't have to wait for it
   // later when actually activating APEXes.
@@ -1275,6 +1257,51 @@ void onStart() {
     if (!preAllocStatus.Ok()) {
       LOG(ERROR) << preAllocStatus.ErrorMessage();
     }
+  }
+
+  // Activate built-in APEXes for processes launched before /data is mounted.
+  // TODO(jiyong): only activate whitelisted built-in APEXes
+  scanPackagesDirAndActivate(kApexPackageSystemDir);
+  LOG(INFO) << "Bootstrapping done";
+  return 0;
+}
+
+void onStart() {
+  LOG(INFO) << "Marking APEXd as starting";
+  if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusStarting)) {
+    PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to "
+                << kApexStatusStarting;
+  }
+
+  // Activate APEXes from /data/apex. If one in the directory is newer than the
+  // system one, the new one will eclipse the old one.
+  // TODO(jiyong): try to activate non-whitelisted built-in APEXes
+  scanStagedSessionsDirAndStage();
+  Status status = resumeRollbackIfNeeded();
+  if (!status.Ok()) {
+    LOG(ERROR) << "Failed to resume rollback : " << status.ErrorMessage();
+  }
+
+  status = scanPackagesDirAndActivate(kActiveApexPackagesDataDir);
+  if (!status.Ok()) {
+    LOG(ERROR) << "Failed to activate packages from "
+               << kActiveApexPackagesDataDir << " : " << status.ErrorMessage();
+    Status rollback_status = rollbackLastSession();
+    if (rollback_status.Ok()) {
+      LOG(ERROR) << "Successfully rolled back. Time to reboot device.";
+      Reboot();
+    } else {
+      // TODO: should we kill apexd in this case?
+      LOG(ERROR) << "Failed to rollback : " << rollback_status.ErrorMessage();
+    }
+  }
+  // TODO(b/123622800): if activation failed, rollback and reboot.
+  status = scanPackagesDirAndActivate(kApexPackageSystemDir);
+  if (!status.Ok()) {
+    // This should never happen. Like **really** never.
+    // TODO: should we kill apexd in this case?
+    LOG(ERROR) << "Failed to activate packages from " << kApexPackageSystemDir
+               << " : " << status.ErrorMessage();
   }
 }
 
