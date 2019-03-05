@@ -29,9 +29,6 @@
 
 namespace {
 
-static constexpr const char* kApexDataStatusSysprop = "apexd.data.status";
-static constexpr const char* kApexDataStatusReady = "ready";
-
 int HandleSubcommand(char** argv) {
   if (strcmp("--pre-install", argv[1]) == 0) {
     LOG(INFO) << "Preinstall subcommand detected";
@@ -41,6 +38,11 @@ int HandleSubcommand(char** argv) {
   if (strcmp("--post-install", argv[1]) == 0) {
     LOG(INFO) << "Postinstall subcommand detected";
     return android::apex::RunPostInstall(argv);
+  }
+
+  if (strcmp("--bootstrap", argv[1]) == 0) {
+    LOG(INFO) << "Bootstrap subcommand detected";
+    return android::apex::onBootstrap();
   }
 
   LOG(ERROR) << "Unknown subcommand: " << argv[1];
@@ -69,18 +71,13 @@ int main(int /*argc*/, char** argv) {
   if (argv[1] != nullptr) {
     return HandleSubcommand(argv);
   }
-
-  android::apex::onStart();
-
   // TODO: add a -v flag or an external setting to change LogSeverity.
   android::base::SetMinimumLogSeverity(android::base::VERBOSE);
 
-  // Wait for /data/apex. The property is set by init.
-  android::base::WaitForProperty(kApexDataStatusSysprop, kApexDataStatusReady);
-  android::apex::startBootSequence();
-
+  android::apex::onStart();
   android::apex::binder::CreateAndRegisterService();
   android::apex::binder::StartThreadPool();
+
   // Notify other components (e.g. init) that all APEXs are correctly mounted
   // and are ready to be used. Note that it's important that the binder service
   // is registered at this point, since other system services might depend on

@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+#include <stdio.h>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -29,6 +31,7 @@
 #include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/macros.h>
+#include <android-base/properties.h>
 #include <android-base/scopeguard.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
@@ -1440,6 +1443,141 @@ TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
   ApexSessionInfo expected = CreateSessionInfo(53);
   expected.isSuccess = true;
   ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
+}
+
+static pid_t GetPidOf(const std::string& name) {
+  char buf[1024];
+  const std::string cmd = std::string("pidof -s ") + name;
+  FILE* cmd_pipe = popen(cmd.c_str(), "r");
+  if (cmd_pipe == nullptr) {
+    PLOG(ERROR) << "Cannot open pipe for " << cmd;
+    return 0;
+  }
+  if (fgets(buf, 1024, cmd_pipe) == nullptr) {
+    PLOG(ERROR) << "Cannot read pipe for " << cmd;
+    pclose(cmd_pipe);
+    return 0;
+  }
+
+  pclose(cmd_pipe);
+  return strtoul(buf, nullptr, 10);
+}
+
+static void ExecInMountNamespaceOf(pid_t pid, std::function<void(pid_t)> func) {
+  const std::string my_path = "/proc/self/ns/mnt";
+  android::base::unique_fd my_fd(open(my_path.c_str(), O_RDONLY | O_CLOEXEC));
+  ASSERT_TRUE(my_fd.get() >= 0);
+
+  const std::string target_path =
+      std::string("/proc/") + std::to_string(pid) + "/ns/mnt";
+  android::base::unique_fd target_fd(
+      open(target_path.c_str(), O_RDONLY | O_CLOEXEC));
+  ASSERT_TRUE(target_fd.get() >= 0);
+
+  int res = setns(target_fd.get(), CLONE_NEWNS);
+  ASSERT_NE(-1, res);
+
+  func(pid);
+
+  res = setns(my_fd.get(), CLONE_NEWNS);
+  ASSERT_NE(-1, res);
+}
+
+TEST(ApexdTest, ApexdIsInSameMountNamespaceAsInit) {
+  std::string ns_apexd;
+  std::string ns_init;
+
+  ExecInMountNamespaceOf(GetPidOf("apexd"), [&](pid_t pid) {
+    bool res = android::base::Readlink("/proc/self/ns/mnt", &ns_apexd);
+    ASSERT_TRUE(res);
+  });
+
+  ExecInMountNamespaceOf(1, [&](pid_t pid) {
+    bool res = android::base::Readlink("/proc/self/ns/mnt", &ns_init);
+    ASSERT_TRUE(res);
+  });
+
+  ASSERT_EQ(ns_apexd, ns_init);
+}
+
+// These are NOT exhaustive list of early processes be should be enough
+static const std::vector<const std::string> kEarlyProcesses = {
+    "servicemanager",
+    "hwservicemanager",
+    "vold",
+    "logd",
+};
+
+TEST(ApexdTest, EarlyProcessesAreInDifferentMountNamespace) {
+  if (!android::base::GetBoolProperty("ro.apex.updatable", false)) {
+    return;
+  }
+
+  std::string ns_apexd;
+
+  ExecInMountNamespaceOf(GetPidOf("apexd"), [&](pid_t _) {
+    bool res = android::base::Readlink("/proc/self/ns/mnt", &ns_apexd);
+    ASSERT_TRUE(res);
+  });
+
+  for (const auto& name : kEarlyProcesses) {
+    std::string ns_early_process;
+    ExecInMountNamespaceOf(GetPidOf(name), [&](pid_t _) {
+      bool res =
+          android::base::Readlink("/proc/self/ns/mnt", &ns_early_process);
+      ASSERT_TRUE(res);
+    });
+    ASSERT_NE(ns_apexd, ns_early_process);
+  }
+}
+
+TEST(ApexdTest, ApexIsAPrivateMountPoint) {
+  std::string mountinfo;
+  ASSERT_TRUE(
+      android::base::ReadFileToString("/proc/self/mountinfo", &mountinfo));
+  bool found_apex_mountpoint = false;
+  for (const auto& line : android::base::Split(mountinfo, "\n")) {
+    std::vector<std::string> tokens = android::base::Split(line, " ");
+    // line format:
+    // mnt_id parent_mnt_id major:minor source target option propagation_type
+    // ex) 33 260:19 / /apex rw,nosuid,nodev -
+    if (tokens.size() >= 7 && tokens[4] == "/apex") {
+      found_apex_mountpoint = true;
+      // Make sure that propagation type is set to - which means private
+      ASSERT_EQ("-", tokens[6]);
+    }
+  }
+  ASSERT_TRUE(found_apex_mountpoint);
+}
+
+static const std::vector<const std::string> kEarlyApexes = {
+    "/apex/com.android.runtime",
+    "/apex/com.android.tzdata",
+};
+
+TEST(ApexdTest, ApexesAreActivatedForEarlyProcesses) {
+  for (const auto& name : kEarlyProcesses) {
+    pid_t pid = GetPidOf(name);
+    const std::string path =
+        std::string("/proc/") + std::to_string(pid) + "/mountinfo";
+    std::string mountinfo;
+    ASSERT_TRUE(android::base::ReadFileToString(path.c_str(), &mountinfo));
+
+    std::unordered_set<std::string> mountpoints;
+    for (const auto& line : android::base::Split(mountinfo, "\n")) {
+      std::vector<std::string> tokens = android::base::Split(line, " ");
+      // line format:
+      // mnt_id parent_mnt_id major:minor source target option propagation_type
+      // ex) 69 33 7:40 / /apex/com.android.conscrypt ro,nodev,noatime -
+      if (tokens.size() >= 5) {
+        // token[4] is the target mount point
+        mountpoints.emplace(tokens[4]);
+      }
+    }
+    for (const auto& apex_name : kEarlyApexes) {
+      ASSERT_NE(mountpoints.end(), mountpoints.find(apex_name));
+    }
+  }
 }
 
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
