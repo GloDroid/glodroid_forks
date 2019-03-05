@@ -1229,6 +1229,30 @@ Status stagePackages(const std::vector<std::string>& tmpPaths) {
   return RemovePreviouslyActiveApexFiles(staged_packages, staged_files);
 }
 
+Status unstagePackages(const std::vector<std::string>& paths) {
+  if (paths.empty()) {
+    return Status::Fail("Empty set of inputs");
+  }
+  LOG(DEBUG) << "unstagePackages() for " << Join(paths, ',');
+
+  // TODO: to make unstage safer, we can copy to be unstaged packages to a
+  // temporary folder and restore state from it in case unstagePackages fails.
+
+  for (const std::string& path : paths) {
+    if (access(path.c_str(), F_OK) != 0) {
+      return Status::Fail(PStringLog() << "Can't access " << path);
+    }
+  }
+
+  for (const std::string& path : paths) {
+    if (unlink(path.c_str()) != 0) {
+      return Status::Fail(PStringLog() << "Can't unlink " << path);
+    }
+  }
+
+  return Status::Success();
+}
+
 Status rollbackLastSession() {
   // TODO: call Checkpoint#abortCheckpoint after rollback succeeds.
   auto session = ApexSession::GetActiveSession();

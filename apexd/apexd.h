@@ -46,6 +46,7 @@ Status preinstallPackages(const std::vector<std::string>& paths) WARN_UNUSED;
 Status postinstallPackages(const std::vector<std::string>& paths) WARN_UNUSED;
 
 Status stagePackages(const std::vector<std::string>& tmpPaths) WARN_UNUSED;
+Status unstagePackages(const std::vector<std::string>& paths) WARN_UNUSED;
 
 StatusOr<std::vector<ApexFile>> submitStagedSession(
     const int session_id,
