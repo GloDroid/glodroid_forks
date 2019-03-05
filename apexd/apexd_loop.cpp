@@ -33,6 +33,7 @@
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 
+#include "apexd_utils.h"
 #include "string_log.h"
 
 using android::base::StartsWith;
@@ -90,6 +91,10 @@ Status configureReadAhead(const std::string& device_path) {
 }
 
 Status preAllocateLoopDevices(int num) {
+  Status loopReady = WaitForFile("/dev/loop-control", 20s);
+  if (!loopReady.Ok()) {
+    return loopReady;
+  }
   unique_fd ctl_fd(
       TEMP_FAILURE_RETRY(open("/dev/loop-control", O_RDWR | O_CLOEXEC)));
   if (ctl_fd.get() == -1) {
