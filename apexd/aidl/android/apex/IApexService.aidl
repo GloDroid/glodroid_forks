@@ -31,6 +31,8 @@ interface IApexService {
 
    void abortActiveSession();
 
+   void unstagePackages(in @utf8InCpp List<String> active_package_paths);
+
    /**
     * Returns the active package corresponding to |package_name| and null
     * if none exists.
