@@ -143,7 +143,7 @@ std::vector<ApexSession> ApexSession::GetSessionsInState(
   auto sessions = GetSessions();
   sessions.erase(
       std::remove_if(sessions.begin(), sessions.end(),
-                     [&](ApexSession s) { return s.GetState() != state; }),
+                     [&](const ApexSession &s) { return s.GetState() != state; }),
       sessions.end());
 
   return sessions;
