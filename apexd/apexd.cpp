@@ -33,6 +33,7 @@
 #include "status_or.h"
 #include "string_log.h"
 
+#include <ApexProperties.sysprop.h>
 #include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/macros.h>
@@ -977,12 +978,23 @@ Status resumeRollbackIfNeeded() {
   return Status::Success();
 }
 
+static bool IsApexUpdatable() {
+  static bool updatable =
+      android::sysprop::ApexProperties::updatable().value_or(false);
+  return updatable;
+}
+
 Status activatePackageImpl(const ApexFile& apex_file) {
   const ApexManifest& manifest = apex_file.GetManifest();
 
   if (gBootstrap && std::find(kBootstrapApexes.begin(), kBootstrapApexes.end(),
                               manifest.name()) == kBootstrapApexes.end()) {
     LOG(INFO) << "Skipped when bootstrapping";
+    return Status::Success();
+  } else if (!IsApexUpdatable() && !gBootstrap &&
+             std::find(kBootstrapApexes.begin(), kBootstrapApexes.end(),
+                       manifest.name()) != kBootstrapApexes.end()) {
+    LOG(INFO) << "Package already activated in bootstrap";
     return Status::Success();
   }
 
