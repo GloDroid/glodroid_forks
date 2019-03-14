@@ -22,6 +22,7 @@
 #include "apex_database.h"
 #include "apex_file.h"
 #include "apex_manifest.h"
+#include "apex_shim.h"
 #include "apexd_loop.h"
 #include "apexd_prepostinstall.h"
 #include "apexd_prop.h"
@@ -471,6 +472,18 @@ RetType HandlePackages(const std::vector<std::string>& paths, Fn fn) {
   return fn(apex_files);
 }
 
+Status ValidateStagingShimApex(const ApexFile& to) {
+  const std::string& package_name = to.GetManifest().name();
+  auto from = getActivePackage(package_name);
+  if (!from.Ok()) {
+    return Status::Fail(StringLog()
+                        << "Can't load active version of " << package_name
+                        << " : " << from.ErrorMessage());
+  }
+  auto validate_status = shim::ValidateShimApex(to);
+  return shim::ValidateUpdate(*from, to);
+}
+
 StatusOr<std::vector<ApexFile>> verifyPackages(
     const std::vector<std::string>& paths) {
   if (paths.empty()) {
@@ -486,6 +499,12 @@ StatusOr<std::vector<ApexFile>> verifyPackages(
            kApexKeySystemProductDirectory});
       if (!verity_or.Ok()) {
         return StatusT::MakeError(verity_or.ErrorMessage());
+      }
+      if (shim::IsShimApex(apex_file)) {
+        auto validate_status = ValidateStagingShimApex(apex_file);
+        if (!validate_status.Ok()) {
+          return StatusT::MakeError(validate_status);
+        }
       }
     }
     return StatusT(std::move(apexes));
@@ -847,6 +866,14 @@ Status activatePackage(const std::string& full_path) {
   if (!apexFile.Ok()) {
     return apexFile.ErrorStatus();
   }
+
+  if (shim::IsShimApex(*apexFile)) {
+    auto validate_status = shim::ValidateShimApex(*apexFile);
+    if (!validate_status.Ok()) {
+      return validate_status;
+    }
+  }
+
   const ApexManifest& manifest = apexFile->GetManifest();
 
   if (gBootstrap && std::find(kBootstrapApexes.begin(), kBootstrapApexes.end(),
