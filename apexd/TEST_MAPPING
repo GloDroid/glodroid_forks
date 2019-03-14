@@ -12,5 +12,10 @@
     {
       "name": "apexservice_test"
     }
+  ],
+  "imports": [
+    {
+      "path": "system/apex/tests"
+    }
   ]
 }
