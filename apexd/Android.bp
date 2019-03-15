@@ -144,6 +144,7 @@ cc_library_static {
   srcs: [
     "apex_file.cpp",
     "apex_manifest.cpp",
+    "apex_shim.cpp",
   ],
   static_libs: ["libavb"],
   host_supported: true,
