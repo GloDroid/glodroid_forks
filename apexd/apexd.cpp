@@ -87,6 +87,8 @@ static constexpr const char* kApexKeySystemDirectory =
     "/system/etc/security/apex/";
 static constexpr const char* kApexKeyProductDirectory =
     "/product/etc/security/apex/";
+static constexpr const char* kApexKeySystemProductDirectory =
+    "/system/product/etc/security/apex/";
 
 // These should be in-sync with system/sepolicy/public/property_contexts
 static constexpr const char* kApexStatusSysprop = "apexd.status";
@@ -276,8 +278,9 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
   }
   LOG(VERBOSE) << "Loopback device created: " << loopbackDevice.name;
 
-  auto verityData = apex.VerifyApexVerity(
-      {kApexKeySystemDirectory, kApexKeyProductDirectory});
+  auto verityData =
+      apex.VerifyApexVerity({kApexKeySystemDirectory, kApexKeyProductDirectory,
+                             kApexKeySystemProductDirectory});
   if (!verityData.Ok()) {
     return Status(StringLog()
                   << "Failed to verify Apex Verity data for " << full_path
@@ -479,7 +482,8 @@ StatusOr<std::vector<ApexFile>> verifyPackages(
   auto verify_fn = [](std::vector<ApexFile>& apexes) {
     for (const ApexFile& apex_file : apexes) {
       StatusOr<ApexVerityData> verity_or = apex_file.VerifyApexVerity(
-          {kApexKeySystemDirectory, kApexKeyProductDirectory});
+          {kApexKeySystemDirectory, kApexKeyProductDirectory,
+           kApexKeySystemProductDirectory});
       if (!verity_or.Ok()) {
         return StatusT::MakeError(verity_or.ErrorMessage());
       }
