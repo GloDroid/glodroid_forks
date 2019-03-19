@@ -32,6 +32,7 @@ cc_defaults {
   defaults: ["apex_flags_defaults"],
   shared_libs: [
     "libbase",
+    "libcrypto",
     "libjsoncpp",
     "libprotobuf-cpp-full",
     "libziparchive",
@@ -276,4 +277,19 @@ cc_test {
   ],
   test_suites: ["device-tests"],
   test_config: "apexservice_test_config.xml",
+}
+
+cc_test {
+  name: "apex_shim_test",
+  defaults: ["apex_defaults"],
+  data: [":apex.apexd_test"],
+  srcs: ["apex_shim_test.cpp"],
+  host_supported: true,
+  target: {
+    darwin: {
+      enabled: false,
+    },
+  },
+  static_libs: ["libapex"],
+  test_suites: ["device-tests"],
 }
