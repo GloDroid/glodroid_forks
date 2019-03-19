@@ -485,7 +485,7 @@ TEST_F(ApexServiceTest, StageSuccess_ClearsPreviouslyActivePackage) {
   EXPECT_TRUE(RegularFileExists(installer3.test_installed_file));
 }
 
-TEST_F(ApexServiceTest, StageAlreadyActivePackageSuccess) {
+TEST_F(ApexServiceTest, StageAlreadyStagedPackageSuccess) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
   if (!installer.Prepare()) {
     return;
@@ -698,6 +698,15 @@ TEST_F(ApexServiceActivationSuccessTest, GetActivePackage) {
   ASSERT_EQ(installer_->package, active->packageName);
   ASSERT_EQ(installer_->version, static_cast<uint64_t>(active->versionCode));
   ASSERT_EQ(installer_->test_installed_file, active->packagePath);
+}
+
+TEST_F(ApexServiceActivationSuccessTest, StageAlreadyActivePackageSameVersion) {
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+
+  bool success = false;
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer_->test_file, &success)));
+  ASSERT_TRUE(success);
 }
 
 class ApexServicePrePostInstallTest : public ApexServiceTest {
