@@ -481,7 +481,12 @@ Status ValidateStagingShimApex(const ApexFile& to) {
                         << " : " << from.ErrorMessage());
   }
   auto validate_status = shim::ValidateShimApex(to);
-  return shim::ValidateUpdate(*from, to);
+  if (!validate_status.Ok()) {
+    return validate_status;
+  }
+  std::string from_mount_point =
+      apexd_private::GetActiveMountPoint(from->GetManifest());
+  return shim::ValidateUpdate(from_mount_point, to.GetPath());
 }
 
 StatusOr<std::vector<ApexFile>> verifyPackages(
