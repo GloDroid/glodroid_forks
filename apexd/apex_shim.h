@@ -30,7 +30,8 @@ bool IsShimApex(const ApexFile& apex_file);
 
 Status ValidateShimApex(const ApexFile& apex_file);
 
-Status ValidateUpdate(const ApexFile& from, const ApexFile& to);
+Status ValidateUpdate(const std::string& old_apex_path,
+                      const std::string& new_apex_path);
 
 }  // namespace shim
 }  // namespace apex
