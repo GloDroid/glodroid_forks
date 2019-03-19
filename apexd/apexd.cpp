@@ -61,6 +61,7 @@
 #include <iomanip>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 using android::base::EndsWith;
@@ -1235,6 +1236,13 @@ Status stagePackages(const std::vector<std::string>& tmpPaths) {
   };
   auto scope_guard = android::base::make_scope_guard(deleter);
 
+  std::vector<ApexFile> active_packages = getActivePackages();
+  std::unordered_map<std::string, uint64_t> packages_with_code;
+  for (const auto& package : active_packages) {
+    const ApexManifest& manifest = package.GetManifest();
+    packages_with_code.insert({manifest.name(), manifest.version()});
+  }
+
   std::unordered_set<std::string> staged_packages;
   for (const std::string& path : tmpPaths) {
     StatusOr<ApexFile> apex_file = ApexFile::Open(path);
@@ -1247,6 +1255,13 @@ Status stagePackages(const std::vector<std::string>& tmpPaths) {
       LOG(DEBUG) << dest_path << " already exists. Skipping";
       continue;
     }
+    const ApexManifest& manifest = apex_file->GetManifest();
+    const auto& it = packages_with_code.find(manifest.name());
+    uint64_t new_version = static_cast<uint64_t>(manifest.version());
+    if (it != packages_with_code.end() && it->second == new_version) {
+      LOG(DEBUG) << GetPackageId(manifest) << " is already active. Skipping";
+      continue;
+    }
     if (link(apex_file->GetPath().c_str(), dest_path.c_str()) != 0) {
       // TODO: Get correct binder error status.
       return Status::Fail(PStringLog()
@@ -1254,7 +1269,7 @@ Status stagePackages(const std::vector<std::string>& tmpPaths) {
                           << dest_path);
     }
     staged_files.insert(dest_path);
-    staged_packages.insert(apex_file->GetManifest().name());
+    staged_packages.insert(manifest.name());
 
     LOG(DEBUG) << "Success linking " << apex_file->GetPath() << " to "
                << dest_path;
