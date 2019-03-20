@@ -1,0 +1,64 @@
+// Copyright (C) 2019 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Temporary for the sake of development of shim apex related code.
+// Actual shim apex will be prebuilt by the build server.
+apex_key {
+  name: "com.android.apex.cts.shim.key",
+  private_key: "com.android.apex.cts.shim.pem",
+  public_key: "com.android.apex.cts.shim.pubkey",
+  installable: false,
+}
+
+genrule {
+  name: "generate_hash_v2",
+  out: ["hash.txt"],
+  cmd: "sha512sum -b /dev/null | cut -d' ' -f1 | tee $(out)",
+}
+
+prebuilt_etc {
+  name: "hash_v2",
+  src: ":generate_hash_v2",
+}
+
+apex {
+  name: "com.android.apex.cts.shim.v2",
+  manifest: "manifest_v2.json",
+  file_contexts: "apex.test",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_v2"],
+  installable: false,
+}
+
+genrule {
+  name: "generate_hash_v1",
+  srcs: [":com.android.apex.cts.shim.v2"],
+  out: ["hash.txt"],
+  cmd: "sha512sub -b $(in) | cut -d' ' - f1 | tee $(out)",
+}
+
+prebuilt_etc {
+  name: "hash_v1",
+  src: ":generate_hash_v1",
+}
+
+apex {
+  name: "com.android.apex.cts.shim.v1",
+  manifest: "manifest.json",
+  file_contexts: "apex.test",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_v1"],
+  installable: false,
+}
+
