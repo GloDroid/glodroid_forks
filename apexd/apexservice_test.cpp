@@ -1637,6 +1637,44 @@ TEST(ApexdTest, ApexesAreActivatedForEarlyProcesses) {
   }
 }
 
+class ApexShimUpdateTest : public ApexServiceTest {
+ protected:
+  std::unique_ptr<PrepareTestApexForInstall> system_shim_;
+
+  void SetUp() override {
+    ApexServiceTest::SetUp();
+
+    // TODO: instead verify shim apex is pre-installed.
+    system_shim_ = std::make_unique<PrepareTestApexForInstall>(
+        GetTestFile("com.android.apex.cts.shim.v1.apex"));
+    if (!system_shim_->Prepare()) {
+      FAIL() << GetDebugStr(system_shim_.get());
+    }
+    // Putting system version into /data/apex/active won't work, because staging
+    // of a newer version will delete previous one from /data/apex/active,
+    // resulting in test not being to deactivate it on tear down.
+    ASSERT_TRUE(IsOk(service_->activatePackage(system_shim_->test_file)));
+  }
+
+  void TearDown() override {
+    ASSERT_TRUE(IsOk(service_->deactivatePackage(system_shim_->test_file)));
+    ApexServiceTest::TearDown();
+  }
+};
+
+TEST_F(ApexShimUpdateTest, UpdateToV2Success) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("com.android.apex.cts.shim.v2.apex"));
+
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+
+  bool success;
+  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &success)));
+  ASSERT_TRUE(success);
+}
+
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
   void OnTestStart(const ::testing::TestInfo& test_info) override {
 #ifdef __ANDROID__

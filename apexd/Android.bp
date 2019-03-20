@@ -259,6 +259,8 @@ cc_test {
     ":apex.apexd_test_postinstall",
     ":apex.apexd_test_prepostinstall.fail",
     ":gen_bad_apexes",
+    ":com.android.apex.cts.shim.v2",
+    ":com.android.apex.cts.shim.v1",
   ],
   srcs: ["apexservice_test.cpp"],
   host_supported: false,
