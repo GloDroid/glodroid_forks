@@ -1367,7 +1367,7 @@ int onBootstrap() {
     // This number of loopback devices are expected at most.
     // In the bootstrap mount namespace, we will activate kBootstrapApexes.
     // In the default mount namespace, we will activate all APEXes.
-    const int num = kBootstrapApexes.size() + scan->size();
+    auto num = kBootstrapApexes.size() + scan->size();
     Status preAllocStatus = loop::preAllocateLoopDevices(num);
     if (!preAllocStatus.Ok()) {
       LOG(ERROR) << preAllocStatus.ErrorMessage();
