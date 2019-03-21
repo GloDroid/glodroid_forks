@@ -58,7 +58,7 @@ struct LoopbackDeviceUniqueFd {
 
 Status configureReadAhead(const std::string& device_path);
 
-Status preAllocateLoopDevices(int num);
+Status preAllocateLoopDevices(size_t num);
 
 StatusOr<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
                                                   const int32_t imageOffset,
