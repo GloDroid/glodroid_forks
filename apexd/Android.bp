@@ -86,7 +86,6 @@ cc_binary {
     "libapexservice",
     "libavb",
     "libdm",
-    "libvold_binder",
   ],
   shared_libs: [
     "libselinux",
@@ -118,7 +117,6 @@ cc_library_static {
     "libapex",
     "libavb",
     "libdm",
-    "libvold_binder",
   ],
   shared_libs: [
     "libselinux",
@@ -273,7 +271,6 @@ cc_test {
     "libapexd",
     "libavb",
     "libgmock",
-    "libvold_binder",
   ],
   shared_libs: [
     "libbinder",

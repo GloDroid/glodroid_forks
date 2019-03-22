@@ -39,8 +39,6 @@
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 #include <android-base/unique_fd.h>
-#include <android/os/IVold.h>
-#include <binder/IServiceManager.h>
 #include <libavb/libavb.h>
 #include <libdm/dm.h>
 #include <libdm/dm_table.h>
@@ -66,8 +64,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-using android::defaultServiceManager;
-using android::sp;
 using android::base::EndsWith;
 using android::base::Join;
 using android::base::ReadFullyAtOffset;
@@ -78,7 +74,6 @@ using android::dm::DeviceMapper;
 using android::dm::DmDeviceState;
 using android::dm::DmTable;
 using android::dm::DmTargetVerity;
-using android::os::IVold;
 
 using apex::proto::SessionState;
 
@@ -108,9 +103,6 @@ static bool gForceDmVerityOnSystem =
     android::base::GetBoolProperty(kApexVerityOnSystemProp, false);
 
 MountedApexDatabase gMountedApexes;
-sp<IVold> gVoldService;
-bool gSupportsFsCheckpoints = false;
-bool gInFsCheckpointMode = false;
 
 static constexpr size_t kLoopDeviceSetupAttempts = 3u;
 static constexpr size_t kMountAttempts = 5u;
@@ -644,10 +636,6 @@ Status BackupActivePackages() {
 }
 
 Status DoRollback() {
-  if (gInFsCheckpointMode) {
-    // We will roll back automatically when we reboot
-    return Status::Success();
-  }
   auto backup_exists = PathExists(std::string(kApexBackupDir));
   if (!backup_exists.Ok()) {
     return backup_exists.ErrorStatus();
@@ -688,18 +676,19 @@ Status DoRollback() {
   return Status::Success();
 }
 
-Status RollbackStagedSession(ApexSession& session) {
-  // If the session is staged, it hasn't been activated yet, and we just need
-  // to update its state to prevent it from being activated later.
-  return session.UpdateStateAndCommit(SessionState::ROLLED_BACK);
-}
+Status RollbackSession(ApexSession& session) {
+  LOG(DEBUG) << "Initializing rollback of " << session;
 
-Status RollbackActivatedSession(ApexSession& session) {
-  if (gInFsCheckpointMode) {
-    // On checkpointing devices, our modifications on /data will be
-    // automatically rolled back when we abort changes. Updating the session
-    // state is pointless here, as it will be rolled back as well.
-    return Status::Success();
+  switch (session.GetState()) {
+    case SessionState::ROLLBACK_IN_PROGRESS:
+      [[clang::fallthrough]];
+    case SessionState::ROLLED_BACK:
+      return Status::Success();
+    case SessionState::ACTIVATED:
+      break;
+    default:
+      return Status::Fail(StringLog() << "Can't restore session " << session
+                                      << " : session is in a wrong state");
   }
 
   auto status =
@@ -723,24 +712,6 @@ Status RollbackActivatedSession(ApexSession& session) {
   }
 
   return Status::Success();
-}
-
-Status RollbackSession(ApexSession& session) {
-  LOG(DEBUG) << "Initializing rollback of " << session;
-
-  switch (session.GetState()) {
-    case SessionState::ROLLBACK_IN_PROGRESS:
-      [[clang::fallthrough]];
-    case SessionState::ROLLED_BACK:
-      return Status::Success();
-    case SessionState::STAGED:
-      return RollbackStagedSession(session);
-    case SessionState::ACTIVATED:
-      return RollbackActivatedSession(session);
-    default:
-      return Status::Fail(StringLog() << "Can't restore session " << session
-                                      << " : session is in a wrong state");
-  }
 }
 
 Status ResumeRollback(ApexSession& session) {
@@ -1043,7 +1014,7 @@ Status abortActiveSession() {
       case SessionState::STAGED:
         return session.DeleteSession();
       case SessionState::ACTIVATED:
-        return RollbackActivatedSession(session);
+        return RollbackSession(session);
       default:
         return Status::Fail(StringLog()
                             << "Session " << session << " can't be aborted");
@@ -1368,17 +1339,8 @@ Status unstagePackages(const std::vector<std::string>& paths) {
   return Status::Success();
 }
 
-Status rollbackStagedSessionIfAny() {
-  auto session = ApexSession::GetActiveSession();
-  if (session.Ok() && session->has_value() &&
-      (*session)->GetState() == SessionState::STAGED) {
-    return RollbackStagedSession(*(*session));
-  }
-
-  return Status::Success();
-}
-
-Status rollbackActiveSession() {
+Status rollbackLastSession() {
+  // TODO: call Checkpoint#abortCheckpoint after rollback succeeds.
   auto session = ApexSession::GetActiveSession();
   if (!session.Ok()) {
     LOG(ERROR) << "Failed to get active session : " << session.ErrorMessage();
@@ -1389,20 +1351,6 @@ Status rollbackActiveSession() {
   } else {
     return RollbackSession(*(*session));
   }
-}
-
-Status rollbackActiveSessionAndReboot() {
-  auto status = rollbackActiveSession();
-  if (!status.Ok()) {
-    return status;
-  }
-  LOG(ERROR) << "Successfully rolled back. Time to reboot device.";
-  if (gInFsCheckpointMode) {
-    gVoldService->abortChanges();
-    // This should have rebooted the device, but fall through in case it failed.
-  }
-  Reboot();
-  return Status::Success();
 }
 
 int onBootstrap() {
@@ -1439,47 +1387,6 @@ void onStart() {
                 << kApexStatusStarting;
   }
 
-  auto voldService =
-      defaultServiceManager()->getService(android::String16("vold"));
-  if (voldService != nullptr) {
-    gVoldService = android::interface_cast<android::os::IVold>(voldService);
-    android::binder::Status status =
-        gVoldService->supportsCheckpoint(&gSupportsFsCheckpoints);
-    if (!status.isOk()) {
-      LOG(ERROR) << "Failed to check if filesystem checkpoints are supported: "
-                 << status.toString8().c_str();
-    }
-    if (gSupportsFsCheckpoints) {
-      status = gVoldService->needsCheckpoint(&gInFsCheckpointMode);
-      if (!status.isOk()) {
-        LOG(ERROR) << "Failed to check if we're in filesystem checkpoint mode: "
-                   << status.toString8().c_str();
-      }
-    }
-  } else {
-    LOG(ERROR) << "Failed to retrieve vold service.";
-  }
-
-  // Ask whether we should roll back any staged sessions; this can happen if
-  // we've exceeded the retry count on a device that supports filesystem
-  // checkpointing.
-  if (gSupportsFsCheckpoints) {
-    bool needsRollback = false;
-    auto binderStatus = gVoldService->needsRollback(&needsRollback);
-    if (!binderStatus.isOk()) {
-      LOG(ERROR) << "Failed to check if we need a rollback: "
-                 << binderStatus.toString8().c_str();
-    }
-    if (needsRollback) {
-      Status status = rollbackStagedSessionIfAny();
-      if (!status.Ok()) {
-        LOG(ERROR)
-            << "Failed to roll back (as requested by fs checkpointing) : "
-            << status.ErrorMessage();
-      }
-    }
-  }
-
   // Activate APEXes from /data/apex. If one in the directory is newer than the
   // system one, the new one will eclipse the old one.
   scanStagedSessionsDirAndStage();
@@ -1492,8 +1399,11 @@ void onStart() {
   if (!status.Ok()) {
     LOG(ERROR) << "Failed to activate packages from "
                << kActiveApexPackagesDataDir << " : " << status.ErrorMessage();
-    Status rollback_status = rollbackActiveSessionAndReboot();
-    if (!rollback_status.Ok()) {
+    Status rollback_status = rollbackLastSession();
+    if (rollback_status.Ok()) {
+      LOG(ERROR) << "Successfully rolled back. Time to reboot device.";
+      Reboot();
+    } else {
       // TODO: should we kill apexd in this case?
       LOG(ERROR) << "Failed to rollback : " << rollback_status.ErrorMessage();
     }
@@ -1528,11 +1438,9 @@ StatusOr<std::vector<ApexFile>> submitStagedSession(
     return StatusOr<std::vector<ApexFile>>::MakeError(cleanup_status);
   }
 
-  if (!gSupportsFsCheckpoints) {
-    Status backup_status = BackupActivePackages();
-    if (!backup_status.Ok()) {
-      return StatusOr<std::vector<ApexFile>>::MakeError(backup_status);
-    }
+  Status backup_status = BackupActivePackages();
+  if (!backup_status.Ok()) {
+    return StatusOr<std::vector<ApexFile>>::MakeError(backup_status);
   }
 
   std::vector<int> ids_to_scan;

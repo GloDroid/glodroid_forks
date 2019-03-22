@@ -35,7 +35,6 @@
 #include <android-base/scopeguard.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
-#include <android/os/IVold.h>
 #include <binder/IServiceManager.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -83,19 +82,11 @@ class ApexServiceTest : public ::testing::Test {
     if (binder != nullptr) {
       service_ = android::interface_cast<IApexService>(binder);
     }
-    binder = sm->getService(String16("vold"));
-    if (binder != nullptr) {
-      vold_service_ = android::interface_cast<android::os::IVold>(binder);
-    }
   }
 
  protected:
   void SetUp() override {
     ASSERT_NE(nullptr, service_.get());
-    ASSERT_NE(nullptr, vold_service_.get());
-    android::binder::Status status =
-        vold_service_->supportsCheckpoint(&supports_fs_checkpointing_);
-    ASSERT_TRUE(IsOk(status));
     CleanUp();
   }
 
@@ -348,8 +339,6 @@ class ApexServiceTest : public ::testing::Test {
   }
 
   sp<IApexService> service_;
-  sp<android::os::IVold> vold_service_;
-  bool supports_fs_checkpointing_;
 
  private:
   void CleanUp() {
@@ -1115,9 +1104,6 @@ TEST_F(ApexServiceTest, AbortActiveSession) {
 }
 
 TEST_F(ApexServiceTest, BackupActivePackages) {
-  if (supports_fs_checkpointing_) {
-    return;
-  }
   PrepareTestApexForInstall installer1(GetTestFile("apex.apexd_test.apex"));
   PrepareTestApexForInstall installer2(
       GetTestFile("apex.apexd_test_different_app.apex"));
@@ -1160,9 +1146,6 @@ TEST_F(ApexServiceTest, BackupActivePackages) {
 }
 
 TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
-  if (supports_fs_checkpointing_) {
-    return;
-  }
   PrepareTestApexForInstall installer1(GetTestFile("apex.apexd_test.apex"));
   PrepareTestApexForInstall installer2(
       GetTestFile("apex.apexd_test_different_app.apex"));
@@ -1211,9 +1194,6 @@ TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
 }
 
 TEST_F(ApexServiceTest, BackupActivePackagesZeroActivePackages) {
-  if (supports_fs_checkpointing_) {
-    return;
-  }
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"),
                                       "/data/app-staging/session_41",
                                       "staging_data_file");
@@ -1265,12 +1245,10 @@ TEST_F(ApexServiceTest, ActivePackagesFolderDoesNotExist) {
       service_->submitStagedSession(41, empty_child_session_ids, &list, &ret)));
   ASSERT_TRUE(ret);
 
-  if (!supports_fs_checkpointing_) {
-    auto backups = ReadDir(std::string(kApexBackupDir),
-                           [](auto _, auto __) { return true; });
-    ASSERT_TRUE(IsOk(backups));
-    ASSERT_EQ(0u, backups->size());
-  }
+  auto backups = ReadDir(std::string(kApexBackupDir),
+                         [](auto _, auto __) { return true; });
+  ASSERT_TRUE(IsOk(backups));
+  ASSERT_EQ(0u, backups->size());
 }
 
 TEST_F(ApexServiceTest, UnstagePackagesSuccess) {
@@ -1358,10 +1336,6 @@ class ApexServiceRollbackTest : public ApexServiceTest {
 };
 
 TEST_F(ApexServiceRollbackTest, AbortActiveSessionSuccessfulRollback) {
-  if (supports_fs_checkpointing_) {
-    // Can't test rollback when using filesystem checkpointing
-    return;
-  }
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer.Prepare()) {
     return;
@@ -1387,6 +1361,7 @@ TEST_F(ApexServiceRollbackTest, AbortActiveSessionSuccessfulRollback) {
                            kActiveApexPackagesDataDir);
   SCOPED_TRACE("");
   CheckRollbackWasPerformed({pkg1, pkg2});
+
   std::vector<ApexSessionInfo> sessions;
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
   ApexSessionInfo expected = CreateSessionInfo(239);
@@ -1411,7 +1386,7 @@ TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledSuccessfulRollback) {
 
   PrepareBackup({GetTestFile("apex.apexd_test.apex")});
 
-  ASSERT_TRUE(IsOk(rollbackActiveSession()));
+  ASSERT_TRUE(IsOk(rollbackLastSession()));
 
   auto pkg = StringPrintf("%s/com.android.apex.test_package@1.apex",
                           kActiveApexPackagesDataDir);
@@ -1436,16 +1411,16 @@ TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledNoActiveSession) {
 
   // Even though backup is there, no sessions are active, hence rollback request
   // should fail.
-  ASSERT_FALSE(IsOk(rollbackActiveSession()));
+  ASSERT_FALSE(IsOk(rollbackLastSession()));
 }
 
 TEST_F(ApexServiceRollbackTest, RollbackFailsNoBackupFolder) {
-  ASSERT_FALSE(IsOk(rollbackActiveSession()));
+  ASSERT_FALSE(IsOk(rollbackLastSession()));
 }
 
 TEST_F(ApexServiceRollbackTest, RollbackFailsNoActivePackagesFolder) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
-  ASSERT_FALSE(IsOk(rollbackActiveSession()));
+  ASSERT_FALSE(IsOk(rollbackLastSession()));
 }
 
 TEST_F(ApexServiceRollbackTest, MarkStagedSessionSuccessfulCleanupBackup) {
@@ -1462,9 +1437,6 @@ TEST_F(ApexServiceRollbackTest, MarkStagedSessionSuccessfulCleanupBackup) {
 }
 
 TEST_F(ApexServiceRollbackTest, ResumesRollback) {
-  if (supports_fs_checkpointing_) {
-    return;
-  }
   PrepareBackup({GetTestFile("apex.apexd_test.apex"),
                  GetTestFile("apex.apexd_test_different_app.apex")});
 
@@ -1500,9 +1472,6 @@ TEST_F(ApexServiceRollbackTest, ResumesRollback) {
 }
 
 TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
-  if (supports_fs_checkpointing_) {
-    return;
-  }
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer.Prepare()) {
     return;
