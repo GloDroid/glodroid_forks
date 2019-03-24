@@ -266,8 +266,9 @@ Status RemovePreviouslyActiveApexFiles(
   return Status::Success();
 }
 
-Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
-                         MountedApexData* apex_data) {
+StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
+                                            const std::string& mountPoint) {
+  using StatusM = StatusOr<MountedApexData>;
   const ApexManifest& manifest = apex.GetManifest();
   const std::string& full_path = apex.GetPath();
   const std::string& packageId = GetPackageId(manifest);
@@ -281,9 +282,9 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
       break;
     }
     if (attempts >= kLoopDeviceSetupAttempts) {
-      return Status::Fail(StringLog()
-                          << "Could not create loop device for " << full_path
-                          << ": " << ret.ErrorMessage());
+      return StatusM::Fail(StringLog()
+                           << "Could not create loop device for " << full_path
+                           << ": " << ret.ErrorMessage());
     }
   }
   LOG(VERBOSE) << "Loopback device created: " << loopbackDevice.name;
@@ -292,12 +293,12 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
       apex.VerifyApexVerity({kApexKeySystemDirectory, kApexKeyProductDirectory,
                              kApexKeySystemProductDirectory});
   if (!verityData.Ok()) {
-    return Status(StringLog()
-                  << "Failed to verify Apex Verity data for " << full_path
-                  << ": " << verityData.ErrorMessage());
+    return StatusM::Fail(StringLog()
+                         << "Failed to verify Apex Verity data for "
+                         << full_path << ": " << verityData.ErrorMessage());
   }
   std::string blockDevice = loopbackDevice.name;
-  apex_data->loop_name = loopbackDevice.name;
+  MountedApexData apex_data(loopbackDevice.name, apex.GetPath());
 
   // for APEXes in system partition, we don't need to mount them on dm-verity
   // because they are already in the dm-verity protected partition; system.
@@ -311,16 +312,16 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
     StatusOr<DmVerityDevice> verityDevRes =
         createVerityDevice(packageId, *verityTable);
     if (!verityDevRes.Ok()) {
-      return Status(StringLog()
-                    << "Failed to create Apex Verity device " << full_path
-                    << ": " << verityDevRes.ErrorMessage());
+      return StatusM::Fail(StringLog()
+                           << "Failed to create Apex Verity device "
+                           << full_path << ": " << verityDevRes.ErrorMessage());
     }
     verityDev = std::move(*verityDevRes);
     blockDevice = verityDev.GetDevPath();
 
     Status readAheadStatus = loop::configureReadAhead(verityDev.GetDevPath());
     if (!readAheadStatus.Ok()) {
-      return readAheadStatus;
+      return StatusM::MakeError(readAheadStatus);
     }
   }
 
@@ -335,9 +336,9 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
       auto status = apex.VerifyManifestMatches(mountPoint);
       if (!status.Ok()) {
         umount2(mountPoint.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH);
-        return Status(StringLog()
-                      << "Failed to verify apex manifest for " << full_path
-                      << ": " << status.ErrorMessage());
+        return StatusM::Fail(StringLog()
+                             << "Failed to verify apex manifest for "
+                             << full_path << ": " << status.ErrorMessage());
       }
       // Time to accept the temporaries as good.
       if (mountOnVerity) {
@@ -345,7 +346,7 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
       }
       loopbackDevice.CloseGood();
 
-      return Status::Success();
+      return StatusM(std::move(apex_data));
     } else {
       last_errno = errno;
       PLOG(VERBOSE) << "Attempt [" << count + 1 << " / " << kMountAttempts
@@ -359,15 +360,17 @@ Status mountNonFlattened(const ApexFile& apex, const std::string& mountPoint,
       usleep(50000);
     }
   }
-  return Status::Fail(StringLog() << "Mounting failed for package " << full_path
-                                  << " : " << strerror(last_errno));
+  return StatusM::Fail(StringLog()
+                       << "Mounting failed for package " << full_path << " : "
+                       << strerror(last_errno));
 }
 
-Status mountFlattened(const ApexFile& apex, const std::string& mountPoint,
-                      MountedApexData* apex_data) {
+StatusOr<MountedApexData> mountFlattened(const ApexFile& apex,
+                                         const std::string& mountPoint) {
+  using StatusM = StatusOr<MountedApexData>;
   if (!StartsWith(apex.GetPath(), kApexPackageSystemDir)) {
-    return Status::Fail(StringLog()
-                        << "Cannot activate flattened APEX " << apex.GetPath());
+    return StatusM::Fail(StringLog() << "Cannot activate flattened APEX "
+                                     << apex.GetPath());
   }
 
   if (mount(apex.GetPath().c_str(), mountPoint.c_str(), nullptr, MS_BIND,
@@ -375,12 +378,11 @@ Status mountFlattened(const ApexFile& apex, const std::string& mountPoint,
     LOG(INFO) << "Successfully bind-mounted flattened package "
               << apex.GetPath() << " on " << mountPoint;
 
-    apex_data->loop_name = "";  // No loop device.
-
-    return Status::Success();
+    MountedApexData apex_data("", apex.GetPath());
+    return StatusM(std::move(apex_data));
   }
-  return Status::Fail(PStringLog() << "Mounting failed for flattened package "
-                                   << apex.GetPath());
+  return StatusM::Fail(PStringLog() << "Mounting failed for flattened package "
+                                    << apex.GetPath());
 }
 
 Status deactivatePackageImpl(const ApexFile& apex) {
@@ -764,9 +766,11 @@ Status ResumeRollback(ApexSession& session) {
 
 }  // namespace
 
-namespace apexd_private {
+namespace {
 
-Status MountPackage(const ApexFile& apex, const std::string& mountPoint) {
+StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
+                                           const std::string& mountPoint) {
+  using StatusM = StatusOr<MountedApexData>;
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
   // Note: the mount point could exist in case when the APEX was activated
   // during the bootstrap phase (e.g., the runtime or tzdata APEX).
@@ -778,28 +782,61 @@ Status MountPackage(const ApexFile& apex, const std::string& mountPoint) {
   // it.
   auto exists = PathExists(mountPoint);
   if (!exists.Ok()) {
-    return exists.ErrorStatus();
+    return StatusM::MakeError(exists.ErrorStatus());
   }
   if (!*exists && mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
-    return Status::Fail(PStringLog()
-                        << "Could not create mount point " << mountPoint);
+    return StatusM::Fail(PStringLog()
+                         << "Could not create mount point " << mountPoint);
   }
   if (!IsEmptyDirectory(mountPoint)) {
-    return Status::Fail(PStringLog() << mountPoint << " is not empty");
+    return StatusM::Fail(PStringLog() << mountPoint << " is not empty");
   }
 
-  MountedApexData data("", apex.GetPath());
-  Status st = apex.IsFlattened() ? mountFlattened(apex, mountPoint, &data)
-                                 : mountNonFlattened(apex, mountPoint, &data);
-  if (!st.Ok()) {
+  auto ret = apex.IsFlattened() ? mountFlattened(apex, mountPoint)
+                                : mountNonFlattened(apex, mountPoint);
+  return ret;
+}
+
+}  // namespace
+
+namespace apexd_private {
+
+Status MountPackage(const ApexFile& apex, const std::string& mountPoint) {
+  auto ret = MountPackageImpl(apex, mountPoint);
+  if (!ret.Ok()) {
     if (rmdir(mountPoint.c_str()) != 0) {
       PLOG(WARNING) << "Could not rmdir " << mountPoint;
     }
-    return st;
+    return ret.ErrorStatus();
   }
 
   gMountedApexes.AddMountedApex(apex.GetManifest().name(), false,
-                                std::move(data));
+                                std::move(*ret));
+  return Status::Success();
+}
+
+// TODO: Change this to accept const MountedApexData&.
+Status Unmount(const std::string& mount_point, const std::string& loop) {
+  // Lazily try to umount whatever is mounted.
+  if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
+      errno != EINVAL && errno != ENOENT) {
+    return Status::Fail(PStringLog()
+                        << "Failed to unmount directory " << mount_point);
+  }
+  // Attempt to delete the folder. If the folder is retained, other
+  // data may be incorrect.
+  if (rmdir(mount_point.c_str()) != 0) {
+    PLOG(ERROR) << "Failed to rmdir directory " << mount_point;
+  }
+
+  // Try to free up the loop device.
+  if (!loop.empty()) {
+    auto log_fn = [](const std::string& path,
+                     const std::string& id ATTRIBUTE_UNUSED) {
+      LOG(VERBOSE) << "Freeing loop device " << path << "for unmount.";
+    };
+    loop::DestroyLoopDevice(loop, log_fn);
+  }
   return Status::Success();
 }
 
@@ -829,33 +866,10 @@ Status UnmountPackage(const ApexFile& apex) {
   }
 
   std::string mount_point = apexd_private::GetPackageMountPoint(manifest);
-  // Lazily try to umount whatever is mounted.
-  if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
-      errno != EINVAL && errno != ENOENT) {
-    return Status::Fail(PStringLog()
-                        << "Failed to unmount directory " << mount_point);
-  }
-
   // Clean up gMountedApexes now, even though we're not fully done.
   std::string loop = data->loop_name;
   gMountedApexes.RemoveMountedApex(manifest.name(), apex.GetPath());
-
-  // Attempt to delete the folder. If the folder is retained, other
-  // data may be incorrect.
-  if (rmdir(mount_point.c_str()) != 0) {
-    PLOG(ERROR) << "Failed to rmdir directory " << mount_point;
-  }
-
-  // Try to free up the loop device.
-  if (!loop.empty()) {
-    auto log_fn = [](const std::string& path,
-                     const std::string& id ATTRIBUTE_UNUSED) {
-      LOG(VERBOSE) << "Freeing loop device " << path << "for unmount.";
-    };
-    loop::DestroyLoopDevice(loop, log_fn);
-  }
-
-  return Status::Success();
+  return Unmount(mount_point, loop);
 }
 
 bool IsMounted(const std::string& name, const std::string& full_path) {
