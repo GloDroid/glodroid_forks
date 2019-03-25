@@ -1524,8 +1524,8 @@ void onStart() {
     if (!status.Ok()) {
       // This should never happen. Like **really** never.
       // TODO: should we kill apexd in this case?
-      LOG(ERROR) << "Failed to activate packages from " << kApexPackageSystemDir
-                 << " : " << status.ErrorMessage();
+      LOG(ERROR) << "Failed to activate packages from " << dir << " : "
+                 << status.ErrorMessage();
     }
   }
 }
