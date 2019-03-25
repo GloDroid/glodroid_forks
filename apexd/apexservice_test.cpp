@@ -1322,7 +1322,7 @@ class ApexServiceRollbackTest : public ApexServiceTest {
  protected:
   void SetUp() override { ApexServiceTest::SetUp(); }
 
-  void PrepareBackup(const std::vector<std::string> pkgs) {
+  void PrepareBackup(const std::vector<std::string>& pkgs) {
     ASSERT_TRUE(IsOk(createDirIfNeeded(std::string(kApexBackupDir), 0700)));
     for (const auto& pkg : pkgs) {
       PrepareTestApexForInstall installer(pkg);
@@ -1547,7 +1547,8 @@ static pid_t GetPidOf(const std::string& name) {
   return strtoul(buf, nullptr, 10);
 }
 
-static void ExecInMountNamespaceOf(pid_t pid, std::function<void(pid_t)> func) {
+static void ExecInMountNamespaceOf(pid_t pid,
+                                   const std::function<void(pid_t)>& func) {
   const std::string my_path = "/proc/self/ns/mnt";
   android::base::unique_fd my_fd(open(my_path.c_str(), O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(my_fd.get() >= 0);
