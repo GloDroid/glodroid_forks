@@ -59,6 +59,7 @@
 
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <memory>
@@ -223,13 +224,16 @@ bool DTypeFilter(unsigned char d_type, const char* d_name ATTRIBUTE_UNUSED) {
 
 StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
                                                        bool include_dirs) {
-  auto filter_fn = [include_dirs](unsigned char d_type, const char* d_name) {
-    if (d_type == DT_REG && EndsWith(d_name, kApexPackageSuffix)) {
-      return true;  // APEX file, take.
-    }
-    // Directory and asked to scan for flattened.
-    return d_type == DT_DIR && include_dirs;
-  };
+  auto filter_fn =
+      [include_dirs](const std::filesystem::directory_entry& entry) {
+        std::error_code ec;
+        if (entry.is_regular_file(ec) &&
+            EndsWith(entry.path().filename().string(), kApexPackageSuffix)) {
+          return true;  // APEX file, take.
+        }
+        // Directory and asked to scan for flattened.
+        return entry.is_directory(ec) && include_dirs;
+      };
   return ReadDir(path, filter_fn);
 }
 
@@ -1082,9 +1086,12 @@ void unmountAndDetachExistingImages() {
   // the empty directories (mount points) that were created by the bootstrap
   // apexd on the /apex tmpfs.
   StatusOr<std::vector<std::string>> folders_status =
-      ReadDir(kApexRoot, [](unsigned char d_type, const char* d_name) {
-        return d_type == DT_DIR &&
-               ApexFile::Open(std::string(kApexRoot) + "/" + d_name).Ok();
+      ReadDir(kApexRoot, [](const std::filesystem::directory_entry& entry) {
+        std::error_code ec;
+        return entry.is_directory(ec) &&
+               ApexFile::Open(std::string(kApexRoot) + "/" +
+                              entry.path().filename().string())
+                   .Ok();
       });
   if (!folders_status.Ok()) {
     LOG(ERROR) << folders_status.ErrorMessage();
