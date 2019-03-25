@@ -116,9 +116,10 @@ StatusOr<ApexSession> ApexSession::GetSession(int session_id) {
 std::vector<ApexSession> ApexSession::GetSessions() {
   std::vector<ApexSession> sessions;
 
-  StatusOr<std::vector<std::string>> sessionPaths =
-      ReadDir(kApexSessionsDir, [](unsigned char d_type, const char* d_name) {
-        return (d_type == DT_DIR);
+  StatusOr<std::vector<std::string>> sessionPaths = ReadDir(
+      kApexSessionsDir, [](const std::filesystem::directory_entry& entry) {
+        std::error_code ec;
+        return entry.is_directory(ec);
       });
 
   if (!sessionPaths.Ok()) {
