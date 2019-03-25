@@ -84,30 +84,28 @@ inline int ForkAndRun(const std::vector<std::string>& args,
 template <typename FilterFn>
 StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
                                            FilterFn fn) {
-  // TODO use C++17's std::filesystem instead
-  auto d = std::unique_ptr<DIR, int (*)(DIR*)>(opendir(path.c_str()), closedir);
-  if (!d) {
+  namespace fs = std::filesystem;
+  fs::path file_path = path;
+  std::error_code ec;
+
+  if (!fs::is_directory(file_path, ec)) {
     return StatusOr<std::vector<std::string>>::MakeError(
-        PStringLog() << "Can't open " << path << " for reading");
+        StringLog() << "Can't open " << path << " for reading : " << ec);
   }
 
   std::vector<std::string> ret;
-  struct dirent* dp;
-  while ((dp = readdir(d.get())) != NULL) {
-    if ((strcmp(dp->d_name, ".") == 0) || (strcmp(dp->d_name, "..") == 0)) {
+  for (const auto& entry : fs::directory_iterator(file_path)) {
+    if (!fn(entry)) {
       continue;
     }
-    if (!fn(dp->d_type, dp->d_name)) {
-      continue;
-    }
-    ret.push_back(path + "/" + dp->d_name);
+    ret.push_back(file_path.string() + "/" + entry.path().filename().string());
   }
 
   return StatusOr<std::vector<std::string>>(std::move(ret));
 }
 
 inline bool IsEmptyDirectory(const std::string& path) {
-  auto res = ReadDir(path, [](auto _, auto __) { return true; });
+  auto res = ReadDir(path, [](auto _) { return true; });
   return res.Ok() && res->empty();
 }
 
@@ -138,7 +136,7 @@ inline Status createDirIfNeeded(const std::string& path, mode_t mode) {
 }
 
 inline Status DeleteDirContent(const std::string& path) {
-  auto files = ReadDir(path, [](auto _, auto __) { return true; });
+  auto files = ReadDir(path, [](auto _) { return true; });
   if (!files.Ok()) {
     return Status::Fail(StringLog() << "Failed to delete " << path << " : "
                                     << files.ErrorMessage());
