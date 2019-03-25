@@ -121,6 +121,11 @@ static const std::vector<const std::string> kBootstrapApexes = {
     "com.android.tzdata",
 };
 
+bool isPathForBuiltinApexes(const std::string& path) {
+  return StartsWith(path, kApexPackageSystemDir) ||
+         StartsWith(path, kApexPackageProductDir);
+}
+
 std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
                                            const std::string& loop) {
   AvbHashtreeDescriptor* desc = verity_data.desc.get();
@@ -300,12 +305,12 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
   std::string blockDevice = loopbackDevice.name;
   MountedApexData apex_data(loopbackDevice.name, apex.GetPath());
 
-  // for APEXes in system partition, we don't need to mount them on dm-verity
-  // because they are already in the dm-verity protected partition; system.
-  // However, note that we don't skip verification to ensure that APEXes are
-  // correctly signed.
+  // for APEXes in immutable partitions, we don't need to mount them on
+  // dm-verity because they are already in the dm-verity protected partition;
+  // system. However, note that we don't skip verification to ensure that APEXes
+  // are correctly signed.
   const bool mountOnVerity =
-      gForceDmVerityOnSystem || !StartsWith(full_path, kApexPackageSystemDir);
+      gForceDmVerityOnSystem || !isPathForBuiltinApexes(full_path);
   DmVerityDevice verityDev;
   if (mountOnVerity) {
     auto verityTable = createVerityTable(*verityData, loopbackDevice.name);
@@ -368,7 +373,7 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
 StatusOr<MountedApexData> mountFlattened(const ApexFile& apex,
                                          const std::string& mountPoint) {
   using StatusM = StatusOr<MountedApexData>;
-  if (!StartsWith(apex.GetPath(), kApexPackageSystemDir)) {
+  if (!isPathForBuiltinApexes(apex.GetPath())) {
     return StatusM::Fail(StringLog() << "Cannot activate flattened APEX "
                                      << apex.GetPath());
   }
@@ -1112,10 +1117,9 @@ void unmountAndDetachExistingImages() {
 Status scanPackagesDirAndActivate(const char* apex_package_dir) {
   LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
 
-  const bool scanSystemApexes =
-      StartsWith(apex_package_dir, kApexPackageSystemDir);
+  const bool scanBuiltinApexes = isPathForBuiltinApexes(apex_package_dir);
   StatusOr<std::vector<std::string>> scan =
-      FindApexFilesByName(apex_package_dir, scanSystemApexes);
+      FindApexFilesByName(apex_package_dir, scanBuiltinApexes);
   if (!scan.Ok()) {
     return Status::Fail(StringLog() << "Failed to scan " << apex_package_dir
                                     << " : " << scan.ErrorMessage());
@@ -1513,13 +1517,16 @@ void onStart() {
       LOG(ERROR) << "Failed to rollback : " << rollback_status.ErrorMessage();
     }
   }
-  // TODO(b/123622800): if activation failed, rollback and reboot.
-  status = scanPackagesDirAndActivate(kApexPackageSystemDir);
-  if (!status.Ok()) {
-    // This should never happen. Like **really** never.
-    // TODO: should we kill apexd in this case?
-    LOG(ERROR) << "Failed to activate packages from " << kApexPackageSystemDir
-               << " : " << status.ErrorMessage();
+
+  for (auto dir : {kApexPackageSystemDir, kApexPackageProductDir}) {
+    // TODO(b/123622800): if activation failed, rollback and reboot.
+    status = scanPackagesDirAndActivate(dir);
+    if (!status.Ok()) {
+      // This should never happen. Like **really** never.
+      // TODO: should we kill apexd in this case?
+      LOG(ERROR) << "Failed to activate packages from " << kApexPackageSystemDir
+                 << " : " << status.ErrorMessage();
+    }
   }
 }
 
