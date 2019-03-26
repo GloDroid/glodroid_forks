@@ -394,51 +394,6 @@ StatusOr<MountedApexData> mountFlattened(const ApexFile& apex,
                                     << apex.GetPath());
 }
 
-Status deactivatePackageImpl(const ApexFile& apex) {
-  // TODO: It's not clear what the right thing to do is for umount failures.
-
-  const ApexManifest& manifest = apex.GetManifest();
-  // Unmount "latest" bind-mount.
-  // TODO: What if bind-mount isn't latest?
-  {
-    std::string mount_point = apexd_private::GetActiveMountPoint(manifest);
-    LOG(VERBOSE) << "Unmounting and deleting " << mount_point;
-    if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0) {
-      return Status::Fail(PStringLog() << "Failed to unmount " << mount_point);
-    }
-    if (rmdir(mount_point.c_str()) != 0) {
-      PLOG(ERROR) << "Could not rmdir " << mount_point;
-      // Continue here.
-    }
-  }
-
-  std::string mount_point = apexd_private::GetPackageMountPoint(manifest);
-  LOG(VERBOSE) << "Unmounting and deleting " << mount_point;
-  if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0) {
-    return Status::Fail(PStringLog() << "Failed to unmount " << mount_point);
-  }
-  std::string error_msg;
-  if (rmdir(mount_point.c_str()) != 0) {
-    // If we cannot delete the directory, we're in a bad state (e.g., getting
-    // active packages depends on directory existence right now).
-    // TODO: consider additional delayed cleanups, and rewrite once we have
-    //       a package database.
-    error_msg = PStringLog() << "Failed to rmdir " << mount_point;
-  }
-
-  // TODO: Find the loop device connected with the mount. For now, just run the
-  //       destroy-all and rely on EBUSY.
-  if (!apex.IsFlattened()) {
-    loop::destroyAllLoopDevices();
-  }
-
-  if (error_msg.empty()) {
-    return Status::Success();
-  } else {
-    return Status::Fail(error_msg);
-  }
-}
-
 template <typename HookFn, typename HookCall>
 Status PrePostinstallPackages(const std::vector<ApexFile>& apexes, HookFn fn,
                               HookCall call) {
@@ -773,9 +728,73 @@ Status ResumeRollback(ApexSession& session) {
   return Status::Success();
 }
 
-}  // namespace
+// TODO: Change this to accept const MountedApexData&.
+Status Unmount(const std::string& mount_point, const std::string& loop) {
+  // Lazily try to umount whatever is mounted.
+  if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
+      errno != EINVAL && errno != ENOENT) {
+    return Status::Fail(PStringLog()
+                        << "Failed to unmount directory " << mount_point);
+  }
+  // Attempt to delete the folder. If the folder is retained, other
+  // data may be incorrect.
+  if (rmdir(mount_point.c_str()) != 0) {
+    PLOG(ERROR) << "Failed to rmdir directory " << mount_point;
+  }
 
-namespace {
+  // Try to free up the loop device.
+  if (!loop.empty()) {
+    auto log_fn = [](const std::string& path,
+                     const std::string& id ATTRIBUTE_UNUSED) {
+      LOG(VERBOSE) << "Freeing loop device " << path << "for unmount.";
+    };
+    loop::DestroyLoopDevice(loop, log_fn);
+  }
+  return Status::Success();
+}
+
+Status UnmountPackage(const ApexFile& apex, bool allow_latest) {
+  LOG(VERBOSE) << "Unmounting " << GetPackageId(apex.GetManifest());
+
+  const ApexManifest& manifest = apex.GetManifest();
+
+  const MountedApexData* data = nullptr;
+  bool latest = false;
+
+  gMountedApexes.ForallMountedApexes(manifest.name(),
+                                     [&](const MountedApexData& d, bool l) {
+                                       if (d.full_path == apex.GetPath()) {
+                                         data = &d;
+                                         latest = l;
+                                       }
+                                     });
+
+  if (data == nullptr) {
+    return Status::Fail(StringLog() << "Did not find " << apex.GetPath());
+  }
+
+  if (latest) {
+    if (!allow_latest) {
+      return Status::Fail(StringLog()
+                          << "Package " << apex.GetPath() << " is active");
+    }
+    std::string mount_point = apexd_private::GetActiveMountPoint(manifest);
+    LOG(VERBOSE) << "Unmounting and deleting " << mount_point;
+    if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0) {
+      return Status::Fail(PStringLog() << "Failed to unmount " << mount_point);
+    }
+    if (rmdir(mount_point.c_str()) != 0) {
+      PLOG(ERROR) << "Could not rmdir " << mount_point;
+      // Continue here.
+    }
+  }
+
+  std::string mount_point = apexd_private::GetPackageMountPoint(manifest);
+  // Clean up gMountedApexes now, even though we're not fully done.
+  std::string loop = data->loop_name;
+  gMountedApexes.RemoveMountedApex(manifest.name(), apex.GetPath());
+  return Unmount(mount_point, loop);
+}
 
 StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
                                            const std::string& mountPoint) {
@@ -824,61 +843,8 @@ Status MountPackage(const ApexFile& apex, const std::string& mountPoint) {
   return Status::Success();
 }
 
-// TODO: Change this to accept const MountedApexData&.
-Status Unmount(const std::string& mount_point, const std::string& loop) {
-  // Lazily try to umount whatever is mounted.
-  if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
-      errno != EINVAL && errno != ENOENT) {
-    return Status::Fail(PStringLog()
-                        << "Failed to unmount directory " << mount_point);
-  }
-  // Attempt to delete the folder. If the folder is retained, other
-  // data may be incorrect.
-  if (rmdir(mount_point.c_str()) != 0) {
-    PLOG(ERROR) << "Failed to rmdir directory " << mount_point;
-  }
-
-  // Try to free up the loop device.
-  if (!loop.empty()) {
-    auto log_fn = [](const std::string& path,
-                     const std::string& id ATTRIBUTE_UNUSED) {
-      LOG(VERBOSE) << "Freeing loop device " << path << "for unmount.";
-    };
-    loop::DestroyLoopDevice(loop, log_fn);
-  }
-  return Status::Success();
-}
-
 Status UnmountPackage(const ApexFile& apex) {
-  LOG(VERBOSE) << "Unmounting " << GetPackageId(apex.GetManifest());
-
-  const ApexManifest& manifest = apex.GetManifest();
-
-  const MountedApexData* data = nullptr;
-  bool latest = false;
-
-  gMountedApexes.ForallMountedApexes(manifest.name(),
-                                     [&](const MountedApexData& d, bool l) {
-                                       if (d.full_path == apex.GetPath()) {
-                                         data = &d;
-                                         latest = l;
-                                       }
-                                     });
-
-  if (data == nullptr) {
-    return Status::Fail(StringLog() << "Did not find " << apex.GetPath());
-  }
-
-  if (latest) {
-    return Status::Fail(StringLog()
-                        << "Package " << apex.GetPath() << " is active");
-  }
-
-  std::string mount_point = apexd_private::GetPackageMountPoint(manifest);
-  // Clean up gMountedApexes now, even though we're not fully done.
-  std::string loop = data->loop_name;
-  gMountedApexes.RemoveMountedApex(manifest.name(), apex.GetPath());
-  return Unmount(mount_point, loop);
+  return android::apex::UnmountPackage(apex, /* allow_latest= */ false);
 }
 
 bool IsMounted(const std::string& name, const std::string& full_path) {
@@ -1012,13 +978,7 @@ Status deactivatePackage(const std::string& full_path) {
     return apexFile.ErrorStatus();
   }
 
-  Status st = deactivatePackageImpl(*apexFile);
-
-  if (st.Ok()) {
-    gMountedApexes.RemoveMountedApex(apexFile->GetManifest().name(), full_path);
-  }
-
-  return st;
+  return UnmountPackage(*apexFile, /* allow_latest= */ true);
 }
 
 std::vector<ApexFile> getActivePackages() {
