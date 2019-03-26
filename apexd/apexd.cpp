@@ -1441,12 +1441,8 @@ int onBootstrap() {
       FindApexFilesByName(kApexPackageSystemDir, false /*include_dirs*/);
   if (!scan.Ok()) {
     LOG(WARNING) << scan.ErrorMessage();
-  } else {
-    // This number of loopback devices are expected at most.
-    // In the bootstrap mount namespace, we will activate kBootstrapApexes.
-    // In the default mount namespace, we will activate all APEXes.
-    auto num = kBootstrapApexes.size() + scan->size();
-    Status preAllocStatus = loop::preAllocateLoopDevices(num);
+  } else if (scan->size() > 0) {
+    Status preAllocStatus = loop::preAllocateLoopDevices(scan->size());
     if (!preAllocStatus.Ok()) {
       LOG(ERROR) << preAllocStatus.ErrorMessage();
     }
