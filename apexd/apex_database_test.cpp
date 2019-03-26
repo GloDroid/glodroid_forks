@@ -28,15 +28,22 @@ namespace {
 using MountedApexData = MountedApexDatabase::MountedApexData;
 
 TEST(MountedApexDataTest, LinearOrder) {
-  constexpr const char* kLoopName[] = {"loop1", "loop1", "loop2",
-                                       "loop2", "loop3", "loop3"};
-  constexpr const char* kPath[] = {"path1", "path2", "path1",
-                                   "path2", "path1", "path3"};
+  constexpr const char* kLoopName[] = {"loop1", "loop1", "loop2", "loop2",
+                                       "loop3", "loop3", "loop3", "loop3"};
+  constexpr const char* kPath[] = {"path1", "path2", "path1", "path2",
+                                   "path1", "path3", "path3", "path3"};
+  constexpr const char* kMountPoint[] = {"point1", "point1", "point1",
+                                         "point1", "point1", "point1",
+                                         "point1", "point2"};
+  constexpr const char* kDeviceName[] = {"dev1", "dev1", "dev1", "dev1",
+                                         "dev1", "dev1", "dev2", "dev1"};
+
   constexpr size_t kCount = arraysize(kLoopName);
 
   MountedApexData data[kCount];
   for (size_t i = 0; i < kCount; ++i) {
-    data[i] = MountedApexData(kLoopName[i], kPath[i]);
+    data[i] =
+        MountedApexData(kLoopName[i], kPath[i], kMountPoint[i], kDeviceName[i]);
   }
 
   for (size_t i = 0; i < kCount; ++i) {
@@ -58,11 +65,13 @@ size_t CountPackages(const MountedApexDatabase& db) {
 }
 
 bool Contains(const MountedApexDatabase& db, const std::string& package,
-              const std::string& loop_name, const std::string& full_path) {
+              const std::string& loop_name, const std::string& full_path,
+              const std::string& mount_point, const std::string& device_name) {
   bool found = false;
   db.ForallMountedApexes([&](const std::string& p, const MountedApexData& d,
                              bool b ATTRIBUTE_UNUSED) {
-    if (package == p && loop_name == d.loop_name && full_path == d.full_path) {
+    if (package == p && loop_name == d.loop_name && full_path == d.full_path &&
+        mount_point == d.mount_point && device_name == d.device_name) {
       found = true;
     }
   });
@@ -86,16 +95,21 @@ TEST(ApexDatabaseTest, AddRemovedMountedApex) {
   constexpr const char* kPackage = "package";
   constexpr const char* kLoopName = "loop";
   constexpr const char* kPath = "path";
+  constexpr const char* kMountPoint = "mount";
+  constexpr const char* kDeviceName = "dev";
 
   MountedApexDatabase db;
   ASSERT_EQ(CountPackages(db), 0u);
 
-  db.AddMountedApex(kPackage, false, kLoopName, kPath);
-  ASSERT_TRUE(Contains(db, kPackage, kLoopName, kPath));
+  db.AddMountedApex(kPackage, false, kLoopName, kPath, kMountPoint,
+                    kDeviceName);
+  ASSERT_TRUE(
+      Contains(db, kPackage, kLoopName, kPath, kMountPoint, kDeviceName));
   ASSERT_TRUE(ContainsPackage(db, kPackage, kLoopName, kPath));
 
   db.RemoveMountedApex(kPackage, kPath);
-  EXPECT_FALSE(Contains(db, kPackage, kLoopName, kPath));
+  EXPECT_FALSE(
+      Contains(db, kPackage, kLoopName, kPath, kMountPoint, kDeviceName));
   EXPECT_FALSE(ContainsPackage(db, kPackage, kLoopName, kPath));
 }
 
@@ -104,28 +118,36 @@ TEST(ApexDatabaseTest, MountMultiple) {
                                       "package"};
   constexpr const char* kLoopName[] = {"loop", "loop", "loop3", "loop4"};
   constexpr const char* kPath[] = {"path", "path2", "path", "path4"};
+  constexpr const char* kMountPoint[] = {"mount", "mount2", "mount", "mount4"};
+  constexpr const char* kDeviceName[] = {"dev", "dev2", "dev", "dev4"};
 
   MountedApexDatabase db;
   ASSERT_EQ(CountPackages(db), 0u);
 
   for (size_t i = 0; i < arraysize(kPackage); ++i) {
-    db.AddMountedApex(kPackage[i], false, kLoopName[i], kPath[i]);
+    db.AddMountedApex(kPackage[i], false, kLoopName[i], kPath[i],
+                      kMountPoint[i], kDeviceName[i]);
   }
 
   ASSERT_EQ(CountPackages(db), 4u);
   for (size_t i = 0; i < arraysize(kPackage); ++i) {
-    ASSERT_TRUE(Contains(db, kPackage[i], kLoopName[i], kPath[i]));
+    ASSERT_TRUE(Contains(db, kPackage[i], kLoopName[i], kPath[i],
+                         kMountPoint[i], kDeviceName[i]));
     ASSERT_TRUE(ContainsPackage(db, kPackage[i], kLoopName[i], kPath[i]));
   }
 
   db.RemoveMountedApex(kPackage[0], kPath[0]);
-  EXPECT_FALSE(Contains(db, kPackage[0], kLoopName[0], kPath[0]));
+  EXPECT_FALSE(Contains(db, kPackage[0], kLoopName[0], kPath[0], kMountPoint[0],
+                        kDeviceName[0]));
   EXPECT_FALSE(ContainsPackage(db, kPackage[0], kLoopName[0], kPath[0]));
-  EXPECT_TRUE(Contains(db, kPackage[1], kLoopName[1], kPath[1]));
+  EXPECT_TRUE(Contains(db, kPackage[1], kLoopName[1], kPath[1], kMountPoint[1],
+                       kDeviceName[1]));
   EXPECT_TRUE(ContainsPackage(db, kPackage[1], kLoopName[1], kPath[1]));
-  EXPECT_TRUE(Contains(db, kPackage[2], kLoopName[2], kPath[2]));
+  EXPECT_TRUE(Contains(db, kPackage[2], kLoopName[2], kPath[2], kMountPoint[2],
+                       kDeviceName[2]));
   EXPECT_TRUE(ContainsPackage(db, kPackage[2], kLoopName[2], kPath[2]));
-  EXPECT_TRUE(Contains(db, kPackage[3], kLoopName[3], kPath[3]));
+  EXPECT_TRUE(Contains(db, kPackage[3], kLoopName[3], kPath[3], kMountPoint[3],
+                       kDeviceName[3]));
   EXPECT_TRUE(ContainsPackage(db, kPackage[3], kLoopName[3], kPath[3]));
 }
 
