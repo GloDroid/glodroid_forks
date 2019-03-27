@@ -261,8 +261,9 @@ cc_test {
     ":apex.apexd_test_postinstall",
     ":apex.apexd_test_prepostinstall.fail",
     ":gen_bad_apexes",
-    ":com.android.apex.cts.shim.v2",
     ":com.android.apex.cts.shim.v1",
+    ":com.android.apex.cts.shim.v2",
+    ":com.android.apex.cts.shim.v2_wrong_sha",
   ],
   srcs: ["apexservice_test.cpp"],
   host_supported: false,
@@ -285,17 +286,3 @@ cc_test {
   test_config: "apexservice_test_config.xml",
 }
 
-cc_test {
-  name: "apex_shim_test",
-  defaults: ["apex_defaults"],
-  data: [":apex.apexd_test"],
-  srcs: ["apex_shim_test.cpp"],
-  host_supported: true,
-  target: {
-    darwin: {
-      enabled: false,
-    },
-  },
-  static_libs: ["libapex"],
-  test_suites: ["device-tests"],
-}

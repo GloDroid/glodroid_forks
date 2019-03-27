@@ -36,7 +36,7 @@ namespace shim {
 
 namespace {
 
-static constexpr const char* kApexCtsShimPackage = "com.android.cts.shim";
+static constexpr const char* kApexCtsShimPackage = "com.android.apex.cts.shim";
 static constexpr const char* kHashFileName = "hash.txt";
 static constexpr const int kBufSize = 1024;
 
@@ -76,7 +76,7 @@ StatusOr<std::string> CalculateSha512(const std::string& path) {
 StatusOr<std::string> ReadSha512(const std::string& path) {
   using StatusT = StatusOr<std::string>;
   std::string file_path =
-      android::base::StringPrintf("%s/%s", path.c_str(), kHashFileName);
+      android::base::StringPrintf("%s/etc/%s", path.c_str(), kHashFileName);
   LOG(DEBUG) << "Reading SHA512 from " << file_path;
   std::string hash;
   if (!android::base::ReadFileToString(file_path, &hash,
