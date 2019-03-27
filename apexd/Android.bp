@@ -1,3 +1,13 @@
+tidy_errors = [
+  "performance-faster-string-find",
+  "performance-for-range-copy",
+  "performance-implicit-conversion-in-loop",
+  "performance-move-const-arg",
+  "performance-move-constructor-init",
+  "performance-noexcept-move-constructor",
+  "performance-unnecessary-value-param",
+]
+
 cc_defaults {
   name: "apex_flags_defaults",
   cflags: [
@@ -20,6 +30,8 @@ cc_defaults {
     "-Wused-but-marked-unused",
   ],
   tidy: true,
+  tidy_checks: tidy_errors,
+  tidy_checks_as_errors: tidy_errors,
   tidy_flags: [
     "-format-style='file'",
     "--header-filter='system/apex/'",
