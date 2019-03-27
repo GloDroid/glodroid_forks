@@ -276,6 +276,8 @@ cc_test {
     ":com.android.apex.cts.shim.v1",
     ":com.android.apex.cts.shim.v2",
     ":com.android.apex.cts.shim.v2_wrong_sha",
+    ":com.android.apex.cts.shim.v2_additional_file",
+    ":com.android.apex.cts.shim.v2_additional_folder",
   ],
   srcs: ["apexservice_test.cpp"],
   host_supported: false,
