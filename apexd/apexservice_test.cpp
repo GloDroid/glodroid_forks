@@ -1760,6 +1760,18 @@ TEST_F(ApexShimUpdateTest, UpdateToV2Success) {
   ASSERT_TRUE(success);
 }
 
+TEST_F(ApexShimUpdateTest, UpdateToV2FailureWrongSHA512) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("com.android.apex.cts.shim.v2_wrong_sha.apex"));
+
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+
+  bool success;
+  ASSERT_FALSE(IsOk(service_->stagePackage(installer.test_file, &success)));
+}
+
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
   void OnTestStart(const ::testing::TestInfo& test_info) override {
 #ifdef __ANDROID__
