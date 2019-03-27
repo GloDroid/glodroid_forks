@@ -68,7 +68,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-using android::defaultServiceManager;
 using android::sp;
 using android::base::EndsWith;
 using android::base::Join;
@@ -276,12 +275,23 @@ Status RemovePreviouslyActiveApexFiles(
   return Status::Success();
 }
 
+Status VerifyMountedImage(const ApexFile& apex,
+                          const std::string& mount_point) {
+  auto status = apex.VerifyManifestMatches(mount_point);
+  if (!status.Ok()) {
+    return status;
+  }
+  if (shim::IsShimApex(apex)) {
+    return shim::ValidateShimApex(apex);
+  }
+  return Status::Success();
+}
+
 StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
-                                            const std::string& mountPoint) {
+                                            const std::string& mountPoint,
+                                            const std::string& device_name) {
   using StatusM = StatusOr<MountedApexData>;
-  const ApexManifest& manifest = apex.GetManifest();
   const std::string& full_path = apex.GetPath();
-  const std::string& packageId = GetPackageId(manifest);
 
   loop::LoopbackDeviceUniqueFd loopbackDevice;
   for (size_t attempts = 1;; ++attempts) {
@@ -309,7 +319,7 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
   }
   std::string blockDevice = loopbackDevice.name;
   MountedApexData apex_data(loopbackDevice.name, apex.GetPath(), mountPoint,
-                            packageId);
+                            device_name);
 
   // for APEXes in immutable partitions, we don't need to mount them on
   // dm-verity because they are already in the dm-verity protected partition;
@@ -321,7 +331,7 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
   if (mountOnVerity) {
     auto verityTable = createVerityTable(*verityData, loopbackDevice.name);
     StatusOr<DmVerityDevice> verityDevRes =
-        createVerityDevice(packageId, *verityTable);
+        createVerityDevice(device_name, *verityTable);
     if (!verityDevRes.Ok()) {
       return StatusM::Fail(StringLog()
                            << "Failed to create Apex Verity device "
@@ -342,14 +352,11 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
               MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, NULL) == 0) {
       LOG(INFO) << "Successfully mounted package " << full_path << " on "
                 << mountPoint;
-      // Verify the manifest inside the APEX filesystem matches the one outside
-      // it.
-      auto status = apex.VerifyManifestMatches(mountPoint);
+      auto status = VerifyMountedImage(apex, mountPoint);
       if (!status.Ok()) {
         umount2(mountPoint.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH);
-        return StatusM::Fail(StringLog()
-                             << "Failed to verify apex manifest for "
-                             << full_path << ": " << status.ErrorMessage());
+        return StatusM::Fail(StringLog() << "Failed to verify " << full_path
+                                         << ": " << status.ErrorMessage());
       }
       // Time to accept the temporaries as good.
       if (mountOnVerity) {
@@ -395,6 +402,89 @@ StatusOr<MountedApexData> mountFlattened(const ApexFile& apex,
   }
   return StatusM::Fail(PStringLog() << "Mounting failed for flattened package "
                                     << apex.GetPath());
+}
+
+StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
+                                           const std::string& mountPoint,
+                                           const std::string& device_name) {
+  using StatusM = StatusOr<MountedApexData>;
+  LOG(VERBOSE) << "Creating mount point: " << mountPoint;
+  // Note: the mount point could exist in case when the APEX was activated
+  // during the bootstrap phase (e.g., the runtime or tzdata APEX).
+  // Although we have separate mount namespaces to separate the early activated
+  // APEXes from the normally activate APEXes, the mount points themselves
+  // are shared across the two mount namespaces because /apex (a tmpfs) itself
+  // mounted at / which is (and has to be) a shared mount. Therefore, if apexd
+  // finds an empty directory under /apex, it's not a problem and apexd can use
+  // it.
+  auto exists = PathExists(mountPoint);
+  if (!exists.Ok()) {
+    return StatusM::MakeError(exists.ErrorStatus());
+  }
+  if (!*exists && mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
+    return StatusM::Fail(PStringLog()
+                         << "Could not create mount point " << mountPoint);
+  }
+  auto deleter = [&mountPoint]() {
+    if (rmdir(mountPoint.c_str()) != 0) {
+      PLOG(WARNING) << "Could not rmdir " << mountPoint;
+    }
+  };
+  auto scope_guard = android::base::make_scope_guard(deleter);
+  if (!IsEmptyDirectory(mountPoint)) {
+    return StatusM::Fail(PStringLog() << mountPoint << " is not empty");
+  }
+
+  StatusOr<MountedApexData> ret;
+  if (apex.IsFlattened()) {
+    ret = mountFlattened(apex, mountPoint);
+  } else {
+    ret = mountNonFlattened(apex, mountPoint, device_name);
+  }
+  if (ret.Ok()) {
+    scope_guard.Disable();  // Accept the mount.
+  }
+  return ret;
+}
+
+StatusOr<MountedApexData> TempMountPackage(const ApexFile& apex,
+                                           const std::string& mount_point) {
+  const std::string& package_id = GetPackageId(apex.GetManifest());
+  LOG(DEBUG) << "Temp mounting " << package_id << " to " << mount_point;
+  const std::string& temp_device_name = package_id + ".tmp";
+  return MountPackageImpl(apex, mount_point, temp_device_name);
+}
+
+Status Unmount(const MountedApexData& data) {
+  // Lazily try to umount whatever is mounted.
+  if (umount2(data.mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
+      errno != EINVAL && errno != ENOENT) {
+    return Status::Fail(PStringLog()
+                        << "Failed to unmount directory " << data.mount_point);
+  }
+  // Attempt to delete the folder. If the folder is retained, other
+  // data may be incorrect.
+  if (rmdir(data.mount_point.c_str()) != 0) {
+    PLOG(ERROR) << "Failed to rmdir directory " << data.mount_point;
+  }
+
+  // Try to free up the device-mapper device.
+  if (!data.device_name.empty()) {
+    DeviceMapper& dm = DeviceMapper::Instance();
+    if (!dm.DeleteDevice(data.device_name)) {
+      LOG(ERROR) << "Unable to delete dm device " << data.device_name;
+    }
+  }
+
+  // Try to free up the loop device.
+  if (!data.loop_name.empty()) {
+    auto log_fn = [](const std::string& path,
+                     const std::string& id ATTRIBUTE_UNUSED) {
+      LOG(VERBOSE) << "Freeing loop device " << path << "for unmount.";
+    };
+    loop::DestroyLoopDevice(data.loop_name, log_fn);
+  }
+  return Status::Success();
 }
 
 template <typename HookFn, typename HookCall>
@@ -458,13 +548,53 @@ Status ValidateStagingShimApex(const ApexFile& to) {
                         << "Can't load active version of " << package_name
                         << " : " << from.ErrorMessage());
   }
-  auto validate_status = shim::ValidateShimApex(to);
-  if (!validate_status.Ok()) {
-    return validate_status;
-  }
   std::string from_mount_point =
       apexd_private::GetActiveMountPoint(from->GetManifest());
   return shim::ValidateUpdate(from_mount_point, to.GetPath());
+}
+
+std::string GetPackageTempMountPoint(const ApexManifest& manifest) {
+  return StringPrintf("%s.tmp",
+                      apexd_private::GetPackageMountPoint(manifest).c_str());
+}
+
+Status verifyPackage(const ApexFile& apex_file) {
+  if (apex_file.IsFlattened()) {
+    return Status::Fail("Can't upgrade flattened apex");
+  }
+  StatusOr<ApexVerityData> verity_or = apex_file.VerifyApexVerity(
+      {kApexKeySystemDirectory, kApexKeyProductDirectory,
+       kApexKeySystemProductDirectory});
+  if (!verity_or.Ok()) {
+    return Status::Fail(verity_or.ErrorMessage());
+  }
+
+  if (shim::IsShimApex(apex_file)) {
+    auto status = ValidateStagingShimApex(apex_file);
+    if (!status.Ok()) {
+      return status;
+    }
+  }
+
+  // Temp mount image of this apex to validate it was properly signed.
+  const std::string& temp_mount_point =
+      GetPackageTempMountPoint(apex_file.GetManifest());
+
+  StatusOr<MountedApexData> mount_status =
+      TempMountPackage(apex_file, temp_mount_point);
+  if (!mount_status.Ok()) {
+    LOG(ERROR) << "Failed to temp mount to " << temp_mount_point << " : "
+               << mount_status.ErrorMessage();
+    return mount_status.ErrorStatus();
+  }
+  // TODO: add additional checks, and move unmount inside scope guard.
+  LOG(DEBUG) << "Unmounting " << temp_mount_point;
+  Status status = Unmount(*mount_status);
+  if (!status.Ok()) {
+    LOG(WARNING) << "Failed to unmount " << temp_mount_point << " : "
+                 << status.ErrorMessage();
+  }
+  return Status::Success();
 }
 
 StatusOr<std::vector<ApexFile>> verifyPackages(
@@ -477,17 +607,9 @@ StatusOr<std::vector<ApexFile>> verifyPackages(
   using StatusT = StatusOr<std::vector<ApexFile>>;
   auto verify_fn = [](std::vector<ApexFile>& apexes) {
     for (const ApexFile& apex_file : apexes) {
-      StatusOr<ApexVerityData> verity_or = apex_file.VerifyApexVerity(
-          {kApexKeySystemDirectory, kApexKeyProductDirectory,
-           kApexKeySystemProductDirectory});
-      if (!verity_or.Ok()) {
-        return StatusT::MakeError(verity_or.ErrorMessage());
-      }
-      if (shim::IsShimApex(apex_file)) {
-        auto validate_status = ValidateStagingShimApex(apex_file);
-        if (!validate_status.Ok()) {
-          return StatusT::MakeError(validate_status);
-        }
+      Status status = verifyPackage(apex_file);
+      if (!status.Ok()) {
+        return StatusT::MakeError(status);
       }
     }
     return StatusT(std::move(apexes));
@@ -731,38 +853,6 @@ Status ResumeRollback(ApexSession& session) {
   return Status::Success();
 }
 
-Status Unmount(const MountedApexData& data) {
-  // Lazily try to umount whatever is mounted.
-  if (umount2(data.mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
-      errno != EINVAL && errno != ENOENT) {
-    return Status::Fail(PStringLog()
-                        << "Failed to unmount directory " << data.mount_point);
-  }
-  // Attempt to delete the folder. If the folder is retained, other
-  // data may be incorrect.
-  if (rmdir(data.mount_point.c_str()) != 0) {
-    PLOG(ERROR) << "Failed to rmdir directory " << data.mount_point;
-  }
-
-  // Try to free up the device-mapper device.
-  if (!data.device_name.empty()) {
-    DeviceMapper& dm = DeviceMapper::Instance();
-    if (!dm.DeleteDevice(data.device_name)) {
-      LOG(ERROR) << "Unable to delete dm device " << data.device_name;
-    }
-  }
-
-  // Try to free up the loop device.
-  if (!data.loop_name.empty()) {
-    auto log_fn = [](const std::string& path,
-                     const std::string& id ATTRIBUTE_UNUSED) {
-      LOG(VERBOSE) << "Freeing loop device " << path << "for unmount.";
-    };
-    loop::DestroyLoopDevice(data.loop_name, log_fn);
-  }
-  return Status::Success();
-}
-
 Status UnmountPackage(const ApexFile& apex, bool allow_latest) {
   LOG(VERBOSE) << "Unmounting " << GetPackageId(apex.GetManifest());
 
@@ -804,45 +894,14 @@ Status UnmountPackage(const ApexFile& apex, bool allow_latest) {
   return Unmount(*data);
 }
 
-StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
-                                           const std::string& mountPoint) {
-  using StatusM = StatusOr<MountedApexData>;
-  LOG(VERBOSE) << "Creating mount point: " << mountPoint;
-  // Note: the mount point could exist in case when the APEX was activated
-  // during the bootstrap phase (e.g., the runtime or tzdata APEX).
-  // Although we have separate mount namespaces to separate the early activated
-  // APEXes from the normally activate APEXes, the mount points themselves
-  // are shared across the two mount namespaces because /apex (a tmpfs) itself
-  // mounted at / which is (and has to be) a shared mount. Therefore, if apexd
-  // finds an empty directory under /apex, it's not a problem and apexd can use
-  // it.
-  auto exists = PathExists(mountPoint);
-  if (!exists.Ok()) {
-    return StatusM::MakeError(exists.ErrorStatus());
-  }
-  if (!*exists && mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
-    return StatusM::Fail(PStringLog()
-                         << "Could not create mount point " << mountPoint);
-  }
-  if (!IsEmptyDirectory(mountPoint)) {
-    return StatusM::Fail(PStringLog() << mountPoint << " is not empty");
-  }
-
-  auto ret = apex.IsFlattened() ? mountFlattened(apex, mountPoint)
-                                : mountNonFlattened(apex, mountPoint);
-  return ret;
-}
-
 }  // namespace
 
 namespace apexd_private {
 
 Status MountPackage(const ApexFile& apex, const std::string& mountPoint) {
-  auto ret = MountPackageImpl(apex, mountPoint);
+  auto ret =
+      MountPackageImpl(apex, mountPoint, GetPackageId(apex.GetManifest()));
   if (!ret.Ok()) {
-    if (rmdir(mountPoint.c_str()) != 0) {
-      PLOG(WARNING) << "Could not rmdir " << mountPoint;
-    }
     return ret.ErrorStatus();
   }
 
