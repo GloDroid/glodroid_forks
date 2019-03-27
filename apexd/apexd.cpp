@@ -63,6 +63,7 @@
 #include <fstream>
 #include <iomanip>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -307,7 +308,8 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
                          << full_path << ": " << verityData.ErrorMessage());
   }
   std::string blockDevice = loopbackDevice.name;
-  MountedApexData apex_data(loopbackDevice.name, apex.GetPath());
+  MountedApexData apex_data(loopbackDevice.name, apex.GetPath(), mountPoint,
+                            packageId);
 
   // for APEXes in immutable partitions, we don't need to mount them on
   // dm-verity because they are already in the dm-verity protected partition;
@@ -387,7 +389,8 @@ StatusOr<MountedApexData> mountFlattened(const ApexFile& apex,
     LOG(INFO) << "Successfully bind-mounted flattened package "
               << apex.GetPath() << " on " << mountPoint;
 
-    MountedApexData apex_data("", apex.GetPath());
+    MountedApexData apex_data("" /* loop_name */, apex.GetPath(), mountPoint,
+                              "" /* device_name */);
     return StatusM(std::move(apex_data));
   }
   return StatusM::Fail(PStringLog() << "Mounting failed for flattened package "
@@ -728,27 +731,26 @@ Status ResumeRollback(ApexSession& session) {
   return Status::Success();
 }
 
-// TODO: Change this to accept const MountedApexData&.
-Status Unmount(const std::string& mount_point, const std::string& loop) {
+Status Unmount(const MountedApexData& data) {
   // Lazily try to umount whatever is mounted.
-  if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
+  if (umount2(data.mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
       errno != EINVAL && errno != ENOENT) {
     return Status::Fail(PStringLog()
-                        << "Failed to unmount directory " << mount_point);
+                        << "Failed to unmount directory " << data.mount_point);
   }
   // Attempt to delete the folder. If the folder is retained, other
   // data may be incorrect.
-  if (rmdir(mount_point.c_str()) != 0) {
-    PLOG(ERROR) << "Failed to rmdir directory " << mount_point;
+  if (rmdir(data.mount_point.c_str()) != 0) {
+    PLOG(ERROR) << "Failed to rmdir directory " << data.mount_point;
   }
 
   // Try to free up the loop device.
-  if (!loop.empty()) {
+  if (!data.loop_name.empty()) {
     auto log_fn = [](const std::string& path,
                      const std::string& id ATTRIBUTE_UNUSED) {
       LOG(VERBOSE) << "Freeing loop device " << path << "for unmount.";
     };
-    loop::DestroyLoopDevice(loop, log_fn);
+    loop::DestroyLoopDevice(data.loop_name, log_fn);
   }
   return Status::Success();
 }
@@ -758,18 +760,18 @@ Status UnmountPackage(const ApexFile& apex, bool allow_latest) {
 
   const ApexManifest& manifest = apex.GetManifest();
 
-  const MountedApexData* data = nullptr;
+  std::optional<MountedApexData> data;
   bool latest = false;
 
-  gMountedApexes.ForallMountedApexes(manifest.name(),
-                                     [&](const MountedApexData& d, bool l) {
-                                       if (d.full_path == apex.GetPath()) {
-                                         data = &d;
-                                         latest = l;
-                                       }
-                                     });
+  auto fn = [&](const MountedApexData& d, bool l) {
+    if (d.full_path == apex.GetPath()) {
+      data.emplace(d);
+      latest = l;
+    }
+  };
+  gMountedApexes.ForallMountedApexes(manifest.name(), fn);
 
-  if (data == nullptr) {
+  if (!data.has_value()) {
     return Status::Fail(StringLog() << "Did not find " << apex.GetPath());
   }
 
@@ -789,11 +791,9 @@ Status UnmountPackage(const ApexFile& apex, bool allow_latest) {
     }
   }
 
-  std::string mount_point = apexd_private::GetPackageMountPoint(manifest);
   // Clean up gMountedApexes now, even though we're not fully done.
-  std::string loop = data->loop_name;
   gMountedApexes.RemoveMountedApex(manifest.name(), apex.GetPath());
-  return Unmount(mount_point, loop);
+  return Unmount(*data);
 }
 
 StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
