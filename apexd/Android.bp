@@ -272,6 +272,7 @@ cc_test {
     "libapex",
     "libapexd",
     "libavb",
+    "libdm",
     "libgmock",
     "libvold_binder",
   ],

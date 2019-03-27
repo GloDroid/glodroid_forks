@@ -744,6 +744,14 @@ Status Unmount(const MountedApexData& data) {
     PLOG(ERROR) << "Failed to rmdir directory " << data.mount_point;
   }
 
+  // Try to free up the device-mapper device.
+  if (!data.device_name.empty()) {
+    DeviceMapper& dm = DeviceMapper::Instance();
+    if (!dm.DeleteDevice(data.device_name)) {
+      LOG(ERROR) << "Unable to delete dm device " << data.device_name;
+    }
+  }
+
   // Try to free up the loop device.
   if (!data.loop_name.empty()) {
     auto log_fn = [](const std::string& path,

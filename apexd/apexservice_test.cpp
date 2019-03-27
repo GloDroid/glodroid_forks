@@ -39,6 +39,7 @@
 #include <binder/IServiceManager.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libdm/dm.h>
 #include <selinux/selinux.h>
 
 #include <android/apex/ApexInfo.h>
@@ -718,6 +719,62 @@ TEST_F(ApexServiceActivationSuccessTest, StageAlreadyActivePackageSameVersion) {
   bool success = false;
   ASSERT_TRUE(IsOk(service_->stagePackage(installer_->test_file, &success)));
   ASSERT_TRUE(success);
+}
+
+class ApexServiceDeactivationTest : public ApexServiceActivationSuccessTest {
+ public:
+  void SetUp() override {
+    ApexServiceActivationSuccessTest::SetUp();
+
+    ASSERT_TRUE(installer_ != nullptr);
+  }
+
+  void TearDown() override {
+    installer_.reset();
+    ApexServiceActivationSuccessTest::TearDown();
+  }
+
+  std::unique_ptr<PrepareTestApexForInstall> installer_;
+};
+
+TEST_F(ApexServiceActivationSuccessTest, DmDeviceTearDown) {
+  std::string package_id =
+      installer_->package + "@" + std::to_string(installer_->version);
+
+  auto find_fn = [](const std::string& name) {
+    auto& dm = dm::DeviceMapper::Instance();
+    std::vector<dm::DeviceMapper::DmBlockDevice> devices;
+    if (!dm.GetAvailableDevices(&devices)) {
+      return StatusOr<bool>::Fail("GetAvailableDevices failed");
+    }
+    for (const auto& device : devices) {
+      if (device.name() == name) {
+        return StatusOr<bool>(true);
+      }
+    }
+    return StatusOr<bool>(false);
+  };
+
+#define ASSERT_FIND(type)                     \
+  {                                           \
+    StatusOr<bool> res = find_fn(package_id); \
+    ASSERT_TRUE(res.Ok());                    \
+    ASSERT_##type(*res);                      \
+  }
+
+  ASSERT_FIND(FALSE);
+
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+
+  ASSERT_FIND(TRUE);
+
+  ASSERT_TRUE(
+      IsOk(service_->deactivatePackage(installer_->test_installed_file)));
+
+  ASSERT_FIND(FALSE);
+
+  installer_.reset();  // Skip TearDown deactivatePackage.
 }
 
 class ApexServicePrePostInstallTest : public ApexServiceTest {
