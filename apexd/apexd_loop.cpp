@@ -249,9 +249,12 @@ void DestroyLoopDevice(const std::string& path, const DestroyLoopFn& extra) {
 
 void destroyAllLoopDevices() {
   std::string root = "/dev/block/";
-  auto dirp =
-      std::unique_ptr<DIR, int (*)(DIR*)>(opendir(root.c_str()), closedir);
-  if (!dirp) {
+  StatusOr<std::vector<std::string>> loop_files =
+      ReadDir(root, [](const std::filesystem::directory_entry& entry) {
+        return StartsWith(entry.path().filename().string(), "loop");
+      });
+
+  if (!loop_files.Ok()) {
     PLOG(ERROR) << "Failed to open /dev/block/, can't destroy loop devices.";
     return;
   }
@@ -261,13 +264,9 @@ void destroyAllLoopDevices() {
     LOG(DEBUG) << "Tearing down stale loop device at " << path << " named "
                << id;
   };
-  struct dirent* de;
-  while ((de = readdir(dirp.get()))) {
-    auto test = std::string(de->d_name);
-    if (!StartsWith(test, "loop")) continue;
 
-    auto path = root + de->d_name;
-    DestroyLoopDevice(path, log_fn);
+  for (const std::string& full_path : *loop_files) {
+    DestroyLoopDevice(full_path, log_fn);
   }
 }
 
