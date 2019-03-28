@@ -19,6 +19,7 @@
 
 #include <map>
 #include <string>
+#include <unordered_set>
 
 #include <android-base/logging.h>
 
@@ -79,6 +80,23 @@ class MountedApexDatabase {
     }
   }
 
+  inline void CheckUniqueLoopDm() {
+    std::unordered_set<std::string> loop_devices;
+    std::unordered_set<std::string> dm_devices;
+    for (const auto& apex_set : mounted_apexes_) {
+      for (const auto& pair : apex_set.second) {
+        if (pair.first.loop_name != "") {
+          CHECK(loop_devices.insert(pair.first.loop_name).second)
+              << "Duplicate loop device: " << pair.first.loop_name;
+        }
+        if (pair.first.device_name != "") {
+          CHECK(dm_devices.insert(pair.first.device_name).second)
+              << "Duplicate dm device: " << pair.first.device_name;
+        }
+      }
+    }
+  }
+
   template <typename... Args>
   inline void AddMountedApex(const std::string& package, bool latest,
                              Args&&... args) {
@@ -95,6 +113,7 @@ class MountedApexDatabase {
     CHECK(check_it.second);
 
     CheckAtMostOneLatest();
+    CheckUniqueLoopDm();
   }
 
   inline void RemoveMountedApex(const std::string& package,
