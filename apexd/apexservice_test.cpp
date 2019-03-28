@@ -170,30 +170,29 @@ class ApexServiceTest : public ::testing::Test {
 
   static std::vector<std::string> ListDir(const std::string& path) {
     std::vector<std::string> ret;
-    auto d =
-        std::unique_ptr<DIR, int (*)(DIR*)>(opendir(path.c_str()), closedir);
-    if (d == nullptr) {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    if (!fs::is_directory(path, ec)) {
       return ret;
     }
 
-    struct dirent* dp;
-    while ((dp = readdir(d.get())) != nullptr) {
+    for (const auto& entry : fs::directory_iterator(path)) {
       std::string tmp;
-      switch (dp->d_type) {
-        case DT_DIR:
+      switch (entry.symlink_status(ec).type()) {
+        case fs::file_type::directory:
           tmp = "[dir]";
           break;
-        case DT_LNK:
+        case fs::file_type::symlink:
           tmp = "[lnk]";
           break;
-        case DT_REG:
+        case fs::file_type::regular:
           tmp = "[reg]";
           break;
         default:
           tmp = "[other]";
           break;
       }
-      tmp = tmp.append(dp->d_name);
+      tmp = tmp.append(entry.path().filename().string());
       ret.push_back(tmp);
     }
     std::sort(ret.begin(), ret.end());
@@ -704,20 +703,18 @@ TEST_F(ApexServiceActivationSuccessTest, Activate) {
     // Collect direct entries of a folder.
     auto collect_entries_fn = [](const std::string& path) {
       std::vector<std::string> ret;
+      std::error_code ec;
+      namespace fs = std::filesystem;
       // Check that there is something in there.
-      auto d =
-          std::unique_ptr<DIR, int (*)(DIR*)>(opendir(path.c_str()), closedir);
-      if (d == nullptr) {
+      if (!fs::is_directory(path, ec)) {
         return ret;
       }
 
-      struct dirent* dp;
-      while ((dp = readdir(d.get())) != nullptr) {
-        if (dp->d_type != DT_DIR || (strcmp(dp->d_name, ".") == 0) ||
-            (strcmp(dp->d_name, "..") == 0)) {
+      for (const auto& entry : fs::directory_iterator(path)) {
+        if (!entry.is_directory()) {
           continue;
         }
-        ret.emplace_back(dp->d_name);
+        ret.emplace_back(entry.path().filename().string());
       }
       std::sort(ret.begin(), ret.end());
       return ret;
