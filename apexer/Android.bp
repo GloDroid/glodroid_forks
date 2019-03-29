@@ -23,7 +23,7 @@ apexer_tools = [
       "sefcontext_compile",
       "soong_zip",
       "zipalign",
-      // TODO(b/124439236) apex doesn't follow 'required' dependencies so we need to include this
+      // TODO(b/124476339) apex doesn't follow 'required' dependencies so we need to include this
       // manually for 'avbtool'.
       "fec",
 ]
