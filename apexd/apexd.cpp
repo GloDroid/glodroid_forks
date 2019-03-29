@@ -282,7 +282,7 @@ Status VerifyMountedImage(const ApexFile& apex,
     return status;
   }
   if (shim::IsShimApex(apex)) {
-    return shim::ValidateShimApex(apex);
+    return shim::ValidateShimApex(mount_point);
   }
   return Status::Success();
 }
@@ -951,13 +951,6 @@ Status resumeRollbackIfNeeded() {
 }
 
 Status activatePackageImpl(const ApexFile& apex_file) {
-  if (shim::IsShimApex(apex_file)) {
-    auto validate_status = shim::ValidateShimApex(apex_file);
-    if (!validate_status.Ok()) {
-      return validate_status;
-    }
-  }
-
   const ApexManifest& manifest = apex_file.GetManifest();
 
   if (gBootstrap && std::find(kBootstrapApexes.begin(), kBootstrapApexes.end(),
