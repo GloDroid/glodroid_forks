@@ -35,6 +35,7 @@
 #include <android-base/scopeguard.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
+#include <android/os/IVold.h>
 #include <binder/IServiceManager.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -82,11 +83,19 @@ class ApexServiceTest : public ::testing::Test {
     if (binder != nullptr) {
       service_ = android::interface_cast<IApexService>(binder);
     }
+    binder = sm->getService(String16("vold"));
+    if (binder != nullptr) {
+      vold_service_ = android::interface_cast<android::os::IVold>(binder);
+    }
   }
 
  protected:
   void SetUp() override {
     ASSERT_NE(nullptr, service_.get());
+    ASSERT_NE(nullptr, vold_service_.get());
+    android::binder::Status status =
+        vold_service_->supportsCheckpoint(&supports_fs_checkpointing_);
+    ASSERT_TRUE(IsOk(status));
     CleanUp();
   }
 
@@ -339,6 +348,8 @@ class ApexServiceTest : public ::testing::Test {
   }
 
   sp<IApexService> service_;
+  sp<android::os::IVold> vold_service_;
+  bool supports_fs_checkpointing_;
 
  private:
   void CleanUp() {
@@ -1104,6 +1115,9 @@ TEST_F(ApexServiceTest, AbortActiveSession) {
 }
 
 TEST_F(ApexServiceTest, BackupActivePackages) {
+  if (supports_fs_checkpointing_) {
+    return;
+  }
   PrepareTestApexForInstall installer1(GetTestFile("apex.apexd_test.apex"));
   PrepareTestApexForInstall installer2(
       GetTestFile("apex.apexd_test_different_app.apex"));
@@ -1122,8 +1136,8 @@ TEST_F(ApexServiceTest, BackupActivePackages) {
   ASSERT_TRUE(ret);
 
   // Make sure that /data/apex/active has activated packages.
-  auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
-                             [](auto _, auto __) { return true; });
+  auto active_pkgs =
+      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
   ASSERT_TRUE(IsOk(active_pkgs));
   ASSERT_THAT(*active_pkgs,
               UnorderedElementsAre(installer1.test_installed_file,
@@ -1135,8 +1149,7 @@ TEST_F(ApexServiceTest, BackupActivePackages) {
       service_->submitStagedSession(23, empty_child_session_ids, &list, &ret)));
   ASSERT_TRUE(ret);
 
-  auto backups = ReadDir(std::string(kApexBackupDir),
-                         [](auto _, auto __) { return true; });
+  auto backups = ReadDir(kApexBackupDir, [](auto _) { return true; });
   ASSERT_TRUE(IsOk(backups));
   auto backup1 =
       StringPrintf("%s/com.android.apex.test_package@1.apex", kApexBackupDir);
@@ -1146,6 +1159,9 @@ TEST_F(ApexServiceTest, BackupActivePackages) {
 }
 
 TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
+  if (supports_fs_checkpointing_) {
+    return;
+  }
   PrepareTestApexForInstall installer1(GetTestFile("apex.apexd_test.apex"));
   PrepareTestApexForInstall installer2(
       GetTestFile("apex.apexd_test_different_app.apex"));
@@ -1170,8 +1186,8 @@ TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
   ASSERT_TRUE(ret);
 
   // Make sure that /data/apex/active has activated packages.
-  auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
-                             [](auto _, auto __) { return true; });
+  auto active_pkgs =
+      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
   ASSERT_TRUE(IsOk(active_pkgs));
   ASSERT_THAT(*active_pkgs,
               UnorderedElementsAre(installer1.test_installed_file,
@@ -1183,8 +1199,7 @@ TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
       service_->submitStagedSession(43, empty_child_session_ids, &list, &ret)));
   ASSERT_TRUE(ret);
 
-  auto backups = ReadDir(std::string(kApexBackupDir),
-                         [](auto _, auto __) { return true; });
+  auto backups = ReadDir(kApexBackupDir, [](auto _) { return true; });
   ASSERT_TRUE(IsOk(backups));
   auto backup1 =
       StringPrintf("%s/com.android.apex.test_package@1.apex", kApexBackupDir);
@@ -1194,6 +1209,9 @@ TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
 }
 
 TEST_F(ApexServiceTest, BackupActivePackagesZeroActivePackages) {
+  if (supports_fs_checkpointing_) {
+    return;
+  }
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"),
                                       "/data/app-staging/session_41",
                                       "staging_data_file");
@@ -1205,8 +1223,8 @@ TEST_F(ApexServiceTest, BackupActivePackagesZeroActivePackages) {
   // Make sure that /data/apex/active exists and is empty
   ASSERT_TRUE(
       IsOk(createDirIfNeeded(std::string(kActiveApexPackagesDataDir), 0750)));
-  auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
-                             [](auto _, auto __) { return true; });
+  auto active_pkgs =
+      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
   ASSERT_TRUE(IsOk(active_pkgs));
   ASSERT_EQ(0u, active_pkgs->size());
 
@@ -1217,8 +1235,7 @@ TEST_F(ApexServiceTest, BackupActivePackagesZeroActivePackages) {
       service_->submitStagedSession(41, empty_child_session_ids, &list, &ret)));
   ASSERT_TRUE(ret);
 
-  auto backups = ReadDir(std::string(kApexBackupDir),
-                         [](auto _, auto __) { return true; });
+  auto backups = ReadDir(kApexBackupDir, [](auto _) { return true; });
   ASSERT_TRUE(IsOk(backups));
   ASSERT_EQ(0u, backups->size());
 }
@@ -1245,10 +1262,11 @@ TEST_F(ApexServiceTest, ActivePackagesFolderDoesNotExist) {
       service_->submitStagedSession(41, empty_child_session_ids, &list, &ret)));
   ASSERT_TRUE(ret);
 
-  auto backups = ReadDir(std::string(kApexBackupDir),
-                         [](auto _, auto __) { return true; });
-  ASSERT_TRUE(IsOk(backups));
-  ASSERT_EQ(0u, backups->size());
+  if (!supports_fs_checkpointing_) {
+    auto backups = ReadDir(kApexBackupDir, [](auto _) { return true; });
+    ASSERT_TRUE(IsOk(backups));
+    ASSERT_EQ(0u, backups->size());
+  }
 }
 
 TEST_F(ApexServiceTest, UnstagePackagesSuccess) {
@@ -1268,8 +1286,8 @@ TEST_F(ApexServiceTest, UnstagePackagesSuccess) {
   pkgs = {installer2.test_installed_file};
   ASSERT_TRUE(IsOk(service_->unstagePackages(pkgs)));
 
-  auto active_packages = ReadDir(std::string(kActiveApexPackagesDataDir),
-                                 [](auto _, auto __) { return true; });
+  auto active_packages =
+      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
   ASSERT_TRUE(IsOk(active_packages));
   ASSERT_THAT(*active_packages,
               UnorderedElementsAre(installer1.test_installed_file));
@@ -1293,8 +1311,8 @@ TEST_F(ApexServiceTest, UnstagePackagesFail) {
   ASSERT_FALSE(IsOk(service_->unstagePackages(pkgs)));
 
   // Check that first package wasn't unstaged.
-  auto active_packages = ReadDir(std::string(kActiveApexPackagesDataDir),
-                                 [](auto _, auto __) { return true; });
+  auto active_packages =
+      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
   ASSERT_TRUE(IsOk(active_packages));
   ASSERT_THAT(*active_packages,
               UnorderedElementsAre(installer1.test_installed_file));
@@ -1304,7 +1322,7 @@ class ApexServiceRollbackTest : public ApexServiceTest {
  protected:
   void SetUp() override { ApexServiceTest::SetUp(); }
 
-  void PrepareBackup(const std::vector<std::string> pkgs) {
+  void PrepareBackup(const std::vector<std::string>& pkgs) {
     ASSERT_TRUE(IsOk(createDirIfNeeded(std::string(kApexBackupDir), 0700)));
     for (const auto& pkg : pkgs) {
       PrepareTestApexForInstall installer(pkg);
@@ -1328,14 +1346,18 @@ class ApexServiceRollbackTest : public ApexServiceTest {
     ASSERT_EQ(0750u, sd.st_mode & ALLPERMS);
 
     // Now read content and check it contains expected values.
-    auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
-                               [](auto _, auto __) { return true; });
+    auto active_pkgs =
+        ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
     ASSERT_TRUE(IsOk(active_pkgs));
     ASSERT_THAT(*active_pkgs, UnorderedElementsAreArray(expected_pkgs));
   }
 };
 
 TEST_F(ApexServiceRollbackTest, AbortActiveSessionSuccessfulRollback) {
+  if (supports_fs_checkpointing_) {
+    // Can't test rollback when using filesystem checkpointing
+    return;
+  }
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer.Prepare()) {
     return;
@@ -1361,7 +1383,6 @@ TEST_F(ApexServiceRollbackTest, AbortActiveSessionSuccessfulRollback) {
                            kActiveApexPackagesDataDir);
   SCOPED_TRACE("");
   CheckRollbackWasPerformed({pkg1, pkg2});
-
   std::vector<ApexSessionInfo> sessions;
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
   ApexSessionInfo expected = CreateSessionInfo(239);
@@ -1386,7 +1407,7 @@ TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledSuccessfulRollback) {
 
   PrepareBackup({GetTestFile("apex.apexd_test.apex")});
 
-  ASSERT_TRUE(IsOk(rollbackLastSession()));
+  ASSERT_TRUE(IsOk(rollbackActiveSession()));
 
   auto pkg = StringPrintf("%s/com.android.apex.test_package@1.apex",
                           kActiveApexPackagesDataDir);
@@ -1411,16 +1432,16 @@ TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledNoActiveSession) {
 
   // Even though backup is there, no sessions are active, hence rollback request
   // should fail.
-  ASSERT_FALSE(IsOk(rollbackLastSession()));
+  ASSERT_FALSE(IsOk(rollbackActiveSession()));
 }
 
 TEST_F(ApexServiceRollbackTest, RollbackFailsNoBackupFolder) {
-  ASSERT_FALSE(IsOk(rollbackLastSession()));
+  ASSERT_FALSE(IsOk(rollbackActiveSession()));
 }
 
 TEST_F(ApexServiceRollbackTest, RollbackFailsNoActivePackagesFolder) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
-  ASSERT_FALSE(IsOk(rollbackLastSession()));
+  ASSERT_FALSE(IsOk(rollbackActiveSession()));
 }
 
 TEST_F(ApexServiceRollbackTest, MarkStagedSessionSuccessfulCleanupBackup) {
@@ -1437,6 +1458,9 @@ TEST_F(ApexServiceRollbackTest, MarkStagedSessionSuccessfulCleanupBackup) {
 }
 
 TEST_F(ApexServiceRollbackTest, ResumesRollback) {
+  if (supports_fs_checkpointing_) {
+    return;
+  }
   PrepareBackup({GetTestFile("apex.apexd_test.apex"),
                  GetTestFile("apex.apexd_test_different_app.apex")});
 
@@ -1472,6 +1496,9 @@ TEST_F(ApexServiceRollbackTest, ResumesRollback) {
 }
 
 TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
+  if (supports_fs_checkpointing_) {
+    return;
+  }
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer.Prepare()) {
     return;
@@ -1489,8 +1516,8 @@ TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
   ASSERT_TRUE(IsOk(resumeRollbackIfNeeded()));
 
   // Check that rollback wasn't resumed.
-  auto active_pkgs = ReadDir(std::string(kActiveApexPackagesDataDir),
-                             [](auto _, auto __) { return true; });
+  auto active_pkgs =
+      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
   ASSERT_TRUE(IsOk(active_pkgs));
   ASSERT_THAT(*active_pkgs,
               UnorderedElementsAre(installer.test_installed_file));
@@ -1520,7 +1547,8 @@ static pid_t GetPidOf(const std::string& name) {
   return strtoul(buf, nullptr, 10);
 }
 
-static void ExecInMountNamespaceOf(pid_t pid, std::function<void(pid_t)> func) {
+static void ExecInMountNamespaceOf(pid_t pid,
+                                   const std::function<void(pid_t)>& func) {
   const std::string my_path = "/proc/self/ns/mnt";
   android::base::unique_fd my_fd(open(my_path.c_str(), O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(my_fd.get() >= 0);

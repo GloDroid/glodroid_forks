@@ -30,27 +30,23 @@ import org.junit.Before;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * Base test to check if Apex can be staged, activated and uninstalled successfully.
  */
 public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
-    protected static final String APEX_DATA_DIR = "/data/apex";
-    protected static final String STAGING_DATA_DIR = "/data/app-staging";
-    protected static final String OPTION_APEX_FILE_NAME = "apex_file_name";
-    protected static final String OPTION_BROADCASTAPP_APK_NAME = "broadcastapp_apk_name";
-    protected static final String BROADCASTAPP_PACKAGE_NAME = "android.apex.broadcastreceiver";
+    private static final Duration WAIT_FOR_SESSION_READY_TTL = Duration.ofSeconds(10);
+    private static final Duration SLEEP_FOR = Duration.ofMillis(200);
 
-    protected final Pattern mAppPackageNamePattern =
-            Pattern.compile("appPackageName = com\\.android\\.apex\\.test;");
+    protected static final String OPTION_APEX_FILE_NAME = "apex_file_name";
+
     protected final Pattern mIsSessionReadyPattern = Pattern.compile("isStagedSessionReady = true");
     protected final Pattern mIsSessionAppliedPattern =
             Pattern.compile("isStagedSessionApplied = true;");
-    protected final Pattern mSessionBroadcastReceiver =
-            Pattern.compile("BroadcastReceiver: Action: android.content.pm.action.SESSION_UPDATED");
 
     /* protected so that derived tests can have access to test utils automatically */
     protected final ApexTestUtils mUtils = new ApexTestUtils(this);
@@ -62,25 +58,9 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     )
     protected String mApexFileName = null;
 
-    @Option(name = OPTION_BROADCASTAPP_APK_NAME,
-            description = "The APK file name of the BroadcastReceiver app.",
-            importance = Importance.IF_UNSET,
-            mandatory = true
-    )
-    private String mBroadcastAppApkName = null;
-
     @Before
     public synchronized void setUp() throws Exception {
-        getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
-        getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
-        getDevice().reboot(); // for the above commands to take affect
-        // Install broadcast receiver app
-        String installResult = getDevice().installPackage(
-                mUtils.getTestFile(mBroadcastAppApkName), false);
-        Assert.assertNull(
-                String.format("failed to install test app %s. Reason: %s",
-                    mBroadcastAppApkName, installResult),
-                installResult);
+        uninstallApex();
     }
 
     /**
@@ -92,15 +72,6 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         File testAppFile = mUtils.getTestFile(mApexFileName);
         CLog.i("Found test apex file: " + testAppFile.getAbsoluteFile());
 
-        // Make MainActivity foreground service
-        getDevice().executeShellV2Command(
-                "am start -n android.apex.broadcastreceiver/.MainActivity");
-
-        // Assert that there are no session updates to begin with
-        CommandResult result = getDevice().executeShellV2Command("logcat -d");
-        Matcher matcher = mSessionBroadcastReceiver.matcher(result.getStdout());
-        Assert.assertFalse(matcher.find());
-
         // Install apex package
         String installResult = getDevice().installPackage(testAppFile, false);
         Assert.assertNull(
@@ -108,34 +79,31 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
                     mApexFileName, installResult),
                 installResult);
 
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        // TODO: implement wait for session ready logic inside PackageManagerShellCommand instead.
+        boolean sessionReady = false;
+        Duration spentWaiting = Duration.ZERO;
+        while (spentWaiting.compareTo(WAIT_FOR_SESSION_READY_TTL) < 0) {
+            CommandResult res = getDevice().executeShellV2Command("pm get-stagedsessions");
+            Assert.assertEquals("", res.getStderr());
+            sessionReady = Stream.of(res.getStdout().split("\n")).anyMatch(this::isReadyNotApplied);
+            if (sessionReady) {
+                CLog.i("Done waiting after " + spentWaiting);
+                break;
+            }
+            try {
+                Thread.sleep(SLEEP_FOR.toMillis());
+                spentWaiting = spentWaiting.plus(SLEEP_FOR);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
         }
-
+        Assert.assertTrue("Staged session wasn't ready in " + WAIT_FOR_SESSION_READY_TTL,
+                sessionReady);
         ApexInfo testApexInfo = mUtils.getApexInfo(testAppFile);
         Assert.assertNotNull(testApexInfo);
 
-        // Assert isStagedSessionReady is true
-        result = getDevice().executeShellV2Command("pm get-stagedsessions");
-        Assert.assertEquals("", result.getStderr());
-        // TODO: Look into why appPackageInfo is null? or should it be null?
-        // assertMatchesRegex(result.getStdout(), mAppPackageNamePattern);
-        mUtils.assertMatchesRegex(result.getStdout(), mIsSessionReadyPattern);
-
-        // Assert session update broadcast was sent to apps listening to it.
-        result = getDevice().executeShellV2Command("logcat -d");
-        mUtils.assertMatchesRegex(result.getStdout(), mSessionBroadcastReceiver);
-        matcher = mIsSessionReadyPattern.matcher(result.getStdout());
-        mUtils.assertMatchesRegex(result.getStdout(), mIsSessionReadyPattern);
-
-        getDevice().reboot();
-
-        // This checks that the staged package was activated on reboot
-        result = getDevice().executeShellV2Command("pm get-stagedsessions");
-        Assert.assertEquals("", result.getStderr());
-        mUtils.assertMatchesRegex(result.getStdout(), mIsSessionAppliedPattern);
+        getDevice().reboot(); // for install to take affect
 
         Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
         Assert.assertTrue(
@@ -146,16 +114,32 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         additionalCheck();
     }
 
+    private boolean isReadyNotApplied(String sessionInfo) {
+        boolean isReady = mIsSessionReadyPattern.matcher(sessionInfo).find();
+        boolean isApplied = mIsSessionAppliedPattern.matcher(sessionInfo).find();
+        return isReady && !isApplied;
+    }
+
     /**
      * Do some additional check, invoked by doTestStageActivateUninstallApexPackage.
      */
     public abstract void additionalCheck();
 
     @After
-    public void tearDown() throws DeviceNotAvailableException {
-        getDevice().executeShellV2Command("rm -rf " + APEX_DATA_DIR + "/*");
-        getDevice().executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
-        getDevice().uninstallPackage(BROADCASTAPP_PACKAGE_NAME);
-        getDevice().reboot();
+    public void tearDown() throws Exception {
+        uninstallApex();
+    }
+
+    private void uninstallApex() throws Exception {
+        ApexInfo apex = mUtils.getApexInfo(mUtils.getTestFile(mApexFileName));
+        String uninstallResult = getDevice().uninstallPackage(apex.name);
+        if (uninstallResult != null) {
+            // Uninstall failed. Most likely this means that there were no apex installed. No need
+            // to reboot.
+            CLog.w("Failed to uninstall apex " + apex.name + " : " + uninstallResult);
+        } else {
+            // Uninstall succeeded. Need to reboot.
+            getDevice().reboot(); // for the uninstall to take affect
+        }
     }
 }

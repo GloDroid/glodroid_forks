@@ -23,20 +23,11 @@ java_test_host {
 
     data: [
             ":apex.test",
-            ":BroadcastReceiverApp"
     ],
 
     test_config: "apex-e2e-tests.xml",
 
     test_suites: ["general-tests"],
-}
-
-android_app {
-    name: "BroadcastReceiverApp",
-
-    srcs: ["broadcastapp/src/android/apex/broadcastreceiver/*.java"],
-
-    sdk_version: "current",
 }
 
 java_test_host {
@@ -53,7 +44,6 @@ java_test_host {
 
     data: [
         ":test1_com.android.tzdata",
-        ":BroadcastReceiverApp",
     ],
 
     test_config: "timezone-data-e2e-tests.xml",
@@ -72,7 +62,6 @@ java_test_host {
 
     data: [
         ":test_com.android.media",
-        ":BroadcastReceiverApp",
     ],
 
     test_config: "media-e2e-tests.xml",
@@ -91,7 +80,6 @@ java_test_host {
 
     data: [
         ":test_com.android.media.swcodec",
-        ":BroadcastReceiverApp",
     ],
 
     test_config: "media-swcodec-e2e-tests.xml",
@@ -110,7 +98,6 @@ java_test_host {
 
     data: [
         ":test_com.android.conscrypt",
-        ":BroadcastReceiverApp",
     ],
 
     test_config: "conscrypt-e2e-tests.xml",

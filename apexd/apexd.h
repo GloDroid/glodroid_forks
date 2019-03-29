@@ -33,6 +33,7 @@ static constexpr const char* kApexDataDir = "/data/apex";
 static constexpr const char* kActiveApexPackagesDataDir = "/data/apex/active";
 static constexpr const char* kApexBackupDir = "/data/apex/backup";
 static constexpr const char* kApexPackageSystemDir = "/system/apex";
+static constexpr const char* kApexPackageProductDir = "/product/apex";
 static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kStagedSessionsDir = "/data/app-staging";
 
@@ -53,7 +54,8 @@ StatusOr<std::vector<ApexFile>> submitStagedSession(
     const std::vector<int>& child_session_ids) WARN_UNUSED;
 Status markStagedSessionReady(const int session_id) WARN_UNUSED;
 Status markStagedSessionSuccessful(const int session_id) WARN_UNUSED;
-Status rollbackLastSession();
+Status rollbackActiveSession();
+Status rollbackActiveSessionAndReboot();
 
 Status activatePackage(const std::string& full_path) WARN_UNUSED;
 Status deactivatePackage(const std::string& full_path) WARN_UNUSED;
