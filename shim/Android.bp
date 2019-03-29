@@ -91,3 +91,36 @@ apex {
   installable: false,
 }
 
+prebuilt_etc {
+  name: "apex_shim_additional_file",
+  src: "additional_file",
+  filename: "additional_file",
+  installable: false,
+}
+
+apex {
+  name: "com.android.apex.cts.shim.v2_additional_file",
+  manifest: "manifest_v2.json",
+  file_contexts: "apex.test",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_v2", "apex_shim_additional_file"],
+  installable: false,
+}
+
+prebuilt_etc {
+  name: "apex_shim_additional_folder",
+  src: "additional_file",
+  filename: "additional_file",
+  sub_dir: "additional_folder",
+  installable: false,
+}
+
+apex {
+  name: "com.android.apex.cts.shim.v2_additional_folder",
+  manifest: "manifest_v2.json",
+  file_contexts: "apex.test",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_v2", "apex_shim_additional_folder"],
+  installable: false,
+}
+

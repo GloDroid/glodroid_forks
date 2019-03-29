@@ -1791,7 +1791,7 @@ class ApexShimUpdateTest : public ApexServiceTest {
     }
     // Putting system version into /data/apex/active won't work, because staging
     // of a newer version will delete previous one from /data/apex/active,
-    // resulting in test not being to deactivate it on tear down.
+    // resulting in test not being able to deactivate it on tear down.
     ASSERT_TRUE(IsOk(service_->activatePackage(system_shim_->test_file)));
   }
 
@@ -1824,6 +1824,53 @@ TEST_F(ApexShimUpdateTest, UpdateToV2FailureWrongSHA512) {
 
   bool success;
   ASSERT_FALSE(IsOk(service_->stagePackage(installer.test_file, &success)));
+}
+
+TEST_F(ApexServiceTest, ApexShimActivationFailureAdditionalFile) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("com.android.apex.cts.shim.v2_additional_file.apex"));
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+  auto cleanup_fn = [&]() {
+    const auto& status = service_->deactivatePackage(installer.test_file);
+    if (!status.isOk()) {
+      LOG(WARNING) << "Failed to deactivate " << installer.test_file << " : "
+                   << status.toString8().c_str();
+    }
+  };
+  cleanup_fn();
+  auto scope_guard = android::base::make_scope_guard(cleanup_fn);
+  const auto& status = service_->activatePackage(installer.test_file);
+  ASSERT_FALSE(IsOk(status));
+  const std::string& error_message = std::string(status.toString8().c_str());
+  ASSERT_THAT(
+      error_message,
+      HasSubstr("Illegal file "
+                "\"/apex/com.android.apex.cts.shim@2/etc/additional_file\""));
+}
+
+TEST_F(ApexServiceTest, ApexShimActivationFailureAdditionalFolder) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("com.android.apex.cts.shim.v2_additional_folder.apex"));
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+  auto cleanup_fn = [&]() {
+    const auto& status = service_->deactivatePackage(installer.test_file);
+    if (!status.isOk()) {
+      LOG(WARNING) << "Failed to deactivate " << installer.test_file << " : "
+                   << status.toString8().c_str();
+    }
+  };
+  cleanup_fn();
+  auto scope_guard = android::base::make_scope_guard(cleanup_fn);
+  const auto& status = service_->activatePackage(installer.test_file);
+  ASSERT_FALSE(IsOk(status));
+  const std::string& error_message = std::string(status.toString8().c_str());
+  ASSERT_THAT(error_message,
+              HasSubstr("\"/apex/com.android.apex.cts.shim@2/etc/"
+                        "additional_folder\" is not a file"));
 }
 
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
