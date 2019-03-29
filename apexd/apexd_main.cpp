@@ -21,9 +21,11 @@
 #include <android-base/logging.h>
 
 #include "apexd.h"
+#include "apexd_checkpoint_vold.h"
 #include "apexd_prepostinstall.h"
 #include "apexd_prop.h"
 #include "apexservice.h"
+#include "status_or.h"
 
 #include <android-base/properties.h>
 
@@ -74,7 +76,17 @@ int main(int /*argc*/, char** argv) {
   // TODO: add a -v flag or an external setting to change LogSeverity.
   android::base::SetMinimumLogSeverity(android::base::VERBOSE);
 
-  android::apex::onStart();
+  android::apex::StatusOr<android::apex::VoldCheckpointInterface>
+      vold_service_st = android::apex::VoldCheckpointInterface::Create();
+  android::apex::VoldCheckpointInterface* vold_service = nullptr;
+  if (!vold_service_st.Ok()) {
+    LOG(ERROR) << "Could not retrieve vold service: "
+               << vold_service_st.ErrorMessage();
+  } else {
+    vold_service = &*vold_service_st;
+  }
+
+  android::apex::onStart(vold_service);
   android::apex::binder::CreateAndRegisterService();
   android::apex::binder::StartThreadPool();
 
