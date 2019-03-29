@@ -9,6 +9,5 @@ service apexd-bootstrap /system/bin/apexd --bootstrap
     critical
     user root
     group system
-    shutdown critical
     oneshot
     disabled
