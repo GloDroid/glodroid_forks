@@ -243,7 +243,9 @@ def CreateApex(args, work_dir):
     cmd.extend(['-b', str(BLOCK_SIZE)])
     cmd.extend(['-m', '0']) # reserved block percentage
     cmd.extend(['-t', 'ext4'])
-    cmd.extend(['-I', '256']) # inode size
+    # TODO(b/122991714) setting the inode size makes the image root digest
+    # non-deterministic, figure out why.
+    # cmd.extend(['-I', '256']) # inode size
     cmd.extend(['-N', str(inode_num)])
     uu = str(uuid.uuid5(uuid.NAMESPACE_URL, "www.android.com"))
     cmd.extend(['-U', uu])
@@ -268,7 +270,7 @@ def CreateApex(args, work_dir):
     cmd.extend(['-C', args.canned_fs_config])
     cmd.append('-s') # share dup blocks
     cmd.append(img_file)
-    RunCommand(cmd, args.verbose, {"E2FSPROGS_FAKE_TIME": "1"})
+    RunCommand(cmd, args.verbose)
 
     cmd = ['e2fsdroid']
     cmd.append('-e') # input is not android_sparse_file
