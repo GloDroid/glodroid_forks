@@ -349,7 +349,7 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
   int last_errno = 0;
   for (size_t count = 0; count < kMountAttempts; ++count) {
     if (mount(blockDevice.c_str(), mountPoint.c_str(), "ext4",
-              MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, NULL) == 0) {
+              MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, nullptr) == 0) {
       LOG(INFO) << "Successfully mounted package " << full_path << " on "
                 << mountPoint;
       auto status = VerifyMountedImage(apex, mountPoint);
