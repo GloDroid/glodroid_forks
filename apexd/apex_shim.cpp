@@ -176,8 +176,15 @@ bool IsShimApex(const ApexFile& apex_file) {
   return apex_file.GetManifest().name() == kApexCtsShimPackage;
 }
 
-Status ValidateShimApex(const std::string& mount_point) {
+Status ValidateShimApex(const std::string& mount_point,
+                        const ApexFile& apex_file) {
   LOG(DEBUG) << "Validating shim apex " << mount_point;
+  const ApexManifest& manifest = apex_file.GetManifest();
+  if (!manifest.preinstallhook().empty() ||
+      !manifest.postinstallhook().empty()) {
+    return Status::Fail(
+        "Shim apex is not allowed to have pre or post install hooks");
+  }
   std::error_code ec;
   auto iter = fs::directory_iterator(mount_point, ec);
   if (ec) {
