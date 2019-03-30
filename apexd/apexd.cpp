@@ -282,7 +282,7 @@ Status VerifyMountedImage(const ApexFile& apex,
     return status;
   }
   if (shim::IsShimApex(apex)) {
-    return shim::ValidateShimApex(mount_point);
+    return shim::ValidateShimApex(mount_point, apex);
   }
   return Status::Success();
 }
