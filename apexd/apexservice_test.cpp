@@ -127,7 +127,7 @@ class ApexServiceTest : public ::testing::Test {
       }
       return StatusOr<bool>(false);
     }
-    return StatusOr<bool>::MakeError(status.toString8().c_str());
+    return StatusOr<bool>::MakeError(status.exceptionMessage().c_str());
   }
 
   StatusOr<std::vector<ApexInfo>> GetActivePackages() {
@@ -138,7 +138,7 @@ class ApexServiceTest : public ::testing::Test {
     }
 
     return StatusOr<std::vector<ApexInfo>>::MakeError(
-        status.toString8().c_str());
+        status.exceptionMessage().c_str());
   }
 
   StatusOr<ApexInfo> GetActivePackage(const std::string& name) {
@@ -148,7 +148,7 @@ class ApexServiceTest : public ::testing::Test {
       return StatusOr<ApexInfo>(package);
     }
 
-    return StatusOr<ApexInfo>::MakeError(status.toString8().c_str());
+    return StatusOr<ApexInfo>::MakeError(status.exceptionMessage().c_str());
   }
 
   std::vector<std::string> GetActivePackagesStrings() {
@@ -423,7 +423,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
   bool success;
   android::binder::Status st = service_->stagePackage(test_file, &success);
   ASSERT_FALSE(IsOk(st));
-  std::string error = st.toString8().c_str();
+  std::string error = st.exceptionMessage().c_str();
   EXPECT_NE(std::string::npos, error.find("Failed to open package")) << error;
   EXPECT_NE(std::string::npos, error.find("I/O error")) << error;
 }
@@ -443,7 +443,7 @@ TEST_F(ApexServiceTest, StageFailKey) {
   ASSERT_FALSE(IsOk(st));
 
   // May contain one of two errors.
-  std::string error = st.toString8().c_str();
+  std::string error = st.exceptionMessage().c_str();
 
   constexpr const char* kExpectedError1 = "Failed to get realpath of ";
   const size_t pos1 = error.find(kExpectedError1);
@@ -670,7 +670,7 @@ TEST_F(ApexServiceActivationManifestMismatchFailure,
   android::binder::Status st = service_->activatePackage(installer_->test_file);
   ASSERT_FALSE(IsOk(st));
 
-  std::string error = st.toString8().c_str();
+  std::string error = st.exceptionMessage().c_str();
   ASSERT_THAT(
       error,
       HasSubstr(
@@ -1884,14 +1884,15 @@ TEST_F(ApexServiceTest, ApexShimActivationFailureAdditionalFile) {
     const auto& status = service_->deactivatePackage(installer.test_file);
     if (!status.isOk()) {
       LOG(WARNING) << "Failed to deactivate " << installer.test_file << " : "
-                   << status.toString8().c_str();
+                   << status.exceptionMessage().c_str();
     }
   };
   cleanup_fn();
   auto scope_guard = android::base::make_scope_guard(cleanup_fn);
   const auto& status = service_->activatePackage(installer.test_file);
   ASSERT_FALSE(IsOk(status));
-  const std::string& error_message = std::string(status.toString8().c_str());
+  const std::string& error_message =
+      std::string(status.exceptionMessage().c_str());
   ASSERT_THAT(
       error_message,
       HasSubstr("Illegal file "
@@ -1908,14 +1909,15 @@ TEST_F(ApexServiceTest, ApexShimActivationFailureAdditionalFolder) {
     const auto& status = service_->deactivatePackage(installer.test_file);
     if (!status.isOk()) {
       LOG(WARNING) << "Failed to deactivate " << installer.test_file << " : "
-                   << status.toString8().c_str();
+                   << status.exceptionMessage().c_str();
     }
   };
   cleanup_fn();
   auto scope_guard = android::base::make_scope_guard(cleanup_fn);
   const auto& status = service_->activatePackage(installer.test_file);
   ASSERT_FALSE(IsOk(status));
-  const std::string& error_message = std::string(status.toString8().c_str());
+  const std::string& error_message =
+      std::string(status.exceptionMessage().c_str());
   ASSERT_THAT(error_message,
               HasSubstr("\"/apex/com.android.apex.cts.shim@2/etc/"
                         "additional_folder\" is not a file"));
