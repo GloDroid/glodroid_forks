@@ -51,7 +51,7 @@ inline ::testing::AssertionResult IsOk(const android::binder::Status& status) {
     return ::testing::AssertionSuccess() << " is Ok";
   } else {
     return ::testing::AssertionFailure()
-           << " failed with " << status.toString8().c_str();
+           << " failed with " << status.exceptionMessage().c_str();
   }
 }
 
