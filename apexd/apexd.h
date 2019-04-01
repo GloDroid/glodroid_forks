@@ -22,6 +22,7 @@
 
 #include <android-base/macros.h>
 
+#include "apex_constants.h"
 #include "apex_file.h"
 #include "status.h"
 #include "status_or.h"
@@ -30,14 +31,6 @@ namespace android {
 namespace apex {
 
 class CheckpointInterface;
-
-static constexpr const char* kApexDataDir = "/data/apex";
-static constexpr const char* kActiveApexPackagesDataDir = "/data/apex/active";
-static constexpr const char* kApexBackupDir = "/data/apex/backup";
-static constexpr const char* kApexPackageSystemDir = "/system/apex";
-static constexpr const char* kApexPackageProductDir = "/product/apex";
-static constexpr const char* kApexRoot = "/apex";
-static constexpr const char* kStagedSessionsDir = "/data/app-staging";
 
 Status resumeRollbackIfNeeded();
 void unmountAndDetachExistingImages();
