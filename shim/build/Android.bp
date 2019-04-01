@@ -12,13 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Temporary for the sake of development of shim apex related code.
-// Actual shim apex will be prebuilt by the build server.
+// Build rules to build shim apexes.
+
+genrule {
+  name: "com.android.apex.cts.shim.pem",
+  out: ["com.android.apex.cts.shim.pem"],
+  cmd: "openssl genrsa -out $(out) 4096",
+}
+
+genrule {
+  name: "com.android.apex.cts.shim.pubkey",
+  srcs: [":com.android.apex.cts.shim.pem"],
+  out: ["com.android.apex.cts.shim.pubkey"],
+  tools: ["avbtool"],
+  cmd: "$(location avbtool) extract_public_key --key $(in) --output $(out)",
+}
 
 apex_key {
   name: "com.android.apex.cts.shim.key",
-  private_key: "com.android.apex.cts.shim.pem",
-  public_key: "com.android.apex.cts.shim.pubkey",
+  private_key: ":com.android.apex.cts.shim.pem",
+  public_key: ":com.android.apex.cts.shim.pubkey",
   installable: false,
 }
 
