@@ -173,6 +173,7 @@ cc_library_static {
   defaults: ["apex_defaults"],
   srcs: [
     "apex_file.cpp",
+    "apex_key.cpp",
     "apex_manifest.cpp",
     "apex_shim.cpp",
   ],
@@ -216,6 +217,7 @@ cc_test {
   data: [
     ":apex.apexd_test",
     ":apex.apexd_test_no_inst_key",
+    "apexd_testdata/com.android.apex.test_package.avbpubkey",
   ],
   srcs: [
     "apex_file_test.cpp",
