@@ -47,7 +47,6 @@
 
 #include "apex_file.h"
 #include "apex_manifest.h"
-#include "apexd.h"
 #include "apexd_private.h"
 #include "apexd_session.h"
 #include "apexd_test_utils.h"
@@ -1542,7 +1541,7 @@ TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledSuccessfulRollback) {
 
   PrepareBackup({GetTestFile("apex.apexd_test.apex")});
 
-  ASSERT_TRUE(IsOk(rollbackActiveSession()));
+  ASSERT_TRUE(IsOk(service_->rollbackActiveSession()));
 
   auto pkg = StringPrintf("%s/com.android.apex.test_package@1.apex",
                           kActiveApexPackagesDataDir);
@@ -1567,16 +1566,16 @@ TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledNoActiveSession) {
 
   // Even though backup is there, no sessions are active, hence rollback request
   // should fail.
-  ASSERT_FALSE(IsOk(rollbackActiveSession()));
+  ASSERT_FALSE(IsOk(service_->rollbackActiveSession()));
 }
 
 TEST_F(ApexServiceRollbackTest, RollbackFailsNoBackupFolder) {
-  ASSERT_FALSE(IsOk(rollbackActiveSession()));
+  ASSERT_FALSE(IsOk(service_->rollbackActiveSession()));
 }
 
 TEST_F(ApexServiceRollbackTest, RollbackFailsNoActivePackagesFolder) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
-  ASSERT_FALSE(IsOk(rollbackActiveSession()));
+  ASSERT_FALSE(IsOk(service_->rollbackActiveSession()));
 }
 
 TEST_F(ApexServiceRollbackTest, MarkStagedSessionSuccessfulCleanupBackup) {
@@ -1614,7 +1613,7 @@ TEST_F(ApexServiceRollbackTest, ResumesRollback) {
   ASSERT_TRUE(
       IsOk(session->UpdateStateAndCommit(SessionState::ROLLBACK_IN_PROGRESS)));
 
-  ASSERT_TRUE(IsOk(resumeRollbackIfNeeded()));
+  ASSERT_TRUE(IsOk(service_->resumeRollbackIfNeeded()));
 
   auto pkg1 = StringPrintf("%s/com.android.apex.test_package@1.apex",
                            kActiveApexPackagesDataDir);
@@ -1648,7 +1647,7 @@ TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
   ASSERT_TRUE(IsOk(session));
   ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::SUCCESS)));
 
-  ASSERT_TRUE(IsOk(resumeRollbackIfNeeded()));
+  ASSERT_TRUE(IsOk(service_->resumeRollbackIfNeeded()));
 
   // Check that rollback wasn't resumed.
   auto active_pkgs =

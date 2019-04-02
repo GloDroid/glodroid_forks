@@ -78,6 +78,8 @@ class ApexService : public BnApexService {
   BinderStatus postinstallPackages(
       const std::vector<std::string>& paths) override;
   BinderStatus abortActiveSession() override;
+  BinderStatus rollbackActiveSession() override;
+  BinderStatus resumeRollbackIfNeeded() override;
 
   status_t dump(int fd, const Vector<String16>& args) override;
 
@@ -389,6 +391,36 @@ BinderStatus ApexService::postinstallPackages(
 BinderStatus ApexService::abortActiveSession() {
   LOG(DEBUG) << "abortActiveSession() received by ApexService.";
   Status res = ::android::apex::abortActiveSession();
+  if (!res.Ok()) {
+    return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
+                                           String8(res.ErrorMessage().c_str()));
+  }
+  return BinderStatus::ok();
+}
+
+BinderStatus ApexService::rollbackActiveSession() {
+  BinderStatus debugCheck = CheckDebuggable("rollbackActiveSession");
+  if (!debugCheck.isOk()) {
+    return debugCheck;
+  }
+
+  LOG(DEBUG) << "rollbackActiveSession() received by ApexService.";
+  Status res = ::android::apex::rollbackActiveSession();
+  if (!res.Ok()) {
+    return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
+                                           String8(res.ErrorMessage().c_str()));
+  }
+  return BinderStatus::ok();
+}
+
+BinderStatus ApexService::resumeRollbackIfNeeded() {
+  BinderStatus debugCheck = CheckDebuggable("resumeRollbackIfNeeded");
+  if (!debugCheck.isOk()) {
+    return debugCheck;
+  }
+
+  LOG(DEBUG) << "resumeRollbackIfNeeded() received by ApexService.";
+  Status res = ::android::apex::resumeRollbackIfNeeded();
   if (!res.Ok()) {
     return BinderStatus::fromExceptionCode(BinderStatus::EX_ILLEGAL_ARGUMENT,
                                            String8(res.ErrorMessage().c_str()));
