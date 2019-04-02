@@ -22,6 +22,7 @@
 #include <vector>
 #include <ziparchive/zip_archive.h>
 
+#include "apex_constants.h"
 #include "apex_manifest.h"
 #include "status_or.h"
 
@@ -52,8 +53,7 @@ class ApexFile {
   bool IsFlattened() const { return flattened_; }
   const std::string& GetBundledPublicKey() const { return apex_pubkey_; }
 
-  StatusOr<ApexVerityData> VerifyApexVerity(
-      const std::vector<std::string>& apex_key_dirs) const;
+  StatusOr<ApexVerityData> VerifyApexVerity() const;
   Status VerifyManifestMatches(const std::string& mount_path) const;
 
  private:
@@ -74,6 +74,11 @@ class ApexFile {
   ApexManifest manifest_;
   std::string apex_pubkey_;
 };
+
+StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
+                                                       bool include_dirs);
+
+bool isPathForBuiltinApexes(const std::string& path);
 
 }  // namespace apex
 }  // namespace android

@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <filesystem>
 #include <fstream>
 
 #include <android-base/file.h>
@@ -31,9 +32,13 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <libavb/libavb.h>
 
+#include "apex_key.h"
+#include "apexd_utils.h"
 #include "string_log.h"
 
+using android::base::EndsWith;
 using android::base::ReadFullyAtOffset;
+using android::base::StartsWith;
 using android::base::unique_fd;
 using google::protobuf::util::MessageDifferencer;
 
@@ -92,6 +97,16 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
                         << "Failed to read manifest file: " << manifest_path;
       return StatusOr<ApexFile>::MakeError(err);
     }
+    // TODO(b/124115379) don't read public key from flattened APEX when
+    // we no longer have APEX tests on devices with flattened APEXes.
+    const std::string pubkey_path = path + "/" + kBundledPublicKeyFilename;
+    if (access(pubkey_path.c_str(), F_OK) == 0) {
+      if (!android::base::ReadFileToString(pubkey_path, &pubkey)) {
+        std::string err = StringLog()
+                          << "Failed to read pubkey file: " << pubkey_path;
+        return StatusOr<ApexFile>::MakeError(err);
+      }
+    }
   } else {
     flattened = false;
 
@@ -137,20 +152,18 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
       return StatusOr<ApexFile>::MakeError(err);
     }
 
-    if (kDebugAllowBundledKey) {
-      ret = FindEntry(handle, ZipString(kBundledPublicKeyFilename), &entry);
-      if (ret >= 0) {
-        LOG(VERBOSE) << "Found bundled key in package " << path;
-        length = entry.uncompressed_length;
-        pubkey.resize(length, '\0');
-        ret = ExtractToMemory(handle, &entry,
-                              reinterpret_cast<uint8_t*>(&(pubkey)[0]), length);
-        if (ret != 0) {
-          std::string err = StringLog()
-                            << "Failed to extract public key from package "
-                            << path << ": " << ErrorCodeString(ret);
-          return StatusOr<ApexFile>::MakeError(err);
-        }
+    ret = FindEntry(handle, ZipString(kBundledPublicKeyFilename), &entry);
+    if (ret >= 0) {
+      LOG(VERBOSE) << "Found bundled key in package " << path;
+      length = entry.uncompressed_length;
+      pubkey.resize(length, '\0');
+      ret = ExtractToMemory(handle, &entry,
+                            reinterpret_cast<uint8_t*>(&(pubkey)[0]), length);
+      if (ret != 0) {
+        std::string err = StringLog()
+                          << "Failed to extract public key from package "
+                          << path << ": " << ErrorCodeString(ret);
+        return StatusOr<ApexFile>::MakeError(err);
       }
     }
   }
@@ -227,58 +240,17 @@ StatusOr<std::unique_ptr<AvbFooter>> getAvbFooter(const ApexFile& apex,
   return StatusOr<std::unique_ptr<AvbFooter>>(std::move(footer));
 }
 
-// TODO We'll want to cache the verified key to avoid having to read it every
-// time.
 Status verifyPublicKey(const uint8_t* key, size_t length,
-                       const std::string& acceptedKeyFile) {
-  std::ifstream pubkeyFile(acceptedKeyFile, std::ios::binary | std::ios::ate);
-  if (pubkeyFile.bad()) {
-    return Status::Fail(StringLog() << "Can't open " << acceptedKeyFile);
-  }
-
-  std::streamsize size = pubkeyFile.tellg();
-  if (size < 0) {
-    return Status::Fail(StringLog()
-                        << "Could not get public key length position");
-  }
-
-  if (static_cast<size_t>(size) != length) {
-    return Status::Fail(StringLog()
-                        << "Public key length (" << std::to_string(size) << ")"
-                        << " doesn't equal APEX public key length ("
-                        << std::to_string(length) << ")");
-  }
-
-  pubkeyFile.seekg(0, std::ios::beg);
-
-  std::string verifiedKey(size, 0);
-  pubkeyFile.read(&verifiedKey[0], size);
-  if (pubkeyFile.bad()) {
-    return Status::Fail(StringLog() << "Can't read from " << acceptedKeyFile);
-  }
-
-  if (verifiedKey.length() != length ||
-      memcmp(&verifiedKey[0], key, length) != 0) {
-    return Status::Fail("Failed to compare verified key with key");
-  }
-  return Status::Success();
-}
-
-Status verifyBundledPublicKey(const uint8_t* key, size_t length,
-                              std::string bundledPublicKey) {
-  if (!kDebugAllowBundledKey) {
-    return Status::Fail("Bundled key must not be used in production builds");
-  }
-  if (bundledPublicKey.length() != length ||
-      memcmp(&bundledPublicKey[0], key, length) != 0) {
+                       std::string public_key_content) {
+  if (public_key_content.length() != length ||
+      memcmp(&public_key_content[0], key, length) != 0) {
     return Status::Fail("Failed to compare the bundled public key with key");
   }
   return Status::Success();
 }
 
-StatusOr<std::string> getPublicKeyFilePath(const ApexFile& apex,
-                                           const uint8_t* data, size_t length,
-                                           const std::string& apex_key_dir) {
+StatusOr<std::string> getPublicKeyName(const ApexFile& apex,
+                                       const uint8_t* data, size_t length) {
   size_t keyNameLen;
   const char* keyName = avb_property_lookup(data, length, kApexKeyProp,
                                             strlen(kApexKeyProp), &keyNameLen);
@@ -294,27 +266,11 @@ StatusOr<std::string> getPublicKeyFilePath(const ApexFile& apex,
                     << apex.GetManifest().name() << "'"
                     << " but key name is '" << keyName << "'");
   }
-
-  std::string keyFilePath(apex_key_dir);
-  keyFilePath.append(keyName, keyNameLen);
-  std::string canonicalKeyFilePath;
-  if (!android::base::Realpath(keyFilePath, &canonicalKeyFilePath)) {
-    return StatusOr<std::string>::MakeError(
-        PStringLog() << "Failed to get realpath of " << keyFilePath);
-  }
-
-  if (!android::base::StartsWith(canonicalKeyFilePath, apex_key_dir)) {
-    return StatusOr<std::string>::MakeError(
-        StringLog() << "Key file " << canonicalKeyFilePath << " is not under "
-                    << apex_key_dir);
-  }
-
-  return StatusOr<std::string>(canonicalKeyFilePath);
+  return StatusOr<std::string>(keyName);
 }
 
 Status verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
-                             size_t length,
-                             const std::vector<std::string>& apex_key_dirs) {
+                             size_t length) {
   const uint8_t* pk;
   size_t pk_len;
   AvbVBMetaVerifyResult res;
@@ -341,28 +297,26 @@ Status verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
       return Status::Fail("Unknown vmbeta_image_verify return value");
   }
 
-  StatusOr<std::string> keyFilePath =
-      StatusOr<std::string>::MakeError("No key dir");
-  for (const std::string& dir : apex_key_dirs) {
-    keyFilePath = getPublicKeyFilePath(apex, data, length, dir);
-    if (keyFilePath.Ok()) {
-      break;
-    }
+  StatusOr<std::string> key_name = getPublicKeyName(apex, data, length);
+  if (!key_name.Ok()) {
+    return key_name.ErrorStatus();
   }
 
+  StatusOr<const std::string> public_key = getApexKey(*key_name);
   Status st;
-  if (keyFilePath.Ok()) {
+  if (public_key.Ok()) {
     // TODO(b/115718846)
     // We need to decide whether we need rollback protection, and whether
     // we can use the rollback protection provided by libavb.
-    st = verifyPublicKey(pk, pk_len, *keyFilePath);
+    st = verifyPublicKey(pk, pk_len, *public_key);
   } else if (kDebugAllowBundledKey) {
     // Failing to find the matching public key in the built-in partitions
     // is a hard error for non-debuggable build. For debuggable builds,
-    // the public key bundled in the APEX is used as a fallback.
-    st = verifyBundledPublicKey(pk, pk_len, apex.GetBundledPublicKey());
+    // the public key bundled in the APEX itself is used as a fallback.
+    LOG(WARNING) << "Verifying " << apex.GetPath() << " with the bundled key";
+    st = verifyPublicKey(pk, pk_len, apex.GetBundledPublicKey());
   } else {
-    return keyFilePath.ErrorStatus();
+    return public_key.ErrorStatus();
   }
 
   if (st.Ok()) {
@@ -375,9 +329,9 @@ Status verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
                       << "couldn't verify public key: " << st.ErrorMessage());
 }
 
-StatusOr<std::unique_ptr<uint8_t[]>> verifyVbMeta(
-    const ApexFile& apex, const unique_fd& fd, const AvbFooter& footer,
-    const std::vector<std::string>& apex_key_dirs) {
+StatusOr<std::unique_ptr<uint8_t[]>> verifyVbMeta(const ApexFile& apex,
+                                                  const unique_fd& fd,
+                                                  const AvbFooter& footer) {
   if (footer.vbmeta_size > kVbMetaMaxSize) {
     return StatusOr<std::unique_ptr<uint8_t[]>>::MakeError(
         "VbMeta size in footer exceeds kVbMetaMaxSize.");
@@ -391,8 +345,7 @@ StatusOr<std::unique_ptr<uint8_t[]>> verifyVbMeta(
         PStringLog() << "Couldn't read AVB meta-data");
   }
 
-  Status st = verifyVbMetaSignature(apex, vbmeta_buf.get(), footer.vbmeta_size,
-                                    apex_key_dirs);
+  Status st = verifyVbMetaSignature(apex, vbmeta_buf.get(), footer.vbmeta_size);
   if (!st.Ok()) {
     return StatusOr<std::unique_ptr<uint8_t[]>>::MakeError(st.ErrorMessage());
   }
@@ -444,8 +397,7 @@ StatusOr<std::unique_ptr<AvbHashtreeDescriptor>> verifyDescriptor(
 
 }  // namespace
 
-StatusOr<ApexVerityData> ApexFile::VerifyApexVerity(
-    const std::vector<std::string>& apex_key_dirs) const {
+StatusOr<ApexVerityData> ApexFile::VerifyApexVerity() const {
   ApexVerityData verityData;
 
   unique_fd fd(open(GetPath().c_str(), O_RDONLY | O_CLOEXEC));
@@ -460,7 +412,7 @@ StatusOr<ApexVerityData> ApexFile::VerifyApexVerity(
   }
 
   StatusOr<std::unique_ptr<uint8_t[]>> vbmeta_data =
-      verifyVbMeta(*this, fd, **footer, apex_key_dirs);
+      verifyVbMeta(*this, fd, **footer);
   if (!vbmeta_data.Ok()) {
     return StatusOr<ApexVerityData>::MakeError(vbmeta_data.ErrorMessage());
   }
@@ -509,6 +461,26 @@ Status ApexFile::VerifyManifestMatches(const std::string& mount_path) const {
   }
 
   return Status::Success();
+}
+
+StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
+                                                       bool include_dirs) {
+  auto filter_fn =
+      [include_dirs](const std::filesystem::directory_entry& entry) {
+        std::error_code ec;
+        if (entry.is_regular_file(ec) &&
+            EndsWith(entry.path().filename().string(), kApexPackageSuffix)) {
+          return true;  // APEX file, take.
+        }
+        // Directory and asked to scan for flattened.
+        return entry.is_directory(ec) && include_dirs;
+      };
+  return ReadDir(path, filter_fn);
+}
+
+bool isPathForBuiltinApexes(const std::string& path) {
+  return StartsWith(path, kApexPackageSystemDir) ||
+         StartsWith(path, kApexPackageProductDir);
 }
 
 }  // namespace apex
