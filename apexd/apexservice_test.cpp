@@ -45,6 +45,7 @@
 #include <android/apex/ApexInfo.h>
 #include <android/apex/IApexService.h>
 
+#include "apex_constants.h"
 #include "apex_file.h"
 #include "apex_manifest.h"
 #include "apexd_private.h"
