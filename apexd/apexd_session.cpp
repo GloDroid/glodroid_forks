@@ -15,8 +15,7 @@
  */
 
 #include "apexd_session.h"
-#include "apexd.h"
-#include "apexd_private.h"
+
 #include "apexd_utils.h"
 #include "status_or.h"
 #include "string_log.h"

@@ -25,7 +25,6 @@
 
 #include "apex_file.h"
 #include "apex_key.h"
-#include "apexd.h"
 
 static std::string testDataDir = android::base::GetExecutableDirectory() + "/";
 
