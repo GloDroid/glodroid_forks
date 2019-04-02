@@ -21,6 +21,7 @@
 
 #include "apex_database.h"
 #include "apex_file.h"
+#include "apex_key.h"
 #include "apex_manifest.h"
 #include "apex_shim.h"
 #include "apexd_checkpoint.h"
@@ -87,14 +88,6 @@ using MountedApexData = MountedApexDatabase::MountedApexData;
 
 namespace {
 
-static constexpr const char* kApexPackageSuffix = ".apex";
-static constexpr const char* kApexKeySystemDirectory =
-    "/system/etc/security/apex/";
-static constexpr const char* kApexKeyProductDirectory =
-    "/product/etc/security/apex/";
-static constexpr const char* kApexKeySystemProductDirectory =
-    "/system/product/etc/security/apex/";
-
 // These should be in-sync with system/sepolicy/public/property_contexts
 static constexpr const char* kApexStatusSysprop = "apexd.status";
 static constexpr const char* kApexStatusStarting = "starting";
@@ -119,11 +112,6 @@ static const std::vector<const std::string> kBootstrapApexes = {
     "com.android.runtime",
     "com.android.tzdata",
 };
-
-bool isPathForBuiltinApexes(const std::string& path) {
-  return StartsWith(path, kApexPackageSystemDir) ||
-         StartsWith(path, kApexPackageProductDir);
-}
 
 std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
                                            const std::string& loop) {
@@ -220,21 +208,6 @@ bool DTypeFilter(unsigned char d_type, const char* d_name ATTRIBUTE_UNUSED) {
   return d_type == kTypeVal;
 }
 
-StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
-                                                       bool include_dirs) {
-  auto filter_fn =
-      [include_dirs](const std::filesystem::directory_entry& entry) {
-        std::error_code ec;
-        if (entry.is_regular_file(ec) &&
-            EndsWith(entry.path().filename().string(), kApexPackageSuffix)) {
-          return true;  // APEX file, take.
-        }
-        // Directory and asked to scan for flattened.
-        return entry.is_directory(ec) && include_dirs;
-      };
-  return ReadDir(path, filter_fn);
-}
-
 Status RemovePreviouslyActiveApexFiles(
     const std::unordered_set<std::string>& affected_packages,
     const std::unordered_set<std::string>& files_to_keep) {
@@ -307,9 +280,7 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
   }
   LOG(VERBOSE) << "Loopback device created: " << loopbackDevice.name;
 
-  auto verityData =
-      apex.VerifyApexVerity({kApexKeySystemDirectory, kApexKeyProductDirectory,
-                             kApexKeySystemProductDirectory});
+  auto verityData = apex.VerifyApexVerity();
   if (!verityData.Ok()) {
     return StatusM::Fail(StringLog()
                          << "Failed to verify Apex Verity data for "
@@ -560,9 +531,7 @@ Status verifyPackage(const ApexFile& apex_file) {
   if (apex_file.IsFlattened()) {
     return Status::Fail("Can't upgrade flattened apex");
   }
-  StatusOr<ApexVerityData> verity_or = apex_file.VerifyApexVerity(
-      {kApexKeySystemDirectory, kApexKeyProductDirectory,
-       kApexKeySystemProductDirectory});
+  StatusOr<ApexVerityData> verity_or = apex_file.VerifyApexVerity();
   if (!verity_or.Ok()) {
     return Status::Fail(verity_or.ErrorMessage());
   }
@@ -1499,6 +1468,12 @@ int onBootstrap() {
     }
   }
 
+  Status status = collectApexKeys();
+  if (!status.Ok()) {
+    LOG(ERROR) << "Failed to collect APEX keys : " << status.ErrorMessage();
+    return 1;
+  }
+
   // Activate built-in APEXes for processes launched before /data is mounted.
   scanPackagesDirAndActivate(kApexPackageSystemDir);
   LOG(INFO) << "Bootstrapping done";
@@ -1551,10 +1526,16 @@ void onStart(CheckpointInterface* checkpoint_service) {
     }
   }
 
+  Status status = collectApexKeys();
+  if (!status.Ok()) {
+    LOG(ERROR) << "Failed to collect APEX keys : " << status.ErrorMessage();
+    return;
+  }
+
   // Activate APEXes from /data/apex. If one in the directory is newer than the
   // system one, the new one will eclipse the old one.
   scanStagedSessionsDirAndStage();
-  Status status = resumeRollbackIfNeeded();
+  status = resumeRollbackIfNeeded();
   if (!status.Ok()) {
     LOG(ERROR) << "Failed to resume rollback : " << status.ErrorMessage();
   }
