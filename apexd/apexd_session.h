@@ -17,7 +17,7 @@
 #ifndef ANDROID_APEXD_APEXD_SESSION_H_
 #define ANDROID_APEXD_APEXD_SESSION_H_
 
-#include "apexd.h"
+#include "apex_constants.h"
 #include "status_or.h"
 
 #include "session_state.pb.h"
