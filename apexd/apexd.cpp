@@ -23,6 +23,7 @@
 #include "apex_file.h"
 #include "apex_manifest.h"
 #include "apex_shim.h"
+#include "apexd_checkpoint.h"
 #include "apexd_loop.h"
 #include "apexd_prepostinstall.h"
 #include "apexd_prop.h"
@@ -39,8 +40,6 @@
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 #include <android-base/unique_fd.h>
-#include <android/os/IVold.h>
-#include <binder/IServiceManager.h>
 #include <libavb/libavb.h>
 #include <libdm/dm.h>
 #include <libdm/dm_table.h>
@@ -68,7 +67,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-using android::sp;
 using android::base::EndsWith;
 using android::base::Join;
 using android::base::ReadFullyAtOffset;
@@ -79,7 +77,6 @@ using android::dm::DeviceMapper;
 using android::dm::DmDeviceState;
 using android::dm::DmTable;
 using android::dm::DmTargetVerity;
-using android::os::IVold;
 
 using apex::proto::SessionState;
 
@@ -109,7 +106,8 @@ static bool gForceDmVerityOnSystem =
     android::base::GetBoolProperty(kApexVerityOnSystemProp, false);
 
 MountedApexDatabase gMountedApexes;
-sp<IVold> gVoldService;
+
+CheckpointInterface* gVoldService;
 bool gSupportsFsCheckpoints = false;
 bool gInFsCheckpointMode = false;
 
@@ -1474,9 +1472,11 @@ Status rollbackActiveSessionAndReboot() {
   }
   LOG(ERROR) << "Successfully rolled back. Time to reboot device.";
   if (gInFsCheckpointMode) {
-    gVoldService->abortChanges("apexd_initiated" /* message */,
-                               false /* retry */);
-    // This should have rebooted the device, but fall through in case it failed.
+    Status res = gVoldService->AbortChanges("apexd_initiated" /* message */,
+                                            false /* retry */);
+    if (!res.Ok()) {
+      LOG(ERROR) << res.ErrorMessage();
+    }
   }
   Reboot();
   return Status::Success();
@@ -1505,45 +1505,43 @@ int onBootstrap() {
   return 0;
 }
 
-void onStart() {
+void onStart(CheckpointInterface* checkpoint_service) {
   LOG(INFO) << "Marking APEXd as starting";
   if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusStarting)) {
     PLOG(ERROR) << "Failed to set " << kApexStatusSysprop << " to "
                 << kApexStatusStarting;
   }
 
-  auto voldService =
-      defaultServiceManager()->getService(android::String16("vold"));
-  if (voldService != nullptr) {
-    gVoldService = android::interface_cast<android::os::IVold>(voldService);
-    android::binder::Status status =
-        gVoldService->supportsCheckpoint(&gSupportsFsCheckpoints);
-    if (!status.isOk()) {
+  if (checkpoint_service != nullptr) {
+    gVoldService = checkpoint_service;
+    StatusOr<bool> supports_fs_checkpoints =
+        gVoldService->SupportsFsCheckpoints();
+    if (supports_fs_checkpoints.Ok()) {
+      gSupportsFsCheckpoints = *supports_fs_checkpoints;
+    } else {
       LOG(ERROR) << "Failed to check if filesystem checkpoints are supported: "
-                 << status.toString8().c_str();
+                 << supports_fs_checkpoints.ErrorMessage();
     }
     if (gSupportsFsCheckpoints) {
-      status = gVoldService->needsCheckpoint(&gInFsCheckpointMode);
-      if (!status.isOk()) {
+      StatusOr<bool> needs_checkpoint = gVoldService->NeedsCheckpoint();
+      if (needs_checkpoint.Ok()) {
+        gInFsCheckpointMode = *needs_checkpoint;
+      } else {
         LOG(ERROR) << "Failed to check if we're in filesystem checkpoint mode: "
-                   << status.toString8().c_str();
+                   << needs_checkpoint.ErrorMessage();
       }
     }
-  } else {
-    LOG(ERROR) << "Failed to retrieve vold service.";
   }
 
   // Ask whether we should roll back any staged sessions; this can happen if
   // we've exceeded the retry count on a device that supports filesystem
   // checkpointing.
   if (gSupportsFsCheckpoints) {
-    bool needsRollback = false;
-    auto binderStatus = gVoldService->needsRollback(&needsRollback);
-    if (!binderStatus.isOk()) {
+    StatusOr<bool> needs_rollback = gVoldService->NeedsRollback();
+    if (!needs_rollback.Ok()) {
       LOG(ERROR) << "Failed to check if we need a rollback: "
-                 << binderStatus.toString8().c_str();
-    }
-    if (needsRollback) {
+                 << needs_rollback.ErrorMessage();
+    } else if (*needs_rollback) {
       Status status = rollbackStagedSessionIfAny();
       if (!status.Ok()) {
         LOG(ERROR)
