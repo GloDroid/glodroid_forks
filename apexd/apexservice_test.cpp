@@ -1854,12 +1854,14 @@ TEST_F(ApexShimUpdateTest, UpdateToV2FailureWrongSHA512) {
   }
 
   bool success;
-  ASSERT_FALSE(IsOk(service_->stagePackage(installer.test_file, &success)));
+  const auto& status = service_->stagePackage(installer.test_file, &success);
+  ASSERT_FALSE(IsOk(status));
+  const std::string& error_message =
+      std::string(status.exceptionMessage().c_str());
+  ASSERT_THAT(error_message, HasSubstr("has unexpected SHA512 hash"));
 }
 
 TEST_F(ApexShimUpdateTest, UpdateToV2FailureHasPreInstallHook) {
-  Activate(GetTestFile(
-      "com.android.apex.cts.shim.v1_updates_to_v2_with_pre_install_hook.apex"));
   PrepareTestApexForInstall installer(
       GetTestFile("com.android.apex.cts.shim.v2_with_pre_install_hook.apex"));
 
@@ -1878,9 +1880,6 @@ TEST_F(ApexShimUpdateTest, UpdateToV2FailureHasPreInstallHook) {
 }
 
 TEST_F(ApexShimUpdateTest, UpdateToV2FailureHasPostInstallHook) {
-  Activate(
-      GetTestFile("com.android.apex.cts.shim.v1_updates_to_v2_with_post_"
-                  "install_hook.apex"));
   PrepareTestApexForInstall installer(
       GetTestFile("com.android.apex.cts.shim.v2_with_post_install_hook.apex"));
 
@@ -1898,52 +1897,37 @@ TEST_F(ApexShimUpdateTest, UpdateToV2FailureHasPostInstallHook) {
       HasSubstr("Shim apex is not allowed to have pre or post install hooks"));
 }
 
-TEST_F(ApexServiceTest, ApexShimActivationFailureAdditionalFile) {
+TEST_F(ApexShimUpdateTest, UpdateToV2FailureAdditionalFile) {
   PrepareTestApexForInstall installer(
       GetTestFile("com.android.apex.cts.shim.v2_additional_file.apex"));
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
   }
-  auto cleanup_fn = [&]() {
-    const auto& status = service_->deactivatePackage(installer.test_file);
-    if (!status.isOk()) {
-      LOG(WARNING) << "Failed to deactivate " << installer.test_file << " : "
-                   << status.exceptionMessage().c_str();
-    }
-  };
-  cleanup_fn();
-  auto scope_guard = android::base::make_scope_guard(cleanup_fn);
-  const auto& status = service_->activatePackage(installer.test_file);
+  bool success;
+  const auto& status = service_->stagePackage(installer.test_file, &success);
   ASSERT_FALSE(IsOk(status));
   const std::string& error_message =
       std::string(status.exceptionMessage().c_str());
   ASSERT_THAT(
       error_message,
-      HasSubstr("Illegal file "
-                "\"/apex/com.android.apex.cts.shim@2/etc/additional_file\""));
+      HasSubstr(
+          "Illegal file "
+          "\"/apex/com.android.apex.cts.shim@2.tmp/etc/additional_file\""));
 }
 
-TEST_F(ApexServiceTest, ApexShimActivationFailureAdditionalFolder) {
+TEST_F(ApexShimUpdateTest, ApexShimActivationFailureAdditionalFolder) {
   PrepareTestApexForInstall installer(
       GetTestFile("com.android.apex.cts.shim.v2_additional_folder.apex"));
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
   }
-  auto cleanup_fn = [&]() {
-    const auto& status = service_->deactivatePackage(installer.test_file);
-    if (!status.isOk()) {
-      LOG(WARNING) << "Failed to deactivate " << installer.test_file << " : "
-                   << status.exceptionMessage().c_str();
-    }
-  };
-  cleanup_fn();
-  auto scope_guard = android::base::make_scope_guard(cleanup_fn);
-  const auto& status = service_->activatePackage(installer.test_file);
+  bool success;
+  const auto& status = service_->stagePackage(installer.test_file, &success);
   ASSERT_FALSE(IsOk(status));
   const std::string& error_message =
       std::string(status.exceptionMessage().c_str());
   ASSERT_THAT(error_message,
-              HasSubstr("\"/apex/com.android.apex.cts.shim@2/etc/"
+              HasSubstr("\"/apex/com.android.apex.cts.shim@2.tmp/etc/"
                         "additional_folder\" is not a file"));
 }
 
