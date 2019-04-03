@@ -271,6 +271,22 @@ genrule {
        "$(genDir)/apex.apexd_test_manifest_mismatch.apex"
 }
 
+genrule {
+  // Generates an apex with a corrupted filesystem image, which should cause
+  // dm-verity verification to fail
+  name: "gen_corrupt_apex",
+  out: ["apex.apexd_test_corrupt_apex.apex"],
+  srcs: [":apex.apexd_test"],
+  tools: ["soong_zip", "zipalign"],
+  cmd: "unzip -q $(in) -d $(genDir) && " +
+       "dd if=/dev/zero of=$(genDir)/apex_payload.img conv=notrunc bs=1024 seek=16 count=1 && " +
+       "$(location soong_zip) -d -C $(genDir) -D $(genDir) " +
+       "-s apex_manifest.json -s apex_payload.img -s apex_pubkey " +
+       "-o $(genDir)/unaligned.apex && " +
+       "$(location zipalign) -f 4096 $(genDir)/unaligned.apex " +
+       "$(genDir)/apex.apexd_test_corrupt_apex.apex"
+}
+
 cc_test {
   name: "apexservice_test",
   defaults: ["apex_defaults"],
@@ -287,6 +303,7 @@ cc_test {
     ":apex.apexd_test_postinstall",
     ":apex.apexd_test_prepostinstall.fail",
     ":gen_bad_apexes",
+    ":gen_corrupt_apex",
     ":com.android.apex.cts.shim.v1",
     ":com.android.apex.cts.shim.v1_updates_to_v2_with_pre_install_hook",
     ":com.android.apex.cts.shim.v1_updates_to_v2_with_post_install_hook",

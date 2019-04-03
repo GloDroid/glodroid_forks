@@ -105,7 +105,6 @@ bool gSupportsFsCheckpoints = false;
 bool gInFsCheckpointMode = false;
 
 static constexpr size_t kLoopDeviceSetupAttempts = 3u;
-static constexpr size_t kMountAttempts = 5u;
 
 bool gBootstrap = false;
 static const std::vector<const std::string> kBootstrapApexes = {
@@ -246,6 +245,47 @@ Status RemovePreviouslyActiveApexFiles(
   return Status::Success();
 }
 
+Status waitForDevice(const std::string& device) {
+  // TODO(b/122059364): Make this more efficient
+  static constexpr size_t kNumTries = 10u;
+
+  for (size_t i = 0; i < kNumTries; ++i) {
+    StatusOr<bool> status = PathExists(device);
+    if (status.Ok() && *status) {
+      return Status::Success();
+    } else {
+      usleep(50000);
+    }
+  }
+
+  return Status::Fail(StringLog() << "Failed to wait for device " << device);
+}
+
+// Reads the entire device to verify the image is authenticatic
+Status readVerityDevice(const std::string& verity_device,
+                        uint64_t device_size) {
+  static constexpr int kBlockSize = 4096;
+  static constexpr size_t kBufSize = 1024 * kBlockSize;
+  std::vector<uint8_t> buffer(kBufSize);
+
+  unique_fd fd(TEMP_FAILURE_RETRY(open(verity_device.c_str(), O_RDONLY)));
+  if (fd.get() == -1) {
+    return Status::Fail(StringLog() << "Can't open " << verity_device);
+  }
+
+  size_t bytes_left = device_size;
+  while (bytes_left > 0) {
+    size_t to_read = std::min(bytes_left, kBufSize);
+    if (!android::base::ReadFully(fd.get(), buffer.data(), to_read)) {
+      return Status::Fail(PStringLog() << "Can't verify " << verity_device
+                                       << "; corrupted?");
+    }
+    bytes_left -= to_read;
+  }
+
+  return Status::Success();
+}
+
 Status VerifyMountedImage(const ApexFile& apex,
                           const std::string& mount_point) {
   auto status = apex.VerifyManifestMatches(mount_point);
@@ -260,7 +300,8 @@ Status VerifyMountedImage(const ApexFile& apex,
 
 StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
                                             const std::string& mountPoint,
-                                            const std::string& device_name) {
+                                            const std::string& device_name,
+                                            bool verifyImage) {
   using StatusM = StatusOr<MountedApexData>;
   const std::string& full_path = apex.GetPath();
 
@@ -315,41 +356,45 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
     }
   }
 
-  int last_errno = 0;
-  for (size_t count = 0; count < kMountAttempts; ++count) {
-    if (mount(blockDevice.c_str(), mountPoint.c_str(), "ext4",
-              MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, nullptr) == 0) {
-      LOG(INFO) << "Successfully mounted package " << full_path << " on "
-                << mountPoint;
-      auto status = VerifyMountedImage(apex, mountPoint);
-      if (!status.Ok()) {
-        umount2(mountPoint.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH);
-        return StatusM::Fail(StringLog() << "Failed to verify " << full_path
-                                         << ": " << status.ErrorMessage());
-      }
-      // Time to accept the temporaries as good.
-      if (mountOnVerity) {
-        verityDev.Release();
-      }
-      loopbackDevice.CloseGood();
+  // TODO(b/122059364): Even though the kernel has created the verity
+  // device, we still depend on ueventd to run to actually create the
+  // device node in userspace. To solve this properly we should listen on
+  // the netlink socket for uevents, or use inotify. For now, this will
+  // have to do.
+  Status deviceStatus = waitForDevice(blockDevice);
+  if (!deviceStatus.Ok()) {
+    return StatusM::MakeError(deviceStatus);
+  }
 
-      return StatusM(std::move(apex_data));
-    } else {
-      last_errno = errno;
-      PLOG(VERBOSE) << "Attempt [" << count + 1 << " / " << kMountAttempts
-                    << "]. Failed to mount " << blockDevice.c_str() << " to "
-                    << mountPoint.c_str();
-      // TODO(b/122059364): Even though the kernel has created the verity
-      // device, we still depend on ueventd to run to actually create the
-      // device node in userspace. To solve this properly we should listen on
-      // the netlink socket for uevents, or use inotify. For now, this will
-      // have to do.
-      usleep(50000);
+  if (mountOnVerity && verifyImage) {
+    Status verityStatus =
+        readVerityDevice(blockDevice, (*verityData).desc->image_size);
+    if (!verityStatus.Ok()) {
+      return StatusM::MakeError(verityStatus);
     }
   }
-  return StatusM::Fail(StringLog()
-                       << "Mounting failed for package " << full_path << " : "
-                       << strerror(last_errno));
+
+  if (mount(blockDevice.c_str(), mountPoint.c_str(), "ext4",
+            MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, nullptr) == 0) {
+    LOG(INFO) << "Successfully mounted package " << full_path << " on "
+              << mountPoint;
+    auto status = VerifyMountedImage(apex, mountPoint);
+    if (!status.Ok()) {
+      umount2(mountPoint.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH);
+      return StatusM::Fail(StringLog() << "Failed to verify " << full_path
+                                       << ": " << status.ErrorMessage());
+    }
+    // Time to accept the temporaries as good.
+    if (mountOnVerity) {
+      verityDev.Release();
+    }
+    loopbackDevice.CloseGood();
+
+    return StatusM(std::move(apex_data));
+  } else {
+    return StatusM::Fail(StringLog() << "Mounting failed for package "
+                                     << full_path << " : " << strerror(errno));
+  }
 }
 
 StatusOr<MountedApexData> mountFlattened(const ApexFile& apex,
@@ -375,7 +420,8 @@ StatusOr<MountedApexData> mountFlattened(const ApexFile& apex,
 
 StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
                                            const std::string& mountPoint,
-                                           const std::string& device_name) {
+                                           const std::string& device_name,
+                                           bool verifyImage) {
   using StatusM = StatusOr<MountedApexData>;
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
   // Note: the mount point could exist in case when the APEX was activated
@@ -408,7 +454,7 @@ StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
   if (apex.IsFlattened()) {
     ret = mountFlattened(apex, mountPoint);
   } else {
-    ret = mountNonFlattened(apex, mountPoint, device_name);
+    ret = mountNonFlattened(apex, mountPoint, device_name, verifyImage);
   }
   if (ret.Ok()) {
     scope_guard.Disable();  // Accept the mount.
@@ -416,12 +462,13 @@ StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
   return ret;
 }
 
-StatusOr<MountedApexData> TempMountPackage(const ApexFile& apex,
-                                           const std::string& mount_point) {
+StatusOr<MountedApexData> VerifyAndTempMountPackage(
+    const ApexFile& apex, const std::string& mount_point) {
   const std::string& package_id = GetPackageId(apex.GetManifest());
   LOG(DEBUG) << "Temp mounting " << package_id << " to " << mount_point;
   const std::string& temp_device_name = package_id + ".tmp";
-  return MountPackageImpl(apex, mount_point, temp_device_name);
+  return MountPackageImpl(apex, mount_point, temp_device_name,
+                          /* verifyImage = */ true);
 }
 
 Status Unmount(const MountedApexData& data) {
@@ -543,18 +590,20 @@ Status verifyPackage(const ApexFile& apex_file) {
     }
   }
 
-  // Temp mount image of this apex to validate it was properly signed.
+  // Temp mount image of this apex to validate it was properly signed;
+  // this will also read the entire block device through dm-verity, so
+  // we can be sure there is no corruption.
   const std::string& temp_mount_point =
       GetPackageTempMountPoint(apex_file.GetManifest());
 
   StatusOr<MountedApexData> mount_status =
-      TempMountPackage(apex_file, temp_mount_point);
+      VerifyAndTempMountPackage(apex_file, temp_mount_point);
   if (!mount_status.Ok()) {
     LOG(ERROR) << "Failed to temp mount to " << temp_mount_point << " : "
                << mount_status.ErrorMessage();
     return mount_status.ErrorStatus();
   }
-  // TODO: add additional checks, and move unmount inside scope guard.
+  // TODO: move unmount inside scope guard.
   LOG(DEBUG) << "Unmounting " << temp_mount_point;
   Status status = Unmount(*mount_status);
   if (!status.Ok()) {
@@ -867,7 +916,8 @@ namespace apexd_private {
 
 Status MountPackage(const ApexFile& apex, const std::string& mountPoint) {
   auto ret =
-      MountPackageImpl(apex, mountPoint, GetPackageId(apex.GetManifest()));
+      MountPackageImpl(apex, mountPoint, GetPackageId(apex.GetManifest()),
+                       /* verifyImage = */ false);
   if (!ret.Ok()) {
     return ret.ErrorStatus();
   }
