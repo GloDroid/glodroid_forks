@@ -98,6 +98,10 @@ static constexpr const char* kApexVerityOnSystemProp =
 static bool gForceDmVerityOnSystem =
     android::base::GetBoolProperty(kApexVerityOnSystemProp, false);
 
+// This should be in UAPI, but it's not :-(
+static constexpr const char* kDmVerityRestartOnCorruption =
+    "restart_on_corruption";
+
 MountedApexDatabase gMountedApexes;
 
 CheckpointInterface* gVoldService;
@@ -113,7 +117,8 @@ static const std::vector<const std::string> kBootstrapApexes = {
 };
 
 std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
-                                           const std::string& loop) {
+                                           const std::string& loop,
+                                           bool restart_on_corruption) {
   AvbHashtreeDescriptor* desc = verity_data.desc.get();
   auto table = std::make_unique<DmTable>();
 
@@ -128,6 +133,9 @@ std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
       verity_data.root_digest, verity_data.salt);
 
   target->IgnoreZeroBlocks();
+  if (restart_on_corruption) {
+    target->SetVerityMode(kDmVerityRestartOnCorruption);
+  }
   table->AddTarget(std::move(target));
 
   table->set_readonly(true);
@@ -339,7 +347,9 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
       gForceDmVerityOnSystem || !isPathForBuiltinApexes(full_path);
   DmVerityDevice verityDev;
   if (mountOnVerity) {
-    auto verityTable = createVerityTable(*verityData, loopbackDevice.name);
+    auto verityTable =
+        createVerityTable(*verityData, loopbackDevice.name,
+                          /* restart_on_corruption = */ !verifyImage);
     StatusOr<DmVerityDevice> verityDevRes =
         createVerityDevice(device_name, *verityTable);
     if (!verityDevRes.Ok()) {
