@@ -278,7 +278,7 @@ Status readVerityDevice(const std::string& verity_device,
 
   unique_fd fd(TEMP_FAILURE_RETRY(open(verity_device.c_str(), O_RDONLY)));
   if (fd.get() == -1) {
-    return Status::Fail(StringLog() << "Can't open " << verity_device);
+    return Status::Fail(PStringLog() << "Can't open " << verity_device);
   }
 
   size_t bytes_left = device_size;
