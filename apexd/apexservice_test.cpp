@@ -1947,6 +1947,18 @@ TEST_F(ApexServiceTest, ApexShimActivationFailureAdditionalFolder) {
                         "additional_folder\" is not a file"));
 }
 
+TEST_F(ApexServiceTest, StageCorruptApexFails) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("apex.apexd_test_corrupt_apex.apex"));
+
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+
+  bool success;
+  ASSERT_FALSE(IsOk(service_->stagePackage(installer.test_file, &success)));
+}
+
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
   void OnTestStart(const ::testing::TestInfo& test_info) override {
 #ifdef __ANDROID__
