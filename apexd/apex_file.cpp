@@ -361,6 +361,10 @@ StatusOr<const AvbHashtreeDescriptor*> findDescriptor(uint8_t* vbmeta_data,
   descriptors =
       avb_descriptor_get_all(vbmeta_data, vbmeta_size, &num_descriptors);
 
+  // avb_descriptor_get_all() returns an internally allocated array
+  // of pointers and it needs to be avb_free()ed after using it.
+  auto guard = android::base::ScopeGuard(std::bind(avb_free, descriptors));
+
   for (size_t i = 0; i < num_descriptors; i++) {
     AvbDescriptor desc;
     if (!avb_descriptor_validate_and_byteswap(descriptors[i], &desc)) {
