@@ -81,29 +81,6 @@ apex {
   installable: false,
 }
 
-genrule {
-  name: "generate_hash_v1",
-  srcs: [":com.android.apex.cts.shim.v2"],
-  out: ["hash.txt"],
-  cmd: "sha512sum -b $(in) | cut -d' ' -f1 | tee $(out)",
-}
-
-prebuilt_etc {
-  name: "hash_v1",
-  src: ":generate_hash_v1",
-  filename: "hash.txt",
-  installable: false,
-}
-
-apex {
-  name: "com.android.apex.cts.shim.v1",
-  manifest: "manifest.json",
-  file_contexts: "apex.test",
-  key: "com.android.apex.cts.shim.key",
-  prebuilts: ["hash_v1"],
-  installable: false,
-}
-
 prebuilt_etc {
   name: "apex_shim_additional_file",
   src: "additional_file",
@@ -156,49 +133,30 @@ apex {
 }
 
 genrule {
-  name: "generate_hash_with_pre_install_hook_v1",
-  srcs: [":com.android.apex.cts.shim.v2_with_pre_install_hook"],
+  name: "generate_hash_v1",
+  srcs: [
+    ":com.android.apex.cts.shim.v2",
+    ":com.android.apex.cts.shim.v2_additional_file",
+    ":com.android.apex.cts.shim.v2_additional_folder",
+    ":com.android.apex.cts.shim.v2_with_pre_install_hook",
+    ":com.android.apex.cts.shim.v2_with_post_install_hook",
+  ],
   out: ["hash.txt"],
   cmd: "sha512sum -b $(in) | cut -d' ' -f1 | tee $(out)",
 }
 
 prebuilt_etc {
-  name: "hash_with_pre_install_hook_v1",
-  src: ":generate_hash_with_pre_install_hook_v1",
+  name: "hash_v1",
+  src: ":generate_hash_v1",
   filename: "hash.txt",
   installable: false,
 }
 
-// Required to test that updating to a shim apex with preInstallHook fails.
 apex {
-  name: "com.android.apex.cts.shim.v1_updates_to_v2_with_pre_install_hook",
+  name: "com.android.apex.cts.shim.v1",
   manifest: "manifest.json",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
-  prebuilts: ["hash_with_pre_install_hook_v1"],
-  installable: false,
-}
-
-genrule {
-  name: "generate_hash_with_post_install_hook_v1",
-  srcs: [":com.android.apex.cts.shim.v2_with_post_install_hook"],
-  out: ["hash.txt"],
-  cmd: "sha512sum -b $(in) | cut -d' ' -f1 | tee $(out)",
-}
-
-prebuilt_etc {
-  name: "hash_with_post_install_hook_v1",
-  src: ":generate_hash_with_post_install_hook_v1",
-  filename: "hash.txt",
-  installable: false,
-}
-
-// Required to test that updating to a shim apex with postInstallHook fails.
-apex {
-  name: "com.android.apex.cts.shim.v1_updates_to_v2_with_post_install_hook",
-  manifest: "manifest.json",
-  file_contexts: "apex.test",
-  key: "com.android.apex.cts.shim.key",
-  prebuilts: ["hash_with_post_install_hook_v1"],
+  prebuilts: ["hash_v1"],
   installable: false,
 }

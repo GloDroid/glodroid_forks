@@ -305,8 +305,6 @@ cc_test {
     ":gen_bad_apexes",
     ":gen_corrupt_apex",
     ":com.android.apex.cts.shim.v1",
-    ":com.android.apex.cts.shim.v1_updates_to_v2_with_pre_install_hook",
-    ":com.android.apex.cts.shim.v1_updates_to_v2_with_post_install_hook",
     ":com.android.apex.cts.shim.v2",
     ":com.android.apex.cts.shim.v2_wrong_sha",
     ":com.android.apex.cts.shim.v2_additional_file",
