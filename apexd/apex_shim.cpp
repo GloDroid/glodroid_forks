@@ -76,10 +76,10 @@ StatusOr<std::string> CalculateSha512(const std::string& path) {
   return StatusT(ss.str());
 }
 
-StatusOr<std::string> ReadSha512(const std::string& path) {
+StatusOr<std::vector<std::string>> ReadSha512(const std::string& path) {
   using android::base::ReadFileToString;
   using android::base::StringPrintf;
-  using StatusT = StatusOr<std::string>;
+  using StatusT = StatusOr<std::vector<std::string>>;
   const std::string& file_path =
       StringPrintf("%s/%s/%s", path.c_str(), kEtcFolderName, kHashFileName);
   LOG(DEBUG) << "Reading SHA512 from " << file_path;
@@ -87,7 +87,7 @@ StatusOr<std::string> ReadSha512(const std::string& path) {
   if (!ReadFileToString(file_path, &hash, false /* follows symlinks */)) {
     return StatusT::MakeError(PStringLog() << "Failed to read " << file_path);
   }
-  return StatusT(android::base::Trim(hash));
+  return StatusT(android::base::Split(hash, "\n"));
 }
 
 Status IsRegularFile(const fs::directory_entry& entry) {
@@ -212,18 +212,19 @@ Status ValidateUpdate(const std::string& old_apex_path,
                       const std::string& new_apex_path) {
   LOG(DEBUG) << "Validating update of shim apex from " << old_apex_path
              << " to " << new_apex_path;
-  auto expected_hash = ReadSha512(old_apex_path);
-  if (!expected_hash.Ok()) {
-    return expected_hash.ErrorStatus();
+  auto allowed = ReadSha512(old_apex_path);
+  if (!allowed.Ok()) {
+    return allowed.ErrorStatus();
   }
-  auto actual_hash = CalculateSha512(new_apex_path);
-  if (!actual_hash.Ok()) {
-    return actual_hash.ErrorStatus();
+  auto actual = CalculateSha512(new_apex_path);
+  if (!actual.Ok()) {
+    return actual.ErrorStatus();
   }
-  if (*actual_hash != *expected_hash) {
+  auto it = std::find(allowed->begin(), allowed->end(), *actual);
+  if (it == allowed->end()) {
     return Status::Fail(StringLog()
                         << new_apex_path << " has unexpected SHA512 hash "
-                        << *actual_hash);
+                        << *actual);
   }
   return Status::Success();
 }
