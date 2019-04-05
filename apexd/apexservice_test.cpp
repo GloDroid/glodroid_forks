@@ -537,17 +537,20 @@ TEST_F(ApexServiceTest, StageSuccess) {
   EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
 }
 
-// TODO(b/130013353): enable test after fixing the bug.
-TEST_F(ApexServiceTest, DISABLED_StageSuccessDoesNotLeakTempVerityDevices) {
+TEST_F(ApexServiceTest,
+       SubmitStagegSessionSuccessDoesNotLeakTempVerityDevices) {
   using android::dm::DeviceMapper;
 
-  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
+                                      "/data/app-staging/session_1543",
+                                      "staging_data_file");
   if (!installer.Prepare()) {
     return;
   }
 
+  ApexInfoList list;
   bool success;
-  ASSERT_TRUE(IsOk(service_->stagePackage(installer.test_file, &success)));
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(1543, {}, &list, &success)));
   ASSERT_TRUE(success);
 
   std::vector<DeviceMapper::DmBlockDevice> devices;
@@ -559,18 +562,20 @@ TEST_F(ApexServiceTest, DISABLED_StageSuccessDoesNotLeakTempVerityDevices) {
   }
 }
 
-// TODO(b/130013353): enable test after fixing the bug.
-TEST_F(ApexServiceTest, DISABLED_StageFailDoesNotLeakTempVerityDevices) {
+TEST_F(ApexServiceTest, SubmitStagedSessionFailDoesNotLeakTempVerityDevices) {
   using android::dm::DeviceMapper;
 
   PrepareTestApexForInstall installer(
-      GetTestFile("apex.apexd_test_manifest_mismatch.apex"));
+      GetTestFile("apex.apexd_test_manifest_mismatch.apex"),
+      "/data/app-staging/session_239", "staging_data_file");
   if (!installer.Prepare()) {
     return;
   }
 
+  ApexInfoList list;
   bool success;
-  ASSERT_FALSE(IsOk(service_->stagePackage(installer.test_file, &success)));
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(239, {}, &list, &success)));
+  ASSERT_FALSE(success);
 
   std::vector<DeviceMapper::DmBlockDevice> devices;
   DeviceMapper& dm = DeviceMapper::Instance();
@@ -908,8 +913,7 @@ class ApexServiceDeactivationTest : public ApexServiceActivationSuccessTest {
   std::unique_ptr<PrepareTestApexForInstall> installer_;
 };
 
-// TODO(b/130013353): enable test after fixing the bug.
-TEST_F(ApexServiceActivationSuccessTest, DISABLED_DmDeviceTearDown) {
+TEST_F(ApexServiceActivationSuccessTest, DmDeviceTearDown) {
   std::string package_id =
       installer_->package + "@" + std::to_string(installer_->version);
 
