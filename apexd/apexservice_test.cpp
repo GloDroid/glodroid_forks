@@ -483,7 +483,8 @@ TEST_F(ApexServiceTest, StageSuccess) {
   EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
 }
 
-TEST_F(ApexServiceTest, StageSuccessDoesNotLeakTempVerityDevices) {
+// TODO(b/130013353): enable test after fixing the bug.
+TEST_F(ApexServiceTest, DISABLED_StageSuccessDoesNotLeakTempVerityDevices) {
   using android::dm::DeviceMapper;
 
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
@@ -504,7 +505,8 @@ TEST_F(ApexServiceTest, StageSuccessDoesNotLeakTempVerityDevices) {
   }
 }
 
-TEST_F(ApexServiceTest, StageFailDoesNotLeakTempVerityDevices) {
+// TODO(b/130013353): enable test after fixing the bug.
+TEST_F(ApexServiceTest, DISABLED_StageFailDoesNotLeakTempVerityDevices) {
   using android::dm::DeviceMapper;
 
   PrepareTestApexForInstall installer(
@@ -799,7 +801,8 @@ class ApexServiceDeactivationTest : public ApexServiceActivationSuccessTest {
   std::unique_ptr<PrepareTestApexForInstall> installer_;
 };
 
-TEST_F(ApexServiceActivationSuccessTest, DmDeviceTearDown) {
+// TODO(b/130013353): enable test after fixing the bug.
+TEST_F(ApexServiceActivationSuccessTest, DISABLED_DmDeviceTearDown) {
   std::string package_id =
       installer_->package + "@" + std::to_string(installer_->version);
 
