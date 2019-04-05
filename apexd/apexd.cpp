@@ -51,7 +51,6 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <linux/loop.h>
-#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -116,6 +115,42 @@ static const std::vector<const std::string> kBootstrapApexes = {
     "com.android.runtime",
     "com.android.tzdata",
 };
+
+bool isBootstrapApex(const ApexFile& apex) {
+  return std::find(kBootstrapApexes.begin(), kBootstrapApexes.end(),
+                   apex.GetManifest().name()) != kBootstrapApexes.end();
+}
+
+// Pre-allocate loop devices so that we don't have to wait for them
+// later when actually activating APEXes.
+Status preAllocateLoopDevices() {
+  auto scan = FindApexes({kApexPackageSystemDir, kApexPackageProductDir});
+  if (!scan.Ok()) {
+    return scan.ErrorStatus();
+  }
+
+  auto size = 0;
+  for (const auto& path : *scan) {
+    auto apexFile = ApexFile::Open(path);
+    if (!apexFile.Ok() || apexFile->IsFlattened()) {
+      continue;
+    }
+    size++;
+    // bootstrap Apexes may be activated on separate namespaces.
+    if (isBootstrapApex(*apexFile)) {
+      size++;
+    }
+  }
+
+  // note: do not call preAllocateLoopDevices() if size == 0.
+  // For devices (e.g. ARC) which doesn't support loop-control
+  // preAllocateLoopDevices() can cause problem when it tries
+  // to access /dev/loop-control.
+  if (size == 0) {
+    return Status::Success();
+  }
+  return loop::preAllocateLoopDevices(size);
+}
 
 std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
                                            const std::string& loop,
@@ -1068,8 +1103,7 @@ static bool IsApexUpdatable() {
 Status activatePackageImpl(const ApexFile& apex_file) {
   const ApexManifest& manifest = apex_file.GetManifest();
 
-  if (gBootstrap && std::find(kBootstrapApexes.begin(), kBootstrapApexes.end(),
-                              manifest.name()) == kBootstrapApexes.end()) {
+  if (gBootstrap && !isBootstrapApex(apex_file)) {
     LOG(INFO) << "Skipped when bootstrapping";
     return Status::Success();
   } else if (!IsApexUpdatable() && !gBootstrap &&
@@ -1641,18 +1675,10 @@ Status rollbackActiveSessionAndReboot() {
 int onBootstrap() {
   gBootstrap = true;
 
-  // Scan /system/apex to get the number of (non-flattened) APEXes and
-  // pre-allocated loopback devices so that we don't have to wait for it
-  // later when actually activating APEXes.
-  StatusOr<std::vector<std::string>> scan =
-      FindApexFilesByName(kApexPackageSystemDir, false /*include_dirs*/);
-  if (!scan.Ok()) {
-    LOG(WARNING) << scan.ErrorMessage();
-  } else if (scan->size() > 0) {
-    Status preAllocStatus = loop::preAllocateLoopDevices(scan->size());
-    if (!preAllocStatus.Ok()) {
-      LOG(ERROR) << preAllocStatus.ErrorMessage();
-    }
+  Status preAllocate = preAllocateLoopDevices();
+  if (!preAllocate.Ok()) {
+    LOG(ERROR) << "Failed to pre-allocate loop devices : "
+               << preAllocate.ErrorMessage();
   }
 
   Status status = collectApexKeys();

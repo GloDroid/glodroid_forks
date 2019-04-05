@@ -53,6 +53,11 @@ class StatusOr {
     return std::get_if<1u>(&data_);
   }
 
+  const T* operator->() const {
+    CHECK(Ok());
+    return std::get_if<1u>(&data_);
+  }
+
   const Status& ErrorStatus() const {
     CHECK(!Ok());
     const Status& status = *std::get_if<0u>(&data_);
