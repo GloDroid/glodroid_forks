@@ -143,6 +143,64 @@ std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
   return table;
 }
 
+enum WaitForDeviceMode {
+  kWaitToBeCreated = 0,
+  kWaitToBeDeleted,
+};
+
+Status waitForDevice(const std::string& device, const WaitForDeviceMode& mode) {
+  // TODO(b/122059364): Make this more efficient
+  // TODO: use std::chrono?
+
+  // Deleting a device might take more time, so wait a little bit longer.
+  size_t num_tries = mode == kWaitToBeCreated ? 10u : 15u;
+
+  LOG(DEBUG) << "Waiting for " << device << " to be "
+             << (mode == kWaitToBeCreated ? "created" : " deleted");
+  for (size_t i = 0; i < num_tries; ++i) {
+    StatusOr<bool> status = PathExists(device);
+    if (status.Ok()) {
+      if (mode == kWaitToBeCreated && *status) {
+        return Status::Success();
+      }
+      if (mode == kWaitToBeDeleted && !*status) {
+        return Status::Success();
+      }
+    }
+    if (i + 1 < num_tries) {
+      usleep(50000);
+    }
+  }
+
+  return Status::Fail(StringLog()
+                      << "Failed to wait for device " << device << " to be "
+                      << (mode == kWaitToBeCreated ? " created" : " deleted"));
+}
+
+// Deletes a dm-verity device with a given name and path.
+// Synchronizes on the device actually being deleted from userspace.
+Status DeleteVerityDevice(const std::string& name, const std::string& path) {
+  DeviceMapper& dm = DeviceMapper::Instance();
+  if (!dm.DeleteDevice(name)) {
+    return Status::Fail(StringLog() << "Failed to delete device " << name
+                                    << " with path " << path);
+  }
+  // Block until device is deleted from userspace.
+  return waitForDevice(path, kWaitToBeDeleted);
+}
+
+// Deletes dm-verity device with a given name.
+// See function above.
+Status DeleteVerityDevice(const std::string& name) {
+  DeviceMapper& dm = DeviceMapper::Instance();
+  std::string path;
+  if (!dm.GetDmDevicePathByName(name, &path)) {
+    return Status::Fail(StringLog()
+                        << "Unable to get path for dm-verity device " << name);
+  }
+  return DeleteVerityDevice(name, path);
+}
+
 class DmVerityDevice {
  public:
   DmVerityDevice() : cleared_(true) {}
@@ -168,8 +226,10 @@ class DmVerityDevice {
 
   ~DmVerityDevice() {
     if (!cleared_) {
-      DeviceMapper& dm = DeviceMapper::Instance();
-      dm.DeleteDevice(name_);
+      Status ret = DeleteVerityDevice(name_, dev_path_);
+      if (!ret.Ok()) {
+        LOG(ERROR) << ret.ErrorMessage();
+      }
     }
   }
 
@@ -190,8 +250,14 @@ StatusOr<DmVerityDevice> createVerityDevice(const std::string& name,
   DeviceMapper& dm = DeviceMapper::Instance();
 
   if (dm.GetState(name) != DmDeviceState::INVALID) {
+    // TODO: since apexd tears down devices during unmount, can this happen?
     LOG(WARNING) << "Deleting existing dm device " << name;
-    dm.DeleteDevice(name);
+    const Status& status = DeleteVerityDevice(name);
+    if (!status.Ok()) {
+      // TODO: should we fail instead?
+      LOG(ERROR) << "Failed to delete device " << name << " : "
+                 << status.ErrorMessage();
+    }
   }
 
   if (!dm.CreateDevice(name, table)) {
@@ -251,22 +317,6 @@ Status RemovePreviouslyActiveApexFiles(
   }
 
   return Status::Success();
-}
-
-Status waitForDevice(const std::string& device) {
-  // TODO(b/122059364): Make this more efficient
-  static constexpr size_t kNumTries = 10u;
-
-  for (size_t i = 0; i < kNumTries; ++i) {
-    StatusOr<bool> status = PathExists(device);
-    if (status.Ok() && *status) {
-      return Status::Success();
-    } else {
-      usleep(50000);
-    }
-  }
-
-  return Status::Fail(StringLog() << "Failed to wait for device " << device);
 }
 
 // Reads the entire device to verify the image is authenticatic
@@ -371,7 +421,7 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
   // device node in userspace. To solve this properly we should listen on
   // the netlink socket for uevents, or use inotify. For now, this will
   // have to do.
-  Status deviceStatus = waitForDevice(blockDevice);
+  Status deviceStatus = waitForDevice(blockDevice, kWaitToBeCreated);
   if (!deviceStatus.Ok()) {
     return StatusM::MakeError(deviceStatus);
   }
@@ -474,19 +524,9 @@ StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
 
 StatusOr<MountedApexData> VerifyAndTempMountPackage(
     const ApexFile& apex, const std::string& mount_point) {
-  static int device_cnt = 0;
   const std::string& package_id = GetPackageId(apex.GetManifest());
   LOG(DEBUG) << "Temp mounting " << package_id << " to " << mount_point;
-  // Since we temporarily disabled dm-verity device clean up on unmount, we need
-  // to append unique number for temp mounted package to avoid trying to create
-  // a device that is already there. This case might happen if after reboot new
-  // session was applied (as part of that we temp mount), and then new session
-  // with the same apexes was submitted (here we would have tried to temp mount
-  // to the already created devices).
-  // TODO(b/130013353): remove appending of a unique number.
-  const std::string& temp_device_name =
-      android::base::StringPrintf("%s.tmp%d", package_id.c_str(), device_cnt);
-  device_cnt++;
+  const std::string& temp_device_name = package_id + ".tmp";
   return MountPackageImpl(apex, mount_point, temp_device_name,
                           /* verifyImage = */ true);
 }
@@ -505,7 +545,13 @@ Status Unmount(const MountedApexData& data) {
   }
 
   // Try to free up the device-mapper device.
-  // TODO(b/130013353): free up dm-verity device and wait for it to be deleted.
+  if (!data.device_name.empty()) {
+    const auto& status = DeleteVerityDevice(data.device_name);
+    if (!status.Ok()) {
+      LOG(DEBUG) << "Failed to free device " << data.device_name << " : "
+                 << status.ErrorMessage();
+    }
+  }
 
   // Try to free up the loop device.
   if (!data.loop_name.empty()) {
@@ -515,6 +561,7 @@ Status Unmount(const MountedApexData& data) {
     };
     loop::DestroyLoopDevice(data.loop_name, log_fn);
   }
+
   return Status::Success();
 }
 
