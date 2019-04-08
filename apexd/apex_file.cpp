@@ -467,6 +467,28 @@ Status ApexFile::VerifyManifestMatches(const std::string& mount_path) const {
   return Status::Success();
 }
 
+StatusOr<std::vector<std::string>> FindApexes(
+    const std::vector<std::string>& paths) {
+  using StatusT = StatusOr<std::vector<std::string>>;
+  std::vector<std::string> result;
+  for (const auto& path : paths) {
+    auto exist = PathExists(path);
+    if (!exist.Ok()) {
+      return StatusT::MakeError(exist.ErrorStatus());
+    }
+    if (!*exist) continue;
+
+    const auto& apexes =
+        FindApexFilesByName(path, isPathForBuiltinApexes(path));
+    if (!apexes.Ok()) {
+      return apexes;
+    }
+
+    result.insert(result.end(), apexes->begin(), apexes->end());
+  }
+  return StatusOr<std::vector<std::string>>(result);
+}
+
 StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
                                                        bool include_dirs) {
   auto filter_fn =
