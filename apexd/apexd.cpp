@@ -474,9 +474,19 @@ StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
 
 StatusOr<MountedApexData> VerifyAndTempMountPackage(
     const ApexFile& apex, const std::string& mount_point) {
+  static int device_cnt = 0;
   const std::string& package_id = GetPackageId(apex.GetManifest());
   LOG(DEBUG) << "Temp mounting " << package_id << " to " << mount_point;
-  const std::string& temp_device_name = package_id + ".tmp";
+  // Since we temporarily disabled dm-verity device clean up on unmount, we need
+  // to append unique number for temp mounted package to avoid trying to create
+  // a device that is already there. This case might happen if after reboot new
+  // session was applied (as part of that we temp mount), and then new session
+  // with the same apexes was submitted (here we would have tried to temp mount
+  // to the already created devices).
+  // TODO(b/130013353): remove appending of a unique number.
+  const std::string& temp_device_name =
+      android::base::StringPrintf("%s.tmp%d", package_id.c_str(), device_cnt);
+  device_cnt++;
   return MountPackageImpl(apex, mount_point, temp_device_name,
                           /* verifyImage = */ true);
 }
@@ -495,12 +505,7 @@ Status Unmount(const MountedApexData& data) {
   }
 
   // Try to free up the device-mapper device.
-  if (!data.device_name.empty()) {
-    DeviceMapper& dm = DeviceMapper::Instance();
-    if (!dm.DeleteDevice(data.device_name)) {
-      LOG(ERROR) << "Unable to delete dm device " << data.device_name;
-    }
-  }
+  // TODO(b/130013353): free up dm-verity device and wait for it to be deleted.
 
   // Try to free up the loop device.
   if (!data.loop_name.empty()) {
