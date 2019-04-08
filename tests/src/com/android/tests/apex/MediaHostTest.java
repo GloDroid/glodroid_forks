@@ -58,8 +58,11 @@ public class MediaHostTest extends ApexE2EBaseHostTest {
 
     @Override
     public void additionalCheck() {
+        /*
+         * TODO(b/130138217) re-enable when this works on Cuttlefish
         assertTrue(((IManagedTestDevice) getDevice()).getMonitor().waitForBootComplete(60000));
         checkMediaExtractor();
+        */
     }
 
     private void checkMediaExtractor() {
