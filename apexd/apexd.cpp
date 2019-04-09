@@ -625,7 +625,10 @@ std::string GetPackageTempMountPoint(const ApexManifest& manifest) {
                       apexd_private::GetPackageMountPoint(manifest).c_str());
 }
 
-Status verifyPackage(const ApexFile& apex_file) {
+// A version of apex verification that happens during boot.
+// This function should only verification checks that are necessary to run on
+// each boot. Try to avoid putting expensive checks inside this function.
+Status VerifyPackageBoot(const ApexFile& apex_file) {
   if (apex_file.IsFlattened()) {
     return Status::Fail("Can't upgrade flattened apex");
   }
@@ -635,12 +638,26 @@ Status verifyPackage(const ApexFile& apex_file) {
   }
 
   if (shim::IsShimApex(apex_file)) {
-    auto status = ValidateStagingShimApex(apex_file);
+    // Validating shim is not a very cheap operation, but it's fine to perform
+    // it here since it only runs during CTS tests and will never be triggered
+    // during normal flow.
+    const auto& status = ValidateStagingShimApex(apex_file);
     if (!status.Ok()) {
       return status;
     }
   }
+  return Status::Success();
+}
 
+// A version of apex verification that happens on submitStagedSession.
+// This function contains checks that might be expensive to perform, e.g. temp
+// mounting a package and reading entire dm-verity device, and shouldn't be run
+// during boot.
+Status VerifyPackageInstall(const ApexFile& apex_file) {
+  const auto& verify_package_boot_status = VerifyPackageBoot(apex_file);
+  if (!verify_package_boot_status.Ok()) {
+    return verify_package_boot_status;
+  }
   // Temp mount image of this apex to validate it was properly signed;
   // this will also read the entire block device through dm-verity, so
   // we can be sure there is no corruption.
@@ -664,17 +681,18 @@ Status verifyPackage(const ApexFile& apex_file) {
   return Status::Success();
 }
 
+template <typename VerifyApexFn>
 StatusOr<std::vector<ApexFile>> verifyPackages(
-    const std::vector<std::string>& paths) {
+    const std::vector<std::string>& paths, const VerifyApexFn& verify_apex_fn) {
   if (paths.empty()) {
     return StatusOr<std::vector<ApexFile>>::MakeError("Empty set of inputs");
   }
   LOG(DEBUG) << "verifyPackages() for " << Join(paths, ',');
 
   using StatusT = StatusOr<std::vector<ApexFile>>;
-  auto verify_fn = [](std::vector<ApexFile>& apexes) {
+  auto verify_fn = [&](std::vector<ApexFile>& apexes) {
     for (const ApexFile& apex_file : apexes) {
-      Status status = verifyPackage(apex_file);
+      Status status = verify_apex_fn(apex_file);
       if (!status.Ok()) {
         return StatusT::MakeError(status);
       }
@@ -701,7 +719,7 @@ StatusOr<ApexFile> verifySessionDir(const int session_id) {
         "More than one APEX package found in the same session directory.");
   }
 
-  auto verified = verifyPackages(*scan);
+  auto verified = verifyPackages(*scan, VerifyPackageInstall);
   if (!verified.Ok()) {
     return StatusOr<ApexFile>::MakeError(verified.ErrorStatus());
   }
@@ -1423,7 +1441,7 @@ Status stagePackages(const std::vector<std::string>& tmpPaths) {
   //       it will open ApexFiles multiple times.
 
   // 1) Verify all packages.
-  auto verify_status = verifyPackages(tmpPaths);
+  auto verify_status = verifyPackages(tmpPaths, VerifyPackageBoot);
   if (!verify_status.Ok()) {
     return Status::Fail(verify_status.ErrorMessage());
   }

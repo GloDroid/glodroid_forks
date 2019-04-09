@@ -1864,86 +1864,77 @@ TEST_F(ApexShimUpdateTest, UpdateToV2FailureWrongSHA512) {
   ASSERT_THAT(error_message, HasSubstr("has unexpected SHA512 hash"));
 }
 
-TEST_F(ApexShimUpdateTest, UpdateToV2FailureHasPreInstallHook) {
+TEST_F(ApexShimUpdateTest, SubmitStagedSesssionFailureHasPreInstallHook) {
   PrepareTestApexForInstall installer(
-      GetTestFile("com.android.apex.cts.shim.v2_with_pre_install_hook.apex"));
+      GetTestFile("com.android.apex.cts.shim.v2_with_pre_install_hook.apex"),
+      "/data/app-staging/session_23", "staging_data_file");
 
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
   }
 
+  ApexInfoList list;
   bool success;
-  const auto& status = service_->stagePackage(installer.test_file, &success);
-  ASSERT_FALSE(IsOk(status));
-  const std::string& error_message =
-      std::string(status.exceptionMessage().c_str());
-  ASSERT_THAT(
-      error_message,
-      HasSubstr("Shim apex is not allowed to have pre or post install hooks"));
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(23, {}, &list, &success)));
+  ASSERT_FALSE(success);
 }
 
-TEST_F(ApexShimUpdateTest, UpdateToV2FailureHasPostInstallHook) {
+TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureHasPostInstallHook) {
   PrepareTestApexForInstall installer(
-      GetTestFile("com.android.apex.cts.shim.v2_with_post_install_hook.apex"));
+      GetTestFile("com.android.apex.cts.shim.v2_with_post_install_hook.apex"),
+      "/data/app-staging/session_43", "staging_data_file");
 
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
   }
 
+  ApexInfoList list;
   bool success;
-  const auto& status = service_->stagePackage(installer.test_file, &success);
-  ASSERT_FALSE(IsOk(status));
-  const std::string& error_message =
-      std::string(status.exceptionMessage().c_str());
-  ASSERT_THAT(
-      error_message,
-      HasSubstr("Shim apex is not allowed to have pre or post install hooks"));
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(43, {}, &list, &success)));
+  ASSERT_FALSE(success);
 }
 
-TEST_F(ApexShimUpdateTest, UpdateToV2FailureAdditionalFile) {
+TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureAdditionalFile) {
   PrepareTestApexForInstall installer(
-      GetTestFile("com.android.apex.cts.shim.v2_additional_file.apex"));
+      GetTestFile("com.android.apex.cts.shim.v2_additional_file.apex"),
+      "/data/app-staging/session_41", "staging_data_file");
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
   }
+
+  ApexInfoList list;
   bool success;
-  const auto& status = service_->stagePackage(installer.test_file, &success);
-  ASSERT_FALSE(IsOk(status));
-  const std::string& error_message =
-      std::string(status.exceptionMessage().c_str());
-  ASSERT_THAT(
-      error_message,
-      HasSubstr(
-          "Illegal file "
-          "\"/apex/com.android.apex.cts.shim@2.tmp/etc/additional_file\""));
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(41, {}, &list, &success)));
+  ASSERT_FALSE(success);
 }
 
-TEST_F(ApexShimUpdateTest, ApexShimActivationFailureAdditionalFolder) {
+TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureAdditionalFolder) {
   PrepareTestApexForInstall installer(
-      GetTestFile("com.android.apex.cts.shim.v2_additional_folder.apex"));
+      GetTestFile("com.android.apex.cts.shim.v2_additional_folder.apex"),
+      "/data/app-staging/session_42", "staging_data_file");
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
   }
+
+  ApexInfoList list;
   bool success;
-  const auto& status = service_->stagePackage(installer.test_file, &success);
-  ASSERT_FALSE(IsOk(status));
-  const std::string& error_message =
-      std::string(status.exceptionMessage().c_str());
-  ASSERT_THAT(error_message,
-              HasSubstr("\"/apex/com.android.apex.cts.shim@2.tmp/etc/"
-                        "additional_folder\" is not a file"));
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(42, {}, &list, &success)));
+  ASSERT_FALSE(success);
 }
 
-TEST_F(ApexServiceTest, StageCorruptApexFails) {
+TEST_F(ApexServiceTest, SubmitStagedSessionCorruptApexFails) {
   PrepareTestApexForInstall installer(
-      GetTestFile("apex.apexd_test_corrupt_apex.apex"));
+      GetTestFile("apex.apexd_test_corrupt_apex.apex"),
+      "/data/app-staging/session_57", "staging_data_file");
 
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
   }
 
+  ApexInfoList list;
   bool success;
-  ASSERT_FALSE(IsOk(service_->stagePackage(installer.test_file, &success)));
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(57, {}, &list, &success)));
+  ASSERT_FALSE(success);
 }
 
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
