@@ -1367,7 +1367,7 @@ TEST_F(ApexServiceTest, AbortActiveSession) {
 
 TEST_F(ApexServiceTest, BackupActivePackages) {
   if (supports_fs_checkpointing_) {
-    return;
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
   }
   PrepareTestApexForInstall installer1(GetTestFile("apex.apexd_test.apex"));
   PrepareTestApexForInstall installer2(
@@ -1411,7 +1411,7 @@ TEST_F(ApexServiceTest, BackupActivePackages) {
 
 TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
   if (supports_fs_checkpointing_) {
-    return;
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
   }
   PrepareTestApexForInstall installer1(GetTestFile("apex.apexd_test.apex"));
   PrepareTestApexForInstall installer2(
@@ -1461,7 +1461,7 @@ TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
 
 TEST_F(ApexServiceTest, BackupActivePackagesZeroActivePackages) {
   if (supports_fs_checkpointing_) {
-    return;
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
   }
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"),
                                       "/data/app-staging/session_41",
@@ -1606,8 +1606,7 @@ class ApexServiceRollbackTest : public ApexServiceTest {
 
 TEST_F(ApexServiceRollbackTest, AbortActiveSessionSuccessfulRollback) {
   if (supports_fs_checkpointing_) {
-    // Can't test rollback when using filesystem checkpointing
-    return;
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
   }
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer.Prepare()) {
@@ -1642,6 +1641,10 @@ TEST_F(ApexServiceRollbackTest, AbortActiveSessionSuccessfulRollback) {
 }
 
 TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledSuccessfulRollback) {
+  if (supports_fs_checkpointing_) {
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
+  }
+
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer.Prepare()) {
     return;
@@ -1710,7 +1713,7 @@ TEST_F(ApexServiceRollbackTest, MarkStagedSessionSuccessfulCleanupBackup) {
 
 TEST_F(ApexServiceRollbackTest, ResumesRollback) {
   if (supports_fs_checkpointing_) {
-    return;
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
   }
   PrepareBackup({GetTestFile("apex.apexd_test.apex"),
                  GetTestFile("apex.apexd_test_different_app.apex")});
@@ -1748,7 +1751,7 @@ TEST_F(ApexServiceRollbackTest, ResumesRollback) {
 
 TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
   if (supports_fs_checkpointing_) {
-    return;
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
   }
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer.Prepare()) {
@@ -1778,6 +1781,41 @@ TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
   ApexSessionInfo expected = CreateSessionInfo(53);
   expected.isSuccess = true;
   ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
+}
+
+TEST_F(ApexServiceRollbackTest, FailsRollback) {
+  if (supports_fs_checkpointing_) {
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
+  }
+
+  auto session = ApexSession::CreateSession(53);
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::ACTIVATED)));
+
+  ASSERT_FALSE(IsOk(service_->rollbackActiveSession()));
+  ApexSessionInfo session_info;
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(53, &session_info)));
+  ApexSessionInfo expected = CreateSessionInfo(53);
+  expected.isRollbackFailed = true;
+  ASSERT_THAT(session_info, SessionInfoEq(expected));
+}
+
+TEST_F(ApexServiceRollbackTest, RollbackFailedStateRollbackAttemptFails) {
+  if (supports_fs_checkpointing_) {
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
+  }
+
+  auto session = ApexSession::CreateSession(17239);
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(
+      IsOk(session->UpdateStateAndCommit(SessionState::ROLLBACK_FAILED)));
+
+  ASSERT_FALSE(IsOk(service_->rollbackActiveSession()));
+  ApexSessionInfo session_info;
+  ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(17239, &session_info)));
+  ApexSessionInfo expected = CreateSessionInfo(17239);
+  expected.isRollbackFailed = true;
+  ASSERT_THAT(session_info, SessionInfoEq(expected));
 }
 
 static pid_t GetPidOf(const std::string& name) {
