@@ -214,6 +214,7 @@ static void ClearSessionInfo(ApexSessionInfo* session_info) {
   session_info->isActivationFailed = false;
   session_info->isSuccess = false;
   session_info->isRolledBack = false;
+  session_info->isRollbackFailed = false;
 }
 
 void convertToApexSessionInfo(const ApexSession& session,
@@ -244,6 +245,9 @@ void convertToApexSessionInfo(const ApexSession& session,
       break;
     case SessionState::ROLLED_BACK:
       session_info->isRolledBack = true;
+      break;
+    case SessionState::ROLLBACK_FAILED:
+      session_info->isRollbackFailed = true;
       break;
     case SessionState::UNKNOWN:
     default:

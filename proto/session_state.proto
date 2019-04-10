@@ -29,6 +29,7 @@ message SessionState {
     SUCCESS = 5;
     ROLLBACK_IN_PROGRESS = 6;
     ROLLED_BACK = 7;
+    ROLLBACK_FAILED = 8;
   }
 
   int32 id = 1;
