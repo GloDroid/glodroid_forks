@@ -28,6 +28,7 @@ interface IApexService {
    ApexSessionInfo[] getSessions();
    ApexSessionInfo getStagedSessionInfo(int session_id);
    ApexInfo[] getActivePackages();
+   ApexInfo[] getAllPackages();
 
    void abortActiveSession();
 

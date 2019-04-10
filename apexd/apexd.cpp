@@ -1173,6 +1173,40 @@ std::unordered_map<std::string, uint64_t> GetActivePackagesMap() {
 
 }  // namespace
 
+std::vector<ApexFile> getFactoryPackages() {
+  std::vector<ApexFile> ret;
+  auto all_system_factory_apex_files =
+      FindApexFilesByName(kApexPackageSystemDir, /* include_dirs=*/false);
+  if (!all_system_factory_apex_files.Ok()) {
+    LOG(ERROR) << all_system_factory_apex_files.ErrorMessage();
+    return ret;
+  }
+  for (const std::string& path : *all_system_factory_apex_files) {
+    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
+    if (!apex_file.Ok()) {
+      LOG(ERROR) << apex_file.ErrorMessage();
+    } else {
+      ret.emplace_back(std::move(*apex_file));
+    }
+  }
+
+  auto all_product_factory_apex_files =
+      FindApexFilesByName(kApexPackageProductDir, /* include_dirs=*/false);
+  if (!all_product_factory_apex_files.Ok()) {
+    LOG(INFO) << all_product_factory_apex_files.ErrorMessage();
+  } else {
+    for (const std::string& path : *all_product_factory_apex_files) {
+      StatusOr<ApexFile> apex_file = ApexFile::Open(path);
+      if (!apex_file.Ok()) {
+        LOG(ERROR) << apex_file.ErrorMessage();
+      } else {
+        ret.emplace_back(std::move(*apex_file));
+      }
+    }
+  }
+  return ret;
+}
+
 StatusOr<ApexFile> getActivePackage(const std::string& packageName) {
   std::vector<ApexFile> packages = getActivePackages();
   for (ApexFile& apex : packages) {
