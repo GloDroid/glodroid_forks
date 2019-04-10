@@ -63,11 +63,13 @@ namespace apex {
 
 using android::sp;
 using android::String16;
+using android::apex::testing::ApexInfoEq;
 using android::apex::testing::CreateSessionInfo;
 using android::apex::testing::IsOk;
 using android::apex::testing::SessionInfoEq;
 using android::base::Join;
 using android::base::StringPrintf;
+using ::testing::Contains;
 using ::testing::EndsWith;
 using ::testing::HasSubstr;
 using ::testing::Not;
@@ -1916,33 +1918,19 @@ TEST(ApexdTest, ApexesAreActivatedForEarlyProcesses) {
 
 class ApexShimUpdateTest : public ApexServiceTest {
  protected:
-  std::unique_ptr<PrepareTestApexForInstall> system_shim_;
-
-  void Activate(const std::string& test_file) {
-    if (system_shim_) {
-      // Deactivate previously active shim.
-      ASSERT_TRUE(IsOk(service_->deactivatePackage(system_shim_->test_file)));
-    }
-    system_shim_ = std::make_unique<PrepareTestApexForInstall>(test_file);
-    if (!system_shim_->Prepare()) {
-      FAIL() << GetDebugStr(system_shim_.get());
-    }
-    // Putting system version into /data/apex/active won't work, because staging
-    // of a newer version will delete previous one from /data/apex/active,
-    // resulting in test not being able to deactivate it on tear down.
-    ASSERT_TRUE(IsOk(service_->activatePackage(system_shim_->test_file)));
-  }
-
   void SetUp() override {
     ApexServiceTest::SetUp();
 
-    // TODO: instead verify shim apex is pre-installed.
-    Activate(GetTestFile("com.android.apex.cts.shim.v1.apex"));
-  }
-
-  void TearDown() override {
-    ASSERT_TRUE(IsOk(service_->deactivatePackage(system_shim_->test_file)));
-    ApexServiceTest::TearDown();
+    // Assert that shim apex is pre-installed.
+    std::vector<ApexInfo> list;
+    ASSERT_TRUE(IsOk(service_->getAllPackages(&list)));
+    ApexInfo expected;
+    expected.packageName = "com.android.apex.cts.shim";
+    expected.packagePath = "/system/apex/com.android.apex.cts.shim.apex";
+    expected.versionCode = 1;
+    expected.isFactory = true;
+    expected.isActive = true;
+    ASSERT_THAT(list, Contains(ApexInfoEq(expected)));
   }
 };
 
