@@ -18,7 +18,9 @@
 prebuilt_apex {
   name: "com.android.apex.cts.shim.v1_prebuilt",
   src: "com.android.apex.cts.shim.v1.apex",
-  filename: "com.android.apex.cts.shim.v1.apex",
+  filename: "com.android.apex.cts.shim.apex",
+  prefer: true,
+  installable: true,
 }
 
 prebuilt_apex {
