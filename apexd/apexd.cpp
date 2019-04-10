@@ -1119,9 +1119,7 @@ Status activatePackageImpl(const ApexFile& apex_file) {
   if (gBootstrap && !isBootstrapApex(apex_file)) {
     LOG(INFO) << "Skipped when bootstrapping";
     return Status::Success();
-  } else if (!IsApexUpdatable() && !gBootstrap &&
-             std::find(kBootstrapApexes.begin(), kBootstrapApexes.end(),
-                       manifest.name()) != kBootstrapApexes.end()) {
+  } else if (!IsApexUpdatable() && !gBootstrap && isBootstrapApex(apex_file)) {
     LOG(INFO) << "Package already activated in bootstrap";
     return Status::Success();
   }
