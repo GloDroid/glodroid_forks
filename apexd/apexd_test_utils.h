@@ -76,7 +76,9 @@ MATCHER_P(SessionInfoEq, other, "") {
                 Eq(other.isActivationFailed)),
           Field("isSuccess", &ApexSessionInfo::isSuccess, Eq(other.isSuccess)),
           Field("isRolledBack", &ApexSessionInfo::isRolledBack,
-                Eq(other.isRolledBack))),
+                Eq(other.isRolledBack)),
+          Field("isRollbackFailed", &ApexSessionInfo::isRollbackFailed,
+                Eq(other.isRollbackFailed))),
       arg, result_listener);
 }
 
@@ -91,6 +93,7 @@ inline ApexSessionInfo CreateSessionInfo(int session_id) {
   info.isActivationFailed = false;
   info.isSuccess = false;
   info.isRolledBack = false;
+  info.isRollbackFailed = false;
   return info;
 }
 
@@ -107,6 +110,7 @@ inline void PrintTo(const ApexSessionInfo& session, std::ostream* os) {
   *os << "  isActivationFailed : " << session.isActivationFailed << "\n";
   *os << "  isSuccess : " << session.isSuccess << "\n";
   *os << "  isRolledBack : " << session.isRolledBack << "\n";
+  *os << "  isRollbackFailed : " << session.isRollbackFailed << "\n";
   *os << "}";
 }
 
