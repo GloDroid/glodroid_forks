@@ -1745,6 +1745,8 @@ void onStart(CheckpointInterface* checkpoint_service) {
     return;
   }
 
+  gMountedApexes.PopulateFromMounts();
+
   // Activate APEXes from /data/apex. If one in the directory is newer than the
   // system one, the new one will eclipse the old one.
   scanStagedSessionsDirAndStage();
