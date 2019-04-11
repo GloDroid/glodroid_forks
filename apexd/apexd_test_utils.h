@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <android/apex/ApexInfo.h>
 #include <android/apex/ApexSessionInfo.h>
 #include <binder/IServiceManager.h>
 #include <gmock/gmock.h>
@@ -26,6 +27,11 @@ using apex::proto::SessionState;
 namespace android {
 namespace apex {
 namespace testing {
+
+using ::testing::AllOf;
+using ::testing::Eq;
+using ::testing::ExplainMatchResult;
+using ::testing::Field;
 
 inline ::testing::AssertionResult IsOk(const Status& status) {
   if (status.Ok()) {
@@ -56,11 +62,6 @@ inline ::testing::AssertionResult IsOk(const android::binder::Status& status) {
 }
 
 MATCHER_P(SessionInfoEq, other, "") {
-  using ::testing::AllOf;
-  using ::testing::Eq;
-  using ::testing::ExplainMatchResult;
-  using ::testing::Field;
-
   return ExplainMatchResult(
       AllOf(
           Field("sessionId", &ApexSessionInfo::sessionId, Eq(other.sessionId)),
@@ -77,6 +78,16 @@ MATCHER_P(SessionInfoEq, other, "") {
           Field("isSuccess", &ApexSessionInfo::isSuccess, Eq(other.isSuccess)),
           Field("isRolledBack", &ApexSessionInfo::isRolledBack,
                 Eq(other.isRolledBack))),
+      arg, result_listener);
+}
+
+MATCHER_P(ApexInfoEq, other, "") {
+  return ExplainMatchResult(
+      AllOf(Field("packageName", &ApexInfo::packageName, Eq(other.packageName)),
+            Field("packagePath", &ApexInfo::packagePath, Eq(other.packagePath)),
+            Field("versioncode", &ApexInfo::versionCode, Eq(other.versionCode)),
+            Field("isFactory", &ApexInfo::isFactory, Eq(other.isFactory)),
+            Field("isActive", &ApexInfo::isActive, Eq(other.isActive))),
       arg, result_listener);
 }
 
