@@ -208,11 +208,11 @@ Status ValidateShimApex(const std::string& mount_point,
   return Status::Success();
 }
 
-Status ValidateUpdate(const std::string& old_apex_path,
+Status ValidateUpdate(const std::string& system_apex_path,
                       const std::string& new_apex_path) {
-  LOG(DEBUG) << "Validating update of shim apex from " << old_apex_path
-             << " to " << new_apex_path;
-  auto allowed = ReadSha512(old_apex_path);
+  LOG(DEBUG) << "Validating update of shim apex to " << new_apex_path
+             << " using system shim apex " << system_apex_path;
+  auto allowed = ReadSha512(system_apex_path);
   if (!allowed.Ok()) {
     return allowed.ErrorStatus();
   }
