@@ -26,12 +26,14 @@ namespace android {
 namespace apex {
 namespace shim {
 
+constexpr const char* kSystemShimApexName = "com.android.apex.cts.shim.apex";
+
 bool IsShimApex(const ApexFile& apex_file);
 
 Status ValidateShimApex(const std::string& mount_point,
                         const ApexFile& apex_file);
 
-Status ValidateUpdate(const std::string& old_apex_path,
+Status ValidateUpdate(const std::string& system_apex_path,
                       const std::string& new_apex_path);
 
 }  // namespace shim
