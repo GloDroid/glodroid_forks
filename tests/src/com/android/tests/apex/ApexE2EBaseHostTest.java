@@ -41,6 +41,7 @@ import java.util.stream.Stream;
 public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     private static final Duration WAIT_FOR_SESSION_READY_TTL = Duration.ofSeconds(10);
     private static final Duration SLEEP_FOR = Duration.ofMillis(200);
+    private static final String SUPPORT_APEX_UPDATE_PROPERTY = "ro.apex.updatable";
 
     protected static final String OPTION_APEX_FILE_NAME = "apex_file_name";
 
@@ -57,9 +58,15 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             mandatory = true
     )
     protected String mApexFileName = null;
+    protected boolean mApexUpdatable = true;
 
     @Before
     public synchronized void setUp() throws Exception {
+        if (getDevice().getProperty(SUPPORT_APEX_UPDATE_PROPERTY).equals("false")) {
+            mApexUpdatable = false;
+            CLog.i("Apex updating is not supported on this device. Skipping setup().");
+            return;
+        }
         uninstallApex();
     }
 
@@ -68,6 +75,11 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
      */
     public void doTestStageActivateUninstallApexPackage()
                                 throws DeviceNotAvailableException, IOException {
+
+        if (!mApexUpdatable) {
+            CLog.i("Apex updating is not supported on this device. Skipping test.");
+            return;
+        }
 
         File testAppFile = mUtils.getTestFile(mApexFileName);
         CLog.i("Found test apex file: " + testAppFile.getAbsoluteFile());
@@ -127,6 +139,10 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
 
     @After
     public void tearDown() throws Exception {
+        if (!mApexUpdatable) {
+            CLog.i("Apex updating is not supported on this device. Skipping teardown().");
+            return;
+        }
         uninstallApex();
     }
 
