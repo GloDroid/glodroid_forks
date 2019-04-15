@@ -48,8 +48,6 @@ cc_defaults {
     "libjsoncpp",
     "libprotobuf-cpp-full",
     "libziparchive",
-    // Required full for parsing json string to message
-    "libprotobuf-cpp-full",
     "libcutils",
   ],
   static_libs: [
@@ -123,6 +121,7 @@ cc_library_static {
   name: "libapexd",
   defaults: ["apex_defaults"],
   srcs: [
+    "apex_database.cpp",
     "apexd.cpp",
     "apexd_loop.cpp",
     "apexd_prepostinstall.cpp",

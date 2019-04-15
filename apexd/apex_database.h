@@ -187,6 +187,8 @@ class MountedApexDatabase {
     }
   }
 
+  void PopulateFromMounts();
+
  private:
   // A map from package name to mounted apexes.
   // Note: using std::maps to

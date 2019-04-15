@@ -32,6 +32,7 @@
 #include <android-base/logging.h>
 #include <cutils/android_reboot.h>
 
+#include "status_or.h"
 #include "string_log.h"
 
 namespace android {
