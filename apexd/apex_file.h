@@ -81,6 +81,7 @@ StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
                                                        bool include_dirs);
 
 bool isPathForBuiltinApexes(const std::string& path);
+bool isFlattenedApex(const std::string& path);
 
 }  // namespace apex
 }  // namespace android

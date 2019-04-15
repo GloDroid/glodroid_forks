@@ -55,6 +55,8 @@ constexpr const bool kDebugAllowBundledKey = true;
 constexpr const bool kDebugAllowBundledKey = false;
 #endif
 
+}  // namespace
+
 // Tests if <path>/manifest.json file exists.
 bool isFlattenedApex(const std::string& path) {
   struct stat buf;
@@ -77,8 +79,6 @@ bool isFlattenedApex(const std::string& path) {
   }
   return true;
 }
-
-}  // namespace
 
 StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
   bool flattened;
