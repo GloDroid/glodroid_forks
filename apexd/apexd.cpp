@@ -110,6 +110,9 @@ bool gInFsCheckpointMode = false;
 
 static constexpr size_t kLoopDeviceSetupAttempts = 3u;
 
+static const bool kUpdatable =
+    android::sysprop::ApexProperties::updatable().value_or(false);
+
 bool gBootstrap = false;
 static const std::vector<const std::string> kBootstrapApexes = {
     "com.android.runtime",
@@ -735,6 +738,12 @@ Status VerifyPackageInstall(const ApexFile& apex_file) {
   if (!verify_package_boot_status.Ok()) {
     return verify_package_boot_status;
   }
+  if (!kUpdatable) {
+    return Status::Fail(StringLog() << "Attempted to upgrade apex package "
+                                    << apex_file.GetPath()
+                                    << " on a device that doesn't support it");
+  }
+  StatusOr<ApexVerityData> verity_or = apex_file.VerifyApexVerity();
 
   constexpr const auto kSuccessFn = [](const std::string& _) {
     return Status::Success();
@@ -1108,19 +1117,13 @@ Status resumeRollbackIfNeeded() {
   return Status::Success();
 }
 
-static bool IsApexUpdatable() {
-  static bool updatable =
-      android::sysprop::ApexProperties::updatable().value_or(false);
-  return updatable;
-}
-
 Status activatePackageImpl(const ApexFile& apex_file) {
   const ApexManifest& manifest = apex_file.GetManifest();
 
   if (gBootstrap && !isBootstrapApex(apex_file)) {
     LOG(INFO) << "Skipped when bootstrapping";
     return Status::Success();
-  } else if (!IsApexUpdatable() && !gBootstrap && isBootstrapApex(apex_file)) {
+  } else if (!kUpdatable && !gBootstrap && isBootstrapApex(apex_file)) {
     LOG(INFO) << "Package already activated in bootstrap";
     return Status::Success();
   }
