@@ -25,7 +25,7 @@
 
 namespace android {
 namespace apex {
-void waitForBootStatus(Status (&rollback_fn)()) {
+void waitForBootStatus(Status (&rollback_fn)(), void (&complete_fn)()) {
   while (true) {
     // Check for change in either crashing property or sys.boot_completed
     // Wait for updatable_crashing property change for most of the time
@@ -47,6 +47,7 @@ void waitForBootStatus(Status (&rollback_fn)()) {
     }
     if (android::base::GetProperty("sys.boot_completed", "") == "1") {
       // Boot completed we can return
+      complete_fn();
       return;
     }
   }

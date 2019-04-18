@@ -65,6 +65,7 @@ Status abortActiveSession();
 int onBootstrap();
 void onStart(CheckpointInterface* checkpoint_service);
 void onAllPackagesReady();
+void unmountDanglingMounts();
 
 }  // namespace apex
 }  // namespace android

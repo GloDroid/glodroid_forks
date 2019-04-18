@@ -22,7 +22,7 @@
 namespace android {
 namespace apex {
 
-void waitForBootStatus(Status (&rollback_fn)());
+void waitForBootStatus(Status (&rollback_fn)(), void (&complete_fn)());
 
 }  // namespace apex
 }  // namespace android
