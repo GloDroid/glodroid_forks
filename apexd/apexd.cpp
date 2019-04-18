@@ -1897,5 +1897,33 @@ Status markStagedSessionSuccessful(const int session_id) {
   }
 }
 
+// Find dangling mounts and unmount them.
+// If one is on /data/apex/active, remove it.
+void unmountDanglingMounts() {
+  std::multimap<std::string, MountedApexData> danglings;
+  gMountedApexes.ForallMountedApexes([&](const std::string& package,
+                                         const MountedApexData& data,
+                                         bool latest) {
+    if (!latest) {
+      danglings.insert({package, data});
+    }
+  });
+
+  for (const auto& [package, data] : danglings) {
+    const std::string& path = data.full_path;
+    LOG(VERBOSE) << "Unmounting " << data.mount_point;
+    gMountedApexes.RemoveMountedApex(package, path);
+    if (auto st = Unmount(data); !st.Ok()) {
+      LOG(ERROR) << st.ErrorMessage();
+    }
+    if (StartsWith(path, kActiveApexPackagesDataDir)) {
+      LOG(VERBOSE) << "Deleting old APEX " << path;
+      if (unlink(path.c_str()) != 0) {
+        PLOG(ERROR) << "Failed to delete " << path;
+      }
+    }
+  }
+}
+
 }  // namespace apex
 }  // namespace android
