@@ -1682,7 +1682,7 @@ int onBootstrap() {
                << preAllocate.ErrorMessage();
   }
 
-  Status status = collectApexKeys();
+  Status status = collectApexKeys({kApexPackageSystemDir});
   if (!status.Ok()) {
     LOG(ERROR) << "Failed to collect APEX keys : " << status.ErrorMessage();
     return 1;
@@ -1740,7 +1740,7 @@ void onStart(CheckpointInterface* checkpoint_service) {
     }
   }
 
-  Status status = collectApexKeys();
+  Status status = collectApexKeys(kApexPackageBuiltinDirs);
   if (!status.Ok()) {
     LOG(ERROR) << "Failed to collect APEX keys : " << status.ErrorMessage();
     return;
