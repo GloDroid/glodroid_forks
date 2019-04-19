@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "status.h"
 #include "status_or.h"
@@ -24,7 +25,7 @@
 namespace android {
 namespace apex {
 
-Status collectApexKeys(bool scanExternalKeys = false);
+Status collectApexKeys(const std::vector<std::string>& apex_dirs);
 StatusOr<const std::string> getApexKey(const std::string& key_name);
 
 }  // namespace apex
