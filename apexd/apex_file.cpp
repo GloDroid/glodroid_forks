@@ -505,8 +505,12 @@ StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
 }
 
 bool isPathForBuiltinApexes(const std::string& path) {
-  return StartsWith(path, kApexPackageSystemDir) ||
-         StartsWith(path, kApexPackageProductDir);
+  for (const auto& dir : kApexPackageBuiltinDirs) {
+    if (StartsWith(path, dir)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace apex
