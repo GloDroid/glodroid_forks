@@ -146,7 +146,7 @@ StatusOr<inode_t> inodeFor(const std::string& path) {
 inode_map scanFlattendedPackages() {
   inode_map map;
 
-  for (const auto& dir : {kApexPackageSystemDir, kApexPackageProductDir}) {
+  for (const auto& dir : kApexPackageBuiltinDirs) {
     ReadDir(dir, [&](const fs::directory_entry& entry) {
       const auto& path = entry.path();
       if (isFlattenedApex(path)) {

@@ -844,8 +844,7 @@ TEST_F(ApexServiceTest, GetFactoryPackages) {
   ASSERT_TRUE(factoryPackages->size() > 0);
 
   for (const ApexInfo& package : *factoryPackages) {
-    ASSERT_TRUE(StartsWith(package.packagePath, kApexPackageSystemDir) ||
-                StartsWith(package.packagePath, kApexPackageProductDir));
+    ASSERT_TRUE(isPathForBuiltinApexes(package.packagePath));
   }
 }
 
