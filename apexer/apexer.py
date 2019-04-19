@@ -76,6 +76,8 @@ def ParseArgs(argv):
                       help="""A list of directories containing all the tools used by apexer (e.g.
                               mke2fs, avbtool, etc.) separated by ':'. Can also be set using the
                               APEXER_TOOL_PATH environment variable""")
+  parser.add_argument('--target_sdk_version', required=False,
+                      help='Default target SDK version to use for AndroidManifest.xml')
   return parser.parse_args(argv)
 
 def FindBinaryPath(binary):
@@ -354,6 +356,8 @@ def CreateApex(args, work_dir):
   # This version from apex_manifest.json is used when versionCode isn't
   # specified in AndroidManifest.xml
   cmd.extend(['--version-code', str(manifest_apex.version)])
+  if args.target_sdk_version:
+    cmd.extend(['--target-sdk-version', args.target_sdk_version])
   cmd.extend(['-o', apk_file])
   cmd.extend(['-I', args.android_jar_path])
   RunCommand(cmd, args.verbose)
