@@ -33,7 +33,6 @@ namespace apex {
 class CheckpointInterface;
 
 Status resumeRollbackIfNeeded();
-void unmountAndDetachExistingImages();
 
 Status scanPackagesDirAndActivate(const char* apex_package_dir);
 void scanStagedSessionsDirAndStage();
