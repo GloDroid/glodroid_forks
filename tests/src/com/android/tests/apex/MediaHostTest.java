@@ -44,7 +44,7 @@ public class MediaHostTest extends ApexE2EBaseHostTest {
     private static final Pattern EXTRACTOR_PLUGIN_REGEX =
             Pattern.compile("\\s+(.*): plugin_version\\((\\d+)\\), uuid\\((.+)\\)"
                     + ", version\\((\\d+)\\), path\\((.+)\\), supports: (.*)");
-    private static final int DEFAULT_EXTRACTOR_PLUGIN_COUNT = 9;
+    private static final int DEFAULT_EXTRACTOR_PLUGIN_COUNT = 10;
     private static final String MEDIA_APEX_PATH = "/apex/com.android.media";
 
     /**
@@ -58,11 +58,8 @@ public class MediaHostTest extends ApexE2EBaseHostTest {
 
     @Override
     public void additionalCheck() {
-        /*
-         * TODO(b/130138217) re-enable when this works on Cuttlefish
         assertTrue(((IManagedTestDevice) getDevice()).getMonitor().waitForBootComplete(60000));
         checkMediaExtractor();
-        */
     }
 
     private void checkMediaExtractor() {
