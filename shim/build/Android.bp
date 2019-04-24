@@ -36,15 +36,24 @@ apex_key {
 }
 
 genrule {
-  name: "generate_hash_v2",
+  name: "generate_hash_of_dev_null",
   out: ["hash.txt"],
   cmd: "sha512sum -b /dev/null | cut -d' ' -f1 | tee $(out)",
 }
 
 prebuilt_etc {
-  name: "hash_v2",
-  src: ":generate_hash_v2",
+  name: "hash_of_dev_null",
+  src: ":generate_hash_of_dev_null",
   filename: "hash.txt",
+  installable: false,
+}
+
+apex {
+  name: "com.android.apex.cts.shim.v3",
+  manifest: "manifest_v3.json",
+  file_contexts: "apex.test",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_of_dev_null"],
   installable: false,
 }
 
@@ -53,7 +62,7 @@ apex {
   manifest: "manifest_v2.json",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
-  prebuilts: ["hash_v2"],
+  prebuilts: ["hash_of_dev_null"],
   installable: false,
 }
 
@@ -93,7 +102,7 @@ apex {
   manifest: "manifest_v2.json",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
-  prebuilts: ["hash_v2", "apex_shim_additional_file"],
+  prebuilts: ["hash_of_dev_null", "apex_shim_additional_file"],
   installable: false,
 }
 
@@ -110,7 +119,7 @@ apex {
   manifest: "manifest_v2.json",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
-  prebuilts: ["hash_v2", "apex_shim_additional_folder"],
+  prebuilts: ["hash_of_dev_null", "apex_shim_additional_folder"],
   installable: false,
 }
 
@@ -119,7 +128,7 @@ apex {
   manifest: "manifest_v2_with_pre_install_hook.json",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
-  prebuilts: ["hash_v2"],
+  prebuilts: ["hash_of_dev_null"],
   installable: false,
 }
 
@@ -128,7 +137,7 @@ apex {
   manifest: "manifest_v2_with_post_install_hook.json",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
-  prebuilts: ["hash_v2"],
+  prebuilts: ["hash_of_dev_null"],
   installable: false,
 }
 
@@ -140,6 +149,7 @@ genrule {
     ":com.android.apex.cts.shim.v2_additional_folder",
     ":com.android.apex.cts.shim.v2_with_pre_install_hook",
     ":com.android.apex.cts.shim.v2_with_post_install_hook",
+    ":com.android.apex.cts.shim.v3",
   ],
   out: ["hash.txt"],
   cmd: "sha512sum -b $(in) | cut -d' ' -f1 | tee $(out)",
