@@ -170,3 +170,33 @@ apex {
   prebuilts: ["hash_v1"],
   installable: false,
 }
+
+genrule {
+  name: "com.android.apex.cts.shim_not_pre_installed.pem",
+  out: ["com.android.apex.cts.shim_not_pre_installed.pem"],
+  cmd: "openssl genrsa -out $(out) 4096",
+}
+
+genrule {
+  name: "com.android.apex.cts.shim_not_pre_installed.pubkey",
+  srcs: [":com.android.apex.cts.shim_not_pre_installed.pem"],
+  out: ["com.android.apex.cts.shim_not_pre_installed.pubkey"],
+  tools: ["avbtool"],
+  cmd: "$(location avbtool) extract_public_key --key $(in) --output $(out)",
+}
+
+apex_key {
+  name: "com.android.apex.cts.shim_not_pre_installed.key",
+  private_key: ":com.android.apex.cts.shim_not_pre_installed.pem",
+  public_key: ":com.android.apex.cts.shim_not_pre_installed.pubkey",
+  installable: false,
+}
+
+apex {
+  name: "com.android.apex.cts.shim_not_pre_installed",
+  manifest: "manifest_not_pre_installed.json",
+  file_contexts: "apex.test",
+  key: "com.android.apex.cts.shim_not_pre_installed.key",
+  prebuilts: ["hash_of_dev_null"],
+  installable: false,
+}
