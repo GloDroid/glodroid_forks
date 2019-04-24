@@ -358,6 +358,8 @@ def CreateApex(args, work_dir):
   cmd.extend(['--version-code', str(manifest_apex.version)])
   if args.target_sdk_version:
     cmd.extend(['--target-sdk-version', args.target_sdk_version])
+  # Default value for minSdkVersion.
+  cmd.extend(['--min-sdk-version', '28'])
   cmd.extend(['-o', apk_file])
   cmd.extend(['-I', args.android_jar_path])
   RunCommand(cmd, args.verbose)
