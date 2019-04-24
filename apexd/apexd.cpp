@@ -1251,7 +1251,7 @@ std::vector<ApexFile> getFactoryPackages() {
     auto apex_files = FindApexFilesByName(dir, /* include_dirs=*/false);
     if (!apex_files.Ok()) {
       LOG(ERROR) << apex_files.ErrorMessage();
-      return ret;
+      continue;
     }
     for (const std::string& path : *apex_files) {
       StatusOr<ApexFile> apex_file = ApexFile::Open(path);
