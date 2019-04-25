@@ -68,8 +68,6 @@ using DestroyLoopFn =
     std::function<void(const std::string&, const std::string&)>;
 void DestroyLoopDevice(const std::string& path, const DestroyLoopFn& extra);
 
-void destroyAllLoopDevices();
-
 }  // namespace loop
 }  // namespace apex
 }  // namespace android
