@@ -127,7 +127,7 @@ bool isBootstrapApex(const ApexFile& apex) {
 // Pre-allocate loop devices so that we don't have to wait for them
 // later when actually activating APEXes.
 Status preAllocateLoopDevices() {
-  auto scan = FindApexes({kApexPackageSystemDir, kApexPackageProductDir});
+  auto scan = FindApexes(kApexPackageBuiltinDirs);
   if (!scan.Ok()) {
     return scan.ErrorStatus();
   }
@@ -1246,27 +1246,13 @@ std::unordered_map<std::string, uint64_t> GetActivePackagesMap() {
 
 std::vector<ApexFile> getFactoryPackages() {
   std::vector<ApexFile> ret;
-  auto all_system_factory_apex_files =
-      FindApexFilesByName(kApexPackageSystemDir, /* include_dirs=*/false);
-  if (!all_system_factory_apex_files.Ok()) {
-    LOG(ERROR) << all_system_factory_apex_files.ErrorMessage();
-    return ret;
-  }
-  for (const std::string& path : *all_system_factory_apex_files) {
-    StatusOr<ApexFile> apex_file = ApexFile::Open(path);
-    if (!apex_file.Ok()) {
-      LOG(ERROR) << apex_file.ErrorMessage();
-    } else {
-      ret.emplace_back(std::move(*apex_file));
+  for (const auto& dir : kApexPackageBuiltinDirs) {
+    auto apex_files = FindApexFilesByName(dir, /* include_dirs=*/false);
+    if (!apex_files.Ok()) {
+      LOG(ERROR) << apex_files.ErrorMessage();
+      continue;
     }
-  }
-
-  auto all_product_factory_apex_files =
-      FindApexFilesByName(kApexPackageProductDir, /* include_dirs=*/false);
-  if (!all_product_factory_apex_files.Ok()) {
-    LOG(INFO) << all_product_factory_apex_files.ErrorMessage();
-  } else {
-    for (const std::string& path : *all_product_factory_apex_files) {
+    for (const std::string& path : *apex_files) {
       StatusOr<ApexFile> apex_file = ApexFile::Open(path);
       if (!apex_file.Ok()) {
         LOG(ERROR) << apex_file.ErrorMessage();
@@ -1780,9 +1766,9 @@ void onStart(CheckpointInterface* checkpoint_service) {
     }
   }
 
-  for (auto dir : {kApexPackageSystemDir, kApexPackageProductDir}) {
+  for (const auto& dir : kApexPackageBuiltinDirs) {
     // TODO(b/123622800): if activation failed, rollback and reboot.
-    status = scanPackagesDirAndActivate(dir);
+    status = scanPackagesDirAndActivate(dir.c_str());
     if (!status.Ok()) {
       // This should never happen. Like **really** never.
       // TODO: should we kill apexd in this case?
