@@ -10,6 +10,9 @@
       "name": "timezone_data_e2e_tests"
     },
     {
+      "name": "media_e2e_tests"
+    },
+    {
       "name": "media_swcodec_e2e_tests"
     }
   ]
