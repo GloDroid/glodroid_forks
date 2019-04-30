@@ -356,6 +356,8 @@ def CreateApex(args, work_dir):
   # This version from apex_manifest.json is used when versionCode isn't
   # specified in AndroidManifest.xml
   cmd.extend(['--version-code', str(manifest_apex.version)])
+  if manifest_apex.versionName:
+    cmd.extend(['--version-name', manifest_apex.versionName])
   if args.target_sdk_version:
     cmd.extend(['--target-sdk-version', args.target_sdk_version])
   # Default value for minSdkVersion.
