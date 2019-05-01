@@ -31,4 +31,7 @@ message ApexManifest {
 
   // Post Install Hook
   string postInstallHook = 4;
+
+  // Version Name
+  string versionName = 5;
 }
