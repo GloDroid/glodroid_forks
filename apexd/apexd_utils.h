@@ -95,11 +95,21 @@ StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
   }
 
   std::vector<std::string> ret;
-  for (const auto& entry : fs::directory_iterator(file_path)) {
-    if (!fn(entry)) {
-      continue;
+  auto iter = fs::directory_iterator(file_path, ec);
+  if (ec) {
+    return StatusOr<std::vector<std::string>>::MakeError(
+        StringLog() << "Can't open " << path << " for reading: " << ec);
+  }
+  while (iter != fs::end(iter)) {
+    if (fn(*iter)) {
+      ret.push_back(file_path.string() + "/" +
+                    iter->path().filename().string());
     }
-    ret.push_back(file_path.string() + "/" + entry.path().filename().string());
+    iter = iter.increment(ec);
+    if (ec) {
+      return StatusOr<std::vector<std::string>>::MakeError(
+          StringLog() << "Failed to iterate " << path << ": " << ec);
+    }
   }
 
   return StatusOr<std::vector<std::string>>(std::move(ret));
