@@ -261,6 +261,7 @@ static ApexInfo getApexInfo(const ApexFile& package) {
   out.packageName = package.GetManifest().name();
   out.packagePath = package.GetPath();
   out.versionCode = package.GetManifest().version();
+  out.versionName = package.GetManifest().versionname();
   return out;
 }
 
@@ -268,6 +269,7 @@ static std::string toString(const ApexInfo& package) {
   std::string msg = StringLog()
                     << "Package: " << package.packageName
                     << " Version: " << package.versionCode
+                    << " VersionName: " << package.versionName
                     << " Path: " << package.packagePath
                     << " IsActive: " << std::boolalpha << package.isActive
                     << " IsFactory: " << std::boolalpha << package.isFactory
@@ -380,6 +382,7 @@ BinderStatus ApexService::getActivePackage(const std::string& packageName,
     aidl_return->packageName = apex->GetManifest().name();
     aidl_return->packagePath = apex->GetPath();
     aidl_return->versionCode = apex->GetManifest().version();
+    aidl_return->versionName = apex->GetManifest().versionname();
     aidl_return->isActive = true;
     aidl_return->isFactory =
         ::android::apex::isPathForBuiltinApexes(apex->GetPath());
