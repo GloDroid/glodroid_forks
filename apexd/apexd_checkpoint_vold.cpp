@@ -90,6 +90,17 @@ StatusOr<bool> VoldCheckpointInterface::NeedsRollback() {
   return StatusOr<bool>(false);
 }
 
+Status VoldCheckpointInterface::StartCheckpoint(int32_t numRetries) {
+  if (supports_fs_checkpoints_) {
+    android::binder::Status status = vold_service_->startCheckpoint(numRetries);
+    if (!status.isOk()) {
+      return Status::Fail(status.toString8().c_str());
+    }
+    return Status::Success();
+  }
+  return Status::Fail("Device does not support filesystem checkpointing");
+}
+
 Status VoldCheckpointInterface::AbortChanges(const std::string& msg,
                                              bool retry) {
   vold_service_->abortChanges(msg, retry);
