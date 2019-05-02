@@ -112,9 +112,6 @@ cc_binary {
       ldflags: ["-Wl,--rpath,/system/${LIB}/bootstrap"],
     },
   },
-  required: [
-    "com.android.apex.cts.shim.v1_prebuilt",
-  ],
 }
 
 cc_library_static {
