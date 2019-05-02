@@ -250,7 +250,7 @@ void MountedApexDatabase::PopulateFromMounts() {
   while (std::getline(mounts, line)) {
     auto [block, mountPoint] = parseMountInfo(line);
     // TODO(jooyung): ignore tmp mount?
-    if (fs::path(mountPoint).parent_path() == kApexRoot) {
+    if (fs::path(mountPoint).parent_path() != kApexRoot) {
       continue;
     }
     if (isActiveMountPoint(mountPoint)) {
