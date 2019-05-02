@@ -145,11 +145,12 @@ Status preAllocateLoopDevices() {
     }
   }
 
-  // note: do not call preAllocateLoopDevices() if size == 0.
+  // note: do not call preAllocateLoopDevices() if size == 0
+  // or the device does not support updatable APEX.
   // For devices (e.g. ARC) which doesn't support loop-control
   // preAllocateLoopDevices() can cause problem when it tries
   // to access /dev/loop-control.
-  if (size == 0) {
+  if (size == 0 || !kUpdatable) {
     return Status::Success();
   }
   return loop::preAllocateLoopDevices(size);
