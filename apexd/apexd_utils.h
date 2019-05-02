@@ -86,34 +86,29 @@ template <typename FilterFn>
 StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
                                            FilterFn fn) {
   namespace fs = std::filesystem;
-  fs::path file_path = path;
-  std::error_code ec;
+  using Status = StatusOr<std::vector<std::string>>;
 
-  if (!fs::is_directory(file_path, ec)) {
-    return StatusOr<std::vector<std::string>>::MakeError(
-        StringLog() << "Can't open " << path << " for reading : " << ec);
+  std::error_code ec;
+  if (!fs::is_directory(path, ec) || ec) {
+    return Status::Fail(StringLog() << "Can't open " << path
+                                    << " for reading : " << ec.message());
   }
 
   std::vector<std::string> ret;
-  auto iter = fs::directory_iterator(file_path, ec);
+  auto it = fs::directory_iterator(path, ec);
+  auto end = fs::directory_iterator();
+  while (!ec && it != end) {
+    if (fn(*it)) {
+      ret.push_back(it->path());
+    }
+    it.increment(ec);
+  }
   if (ec) {
-    return StatusOr<std::vector<std::string>>::MakeError(
-        StringLog() << "Can't open " << path << " for reading: " << ec);
+    return Status::Fail(StringLog() << "Can't open " << path
+                                    << " for reading : " << ec.message());
   }
-  while (iter != fs::end(iter)) {
-    if (fn(*iter)) {
-      ret.push_back(file_path.string() + "/" +
-                    iter->path().filename().string());
-    }
-    iter = iter.increment(ec);
-    if (ec) {
-      return StatusOr<std::vector<std::string>>::MakeError(
-          StringLog() << "Failed to iterate " << path << ": " << ec);
-    }
-  }
-
-  return StatusOr<std::vector<std::string>>(std::move(ret));
-}
+  return Status(std::move(ret));
+}  // namespace apex
 
 inline bool IsEmptyDirectory(const std::string& path) {
   auto res = ReadDir(path, [](auto _) { return true; });
@@ -162,17 +157,18 @@ inline Status DeleteDirContent(const std::string& path) {
 
 inline StatusOr<bool> PathExists(const std::string& path) {
   namespace fs = std::filesystem;
+  using Status = StatusOr<bool>;
 
   std::error_code ec;
   if (!fs::exists(fs::path(path), ec)) {
     if (ec) {
-      return StatusOr<bool>::MakeError(StringLog() << "Failed to access "
-                                                   << path << " : " << ec);
+      return Status::Fail(StringLog() << "Failed to access " << path << " : "
+                                      << ec.message());
     } else {
-      return StatusOr<bool>(false);
+      return Status(false);
     }
   }
-  return StatusOr<bool>(true);
+  return Status(true);
 }
 
 inline void Reboot() {
