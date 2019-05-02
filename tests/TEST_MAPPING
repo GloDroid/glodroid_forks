@@ -1,9 +1,6 @@
 {
   "presubmit": [
     {
-      "name": "apex_e2e_tests"
-    },
-    {
       "name": "apex_targetprep_tests"
     },
     {
@@ -14,6 +11,9 @@
     },
     {
       "name": "media_swcodec_e2e_tests"
+    },
+    {
+      "name": "CtsStagedInstallHostTestCases"
     }
   ]
 }

@@ -13,24 +13,6 @@
 // limitations under the License.
 
 java_test_host {
-    name: "apex_e2e_tests",
-
-    srcs:  ["src/**/ApexPackageStageActivateUninstallHostTest.java"],
-
-    libs: ["tradefed"],
-
-    static_libs: ["apex_e2e_base_test"],
-
-    data: [
-            ":apex.test",
-    ],
-
-    test_config: "apex-e2e-tests.xml",
-
-    test_suites: ["general-tests"],
-}
-
-java_test_host {
     name: "timezone_data_e2e_tests",
 
     srcs:  ["src/**/TimezoneDataHostTest.java"],
