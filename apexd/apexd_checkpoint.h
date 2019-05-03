@@ -32,6 +32,7 @@ class CheckpointInterface {
 
   virtual StatusOr<bool> NeedsCheckpoint() = 0;
   virtual StatusOr<bool> NeedsRollback() = 0;
+  virtual Status StartCheckpoint(int32_t numRetries) = 0;
 
   virtual Status AbortChanges(const std::string& msg, bool retry) = 0;
 };
