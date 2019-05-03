@@ -40,8 +40,9 @@ class VoldCheckpointInterface : public CheckpointInterface {
 
   StatusOr<bool> NeedsCheckpoint() override;
   StatusOr<bool> NeedsRollback() override;
+  Status StartCheckpoint(int32_t retry) override;
 
-  Status AbortChanges(const std::string& msg, bool retry) override;
+  Status AbortChanges(const std::string& msg, bool numRetries) override;
 
   static StatusOr<VoldCheckpointInterface> Create();
 
