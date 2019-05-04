@@ -122,7 +122,7 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
 
     // Locate the mountable image within the zipfile and store offset and size.
     ZipEntry entry;
-    ret = FindEntry(handle, ZipString(kImageFilename), &entry);
+    ret = FindEntry(handle, kImageFilename, &entry);
     if (ret < 0) {
       std::string err = StringLog() << "Could not find entry \""
                                     << kImageFilename << "\" in package "
@@ -132,7 +132,7 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
     image_offset = entry.offset;
     image_size = entry.uncompressed_length;
 
-    ret = FindEntry(handle, ZipString(kManifestFilename), &entry);
+    ret = FindEntry(handle, kManifestFilename, &entry);
     if (ret < 0) {
       std::string err = StringLog() << "Could not find entry \""
                                     << kManifestFilename << "\" in package "
@@ -152,7 +152,7 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
       return StatusOr<ApexFile>::MakeError(err);
     }
 
-    ret = FindEntry(handle, ZipString(kBundledPublicKeyFilename), &entry);
+    ret = FindEntry(handle, kBundledPublicKeyFilename, &entry);
     if (ret >= 0) {
       LOG(VERBOSE) << "Found bundled key in package " << path;
       length = entry.uncompressed_length;
