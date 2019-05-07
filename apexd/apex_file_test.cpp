@@ -47,7 +47,7 @@ TEST(ApexFileTest, GetOffsetOfSimplePackage) {
         android::base::make_scope_guard([&handle]() { CloseArchive(handle); });
 
     ZipEntry entry;
-    rc = FindEntry(handle, ZipString("apex_payload.img"), &entry);
+    rc = FindEntry(handle, "apex_payload.img", &entry);
     ASSERT_EQ(0, rc);
 
     zip_image_offset = entry.offset;
