@@ -82,33 +82,40 @@ inline int ForkAndRun(const std::vector<std::string>& args,
   return rc;
 }
 
-template <typename FilterFn>
-StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
-                                           FilterFn fn) {
+template <typename Fn>
+Status WalkDir(const std::string& path, Fn fn) {
   namespace fs = std::filesystem;
-  using Status = StatusOr<std::vector<std::string>>;
-
   std::error_code ec;
-  if (!fs::is_directory(path, ec) || ec) {
-    return Status::Fail(StringLog() << "Can't open " << path
-                                    << " for reading : " << ec.message());
-  }
-
-  std::vector<std::string> ret;
   auto it = fs::directory_iterator(path, ec);
   auto end = fs::directory_iterator();
   while (!ec && it != end) {
-    if (fn(*it)) {
-      ret.push_back(it->path());
-    }
+    fn(*it);
     it.increment(ec);
   }
   if (ec) {
     return Status::Fail(StringLog() << "Can't open " << path
                                     << " for reading : " << ec.message());
   }
+  return Status::Success();
+}
+
+template <typename FilterFn>
+StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
+                                           FilterFn fn) {
+  namespace fs = std::filesystem;
+  using Status = StatusOr<std::vector<std::string>>;
+
+  std::vector<std::string> ret;
+  auto status = WalkDir(path, [&](const fs::directory_entry& entry) {
+    if (fn(entry)) {
+      ret.push_back(entry.path());
+    }
+  });
+  if (!status.Ok()) {
+    return Status::Fail(status.ErrorMessage());
+  }
   return Status(std::move(ret));
-}  // namespace apex
+}
 
 inline bool IsEmptyDirectory(const std::string& path) {
   auto res = ReadDir(path, [](auto _) { return true; });

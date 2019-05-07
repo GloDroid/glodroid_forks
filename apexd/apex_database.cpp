@@ -100,10 +100,15 @@ class BlockDevice {
 
   std::vector<BlockDevice> GetSlaves() const {
     std::vector<BlockDevice> slaves;
-    for (auto& p : fs::directory_iterator(SysPath() / "slaves")) {
-      if (fs::is_block_file(kDevBlock / p.path().filename())) {
-        slaves.emplace_back(p.path());
+    std::error_code ec;
+    auto status = WalkDir(SysPath() / "slaves", [&](const auto& entry) {
+      BlockDevice dev(entry);
+      if (fs::is_block_file(dev.DevPath(), ec)) {
+        slaves.push_back(dev);
       }
+    });
+    if (!status.Ok()) {
+      LOG(WARNING) << status.ErrorMessage();
     }
     return slaves;
   }
@@ -142,12 +147,12 @@ StatusOr<inode_t> inodeFor(const std::string& path) {
   return StatusOr<inode_t>(buf.st_dev, buf.st_ino);
 }
 
-// Flattened packages from builtin APEX dirs(/system/apex, /product/apex)
+// Flattened packages from builtin APEX dirs(/system/apex, /product/apex, ...)
 inode_map scanFlattendedPackages() {
   inode_map map;
 
   for (const auto& dir : kApexPackageBuiltinDirs) {
-    ReadDir(dir, [&](const fs::directory_entry& entry) {
+    WalkDir(dir, [&](const fs::directory_entry& entry) {
       const auto& path = entry.path();
       if (isFlattenedApex(path)) {
         auto inode = inodeFor(path);
@@ -155,7 +160,6 @@ inode_map scanFlattendedPackages() {
           map[*inode] = path;
         }
       }
-      return true;
     });
   }
 
