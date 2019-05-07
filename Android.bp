@@ -57,6 +57,7 @@ cc_library_static {
     defaults: ["libc++ defaults"],
     vendor_available: true,
     recovery_available: true,
+    native_bridge_supported: true,
     srcs: [
         "src/algorithm.cpp",
         "src/any.cpp",
@@ -106,6 +107,7 @@ cc_library_shared {
     name: "libc++",
     host_supported: true,
     vendor_available: true,
+    native_bridge_supported: true,
     vndk: {
         enabled: true,
         support_system_process: true,
