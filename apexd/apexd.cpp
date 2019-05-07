@@ -1745,12 +1745,27 @@ void onAllPackagesReady() {
 
 StatusOr<std::vector<ApexFile>> submitStagedSession(
     const int session_id, const std::vector<int>& child_session_ids) {
+  bool needsBackup = true;
   Status cleanup_status = ClearSessions();
   if (!cleanup_status.Ok()) {
     return StatusOr<std::vector<ApexFile>>::MakeError(cleanup_status);
   }
 
-  if (!gSupportsFsCheckpoints) {
+  if (gSupportsFsCheckpoints) {
+    Status checkpoint_status =
+        gVoldService->StartCheckpoint(1 /* numRetries */);
+    if (!checkpoint_status.Ok()) {
+      // The device supports checkpointing, but we could not start it;
+      // log a warning, but do continue, since we can live without it.
+      LOG(WARNING) << "Failed to start filesystem checkpoint on device that "
+                      "should support it: "
+                   << checkpoint_status.ErrorMessage();
+    } else {
+      needsBackup = false;
+    }
+  }
+
+  if (needsBackup) {
     Status backup_status = BackupActivePackages();
     if (!backup_status.Ok()) {
       return StatusOr<std::vector<ApexFile>>::MakeError(backup_status);
