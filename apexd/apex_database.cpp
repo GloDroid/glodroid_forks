@@ -167,6 +167,22 @@ StatusOr<MountedApexData> resolveMountInfo(const BlockDevice& block,
                                            const inode_map& inodeMap) {
   auto Error = [](auto e) { return StatusOr<MountedApexData>::MakeError(e); };
 
+  // First, see if it is bind-mount'ed to a flattened APEX
+  // This is checked first since flattened APEXes can be located in any stacked
+  // filesystem. (e.g. if / is mounted via /dev/loop1, then /proc/mounts shows
+  // that loop device as associated block device. But it is not related to APEX
+  // activation.) In any cases, comparing (dev,inode) pair with scanned
+  // flattened APEXes must identify bind-mounted APEX properly.
+  // See b/131924899.
+  auto inode = inodeFor(mountPoint);
+  if (inode.Ok()) {
+    auto iter = inodeMap.find(*inode);
+    if (iter != inodeMap.end()) {
+      return StatusOr<MountedApexData>("", iter->second, mountPoint, "");
+    }
+  }
+
+  // Now, see if it is dm-verity or loop mounted
   switch (block.GetType()) {
     case LoopDevice: {
       auto backingFile = block.GetProperty("loop/backing_file");
@@ -196,16 +212,7 @@ StatusOr<MountedApexData> resolveMountInfo(const BlockDevice& block,
                                        mountPoint, *name);
     }
     case UnknownDevice: {
-      // see if bind-mount'ed to flattened APEXes
-      auto inode = inodeFor(mountPoint);
-      if (!inode.Ok()) {
-        return Error(inode.ErrorStatus());
-      }
-      auto iter = inodeMap.find(*inode);
-      if (iter == inodeMap.end()) {
-        return Error("Can't resolve " + block.DevPath().string());
-      }
-      return StatusOr<MountedApexData>("", iter->second, mountPoint, "");
+      return Error("Can't resolve " + block.DevPath().string());
     }
   }
 }
