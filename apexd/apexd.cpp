@@ -397,12 +397,6 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
   using StatusM = StatusOr<MountedApexData>;
   const std::string& full_path = apex.GetPath();
 
-  if (!kUpdatable) {
-    return StatusM::Fail(StringLog()
-                         << "Unable to mount non-flattened apex package "
-                         << full_path << " because device doesn't support it");
-  }
-
   loop::LoopbackDeviceUniqueFd loopbackDevice;
   for (size_t attempts = 1;; ++attempts) {
     StatusOr<loop::LoopbackDeviceUniqueFd> ret = loop::createLoopDevice(
@@ -1316,8 +1310,6 @@ Status scanPackagesDirAndActivate(const char* apex_package_dir) {
   const auto& packages_with_code = GetActivePackagesMap();
 
   std::vector<std::string> failed_pkgs;
-  size_t activated_cnt = 0;
-  size_t skipped_cnt = 0;
   for (const std::string& name : *scan) {
     LOG(INFO) << "Found " << name;
 
@@ -1336,14 +1328,6 @@ Status scanPackagesDirAndActivate(const char* apex_package_dir) {
       LOG(INFO) << "Skipping activation of " << name
                 << " same package with higher version " << it->second
                 << " is already active";
-      skipped_cnt++;
-      continue;
-    }
-
-    if (!kUpdatable && !apex_file->IsFlattened()) {
-      LOG(INFO) << "Skipping activation of non-flattened apex package " << name
-                << " because device doesn't support it";
-      skipped_cnt++;
       continue;
     }
 
@@ -1352,8 +1336,6 @@ Status scanPackagesDirAndActivate(const char* apex_package_dir) {
       LOG(ERROR) << "Failed to activate " << name << " : "
                  << res.ErrorMessage();
       failed_pkgs.push_back(name);
-    } else {
-      activated_cnt++;
     }
   }
 
@@ -1363,8 +1345,7 @@ Status scanPackagesDirAndActivate(const char* apex_package_dir) {
                         << Join(failed_pkgs, ','));
   }
 
-  LOG(INFO) << "Activated " << activated_cnt
-            << " packages. Skipped: " << skipped_cnt;
+  LOG(INFO) << "Activated " << scan->size() << " packages";
   return Status::Success();
 }
 
