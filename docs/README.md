@@ -55,11 +55,11 @@ infrastructure such as ADB, PackageManager, and package installer apps (such as
 Play Store). For example, the APEX file can use an existing tool such as `aapt`
 to inspect basic metadata from the file. The file contains package name and
 version information. This information is generally also available in
-`apex_manifest.json`.
+`apex_manifest.json`. `AndroidManifest.xml` might contain additional
+targeting information that can be used by the existing app publishing tools.
 
 `apex_manifest.json` is recommended over `AndroidManifest.xml` for new code and
-systems that deal with APEX. `AndroidManifest.xml` might contain additional
-targeting information that can be used by the existing app publishing tools.
+systems that deal with APEX.
 
 `apex_payload.img` is an ext4 file system image backed by dm-verity. The image
 is mounted at runtime via a loop device. Specifically, the hash tree and
@@ -73,14 +73,14 @@ that signs the same APEX in the built-in partitions.
 
 ### APEX manager
 
-The APEX manager (or `apexd`) is a standalone native process responsible for
+The APEX manager (or `apexd`) is a native daemon responsible for
 verifying, installing, and uninstalling APEX files. This process is launched and
 is ready early in the boot sequence. APEX files are normally pre-installed on
 the device under `/system/apex`. The APEX manager defaults to using these
 packages if no updates are available.
 
 The update sequence of an APEX uses the
-[PackageManager class](https://developer.android.com/reference/android/content/pm/PackageManager){: .external}
+[PackageManager class](https://developer.android.com/reference/android/content/pm/PackageManager)
 and is as follows.
 
 1.  An APEX file is downloaded via a package installer app, ADB, or other
@@ -528,7 +528,7 @@ format, and why we included or excluded them.
 ### Regular package management systems
 
 Linux distributions have package management systems like `dpkg` and `rpm`,
-which are powerful, mature, robust. However, they weren't
+which are powerful, mature and robust. However, they weren't
 adopted for APEX because they can't protect the packages after
 installation. Verification is done only when packages are being installed.
 Attackers can break the integrity of the installed packages unnoticed. This is
