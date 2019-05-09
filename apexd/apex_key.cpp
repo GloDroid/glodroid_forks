@@ -18,7 +18,6 @@
 
 #include "apex_key.h"
 
-#include <filesystem>
 #include <unordered_map>
 
 #include <android-base/file.h>
