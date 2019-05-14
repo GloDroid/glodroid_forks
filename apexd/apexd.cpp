@@ -119,6 +119,8 @@ static const std::vector<const std::string> kBootstrapApexes = {
     "com.android.tzdata",
 };
 
+static constexpr const int kNumRetriesWhenCheckpointingEnabled = 1;
+
 bool isBootstrapApex(const ApexFile& apex) {
   return std::find(kBootstrapApexes.begin(), kBootstrapApexes.end(),
                    apex.GetManifest().name()) != kBootstrapApexes.end();
@@ -1606,12 +1608,19 @@ Status unstagePackages(const std::vector<std::string>& paths) {
 
 Status rollbackStagedSessionIfAny() {
   auto session = ApexSession::GetActiveSession();
-  if (session.Ok() && session->has_value() &&
-      (*session)->GetState() == SessionState::STAGED) {
-    return RollbackStagedSession(*(*session));
+  if (!session.Ok()) {
+    return session.ErrorStatus();
   }
-
-  return Status::Success();
+  if (!session->has_value()) {
+    LOG(WARNING) << "No session to rollback";
+    return Status::Success();
+  }
+  if ((*session)->GetState() == SessionState::STAGED) {
+    LOG(INFO) << "Rolling back session " << **session;
+    return RollbackStagedSession(**session);
+  }
+  return Status::Fail(StringLog() << "Can't rollback " << **session
+                                  << " because it is not in STAGED state");
 }
 
 Status rollbackActiveSession() {
@@ -1702,6 +1711,9 @@ void onStart(CheckpointInterface* checkpoint_service) {
       LOG(ERROR) << "Failed to check if we need a rollback: "
                  << needs_rollback.ErrorMessage();
     } else if (*needs_rollback) {
+      LOG(INFO) << "Exceeded number of session retries ("
+                << kNumRetriesWhenCheckpointingEnabled
+                << "). Starting a rollback";
       Status status = rollbackStagedSessionIfAny();
       if (!status.Ok()) {
         LOG(ERROR)
@@ -1773,7 +1785,7 @@ StatusOr<std::vector<ApexFile>> submitStagedSession(
 
   if (gSupportsFsCheckpoints) {
     Status checkpoint_status =
-        gVoldService->StartCheckpoint(1 /* numRetries */);
+        gVoldService->StartCheckpoint(kNumRetriesWhenCheckpointingEnabled);
     if (!checkpoint_status.Ok()) {
       // The device supports checkpointing, but we could not start it;
       // log a warning, but do continue, since we can live without it.
