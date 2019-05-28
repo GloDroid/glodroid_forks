@@ -1,0 +1,5 @@
+on boot
+    setprop debug.trigger_watchdog.status start
+    exec -- /system/bin/log -t TriggerWatchdog "Starting trigger_watchdog"
+    exec_background u:r:su:s0 -- /system/bin/sh /system/bin/trigger_watchdog.sh
+
