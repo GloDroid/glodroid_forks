@@ -18,6 +18,7 @@
 
 #include <strings.h>
 
+#include <ApexProperties.sysprop.h>
 #include <android-base/logging.h>
 
 #include "apexd.h"
@@ -69,6 +70,13 @@ struct CombinedLogger {
 int main(int /*argc*/, char** argv) {
   // Use CombinedLogger to also log to the kernel log.
   android::base::InitLogging(argv, CombinedLogger());
+
+  if (!android::sysprop::ApexProperties::updatable().value_or(false)) {
+    LOG(INFO) << "This device does not support updatable APEX. Exiting";
+    android::apex::onAllPackagesReady();  // mark apexd as ready so that init
+                                          // can proceed
+    return 0;
+  }
 
   if (argv[1] != nullptr) {
     return HandleSubcommand(argv);
