@@ -115,3 +115,17 @@ prebuilt_etc {
     filename: "init.rc",
     installable: false,
 }
+
+java_test_host {
+    name: "apex_rollback_tests",
+    srcs:  ["src/**/ApexRollbackTests.java", "src/**/ApexTestUtils.java"],
+    libs: ["tradefed", "truth-prebuilt"],
+    test_config: "apex-rollback-tests.xml",
+    test_suites: ["general-tests"],
+
+    data: [
+        "testdata/trigger_watchdog.rc",
+        "testdata/trigger_watchdog.sh",
+        ":com.android.apex.cts.shim.v2_prebuilt",
+    ],
+}
