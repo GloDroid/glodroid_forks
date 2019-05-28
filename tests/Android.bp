@@ -94,7 +94,7 @@ java_test_host {
 
     srcs:  ["src/**/ApexTargetPrepTest.java"],
 
-    data: [":apex.test"],
+    data: [":StagedInstallTestApexV2"],
 
     test_config: "apex-targetprep-tests.xml",
 
