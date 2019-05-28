@@ -1060,6 +1060,8 @@ void mpt_SetRFPath_8703B(PADAPTER pAdapter)
 	PDM_ODM_T		pDM_Odm = &pHalData->odmpriv;
 	PODM_RF_CAL_T			pRFCalibrateInfo = &(pDM_Odm->RFCalibrateInfo);
 
+        u1Byte p = 0, i = 0;
+
 	ulAntennaTx = pHalData->AntennaTxPath;
 	ulAntennaRx = pHalData->AntennaRxPath;
 
@@ -1069,7 +1071,6 @@ void mpt_SetRFPath_8703B(PADAPTER pAdapter)
 	}
 
 	switch (pAdapter->mppriv.antenna_tx) {
-		u1Byte p = 0, i = 0;
 
 	case ANTENNA_A: /* Actually path S1  (Wi-Fi) */
 				{
