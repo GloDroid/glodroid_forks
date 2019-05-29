@@ -3,6 +3,5 @@
   package="com.android.apex.test">
   <!-- APEX does not have classes.dex -->
   <application android:hasCode="false" />
-  <uses-sdk android:minSdkVersion="28"/>
 </manifest>
 
