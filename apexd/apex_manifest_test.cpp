@@ -13,6 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <algorithm>
+
+#include <android-base/file.h>
 #include <android-base/logging.h>
 #include <gtest/gtest.h>
 
@@ -27,6 +31,7 @@ TEST(ApexManifestTest, SimpleTest) {
   ASSERT_TRUE(apex_manifest.Ok());
   EXPECT_EQ("com.android.example.apex", std::string(apex_manifest->name()));
   EXPECT_EQ(1u, apex_manifest->version());
+  EXPECT_FALSE(apex_manifest->nocode());
 }
 
 TEST(ApexManifestTest, NameMissing) {
@@ -96,6 +101,14 @@ TEST(ApexManifestTest, UnparsableManifest) {
             std::string("Failed to parse APEX Manifest JSON config: Unexpected "
                         "token.\nThis is an invalid p\n^"))
       << apex_manifest.ErrorMessage();
+}
+
+TEST(ApexManifestTest, NoCode) {
+  auto apex_manifest = ParseManifest(
+      "{\"name\": \"com.android.example.apex\", \"version\": 1, "
+      "\"noCode\": true}\n");
+  ASSERT_TRUE(apex_manifest.Ok());
+  EXPECT_TRUE(apex_manifest->nocode());
 }
 
 }  // namespace apex

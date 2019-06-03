@@ -35,4 +35,6 @@ def ValidateApexManifest(manifest_raw):
 		raise ApexManifestError("'name' field is required.")
 	if manifest_pb.version == 0:
 		raise ApexManifestError("'version' field is required.")
+        if manifest_pb.noCode and (manifest_pb.preInstallHook or manifest_pb.postInstallHook):
+		raise ApexManifestError("'noCode' can't be true when either preInstallHook or postInstallHook is set")
 	return manifest_pb
