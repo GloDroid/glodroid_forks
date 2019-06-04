@@ -479,8 +479,13 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
     }
   }
 
-  if (mount(blockDevice.c_str(), mountPoint.c_str(), "ext4",
-            MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY, nullptr) == 0) {
+  unsigned long mountFlags = MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY;
+  if (apex.GetManifest().nocode()) {
+    mountFlags |= MS_NOEXEC;
+  }
+
+  if (mount(blockDevice.c_str(), mountPoint.c_str(), "ext4", mountFlags,
+            nullptr) == 0) {
     LOG(INFO) << "Successfully mounted package " << full_path << " on "
               << mountPoint;
     auto status = VerifyMountedImage(apex, mountPoint);

@@ -2104,6 +2104,43 @@ class LogTestToLogcat : public ::testing::EmptyTestEventListener {
   }
 };
 
+struct NoCodeApexNameProvider {
+  static std::string GetTestName() { return "apex.apexd_test_nocode.apex"; }
+  static std::string GetPackageName() {
+    return "com.android.apex.test_package";
+  }
+};
+
+class ApexServiceActivationNoCode
+    : public ApexServiceActivationTest<NoCodeApexNameProvider> {};
+
+TEST_F(ApexServiceActivationNoCode, NoCodeApexIsNotExecutable) {
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+
+  std::string mountinfo;
+  ASSERT_TRUE(
+      android::base::ReadFileToString("/proc/self/mountinfo", &mountinfo));
+  bool found_apex_mountpoint = false;
+  for (const auto& line : android::base::Split(mountinfo, "\n")) {
+    std::vector<std::string> tokens = android::base::Split(line, " ");
+    // line format:
+    // mnt_id parent_mnt_id major:minor source target option propagation_type
+    // ex) 33 260:19 / /apex rw,nosuid,nodev -
+    if (tokens.size() >= 7 &&
+        tokens[4] ==
+            "/apex/" + NoCodeApexNameProvider::GetPackageName() + "@1") {
+      found_apex_mountpoint = true;
+      // Make sure that option contains noexec
+      std::vector<std::string> options = android::base::Split(tokens[5], ",");
+      EXPECT_NE(options.end(),
+                std::find(options.begin(), options.end(), "noexec"));
+      break;
+    }
+  }
+  EXPECT_TRUE(found_apex_mountpoint);
+}
+
 }  // namespace apex
 }  // namespace android
 

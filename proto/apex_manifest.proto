@@ -34,4 +34,9 @@ message ApexManifest {
 
   // Version Name
   string versionName = 5;
+
+  // Signals whenever this APEX doesn't contain any executable code.
+  // If this field is set to true, then apexd will mount this apex
+  // with MS_NOEXEC flag.
+  bool noCode = 6;
 }
