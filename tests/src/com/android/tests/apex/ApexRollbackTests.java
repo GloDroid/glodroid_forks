@@ -16,6 +16,7 @@
 
 package com.android.tests.apex;
 
+import com.android.tests.util.ModuleTestUtils;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
@@ -111,7 +112,7 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
     public void testAutomaticBootLoopRecovery() throws Exception {
         assumeTrue("Device does not support updating APEX", isApexUpdateSupported());
 
-        ApexTestUtils utils = new ApexTestUtils(this);
+        ModuleTestUtils utils = new ModuleTestUtils(this);
         File triggerWatchdogRcFile = utils.getTestFile("trigger_watchdog.rc");
         File triggerWatchdogShFile = utils.getTestFile("trigger_watchdog.sh");
         File apexFile = utils.getTestFile("com.android.apex.cts.shim.v2.apex");
