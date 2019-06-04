@@ -137,3 +137,12 @@ sh_binary {
     name: "apex_test_prePostInstallHookFail",
     src: "fail.sh",
 }
+
+apex {
+    name: "apex.apexd_test_nocode",
+    manifest: "manifest_nocode.json",
+    file_contexts: "apex.test",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.key",
+    installable: false,
+}
