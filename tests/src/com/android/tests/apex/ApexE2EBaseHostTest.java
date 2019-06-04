@@ -16,6 +16,7 @@
 
 package com.android.tests.apex;
 
+import com.android.tests.util.ModuleTestUtils;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -40,7 +41,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     protected static final String OPTION_APEX_FILE_NAME = "apex_file_name";
 
     /* protected so that derived tests can have access to test utils automatically */
-    protected final ApexTestUtils mUtils = new ApexTestUtils(this);
+    protected final ModuleTestUtils mUtils = new ModuleTestUtils(this);
 
     @Option(name = OPTION_APEX_FILE_NAME,
             description = "The file name of the apex module.",
