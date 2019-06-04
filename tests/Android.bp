@@ -103,7 +103,18 @@ java_test_host {
 
 java_library_host {
     name: "apex_e2e_base_test",
-    srcs: ["src/**/ApexE2EBaseHostTest.java","src/**/ApexTestUtils.java"],
+    srcs: ["src/**/ApexE2EBaseHostTest.java"],
+    static_libs: [
+        "module_test_util",
+    ],
+    libs: [
+        "tradefed",
+    ],
+}
+
+java_library_host {
+    name: "module_test_util",
+    srcs: ["util/**/*.java"],
     libs: ["tradefed"],
 }
 
@@ -174,6 +185,7 @@ java_test_host {
     name: "apex_rollback_tests",
     srcs:  ["src/**/ApexRollbackTests.java", "src/**/ApexTestUtils.java"],
     libs: ["tradefed", "truth-prebuilt"],
+    static_libs: ["module_test_util"],
     test_config: "apex-rollback-tests.xml",
     test_suites: ["general-tests"],
 
