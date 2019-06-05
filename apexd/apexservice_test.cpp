@@ -2073,26 +2073,6 @@ TEST_F(ApexServiceTest, SubmitStagedSessionCorruptApexFails) {
   ASSERT_FALSE(success);
 }
 
-// Following test case piggybacks on logic in ApexServiceActivationSuccessTest
-// in order to use mounted apex as flattened one.
-TEST_F(ApexServiceActivationSuccessTest, StageFailsFlattenedApex) {
-  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
-      << GetDebugStr(installer_.get());
-
-  StatusOr<ApexFile> flattened_apex =
-      ApexFile::Open(StringPrintf("/apex/%s", installer_->package.c_str()));
-  ASSERT_TRUE(IsOk(flattened_apex));
-  ASSERT_TRUE(flattened_apex->IsFlattened());
-
-  bool success;
-  const auto& status =
-      service_->stagePackage(flattened_apex->GetPath(), &success);
-  ASSERT_FALSE(IsOk(status));
-  const std::string& error_message =
-      std::string(status.exceptionMessage().c_str());
-  ASSERT_THAT(error_message, HasSubstr("Can't upgrade flattened apex"));
-}
-
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
   void OnTestStart(const ::testing::TestInfo& test_info) override {
 #ifdef __ANDROID__

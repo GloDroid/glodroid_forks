@@ -50,21 +50,6 @@ namespace {
 
 using MountedApexData = MountedApexDatabase::MountedApexData;
 
-// from art/runtime/class_linker.cc
-inline size_t hash_combine(size_t seed, size_t val) {
-  return seed ^ (val + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-}
-
-typedef std::pair<dev_t, ino_t> inode_t;
-struct inode_hash {
-  size_t operator()(const inode_t& inode) const {
-    auto h1 = std::hash<dev_t>{}(inode.first);
-    auto h2 = std::hash<ino_t>{}(inode.second);
-    return hash_combine(h1, h2);
-  }
-};
-typedef std::unordered_map<inode_t, std::string, inode_hash> inode_map;
-
 enum BlockDeviceType {
   UnknownDevice,
   LoopDevice,
@@ -139,52 +124,9 @@ bool isActiveMountPoint(const std::string& mountPoint) {
   return (mountPoint.find('@') == std::string::npos);
 }
 
-StatusOr<inode_t> inodeFor(const std::string& path) {
-  struct stat buf;
-  if (stat(path.c_str(), &buf)) {
-    return StatusOr<inode_t>::MakeError(PStringLog() << "stat failed");
-  }
-  return StatusOr<inode_t>(buf.st_dev, buf.st_ino);
-}
-
-// Flattened packages from builtin APEX dirs(/system/apex, /product/apex, ...)
-inode_map scanFlattendedPackages() {
-  inode_map map;
-
-  for (const auto& dir : kApexPackageBuiltinDirs) {
-    WalkDir(dir, [&](const fs::directory_entry& entry) {
-      const auto& path = entry.path();
-      if (isFlattenedApex(path)) {
-        auto inode = inodeFor(path);
-        if (inode.Ok()) {
-          map[*inode] = path;
-        }
-      }
-    });
-  }
-
-  return map;
-}
-
 StatusOr<MountedApexData> resolveMountInfo(const BlockDevice& block,
-                                           const std::string& mountPoint,
-                                           const inode_map& inodeMap) {
+                                           const std::string& mountPoint) {
   auto Error = [](auto e) { return StatusOr<MountedApexData>::MakeError(e); };
-
-  // First, see if it is bind-mount'ed to a flattened APEX
-  // This is checked first since flattened APEXes can be located in any stacked
-  // filesystem. (e.g. if / is mounted via /dev/loop1, then /proc/mounts shows
-  // that loop device as associated block device. But it is not related to APEX
-  // activation.) In any cases, comparing (dev,inode) pair with scanned
-  // flattened APEXes must identify bind-mounted APEX properly.
-  // See b/131924899.
-  auto inode = inodeFor(mountPoint);
-  if (inode.Ok()) {
-    auto iter = inodeMap.find(*inode);
-    if (iter != inodeMap.end()) {
-      return StatusOr<MountedApexData>("", iter->second, mountPoint, "");
-    }
-  }
 
   // Now, see if it is dm-verity or loop mounted
   switch (block.GetType()) {
@@ -228,7 +170,6 @@ StatusOr<MountedApexData> resolveMountInfo(const BlockDevice& block,
 // /apex/<package-id> can be mounted from
 // - /dev/block/loopX : loop device
 // - /dev/block/dm-X : dm-verity
-// - <flattened> : bind-mount
 
 // In case of loop device, it is from a non-flattened
 // APEX file. This original APEX file can be tracked
@@ -242,11 +183,6 @@ StatusOr<MountedApexData> resolveMountInfo(const BlockDevice& block,
 // Device name can be retrieved from
 // /sys/block/dm-Y/dm/name.
 
-// In case of <flattened>, it is --bind mounted to a flattened
-// APEX directory. This is allowed only for system/product
-// partitions. So, original APEX directory can be found
-// by comparing dev/inode pair with candidates.
-
 // By synchronizing the mounts info with Database on startup,
 // Apexd serves the correct package list even on the devices
 // which are not ro.apex.updatable.
@@ -254,7 +190,6 @@ void MountedApexDatabase::PopulateFromMounts() {
   LOG(INFO) << "Populating APEX database from mounts...";
 
   std::unordered_map<std::string, int> activeVersions;
-  inode_map inodeToFlattendApexMap = scanFlattendedPackages();
 
   std::ifstream mounts("/proc/mounts");
   std::string line;
@@ -268,8 +203,7 @@ void MountedApexDatabase::PopulateFromMounts() {
       continue;
     }
 
-    auto mountData = resolveMountInfo(BlockDevice(block), mountPoint,
-                                      inodeToFlattendApexMap);
+    auto mountData = resolveMountInfo(BlockDevice(block), mountPoint);
     if (!mountData.Ok()) {
       LOG(WARNING) << "Can't resolve mount info " << mountData.ErrorMessage();
       continue;

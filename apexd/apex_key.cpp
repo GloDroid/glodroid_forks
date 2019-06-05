@@ -52,8 +52,7 @@ StatusOr<std::vector<KeyPair>> collectEmbedddedApexKeysFromDir(
     return StatusOr<std::vector<KeyPair>>::MakeError(
         StringLog() << "Can't scan embedded APEX keys from " << dir);
   }
-  StatusOr<std::vector<std::string>> apex_files =
-      FindApexFilesByName(dir, scanBuiltinApexes);
+  StatusOr<std::vector<std::string>> apex_files = FindApexFilesByName(dir);
   if (!apex_files.Ok()) {
     return StatusOr<std::vector<KeyPair>>::MakeError(apex_files.ErrorStatus());
   }

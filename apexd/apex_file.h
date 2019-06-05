@@ -50,25 +50,22 @@ class ApexFile {
   int32_t GetImageOffset() const { return image_offset_; }
   size_t GetImageSize() const { return image_size_; }
   const ApexManifest& GetManifest() const { return manifest_; }
-  bool IsFlattened() const { return flattened_; }
   const std::string& GetBundledPublicKey() const { return apex_pubkey_; }
 
   StatusOr<ApexVerityData> VerifyApexVerity() const;
   Status VerifyManifestMatches(const std::string& mount_path) const;
 
  private:
-  ApexFile(const std::string& apex_path, bool flattened, int32_t image_offset,
+  ApexFile(const std::string& apex_path, int32_t image_offset,
            size_t image_size, ApexManifest& manifest,
            const std::string& apex_pubkey)
       : apex_path_(apex_path),
-        flattened_(flattened),
         image_offset_(image_offset),
         image_size_(image_size),
         manifest_(std::move(manifest)),
         apex_pubkey_(apex_pubkey) {}
 
   std::string apex_path_;
-  bool flattened_;
   int32_t image_offset_;
   size_t image_size_;
   ApexManifest manifest_;
@@ -77,11 +74,9 @@ class ApexFile {
 
 StatusOr<std::vector<std::string>> FindApexes(
     const std::vector<std::string>& paths);
-StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
-                                                       bool include_dirs);
+StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path);
 
 bool isPathForBuiltinApexes(const std::string& path);
-bool isFlattenedApex(const std::string& path);
 
 }  // namespace apex
 }  // namespace android
