@@ -57,114 +57,65 @@ constexpr const bool kDebugAllowBundledKey = false;
 
 }  // namespace
 
-// Tests if <path>/manifest.json file exists.
-bool isFlattenedApex(const std::string& path) {
-  struct stat buf;
-  const std::string manifest = path + "/" + kManifestFilename;
-  if (stat(manifest.c_str(), &buf) != 0) {
-    if (errno == ENOENT) {
-      return false;
-    }
-    // If the APEX is there but not a flatttened apex, the final component
-    // of path will be a file, and stat will complain that it's not a directory.
-    // We are OK with that to avoid two stat calls.
-    if (errno != ENOTDIR) {
-      PLOG(ERROR) << "Failed to stat " << path;
-    }
-    return false;
-  }
-
-  if (!S_ISREG(buf.st_mode)) {
-    return false;
-  }
-  return true;
-}
-
 StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
-  bool flattened;
   int32_t image_offset;
   size_t image_size;
   std::string manifest_content;
   std::string pubkey;
 
-  if (isFlattenedApex(path)) {
-    flattened = true;
-    image_offset = 0;
-    image_size = 0;
-    const std::string manifest_path = path + "/" + kManifestFilename;
-    if (!android::base::ReadFileToString(manifest_path, &manifest_content)) {
-      std::string err = StringLog()
-                        << "Failed to read manifest file: " << manifest_path;
-      return StatusOr<ApexFile>::MakeError(err);
-    }
-    // TODO(b/124115379) don't read public key from flattened APEX when
-    // we no longer have APEX tests on devices with flattened APEXes.
-    const std::string pubkey_path = path + "/" + kBundledPublicKeyFilename;
-    if (access(pubkey_path.c_str(), F_OK) == 0) {
-      if (!android::base::ReadFileToString(pubkey_path, &pubkey)) {
-        std::string err = StringLog()
-                          << "Failed to read pubkey file: " << pubkey_path;
-        return StatusOr<ApexFile>::MakeError(err);
-      }
-    }
-  } else {
-    flattened = false;
+  ZipArchiveHandle handle;
+  auto handle_guard =
+      android::base::make_scope_guard([&handle] { CloseArchive(handle); });
+  int ret = OpenArchive(path.c_str(), &handle);
+  if (ret < 0) {
+    std::string err = StringLog() << "Failed to open package " << path << ": "
+                                  << ErrorCodeString(ret);
+    return StatusOr<ApexFile>::MakeError(err);
+  }
 
-    ZipArchiveHandle handle;
-    auto handle_guard =
-        android::base::make_scope_guard([&handle] { CloseArchive(handle); });
-    int ret = OpenArchive(path.c_str(), &handle);
-    if (ret < 0) {
-      std::string err = StringLog() << "Failed to open package " << path << ": "
-                                    << ErrorCodeString(ret);
-      return StatusOr<ApexFile>::MakeError(err);
-    }
+  // Locate the mountable image within the zipfile and store offset and size.
+  ZipEntry entry;
+  ret = FindEntry(handle, kImageFilename, &entry);
+  if (ret < 0) {
+    std::string err = StringLog() << "Could not find entry \"" << kImageFilename
+                                  << "\" in package " << path << ": "
+                                  << ErrorCodeString(ret);
+    return StatusOr<ApexFile>::MakeError(err);
+  }
+  image_offset = entry.offset;
+  image_size = entry.uncompressed_length;
 
-    // Locate the mountable image within the zipfile and store offset and size.
-    ZipEntry entry;
-    ret = FindEntry(handle, kImageFilename, &entry);
-    if (ret < 0) {
-      std::string err = StringLog() << "Could not find entry \""
-                                    << kImageFilename << "\" in package "
-                                    << path << ": " << ErrorCodeString(ret);
-      return StatusOr<ApexFile>::MakeError(err);
-    }
-    image_offset = entry.offset;
-    image_size = entry.uncompressed_length;
+  ret = FindEntry(handle, kManifestFilename, &entry);
+  if (ret < 0) {
+    std::string err = StringLog() << "Could not find entry \""
+                                  << kManifestFilename << "\" in package "
+                                  << path << ": " << ErrorCodeString(ret);
+    return StatusOr<ApexFile>::MakeError(err);
+  }
 
-    ret = FindEntry(handle, kManifestFilename, &entry);
-    if (ret < 0) {
-      std::string err = StringLog() << "Could not find entry \""
-                                    << kManifestFilename << "\" in package "
-                                    << path << ": " << ErrorCodeString(ret);
-      return StatusOr<ApexFile>::MakeError(err);
-    }
+  uint32_t length = entry.uncompressed_length;
+  manifest_content.resize(length, '\0');
+  ret = ExtractToMemory(handle, &entry,
+                        reinterpret_cast<uint8_t*>(&(manifest_content)[0]),
+                        length);
+  if (ret != 0) {
+    std::string err = StringLog() << "Failed to extract manifest from package "
+                                  << path << ": " << ErrorCodeString(ret);
+    return StatusOr<ApexFile>::MakeError(err);
+  }
 
-    uint32_t length = entry.uncompressed_length;
-    manifest_content.resize(length, '\0');
+  ret = FindEntry(handle, kBundledPublicKeyFilename, &entry);
+  if (ret >= 0) {
+    LOG(VERBOSE) << "Found bundled key in package " << path;
+    length = entry.uncompressed_length;
+    pubkey.resize(length, '\0');
     ret = ExtractToMemory(handle, &entry,
-                          reinterpret_cast<uint8_t*>(&(manifest_content)[0]),
-                          length);
+                          reinterpret_cast<uint8_t*>(&(pubkey)[0]), length);
     if (ret != 0) {
       std::string err = StringLog()
-                        << "Failed to extract manifest from package " << path
+                        << "Failed to extract public key from package " << path
                         << ": " << ErrorCodeString(ret);
       return StatusOr<ApexFile>::MakeError(err);
-    }
-
-    ret = FindEntry(handle, kBundledPublicKeyFilename, &entry);
-    if (ret >= 0) {
-      LOG(VERBOSE) << "Found bundled key in package " << path;
-      length = entry.uncompressed_length;
-      pubkey.resize(length, '\0');
-      ret = ExtractToMemory(handle, &entry,
-                            reinterpret_cast<uint8_t*>(&(pubkey)[0]), length);
-      if (ret != 0) {
-        std::string err = StringLog()
-                          << "Failed to extract public key from package "
-                          << path << ": " << ErrorCodeString(ret);
-        return StatusOr<ApexFile>::MakeError(err);
-      }
     }
   }
 
@@ -173,8 +124,7 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
     return StatusOr<ApexFile>::MakeError(manifest.ErrorMessage());
   }
 
-  ApexFile apexFile(path, flattened, image_offset, image_size, *manifest,
-                    pubkey);
+  ApexFile apexFile(path, image_offset, image_size, *manifest, pubkey);
   return StatusOr<ApexFile>(std::move(apexFile));
 }
 
@@ -478,8 +428,7 @@ StatusOr<std::vector<std::string>> FindApexes(
     }
     if (!*exist) continue;
 
-    const auto& apexes =
-        FindApexFilesByName(path, isPathForBuiltinApexes(path));
+    const auto& apexes = FindApexFilesByName(path);
     if (!apexes.Ok()) {
       return apexes;
     }
@@ -489,18 +438,16 @@ StatusOr<std::vector<std::string>> FindApexes(
   return StatusOr<std::vector<std::string>>(result);
 }
 
-StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path,
-                                                       bool include_dirs) {
-  auto filter_fn =
-      [include_dirs](const std::filesystem::directory_entry& entry) {
-        std::error_code ec;
-        if (entry.is_regular_file(ec) &&
-            EndsWith(entry.path().filename().string(), kApexPackageSuffix)) {
-          return true;  // APEX file, take.
-        }
-        // Directory and asked to scan for flattened.
-        return entry.is_directory(ec) && include_dirs;
-      };
+StatusOr<std::vector<std::string>> FindApexFilesByName(
+    const std::string& path) {
+  auto filter_fn = [](const std::filesystem::directory_entry& entry) {
+    std::error_code ec;
+    if (entry.is_regular_file(ec) &&
+        EndsWith(entry.path().filename().string(), kApexPackageSuffix)) {
+      return true;  // APEX file, take.
+    }
+    return false;
+  };
   return ReadDir(path, filter_fn);
 }
 

@@ -137,7 +137,7 @@ Status preAllocateLoopDevices() {
   auto size = 0;
   for (const auto& path : *scan) {
     auto apexFile = ApexFile::Open(path);
-    if (!apexFile.Ok() || apexFile->IsFlattened()) {
+    if (!apexFile.Ok()) {
       continue;
     }
     size++;
@@ -321,8 +321,7 @@ StatusOr<DmVerityDevice> createVerityDevice(const std::string& name,
 Status RemovePreviouslyActiveApexFiles(
     const std::unordered_set<std::string>& affected_packages,
     const std::unordered_set<std::string>& files_to_keep) {
-  auto all_active_apex_files =
-      FindApexFilesByName(kActiveApexPackagesDataDir, false /* include_dirs */);
+  auto all_active_apex_files = FindApexFilesByName(kActiveApexPackagesDataDir);
 
   if (!all_active_apex_files.Ok()) {
     return all_active_apex_files.ErrorStatus();
@@ -393,18 +392,39 @@ Status VerifyMountedImage(const ApexFile& apex,
   return Status::Success();
 }
 
-StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
-                                            const std::string& mountPoint,
-                                            const std::string& device_name,
-                                            bool verifyImage) {
+StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
+                                           const std::string& mountPoint,
+                                           const std::string& device_name,
+                                           bool verifyImage) {
   using StatusM = StatusOr<MountedApexData>;
-  const std::string& full_path = apex.GetPath();
-
-  if (!kUpdatable) {
-    return StatusM::Fail(StringLog()
-                         << "Unable to mount non-flattened apex package "
-                         << full_path << " because device doesn't support it");
+  LOG(VERBOSE) << "Creating mount point: " << mountPoint;
+  // Note: the mount point could exist in case when the APEX was activated
+  // during the bootstrap phase (e.g., the runtime or tzdata APEX).
+  // Although we have separate mount namespaces to separate the early activated
+  // APEXes from the normally activate APEXes, the mount points themselves
+  // are shared across the two mount namespaces because /apex (a tmpfs) itself
+  // mounted at / which is (and has to be) a shared mount. Therefore, if apexd
+  // finds an empty directory under /apex, it's not a problem and apexd can use
+  // it.
+  auto exists = PathExists(mountPoint);
+  if (!exists.Ok()) {
+    return StatusM::MakeError(exists.ErrorStatus());
   }
+  if (!*exists && mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
+    return StatusM::Fail(PStringLog()
+                         << "Could not create mount point " << mountPoint);
+  }
+  auto deleter = [&mountPoint]() {
+    if (rmdir(mountPoint.c_str()) != 0) {
+      PLOG(WARNING) << "Could not rmdir " << mountPoint;
+    }
+  };
+  auto scope_guard = android::base::make_scope_guard(deleter);
+  if (!IsEmptyDirectory(mountPoint)) {
+    return StatusM::Fail(PStringLog() << mountPoint << " is not empty");
+  }
+
+  const std::string& full_path = apex.GetPath();
 
   loop::LoopbackDeviceUniqueFd loopbackDevice;
   for (size_t attempts = 1;; ++attempts) {
@@ -500,76 +520,12 @@ StatusOr<MountedApexData> mountNonFlattened(const ApexFile& apex,
     }
     loopbackDevice.CloseGood();
 
+    scope_guard.Disable();  // Accept the mount.
     return StatusM(std::move(apex_data));
   } else {
     return StatusM::Fail(StringLog() << "Mounting failed for package "
                                      << full_path << " : " << strerror(errno));
   }
-}
-
-StatusOr<MountedApexData> mountFlattened(const ApexFile& apex,
-                                         const std::string& mountPoint) {
-  using StatusM = StatusOr<MountedApexData>;
-  if (!isPathForBuiltinApexes(apex.GetPath())) {
-    return StatusM::Fail(StringLog() << "Cannot activate flattened APEX "
-                                     << apex.GetPath());
-  }
-
-  if (mount(apex.GetPath().c_str(), mountPoint.c_str(), nullptr, MS_BIND,
-            nullptr) == 0) {
-    LOG(INFO) << "Successfully bind-mounted flattened package "
-              << apex.GetPath() << " on " << mountPoint;
-
-    MountedApexData apex_data("" /* loop_name */, apex.GetPath(), mountPoint,
-                              "" /* device_name */);
-    return StatusM(std::move(apex_data));
-  }
-  return StatusM::Fail(PStringLog() << "Mounting failed for flattened package "
-                                    << apex.GetPath());
-}
-
-StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
-                                           const std::string& mountPoint,
-                                           const std::string& device_name,
-                                           bool verifyImage) {
-  using StatusM = StatusOr<MountedApexData>;
-  LOG(VERBOSE) << "Creating mount point: " << mountPoint;
-  // Note: the mount point could exist in case when the APEX was activated
-  // during the bootstrap phase (e.g., the runtime or tzdata APEX).
-  // Although we have separate mount namespaces to separate the early activated
-  // APEXes from the normally activate APEXes, the mount points themselves
-  // are shared across the two mount namespaces because /apex (a tmpfs) itself
-  // mounted at / which is (and has to be) a shared mount. Therefore, if apexd
-  // finds an empty directory under /apex, it's not a problem and apexd can use
-  // it.
-  auto exists = PathExists(mountPoint);
-  if (!exists.Ok()) {
-    return StatusM::MakeError(exists.ErrorStatus());
-  }
-  if (!*exists && mkdir(mountPoint.c_str(), kMkdirMode) != 0) {
-    return StatusM::Fail(PStringLog()
-                         << "Could not create mount point " << mountPoint);
-  }
-  auto deleter = [&mountPoint]() {
-    if (rmdir(mountPoint.c_str()) != 0) {
-      PLOG(WARNING) << "Could not rmdir " << mountPoint;
-    }
-  };
-  auto scope_guard = android::base::make_scope_guard(deleter);
-  if (!IsEmptyDirectory(mountPoint)) {
-    return StatusM::Fail(PStringLog() << mountPoint << " is not empty");
-  }
-
-  StatusOr<MountedApexData> ret;
-  if (apex.IsFlattened()) {
-    ret = mountFlattened(apex, mountPoint);
-  } else {
-    ret = mountNonFlattened(apex, mountPoint, device_name, verifyImage);
-  }
-  if (ret.Ok()) {
-    scope_guard.Disable();  // Accept the mount.
-  }
-  return ret;
 }
 
 StatusOr<MountedApexData> VerifyAndTempMountPackage(
@@ -718,9 +674,6 @@ Status ValidateStagingShimApex(const ApexFile& to) {
 // This function should only verification checks that are necessary to run on
 // each boot. Try to avoid putting expensive checks inside this function.
 Status VerifyPackageBoot(const ApexFile& apex_file) {
-  if (apex_file.IsFlattened()) {
-    return Status::Fail("Can't upgrade flattened apex");
-  }
   StatusOr<ApexVerityData> verity_or = apex_file.VerifyApexVerity();
   if (!verity_or.Ok()) {
     return Status::Fail(verity_or.ErrorMessage());
@@ -786,8 +739,7 @@ StatusOr<ApexFile> verifySessionDir(const int session_id) {
                                std::to_string(session_id);
   LOG(INFO) << "Scanning " << sessionDirPath
             << " looking for packages to be validated";
-  StatusOr<std::vector<std::string>> scan =
-      FindApexFilesByName(sessionDirPath, /* include_dirs=*/false);
+  StatusOr<std::vector<std::string>> scan = FindApexFilesByName(sessionDirPath);
   if (!scan.Ok()) {
     LOG(WARNING) << scan.ErrorMessage();
     return StatusOr<ApexFile>::MakeError(scan.ErrorMessage());
@@ -854,8 +806,7 @@ Status BackupActivePackages() {
     return Status::Success();
   }
 
-  auto active_packages =
-      FindApexFilesByName(kActiveApexPackagesDataDir, false /* include_dirs */);
+  auto active_packages = FindApexFilesByName(kActiveApexPackagesDataDir);
   if (!active_packages.Ok()) {
     return Status::Fail(StringLog() << "Backup failed : "
                                     << active_packages.ErrorMessage());
@@ -1257,7 +1208,7 @@ std::unordered_map<std::string, uint64_t> GetActivePackagesMap() {
 std::vector<ApexFile> getFactoryPackages() {
   std::vector<ApexFile> ret;
   for (const auto& dir : kApexPackageBuiltinDirs) {
-    auto apex_files = FindApexFilesByName(dir, /* include_dirs=*/false);
+    auto apex_files = FindApexFilesByName(dir);
     if (!apex_files.Ok()) {
       LOG(ERROR) << apex_files.ErrorMessage();
       continue;
@@ -1314,9 +1265,8 @@ Status abortActiveSession() {
 Status scanPackagesDirAndActivate(const char* apex_package_dir) {
   LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
 
-  const bool scanBuiltinApexes = isPathForBuiltinApexes(apex_package_dir);
   StatusOr<std::vector<std::string>> scan =
-      FindApexFilesByName(apex_package_dir, scanBuiltinApexes);
+      FindApexFilesByName(apex_package_dir);
   if (!scan.Ok()) {
     return Status::Fail(StringLog() << "Failed to scan " << apex_package_dir
                                     << " : " << scan.ErrorMessage());
@@ -1345,13 +1295,6 @@ Status scanPackagesDirAndActivate(const char* apex_package_dir) {
       LOG(INFO) << "Skipping activation of " << name
                 << " same package with higher version " << it->second
                 << " is already active";
-      skipped_cnt++;
-      continue;
-    }
-
-    if (!kUpdatable && !apex_file->IsFlattened()) {
-      LOG(INFO) << "Skipping activation of non-flattened apex package " << name
-                << " because device doesn't support it";
       skipped_cnt++;
       continue;
     }
@@ -1405,8 +1348,7 @@ void scanStagedSessionsDirAndStage() {
     std::vector<std::string> apexes;
     bool scanSuccessful = true;
     for (const auto& dirToScan : dirsToScan) {
-      StatusOr<std::vector<std::string>> scan =
-          FindApexFilesByName(dirToScan, /* include_dirs=*/false);
+      StatusOr<std::vector<std::string>> scan = FindApexFilesByName(dirToScan);
       if (!scan.Ok()) {
         LOG(WARNING) << scan.ErrorMessage();
         scanSuccessful = false;
