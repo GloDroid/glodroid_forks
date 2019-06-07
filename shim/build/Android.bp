@@ -51,6 +51,7 @@ prebuilt_etc {
 apex {
   name: "com.android.apex.cts.shim.v3",
   manifest: "manifest_v3.json",
+  androidManifest: "AndroidManifest.xml",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
@@ -60,6 +61,7 @@ apex {
 apex {
   name: "com.android.apex.cts.shim.v2",
   manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifest.xml",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
@@ -84,6 +86,7 @@ prebuilt_etc {
 apex {
   name: "com.android.apex.cts.shim.v2_wrong_sha",
   manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifest.xml",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["empty_hash"],
@@ -100,6 +103,7 @@ prebuilt_etc {
 apex {
   name: "com.android.apex.cts.shim.v2_additional_file",
   manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifest.xml",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null", "apex_shim_additional_file"],
@@ -117,6 +121,7 @@ prebuilt_etc {
 apex {
   name: "com.android.apex.cts.shim.v2_additional_folder",
   manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifest.xml",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null", "apex_shim_additional_folder"],
@@ -126,6 +131,7 @@ apex {
 apex {
   name: "com.android.apex.cts.shim.v2_with_pre_install_hook",
   manifest: "manifest_v2_with_pre_install_hook.json",
+  androidManifest: "AndroidManifest.xml",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
@@ -135,6 +141,7 @@ apex {
 apex {
   name: "com.android.apex.cts.shim.v2_with_post_install_hook",
   manifest: "manifest_v2_with_post_install_hook.json",
+  androidManifest: "AndroidManifest.xml",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
@@ -165,6 +172,7 @@ prebuilt_etc {
 apex {
   name: "com.android.apex.cts.shim.v1",
   manifest: "manifest.json",
+  androidManifest: "AndroidManifest.xml",
   file_contexts: "apex.test",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_v1"],
