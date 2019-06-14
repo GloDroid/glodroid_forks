@@ -75,6 +75,7 @@ int main(int /*argc*/, char** argv) {
     LOG(INFO) << "This device does not support updatable APEX. Exiting";
     android::apex::onAllPackagesReady();  // mark apexd as ready so that init
                                           // can proceed
+    android::base::SetProperty("ctl.stop", "apexd");
     return 0;
   }
 
