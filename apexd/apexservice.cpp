@@ -523,7 +523,7 @@ status_t ApexService::onTransact(uint32_t _aidl_code, const Parcel& _aidl_data,
   return BnApexService::onTransact(_aidl_code, _aidl_data, _aidl_reply,
                                    _aidl_flags);
 }
-status_t ApexService::dump(int fd, const Vector<String16>& args) {
+status_t ApexService::dump(int fd, const Vector<String16>& /*args*/) {
   std::vector<ApexInfo> list;
   BinderStatus status = getActivePackages(&list);
   dprintf(fd, "ACTIVE PACKAGES:\n");
