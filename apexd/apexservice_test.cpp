@@ -187,6 +187,7 @@ class ApexServiceTest : public ::testing::Test {
   std::vector<std::string> GetPackagesStrings(
       const std::vector<ApexInfo>& list) {
     std::vector<std::string> ret;
+    ret.reserve(list.size());
     for (const ApexInfo& p : list) {
       ret.push_back(GetPackageString(p));
     }
@@ -660,7 +661,7 @@ class ApexServiceActivationTest : public ApexServiceTest {
  public:
   ApexServiceActivationTest() : stage_package(true) {}
 
-  ApexServiceActivationTest(bool stage_package)
+  explicit ApexServiceActivationTest(bool stage_package)
       : stage_package(stage_package) {}
 
   void SetUp() override {
