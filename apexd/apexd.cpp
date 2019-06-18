@@ -68,9 +68,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-using android::base::EndsWith;
 using android::base::Join;
-using android::base::ReadFullyAtOffset;
 using android::base::StartsWith;
 using android::base::StringPrintf;
 using android::base::unique_fd;
@@ -708,7 +706,7 @@ Status VerifyPackageInstall(const ApexFile& apex_file) {
   }
   StatusOr<ApexVerityData> verity_or = apex_file.VerifyApexVerity();
 
-  constexpr const auto kSuccessFn = [](const std::string& _) {
+  constexpr const auto kSuccessFn = [](const std::string& /*mount_point*/) {
     return Status::Success();
   };
   return RunVerifyFnInsideTempMount(apex_file, kSuccessFn);

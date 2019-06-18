@@ -104,7 +104,7 @@ bool Contains(const MountedApexDatabase& db, const std::string& package,
 
 bool ContainsPackage(const MountedApexDatabase& db, const std::string& package,
                      const std::string& loop_name, const std::string& full_path,
-                     const std::string& mount_point, const std::string& dm) {
+                     const std::string& dm) {
   bool found = false;
   db.ForallMountedApexes(
       package, [&](const MountedApexData& d, bool b ATTRIBUTE_UNUSED) {
@@ -130,14 +130,12 @@ TEST(ApexDatabaseTest, AddRemovedMountedApex) {
                     kDeviceName);
   ASSERT_TRUE(
       Contains(db, kPackage, kLoopName, kPath, kMountPoint, kDeviceName));
-  ASSERT_TRUE(ContainsPackage(db, kPackage, kLoopName, kPath, kMountPoint,
-                              kDeviceName));
+  ASSERT_TRUE(ContainsPackage(db, kPackage, kLoopName, kPath, kDeviceName));
 
   db.RemoveMountedApex(kPackage, kPath);
   EXPECT_FALSE(
       Contains(db, kPackage, kLoopName, kPath, kMountPoint, kDeviceName));
-  EXPECT_FALSE(ContainsPackage(db, kPackage, kLoopName, kPath, kMountPoint,
-                               kDeviceName));
+  EXPECT_FALSE(ContainsPackage(db, kPackage, kLoopName, kPath, kDeviceName));
 }
 
 TEST(ApexDatabaseTest, MountMultiple) {
@@ -161,26 +159,26 @@ TEST(ApexDatabaseTest, MountMultiple) {
     ASSERT_TRUE(Contains(db, kPackage[i], kLoopName[i], kPath[i],
                          kMountPoint[i], kDeviceName[i]));
     ASSERT_TRUE(ContainsPackage(db, kPackage[i], kLoopName[i], kPath[i],
-                                kMountPoint[i], kDeviceName[i]));
+                                kDeviceName[i]));
   }
 
   db.RemoveMountedApex(kPackage[0], kPath[0]);
   EXPECT_FALSE(Contains(db, kPackage[0], kLoopName[0], kPath[0], kMountPoint[0],
                         kDeviceName[0]));
-  EXPECT_FALSE(ContainsPackage(db, kPackage[0], kLoopName[0], kPath[0],
-                               kMountPoint[0], kDeviceName[0]));
+  EXPECT_FALSE(
+      ContainsPackage(db, kPackage[0], kLoopName[0], kPath[0], kDeviceName[0]));
   EXPECT_TRUE(Contains(db, kPackage[1], kLoopName[1], kPath[1], kMountPoint[1],
                        kDeviceName[1]));
-  EXPECT_TRUE(ContainsPackage(db, kPackage[1], kLoopName[1], kPath[1],
-                              kMountPoint[1], kDeviceName[1]));
+  EXPECT_TRUE(
+      ContainsPackage(db, kPackage[1], kLoopName[1], kPath[1], kDeviceName[1]));
   EXPECT_TRUE(Contains(db, kPackage[2], kLoopName[2], kPath[2], kMountPoint[2],
                        kDeviceName[2]));
-  EXPECT_TRUE(ContainsPackage(db, kPackage[2], kLoopName[2], kPath[2],
-                              kMountPoint[2], kDeviceName[2]));
+  EXPECT_TRUE(
+      ContainsPackage(db, kPackage[2], kLoopName[2], kPath[2], kDeviceName[2]));
   EXPECT_TRUE(Contains(db, kPackage[3], kLoopName[3], kPath[3], kMountPoint[3],
                        kDeviceName[3]));
-  EXPECT_TRUE(ContainsPackage(db, kPackage[3], kLoopName[3], kPath[3],
-                              kMountPoint[3], kDeviceName[3]));
+  EXPECT_TRUE(
+      ContainsPackage(db, kPackage[3], kLoopName[3], kPath[3], kDeviceName[3]));
 }
 
 #pragma clang diagnostic push

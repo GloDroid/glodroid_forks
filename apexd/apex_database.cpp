@@ -34,7 +34,6 @@
 #include <unordered_map>
 #include <utility>
 
-using android::base::EndsWith;
 using android::base::ParseInt;
 using android::base::ReadFileToString;
 using android::base::Split;
