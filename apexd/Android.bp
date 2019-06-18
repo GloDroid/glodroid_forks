@@ -7,6 +7,8 @@ tidy_errors = [
   "google-runtime-member-string-references",
   "misc-move-const-arg",
   "misc-move-forwarding-reference",
+  "misc-use-after-move",
+  "modernize-pass-by-value",
   "performance-faster-string-find",
   "performance-for-range-copy",
   "performance-implicit-conversion-in-loop",
