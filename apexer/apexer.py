@@ -48,6 +48,8 @@ def ParseArgs(argv):
                       help='path to the APEX manifest file')
   parser.add_argument('--android_manifest',
                       help='path to the AndroidManifest file. If omitted, a default one is created and used')
+  parser.add_argument('--assets_dir',
+                      help='an assets directory to be included in the APEX')
   parser.add_argument('--file_contexts',
                       help='selinux file contexts file. Required for "image" APEXs.')
   parser.add_argument('--canned_fs_config',
@@ -360,6 +362,8 @@ def CreateApex(args, work_dir):
     cmd.extend(['--version-name', manifest_apex.versionName])
   if args.target_sdk_version:
     cmd.extend(['--target-sdk-version', args.target_sdk_version])
+  if args.assets_dir:
+    cmd.extend(['-A', args.assets_dir])
   # Default value for minSdkVersion.
   cmd.extend(['--min-sdk-version', '29'])
   cmd.extend(['-o', apk_file])
