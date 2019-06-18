@@ -246,10 +246,12 @@ Status DeleteVerityDevice(const std::string& name) {
 class DmVerityDevice {
  public:
   DmVerityDevice() : cleared_(true) {}
-  explicit DmVerityDevice(const std::string& name)
-      : name_(name), cleared_(false) {}
-  DmVerityDevice(const std::string& name, const std::string& dev_path)
-      : name_(name), dev_path_(dev_path), cleared_(false) {}
+  explicit DmVerityDevice(std::string name)
+      : name_(std::move(name)), cleared_(false) {}
+  DmVerityDevice(std::string name, std::string dev_path)
+      : name_(std::move(name)),
+        dev_path_(std::move(dev_path)),
+        cleared_(false) {}
 
   DmVerityDevice(DmVerityDevice&& other) noexcept
       : name_(std::move(other.name_)),
