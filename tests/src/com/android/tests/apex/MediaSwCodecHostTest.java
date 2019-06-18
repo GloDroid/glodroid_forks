@@ -52,7 +52,8 @@ public class MediaSwCodecHostTest extends ApexE2EBaseHostTest {
                                 throws DeviceNotAvailableException, IOException {
         // Run tests only when the device has swcodec apex installed.
         for (ApexInfo info : getDevice().getActiveApexes()) {
-            if (info.name.equals("com.android.media.swcodec")) {
+            if (info.name.equals("com.android.media.swcodec")
+                    || info.name.equals("com.google.android.media.swcodec")) {
                 doTestStageActivateUninstallApexPackage();
                 return;
             }
