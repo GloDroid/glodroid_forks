@@ -468,7 +468,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
       << strerror(errno);
   struct Deleter {
     std::string to_delete;
-    explicit Deleter(const std::string& t) : to_delete(t) {}
+    explicit Deleter(std::string t) : to_delete(std::move(t)) {}
     ~Deleter() {
       if (unlink(to_delete.c_str()) != 0) {
         PLOG(ERROR) << "Could not unlink " << to_delete;
