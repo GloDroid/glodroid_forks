@@ -1,7 +1,16 @@
+// List of clang-tidy checks that are reported as errors.
+// Please keep this list ordered lexicographically.
 tidy_errors = [
+  "google-default-arguments",
+  "google-explicit-constructor",
+  "google-runtime-int",
+  "google-runtime-member-string-references",
+  "misc-move-const-arg",
+  "misc-move-forwarding-reference",
   "performance-faster-string-find",
   "performance-for-range-copy",
   "performance-implicit-conversion-in-loop",
+  "performance-inefficient-vector-operation",
   "performance-move-const-arg",
   "performance-move-constructor-init",
   "performance-noexcept-move-constructor",

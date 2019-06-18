@@ -499,7 +499,7 @@ StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
     }
   }
 
-  unsigned long mountFlags = MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY;
+  uint32_t mountFlags = MS_NOATIME | MS_NODEV | MS_DIRSYNC | MS_RDONLY;
   if (apex.GetManifest().nocode()) {
     mountFlags |= MS_NOEXEC;
   }
