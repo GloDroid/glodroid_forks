@@ -436,6 +436,11 @@ bool RegularFileExists(const std::string& path) {
   return S_ISREG(buf.st_mode);
 }
 
+StatusOr<std::vector<std::string>> ReadEntireDir(const std::string& path) {
+  static const auto kAcceptAll = [](auto /*entry*/) { return true; };
+  return ReadDir(path, kAcceptAll);
+}
+
 }  // namespace
 
 TEST_F(ApexServiceTest, HaveSelinux) {
@@ -1380,8 +1385,7 @@ TEST_F(ApexServiceTest, BackupActivePackages) {
   ASSERT_TRUE(ret);
 
   // Make sure that /data/apex/active has activated packages.
-  auto active_pkgs =
-      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
+  auto active_pkgs = ReadEntireDir(kActiveApexPackagesDataDir);
   ASSERT_TRUE(IsOk(active_pkgs));
   ASSERT_THAT(*active_pkgs,
               UnorderedElementsAre(installer1.test_installed_file,
@@ -1393,7 +1397,7 @@ TEST_F(ApexServiceTest, BackupActivePackages) {
       service_->submitStagedSession(23, empty_child_session_ids, &list, &ret)));
   ASSERT_TRUE(ret);
 
-  auto backups = ReadDir(kApexBackupDir, [](auto _) { return true; });
+  auto backups = ReadEntireDir(kApexBackupDir);
   ASSERT_TRUE(IsOk(backups));
   auto backup1 =
       StringPrintf("%s/com.android.apex.test_package@1.apex", kApexBackupDir);
@@ -1430,8 +1434,7 @@ TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
   ASSERT_TRUE(ret);
 
   // Make sure that /data/apex/active has activated packages.
-  auto active_pkgs =
-      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
+  auto active_pkgs = ReadEntireDir(kActiveApexPackagesDataDir);
   ASSERT_TRUE(IsOk(active_pkgs));
   ASSERT_THAT(*active_pkgs,
               UnorderedElementsAre(installer1.test_installed_file,
@@ -1443,7 +1446,7 @@ TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
       service_->submitStagedSession(43, empty_child_session_ids, &list, &ret)));
   ASSERT_TRUE(ret);
 
-  auto backups = ReadDir(kApexBackupDir, [](auto _) { return true; });
+  auto backups = ReadEntireDir(kApexBackupDir);
   ASSERT_TRUE(IsOk(backups));
   auto backup1 =
       StringPrintf("%s/com.android.apex.test_package@1.apex", kApexBackupDir);
@@ -1467,8 +1470,7 @@ TEST_F(ApexServiceTest, BackupActivePackagesZeroActivePackages) {
   // Make sure that /data/apex/active exists and is empty
   ASSERT_TRUE(
       IsOk(createDirIfNeeded(std::string(kActiveApexPackagesDataDir), 0750)));
-  auto active_pkgs =
-      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
+  auto active_pkgs = ReadEntireDir(kActiveApexPackagesDataDir);
   ASSERT_TRUE(IsOk(active_pkgs));
   ASSERT_EQ(0u, active_pkgs->size());
 
@@ -1479,7 +1481,7 @@ TEST_F(ApexServiceTest, BackupActivePackagesZeroActivePackages) {
       service_->submitStagedSession(41, empty_child_session_ids, &list, &ret)));
   ASSERT_TRUE(ret);
 
-  auto backups = ReadDir(kApexBackupDir, [](auto _) { return true; });
+  auto backups = ReadEntireDir(kApexBackupDir);
   ASSERT_TRUE(IsOk(backups));
   ASSERT_EQ(0u, backups->size());
 }
@@ -1506,7 +1508,7 @@ TEST_F(ApexServiceTest, ActivePackagesFolderDoesNotExist) {
   ASSERT_TRUE(ret);
 
   if (!supports_fs_checkpointing_) {
-    auto backups = ReadDir(kApexBackupDir, [](auto _) { return true; });
+    auto backups = ReadEntireDir(kApexBackupDir);
     ASSERT_TRUE(IsOk(backups));
     ASSERT_EQ(0u, backups->size());
   }
@@ -1529,8 +1531,7 @@ TEST_F(ApexServiceTest, UnstagePackagesSuccess) {
   pkgs = {installer2.test_installed_file};
   ASSERT_TRUE(IsOk(service_->unstagePackages(pkgs)));
 
-  auto active_packages =
-      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
+  auto active_packages = ReadEntireDir(kActiveApexPackagesDataDir);
   ASSERT_TRUE(IsOk(active_packages));
   ASSERT_THAT(*active_packages,
               UnorderedElementsAre(installer1.test_installed_file));
@@ -1554,8 +1555,7 @@ TEST_F(ApexServiceTest, UnstagePackagesFail) {
   ASSERT_FALSE(IsOk(service_->unstagePackages(pkgs)));
 
   // Check that first package wasn't unstaged.
-  auto active_packages =
-      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
+  auto active_packages = ReadEntireDir(kActiveApexPackagesDataDir);
   ASSERT_TRUE(IsOk(active_packages));
   ASSERT_THAT(*active_packages,
               UnorderedElementsAre(installer1.test_installed_file));
@@ -1589,8 +1589,7 @@ class ApexServiceRollbackTest : public ApexServiceTest {
     ASSERT_EQ(0750u, sd.st_mode & ALLPERMS);
 
     // Now read content and check it contains expected values.
-    auto active_pkgs =
-        ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
+    auto active_pkgs = ReadEntireDir(kActiveApexPackagesDataDir);
     ASSERT_TRUE(IsOk(active_pkgs));
     ASSERT_THAT(*active_pkgs, UnorderedElementsAreArray(expected_pkgs));
   }
@@ -1762,8 +1761,7 @@ TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
   ASSERT_TRUE(IsOk(service_->resumeRollbackIfNeeded()));
 
   // Check that rollback wasn't resumed.
-  auto active_pkgs =
-      ReadDir(kActiveApexPackagesDataDir, [](auto _) { return true; });
+  auto active_pkgs = ReadEntireDir(kActiveApexPackagesDataDir);
   ASSERT_TRUE(IsOk(active_pkgs));
   ASSERT_THAT(*active_pkgs,
               UnorderedElementsAre(installer.test_installed_file));
@@ -1853,12 +1851,12 @@ TEST(ApexdTest, ApexdIsInSameMountNamespaceAsInit) {
   std::string ns_apexd;
   std::string ns_init;
 
-  ExecInMountNamespaceOf(GetPidOf("apexd"), [&](pid_t pid) {
+  ExecInMountNamespaceOf(GetPidOf("apexd"), [&](pid_t /*pid*/) {
     bool res = android::base::Readlink("/proc/self/ns/mnt", &ns_apexd);
     ASSERT_TRUE(res);
   });
 
-  ExecInMountNamespaceOf(1, [&](pid_t pid) {
+  ExecInMountNamespaceOf(1, [&](pid_t /*pid*/) {
     bool res = android::base::Readlink("/proc/self/ns/mnt", &ns_init);
     ASSERT_TRUE(res);
   });
@@ -1881,14 +1879,14 @@ TEST(ApexdTest, EarlyProcessesAreInDifferentMountNamespace) {
 
   std::string ns_apexd;
 
-  ExecInMountNamespaceOf(GetPidOf("apexd"), [&](pid_t _) {
+  ExecInMountNamespaceOf(GetPidOf("apexd"), [&](pid_t /*pid*/) {
     bool res = android::base::Readlink("/proc/self/ns/mnt", &ns_apexd);
     ASSERT_TRUE(res);
   });
 
   for (const auto& name : kEarlyProcesses) {
     std::string ns_early_process;
-    ExecInMountNamespaceOf(GetPidOf(name), [&](pid_t _) {
+    ExecInMountNamespaceOf(GetPidOf(name), [&](pid_t /*pid*/) {
       bool res =
           android::base::Readlink("/proc/self/ns/mnt", &ns_early_process);
       ASSERT_TRUE(res);
