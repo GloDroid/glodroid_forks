@@ -388,6 +388,8 @@ StatusOr<ApexVerityData> ApexFile::VerifyApexVerity() const {
   // This area is now safe to access, because we just verified it
   const uint8_t* trailingData =
       (const uint8_t*)*descriptor + sizeof(AvbHashtreeDescriptor);
+  verityData.hash_algorithm =
+      reinterpret_cast<const char*>((*descriptor)->hash_algorithm);
   verityData.salt = getSalt(*verityData.desc, trailingData);
   verityData.root_digest = getDigest(*verityData.desc, trailingData);
 

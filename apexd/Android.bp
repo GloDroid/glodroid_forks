@@ -110,6 +110,7 @@ cc_binary {
     "libapexservice",
     "libavb",
     "libdm",
+    "libverity_tree",
     "libvold_binder",
   ],
   shared_libs: [
@@ -132,12 +133,14 @@ cc_library_static {
     "apexd_prepostinstall.cpp",
     "apexd_private.cpp",
     "apexd_prop.cpp",
-    "apexd_session.cpp"
+    "apexd_session.cpp",
+    "apexd_verity.cpp",
   ],
   static_libs: [
     "libapex",
     "libavb",
     "libdm",
+    "libverity_tree",
   ],
   whole_static_libs: ["com.android.sysprop.apex"],
   shared_libs: [
@@ -166,6 +169,7 @@ cc_defaults {
     "libutils",
   ],
 }
+
 cc_library_static {
   name: "libapexservice",
   defaults: [
@@ -173,7 +177,10 @@ cc_library_static {
     "libapexservice-deps",
   ],
   srcs: ["apexservice.cpp"],
-  static_libs: ["libapexd"],
+  static_libs: [
+    "libapexd",
+    "libavb",
+  ],
 }
 
 cc_library_static {

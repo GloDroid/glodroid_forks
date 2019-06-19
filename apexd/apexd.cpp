@@ -30,6 +30,7 @@
 #include "apexd_prop.h"
 #include "apexd_session.h"
 #include "apexd_utils.h"
+#include "apexd_verity.h"
 #include "status_or.h"
 #include "string_log.h"
 
@@ -69,6 +70,7 @@
 #include <unordered_set>
 
 using android::base::Join;
+using android::base::ReadFully;
 using android::base::StartsWith;
 using android::base::StringPrintf;
 using android::base::unique_fd;
@@ -157,20 +159,22 @@ Status preAllocateLoopDevices() {
 }
 
 std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
-                                           const std::string& loop,
+                                           const std::string& block_device,
+                                           const std::string& hash_device,
                                            bool restart_on_corruption) {
   AvbHashtreeDescriptor* desc = verity_data.desc.get();
   auto table = std::make_unique<DmTable>();
 
-  std::ostringstream hash_algorithm;
-  hash_algorithm << desc->hash_algorithm;
+  uint32_t hash_start_block = 0;
+  if (hash_device == block_device) {
+    hash_start_block = desc->tree_offset / desc->hash_block_size;
+  }
 
   auto target = std::make_unique<DmTargetVerity>(
-      0, desc->image_size / 512, desc->dm_verity_version, loop, loop,
-      desc->data_block_size, desc->hash_block_size,
-      desc->image_size / desc->data_block_size,
-      desc->tree_offset / desc->hash_block_size, hash_algorithm.str(),
-      verity_data.root_digest, verity_data.salt);
+      0, desc->image_size / 512, desc->dm_verity_version, block_device,
+      hash_device, desc->data_block_size, desc->hash_block_size,
+      desc->image_size / desc->data_block_size, hash_start_block,
+      verity_data.hash_algorithm, verity_data.root_digest, verity_data.salt);
 
   target->IgnoreZeroBlocks();
   if (restart_on_corruption) {
@@ -459,9 +463,19 @@ StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
   const bool mountOnVerity =
       gForceDmVerityOnSystem || !isPathForBuiltinApexes(full_path);
   DmVerityDevice verityDev;
+  loop::LoopbackDeviceUniqueFd loop_for_hash;
   if (mountOnVerity) {
+    std::string hash_device = loopbackDevice.name;
+    if (verityData->desc->tree_size == 0) {
+      auto hash_tree = GetHashTree(apex, *verityData);
+      if (!hash_tree.Ok()) {
+        return StatusM::Fail(hash_tree.ErrorMessage());
+      }
+      loop_for_hash = std::move(*hash_tree);
+      hash_device = loop_for_hash.name;
+    }
     auto verityTable =
-        createVerityTable(*verityData, loopbackDevice.name,
+        createVerityTable(*verityData, loopbackDevice.name, hash_device,
                           /* restart_on_corruption = */ !verifyImage);
     StatusOr<DmVerityDevice> verityDevRes =
         createVerityDevice(device_name, *verityTable);
@@ -515,10 +529,10 @@ StatusOr<MountedApexData> MountPackageImpl(const ApexFile& apex,
                                        << ": " << status.ErrorMessage());
     }
     // Time to accept the temporaries as good.
-    if (mountOnVerity) {
-      verityDev.Release();
-    }
+    verityDev.Release();
     loopbackDevice.CloseGood();
+    loop_for_hash.CloseGood();
+    // TODO(b/120058143): Add loop_fo_hash to apex_data to clean up on unmount.
 
     scope_guard.Disable();  // Accept the mount.
     return StatusM(std::move(apex_data));
@@ -1855,6 +1869,8 @@ void unmountDanglingMounts() {
       }
     }
   }
+
+  RemoveObsoleteHashTrees();
 }
 
 }  // namespace apex
