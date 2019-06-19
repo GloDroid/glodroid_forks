@@ -20,13 +20,13 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <libavb/libavb.h>
 #include <ziparchive/zip_archive.h>
 
 #include "apex_constants.h"
 #include "apex_manifest.h"
 #include "status_or.h"
-
-struct AvbHashtreeDescriptor;
 
 namespace android {
 namespace apex {
@@ -34,6 +34,7 @@ namespace apex {
 // Data needed to construct a valid VerityTable
 struct ApexVerityData {
   std::unique_ptr<AvbHashtreeDescriptor> desc;
+  std::string hash_algorithm;
   std::string salt;
   std::string root_digest;
 };
