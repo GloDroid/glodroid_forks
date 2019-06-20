@@ -21,12 +21,12 @@
 #include <string>
 #include <vector>
 
+#include <android-base/result.h>
 #include <libavb/libavb.h>
 #include <ziparchive/zip_archive.h>
 
 #include "apex_constants.h"
 #include "apex_manifest.h"
-#include "status_or.h"
 
 namespace android {
 namespace apex {
@@ -43,7 +43,7 @@ struct ApexVerityData {
 // the content.
 class ApexFile {
  public:
-  static StatusOr<ApexFile> Open(const std::string& path);
+  static android::base::Result<ApexFile> Open(const std::string& path);
   ApexFile() = delete;
   ApexFile(ApexFile&&) = default;
 
@@ -53,8 +53,9 @@ class ApexFile {
   const ApexManifest& GetManifest() const { return manifest_; }
   const std::string& GetBundledPublicKey() const { return apex_pubkey_; }
 
-  StatusOr<ApexVerityData> VerifyApexVerity() const;
-  Status VerifyManifestMatches(const std::string& mount_path) const;
+  android::base::Result<ApexVerityData> VerifyApexVerity() const;
+  android::base::Result<void> VerifyManifestMatches(
+      const std::string& mount_path) const;
 
  private:
   ApexFile(const std::string& apex_path, int32_t image_offset,
@@ -73,9 +74,10 @@ class ApexFile {
   std::string apex_pubkey_;
 };
 
-StatusOr<std::vector<std::string>> FindApexes(
+android::base::Result<std::vector<std::string>> FindApexes(
     const std::vector<std::string>& paths);
-StatusOr<std::vector<std::string>> FindApexFilesByName(const std::string& path);
+android::base::Result<std::vector<std::string>> FindApexFilesByName(
+    const std::string& path);
 
 bool isPathForBuiltinApexes(const std::string& path);
 

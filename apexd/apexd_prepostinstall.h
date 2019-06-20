@@ -20,17 +20,19 @@
 #include <string>
 #include <vector>
 
-#include "status.h"
+#include <android-base/result.h>
 
 namespace android {
 namespace apex {
 
 class ApexFile;
 
-Status StagePreInstall(const std::vector<ApexFile>& apexes);
+android::base::Result<void> StagePreInstall(
+    const std::vector<ApexFile>& apexes);
 int RunPreInstall(char** argv);
 
-Status StagePostInstall(const std::vector<ApexFile>& apexes);
+android::base::Result<void> StagePostInstall(
+    const std::vector<ApexFile>& apexes);
 int RunPostInstall(char** argv);
 
 }  // namespace apex

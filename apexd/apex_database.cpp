@@ -20,12 +20,12 @@
 #include "apex_constants.h"
 #include "apex_file.h"
 #include "apexd_utils.h"
-#include "status_or.h"
 #include "string_log.h"
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/parseint.h>
+#include <android-base/result.h>
 #include <android-base/strings.h>
 
 #include <filesystem>
@@ -34,8 +34,10 @@
 #include <unordered_map>
 #include <utility>
 
+using android::base::Errorf;
 using android::base::ParseInt;
 using android::base::ReadFileToString;
+using android::base::Result;
 using android::base::Split;
 using android::base::StartsWith;
 using android::base::Trim;
@@ -73,13 +75,13 @@ class BlockDevice {
 
   fs::path DevPath() const { return kDevBlock / name; }
 
-  StatusOr<std::string> GetProperty(const std::string& property) const {
+  Result<std::string> GetProperty(const std::string& property) const {
     auto propertyFile = SysPath() / property;
     std::string propertyValue;
     if (!ReadFileToString(propertyFile, &propertyValue)) {
-      return StatusOr<std::string>::MakeError(PStringLog() << "Fail to read");
+      return ErrnoError() << "Fail to read";
     }
-    return StatusOr<std::string>(Trim(propertyValue));
+    return Trim(propertyValue);
   }
 
   std::vector<BlockDevice> GetSlaves() const {
@@ -91,8 +93,8 @@ class BlockDevice {
         slaves.push_back(dev);
       }
     });
-    if (!status.Ok()) {
-      LOG(WARNING) << status.ErrorMessage();
+    if (!status) {
+      LOG(WARNING) << status.error();
     }
     return slaves;
   }
@@ -123,41 +125,37 @@ bool isActiveMountPoint(const std::string& mountPoint) {
   return (mountPoint.find('@') == std::string::npos);
 }
 
-StatusOr<MountedApexData> resolveMountInfo(const BlockDevice& block,
-                                           const std::string& mountPoint) {
-  auto Error = [](auto e) { return StatusOr<MountedApexData>::MakeError(e); };
-
+Result<MountedApexData> resolveMountInfo(const BlockDevice& block,
+                                         const std::string& mountPoint) {
   // Now, see if it is dm-verity or loop mounted
   switch (block.GetType()) {
     case LoopDevice: {
       auto backingFile = block.GetProperty("loop/backing_file");
-      if (!backingFile.Ok()) {
-        return Error(backingFile.ErrorStatus());
+      if (!backingFile) {
+        return backingFile.error();
       }
-      return StatusOr<MountedApexData>(block.DevPath(), *backingFile,
-                                       mountPoint, "");
+      return MountedApexData(block.DevPath(), *backingFile, mountPoint, "");
     }
     case DeviceMapperDevice: {
       auto name = block.GetProperty("dm/name");
-      if (!name.Ok()) {
-        return Error(name.ErrorStatus());
+      if (!name) {
+        return name.error();
       }
       auto slaves = block.GetSlaves();
       if (slaves.empty() || slaves[0].GetType() != LoopDevice) {
-        return Error("DeviceMapper device with no loop devices");
+        return Errorf("DeviceMapper device with no loop devices");
       }
       // TODO(jooyung): handle multiple loop devices when hash tree is
       // externalized
       auto slave = slaves[0];
       auto backingFile = slave.GetProperty("loop/backing_file");
-      if (!backingFile.Ok()) {
-        return Error(backingFile.ErrorStatus());
+      if (!backingFile) {
+        return backingFile.error();
       }
-      return StatusOr<MountedApexData>(slave.DevPath(), *backingFile,
-                                       mountPoint, *name);
+      return MountedApexData(slave.DevPath(), *backingFile, mountPoint, *name);
     }
     case UnknownDevice: {
-      return Error("Can't resolve " + block.DevPath().string());
+      return Errorf("Can't resolve {}", block.DevPath().string());
     }
   }
 }
@@ -203,8 +201,8 @@ void MountedApexDatabase::PopulateFromMounts() {
     }
 
     auto mountData = resolveMountInfo(BlockDevice(block), mountPoint);
-    if (!mountData.Ok()) {
-      LOG(WARNING) << "Can't resolve mount info " << mountData.ErrorMessage();
+    if (!mountData) {
+      LOG(WARNING) << "Can't resolve mount info " << mountData.error();
       continue;
     }
 

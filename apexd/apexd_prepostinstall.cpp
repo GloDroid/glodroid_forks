@@ -39,6 +39,9 @@
 #include "apexd_utils.h"
 #include "string_log.h"
 
+using android::base::Error;
+using android::base::Result;
+
 namespace android {
 namespace apex {
 
@@ -53,15 +56,14 @@ void CloseSTDDescriptors() {
 }
 
 template <typename Fn>
-Status StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
-                      const char* arg, const char* name) {
+Result<void> StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
+                            const char* arg, const char* name) {
   // TODO: Support a session with more than one pre-install hook.
   const ApexFile* hook_file = nullptr;
   for (const ApexFile& f : apexes) {
     if (!(f.GetManifest().*fn)().empty()) {
       if (hook_file != nullptr) {
-        return Status::Fail(StringLog() << "Missing support for multiple "
-                                        << name << " hooks");
+        return Error() << "Missing support for multiple " << name << " hooks";
       }
       hook_file = &f;
     }
@@ -73,10 +75,10 @@ Status StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
   std::vector<std::string> activation_dirs;
   auto preinstall_guard = android::base::make_scope_guard([&]() {
     for (const ApexFile* f : mounted_apexes) {
-      Status st = apexd_private::UnmountPackage(*f);
-      if (!st.Ok()) {
+      Result<void> st = apexd_private::UnmountPackage(*f);
+      if (!st) {
         LOG(ERROR) << "Failed to unmount " << f->GetPath() << " after " << name
-                   << ": " << st.ErrorMessage();
+                   << ": " << st.error();
       }
     }
     for (const std::string& active_point : activation_dirs) {
@@ -93,8 +95,8 @@ Status StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
         apexd_private::GetPackageMountPoint(apex.GetManifest());
 
     if (!apexd_private::IsMounted(apex.GetManifest().name(), apex.GetPath())) {
-      Status mountStatus = apexd_private::MountPackage(apex, mount_point);
-      if (!mountStatus.Ok()) {
+      Result<void> mountStatus = apexd_private::MountPackage(apex, mount_point);
+      if (!mountStatus) {
         return mountStatus;
       }
       mounted_apexes.push_back(&apex);
@@ -108,9 +110,8 @@ Status StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
     } else {
       int saved_errno = errno;
       if (saved_errno != EEXIST) {
-        return Status::Fail(StringLog()
-                            << "Unable to create mount point" << active_point
-                            << ": " << strerror(saved_errno));
+        return Error() << "Unable to create mount point" << active_point << ": "
+                       << strerror(saved_errno);
       }
     }
   }
@@ -128,7 +129,7 @@ Status StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
 
   std::string error_msg;
   int res = ForkAndRun(args, &error_msg);
-  return res == 0 ? Status::Success() : Status::Fail(error_msg);
+  return res == 0 ? Result<void>{} : Error() << error_msg;
 }
 
 template <typename Fn>
@@ -153,10 +154,10 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
       std::string mount_point;
       std::string active_point;
       {
-        StatusOr<ApexFile> apex_file = ApexFile::Open(apex);
-        if (!apex_file.Ok()) {
+        Result<ApexFile> apex_file = ApexFile::Open(apex);
+        if (!apex_file) {
           LOG(ERROR) << "Could not open apex " << apex << " for " << name
-                     << ": " << apex_file.ErrorMessage();
+                     << ": " << apex_file.error();
           _exit(202);
         }
         const ApexManifest& manifest = apex_file->GetManifest();
@@ -166,10 +167,11 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
       }
 
       // 3) Activate the new apex.
-      Status bind_status = apexd_private::BindMount(active_point, mount_point);
-      if (!bind_status.Ok()) {
+      Result<void> bind_status =
+          apexd_private::BindMount(active_point, mount_point);
+      if (!bind_status) {
         LOG(ERROR) << "Failed to bind-mount " << mount_point << " to "
-                   << active_point << ": " << bind_status.ErrorMessage();
+                   << active_point << ": " << bind_status.error();
         _exit(203);
       }
 
@@ -212,7 +214,7 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
 
 }  // namespace
 
-Status StagePreInstall(const std::vector<ApexFile>& apexes) {
+Result<void> StagePreInstall(const std::vector<ApexFile>& apexes) {
   return StageFnInstall(apexes, &ApexManifest::preinstallhook, "--pre-install",
                         "pre-install");
 }
@@ -221,7 +223,7 @@ int RunPreInstall(char** in_argv) {
   return RunFnInstall(in_argv, &ApexManifest::preinstallhook, "pre-install");
 }
 
-Status StagePostInstall(const std::vector<ApexFile>& apexes) {
+Result<void> StagePostInstall(const std::vector<ApexFile>& apexes) {
   return StageFnInstall(apexes, &ApexManifest::postinstallhook,
                         "--post-install", "post-install");
 }
