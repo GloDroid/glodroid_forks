@@ -37,7 +37,10 @@
 #include "string_log.h"
 
 using android::base::EndsWith;
+using android::base::Error;
+using android::base::Errorf;
 using android::base::ReadFullyAtOffset;
+using android::base::Result;
 using android::base::StartsWith;
 using android::base::unique_fd;
 using google::protobuf::util::MessageDifferencer;
@@ -57,7 +60,7 @@ constexpr const bool kDebugAllowBundledKey = false;
 
 }  // namespace
 
-StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
+Result<ApexFile> ApexFile::Open(const std::string& path) {
   int32_t image_offset;
   size_t image_size;
   std::string manifest_content;
@@ -68,29 +71,24 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
       android::base::make_scope_guard([&handle] { CloseArchive(handle); });
   int ret = OpenArchive(path.c_str(), &handle);
   if (ret < 0) {
-    std::string err = StringLog() << "Failed to open package " << path << ": "
-                                  << ErrorCodeString(ret);
-    return StatusOr<ApexFile>::MakeError(err);
+    return Error() << "Failed to open package " << path << ": "
+                   << ErrorCodeString(ret);
   }
 
   // Locate the mountable image within the zipfile and store offset and size.
   ZipEntry entry;
   ret = FindEntry(handle, kImageFilename, &entry);
   if (ret < 0) {
-    std::string err = StringLog() << "Could not find entry \"" << kImageFilename
-                                  << "\" in package " << path << ": "
-                                  << ErrorCodeString(ret);
-    return StatusOr<ApexFile>::MakeError(err);
+    return Error() << "Could not find entry \"" << kImageFilename
+                   << "\" in package " << path << ": " << ErrorCodeString(ret);
   }
   image_offset = entry.offset;
   image_size = entry.uncompressed_length;
 
   ret = FindEntry(handle, kManifestFilename, &entry);
   if (ret < 0) {
-    std::string err = StringLog() << "Could not find entry \""
-                                  << kManifestFilename << "\" in package "
-                                  << path << ": " << ErrorCodeString(ret);
-    return StatusOr<ApexFile>::MakeError(err);
+    return Error() << "Could not find entry \"" << kManifestFilename
+                   << "\" in package " << path << ": " << ErrorCodeString(ret);
   }
 
   uint32_t length = entry.uncompressed_length;
@@ -99,9 +97,8 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
                         reinterpret_cast<uint8_t*>(&(manifest_content)[0]),
                         length);
   if (ret != 0) {
-    std::string err = StringLog() << "Failed to extract manifest from package "
-                                  << path << ": " << ErrorCodeString(ret);
-    return StatusOr<ApexFile>::MakeError(err);
+    return Error() << "Failed to extract manifest from package " << path << ": "
+                   << ErrorCodeString(ret);
   }
 
   ret = FindEntry(handle, kBundledPublicKeyFilename, &entry);
@@ -112,20 +109,17 @@ StatusOr<ApexFile> ApexFile::Open(const std::string& path) {
     ret = ExtractToMemory(handle, &entry,
                           reinterpret_cast<uint8_t*>(&(pubkey)[0]), length);
     if (ret != 0) {
-      std::string err = StringLog()
-                        << "Failed to extract public key from package " << path
-                        << ": " << ErrorCodeString(ret);
-      return StatusOr<ApexFile>::MakeError(err);
+      return Error() << "Failed to extract public key from package " << path
+                     << ": " << ErrorCodeString(ret);
     }
   }
 
-  StatusOr<ApexManifest> manifest = ParseManifest(manifest_content);
-  if (!manifest.Ok()) {
-    return StatusOr<ApexFile>::MakeError(manifest.ErrorMessage());
+  Result<ApexManifest> manifest = ParseManifest(manifest_content);
+  if (!manifest) {
+    return manifest.error();
   }
 
-  ApexFile apexFile(path, image_offset, image_size, *manifest, pubkey);
-  return StatusOr<ApexFile>(std::move(apexFile));
+  return ApexFile(path, image_offset, image_size, *manifest, pubkey);
 }
 
 // AVB-related code.
@@ -161,8 +155,8 @@ std::string getDigest(const AvbHashtreeDescriptor& desc,
   return bytes_to_hex(desc_digest, desc.root_digest_len);
 }
 
-StatusOr<std::unique_ptr<AvbFooter>> getAvbFooter(const ApexFile& apex,
-                                                  const unique_fd& fd) {
+Result<std::unique_ptr<AvbFooter>> getAvbFooter(const ApexFile& apex,
+                                                const unique_fd& fd) {
   std::array<uint8_t, AVB_FOOTER_SIZE> footer_data;
   auto footer = std::make_unique<AvbFooter>();
 
@@ -170,57 +164,52 @@ StatusOr<std::unique_ptr<AvbFooter>> getAvbFooter(const ApexFile& apex,
   off_t offset = apex.GetImageSize() + apex.GetImageOffset() - AVB_FOOTER_SIZE;
   int ret = lseek(fd, offset, SEEK_SET);
   if (ret == -1) {
-    return StatusOr<std::unique_ptr<AvbFooter>>::MakeError(
-        PStringLog() << "Couldn't seek to AVB footer");
+    return ErrnoError() << "Couldn't seek to AVB footer";
   }
 
   ret = read(fd, footer_data.data(), AVB_FOOTER_SIZE);
   if (ret != AVB_FOOTER_SIZE) {
-    return StatusOr<std::unique_ptr<AvbFooter>>::MakeError(
-        PStringLog() << "Couldn't read AVB footer");
+    return ErrnoError() << "Couldn't read AVB footer";
   }
 
   if (!avb_footer_validate_and_byteswap((const AvbFooter*)footer_data.data(),
                                         footer.get())) {
-    return StatusOr<std::unique_ptr<AvbFooter>>::MakeError(
-        StringLog() << "AVB footer verification failed.");
+    return Error() << "AVB footer verification failed.";
   }
 
   LOG(VERBOSE) << "AVB footer verification successful.";
-  return StatusOr<std::unique_ptr<AvbFooter>>(std::move(footer));
+  return footer;
 }
 
-Status verifyPublicKey(const uint8_t* key, size_t length,
-                       std::string public_key_content) {
+Result<void> verifyPublicKey(const uint8_t* key, size_t length,
+                             std::string public_key_content) {
   if (public_key_content.length() != length ||
       memcmp(&public_key_content[0], key, length) != 0) {
-    return Status::Fail("Failed to compare the bundled public key with key");
+    return Errorf("Failed to compare the bundled public key with key");
   }
-  return Status::Success();
+  return {};
 }
 
-StatusOr<std::string> getPublicKeyName(const ApexFile& apex,
-                                       const uint8_t* data, size_t length) {
+Result<std::string> getPublicKeyName(const ApexFile& apex, const uint8_t* data,
+                                     size_t length) {
   size_t keyNameLen;
   const char* keyName = avb_property_lookup(data, length, kApexKeyProp,
                                             strlen(kApexKeyProp), &keyNameLen);
   if (keyName == nullptr || keyNameLen == 0) {
-    return StatusOr<std::string>::MakeError(
-        StringLog() << "Cannot find prop '" << kApexKeyProp << "' from "
-                    << apex.GetPath());
+    return Error() << "Cannot find prop '" << kApexKeyProp << "' from "
+                   << apex.GetPath();
   }
 
   if (keyName != apex.GetManifest().name()) {
-    return StatusOr<std::string>::MakeError(
-        StringLog() << "Key mismatch: apex name is '"
-                    << apex.GetManifest().name() << "'"
-                    << " but key name is '" << keyName << "'");
+    return Error() << "Key mismatch: apex name is '"
+                   << apex.GetManifest().name() << "'"
+                   << " but key name is '" << keyName << "'";
   }
-  return StatusOr<std::string>(keyName);
+  return keyName;
 }
 
-Status verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
-                             size_t length) {
+Result<void> verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
+                                   size_t length) {
   const uint8_t* pk;
   size_t pk_len;
   AvbVBMetaVerifyResult res;
@@ -232,29 +221,26 @@ Status verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
     case AVB_VBMETA_VERIFY_RESULT_OK_NOT_SIGNED:
     case AVB_VBMETA_VERIFY_RESULT_HASH_MISMATCH:
     case AVB_VBMETA_VERIFY_RESULT_SIGNATURE_MISMATCH:
-      return Status::Fail(StringLog()
-                          << "Error verifying " << apex.GetPath() << ": "
-                          << avb_vbmeta_verify_result_to_string(res));
+      return Error() << "Error verifying " << apex.GetPath() << ": "
+                     << avb_vbmeta_verify_result_to_string(res);
     case AVB_VBMETA_VERIFY_RESULT_INVALID_VBMETA_HEADER:
-      return Status::Fail(StringLog()
-                          << "Error verifying " << apex.GetPath() << ": "
-                          << "invalid vbmeta header");
+      return Error() << "Error verifying " << apex.GetPath() << ": "
+                     << "invalid vbmeta header";
     case AVB_VBMETA_VERIFY_RESULT_UNSUPPORTED_VERSION:
-      return Status::Fail(StringLog()
-                          << "Error verifying " << apex.GetPath() << ": "
-                          << "unsupported version");
+      return Error() << "Error verifying " << apex.GetPath() << ": "
+                     << "unsupported version";
     default:
-      return Status::Fail("Unknown vmbeta_image_verify return value");
+      return Errorf("Unknown vmbeta_image_verify return value");
   }
 
-  StatusOr<std::string> key_name = getPublicKeyName(apex, data, length);
-  if (!key_name.Ok()) {
-    return key_name.ErrorStatus();
+  Result<std::string> key_name = getPublicKeyName(apex, data, length);
+  if (!key_name) {
+    return key_name.error();
   }
 
-  StatusOr<const std::string> public_key = getApexKey(*key_name);
-  Status st;
-  if (public_key.Ok()) {
+  Result<const std::string> public_key = getApexKey(*key_name);
+  Result<void> st;
+  if (public_key) {
     // TODO(b/115718846)
     // We need to decide whether we need rollback protection, and whether
     // we can use the rollback protection provided by libavb.
@@ -266,45 +252,43 @@ Status verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
     LOG(WARNING) << "Verifying " << apex.GetPath() << " with the bundled key";
     st = verifyPublicKey(pk, pk_len, apex.GetBundledPublicKey());
   } else {
-    return public_key.ErrorStatus();
+    return public_key.error();
   }
 
-  if (st.Ok()) {
+  if (st) {
     LOG(VERBOSE) << apex.GetPath() << ": public key matches.";
     return st;
   }
 
-  return Status::Fail(StringLog()
-                      << "Error verifying " << apex.GetPath() << ": "
-                      << "couldn't verify public key: " << st.ErrorMessage());
+  return Error() << "Error verifying " << apex.GetPath() << ": "
+                 << "couldn't verify public key: " << st.error();
 }
 
-StatusOr<std::unique_ptr<uint8_t[]>> verifyVbMeta(const ApexFile& apex,
-                                                  const unique_fd& fd,
-                                                  const AvbFooter& footer) {
+Result<std::unique_ptr<uint8_t[]>> verifyVbMeta(const ApexFile& apex,
+                                                const unique_fd& fd,
+                                                const AvbFooter& footer) {
   if (footer.vbmeta_size > kVbMetaMaxSize) {
-    return StatusOr<std::unique_ptr<uint8_t[]>>::MakeError(
-        "VbMeta size in footer exceeds kVbMetaMaxSize.");
+    return Errorf("VbMeta size in footer exceeds kVbMetaMaxSize.");
   }
 
   off_t offset = apex.GetImageOffset() + footer.vbmeta_offset;
   std::unique_ptr<uint8_t[]> vbmeta_buf(new uint8_t[footer.vbmeta_size]);
 
   if (!ReadFullyAtOffset(fd, vbmeta_buf.get(), footer.vbmeta_size, offset)) {
-    return StatusOr<std::unique_ptr<uint8_t[]>>::MakeError(
-        PStringLog() << "Couldn't read AVB meta-data");
+    return ErrnoError() << "Couldn't read AVB meta-data";
   }
 
-  Status st = verifyVbMetaSignature(apex, vbmeta_buf.get(), footer.vbmeta_size);
-  if (!st.Ok()) {
-    return StatusOr<std::unique_ptr<uint8_t[]>>::MakeError(st.ErrorMessage());
+  Result<void> st =
+      verifyVbMetaSignature(apex, vbmeta_buf.get(), footer.vbmeta_size);
+  if (!st) {
+    return st.error();
   }
 
-  return StatusOr<std::unique_ptr<uint8_t[]>>(std::move(vbmeta_buf));
+  return vbmeta_buf;
 }
 
-StatusOr<const AvbHashtreeDescriptor*> findDescriptor(uint8_t* vbmeta_data,
-                                                      size_t vbmeta_size) {
+Result<const AvbHashtreeDescriptor*> findDescriptor(uint8_t* vbmeta_data,
+                                                    size_t vbmeta_size) {
   const AvbDescriptor** descriptors;
   size_t num_descriptors;
 
@@ -318,8 +302,7 @@ StatusOr<const AvbHashtreeDescriptor*> findDescriptor(uint8_t* vbmeta_data,
   for (size_t i = 0; i < num_descriptors; i++) {
     AvbDescriptor desc;
     if (!avb_descriptor_validate_and_byteswap(descriptors[i], &desc)) {
-      return StatusOr<const AvbHashtreeDescriptor*>::MakeError(
-          "Couldn't validate AvbDescriptor.");
+      return Errorf("Couldn't validate AvbDescriptor.");
     }
 
     if (desc.tag != AVB_DESCRIPTOR_TAG_HASHTREE) {
@@ -327,61 +310,55 @@ StatusOr<const AvbHashtreeDescriptor*> findDescriptor(uint8_t* vbmeta_data,
       continue;
     }
 
-    return StatusOr<const AvbHashtreeDescriptor*>(
-        (const AvbHashtreeDescriptor*)descriptors[i]);
+    return (const AvbHashtreeDescriptor*)descriptors[i];
   }
 
-  return StatusOr<const AvbHashtreeDescriptor*>::MakeError(
-      "Couldn't find any AVB hashtree descriptors.");
+  return Errorf("Couldn't find any AVB hashtree descriptors.");
 }
 
-StatusOr<std::unique_ptr<AvbHashtreeDescriptor>> verifyDescriptor(
+Result<std::unique_ptr<AvbHashtreeDescriptor>> verifyDescriptor(
     const AvbHashtreeDescriptor* desc) {
   auto verifiedDesc = std::make_unique<AvbHashtreeDescriptor>();
 
   if (!avb_hashtree_descriptor_validate_and_byteswap(desc,
                                                      verifiedDesc.get())) {
-    return StatusOr<std::unique_ptr<AvbHashtreeDescriptor>>::MakeError(
-        "Couldn't validate AvbDescriptor.");
+    return Errorf("Couldn't validate AvbDescriptor.");
   }
 
-  return StatusOr<std::unique_ptr<AvbHashtreeDescriptor>>(
-      std::move(verifiedDesc));
+  return verifiedDesc;
 }
 
 }  // namespace
 
-StatusOr<ApexVerityData> ApexFile::VerifyApexVerity() const {
+Result<ApexVerityData> ApexFile::VerifyApexVerity() const {
   ApexVerityData verityData;
 
   unique_fd fd(open(GetPath().c_str(), O_RDONLY | O_CLOEXEC));
   if (fd.get() == -1) {
-    return StatusOr<ApexVerityData>::MakeError(PStringLog() << "Failed to open "
-                                                            << GetPath());
+    return ErrnoError() << "Failed to open " << GetPath();
   }
 
-  StatusOr<std::unique_ptr<AvbFooter>> footer = getAvbFooter(*this, fd);
-  if (!footer.Ok()) {
-    return StatusOr<ApexVerityData>::MakeError(footer.ErrorMessage());
+  Result<std::unique_ptr<AvbFooter>> footer = getAvbFooter(*this, fd);
+  if (!footer) {
+    return footer.error();
   }
 
-  StatusOr<std::unique_ptr<uint8_t[]>> vbmeta_data =
+  Result<std::unique_ptr<uint8_t[]>> vbmeta_data =
       verifyVbMeta(*this, fd, **footer);
-  if (!vbmeta_data.Ok()) {
-    return StatusOr<ApexVerityData>::MakeError(vbmeta_data.ErrorMessage());
+  if (!vbmeta_data) {
+    return vbmeta_data.error();
   }
 
-  StatusOr<const AvbHashtreeDescriptor*> descriptor =
+  Result<const AvbHashtreeDescriptor*> descriptor =
       findDescriptor(vbmeta_data->get(), (*footer)->vbmeta_size);
-  if (!descriptor.Ok()) {
-    return StatusOr<ApexVerityData>::MakeError(descriptor.ErrorMessage());
+  if (!descriptor) {
+    return descriptor.error();
   }
 
-  StatusOr<std::unique_ptr<AvbHashtreeDescriptor>> verifiedDescriptor =
+  Result<std::unique_ptr<AvbHashtreeDescriptor>> verifiedDescriptor =
       verifyDescriptor(*descriptor);
-  if (!verifiedDescriptor.Ok()) {
-    return StatusOr<ApexVerityData>::MakeError(
-        verifiedDescriptor.ErrorMessage());
+  if (!verifiedDescriptor) {
+    return verifiedDescriptor.error();
   }
   verityData.desc = std::move(*verifiedDescriptor);
 
@@ -393,55 +370,52 @@ StatusOr<ApexVerityData> ApexFile::VerifyApexVerity() const {
   verityData.salt = getSalt(*verityData.desc, trailingData);
   verityData.root_digest = getDigest(*verityData.desc, trailingData);
 
-  return StatusOr<ApexVerityData>(std::move(verityData));
+  return verityData;
 }
 
-Status ApexFile::VerifyManifestMatches(const std::string& mount_path) const {
+Result<void> ApexFile::VerifyManifestMatches(
+    const std::string& mount_path) const {
   std::string manifest_content;
   const std::string manifest_path = mount_path + "/" + kManifestFilename;
 
   if (!android::base::ReadFileToString(manifest_path, &manifest_content)) {
-    std::string err = StringLog()
-                      << "Failed to read manifest file: " << manifest_path;
-    return Status::Fail(err);
+    return Error() << "Failed to read manifest file: " << manifest_path;
   }
 
-  StatusOr<ApexManifest> verifiedManifest = ParseManifest(manifest_content);
-  if (!verifiedManifest.Ok()) {
-    return Status::Fail(verifiedManifest.ErrorMessage());
+  Result<ApexManifest> verifiedManifest = ParseManifest(manifest_content);
+  if (!verifiedManifest) {
+    return verifiedManifest.error();
   }
 
   if (!MessageDifferencer::Equals(manifest_, *verifiedManifest)) {
-    return Status::Fail(
+    return Errorf(
         "Manifest inside filesystem does not match manifest outside it");
   }
 
-  return Status::Success();
+  return {};
 }
 
-StatusOr<std::vector<std::string>> FindApexes(
+Result<std::vector<std::string>> FindApexes(
     const std::vector<std::string>& paths) {
-  using StatusT = StatusOr<std::vector<std::string>>;
   std::vector<std::string> result;
   for (const auto& path : paths) {
     auto exist = PathExists(path);
-    if (!exist.Ok()) {
-      return StatusT::MakeError(exist.ErrorStatus());
+    if (!exist) {
+      return exist.error();
     }
     if (!*exist) continue;
 
     const auto& apexes = FindApexFilesByName(path);
-    if (!apexes.Ok()) {
+    if (!apexes) {
       return apexes;
     }
 
     result.insert(result.end(), apexes->begin(), apexes->end());
   }
-  return StatusOr<std::vector<std::string>>(result);
+  return result;
 }
 
-StatusOr<std::vector<std::string>> FindApexFilesByName(
-    const std::string& path) {
+Result<std::vector<std::string>> FindApexFilesByName(const std::string& path) {
   auto filter_fn = [](const std::filesystem::directory_entry& entry) {
     std::error_code ec;
     if (entry.is_regular_file(ec) &&

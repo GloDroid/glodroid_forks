@@ -26,11 +26,14 @@
 
 #include "string_log.h"
 
+using android::base::ErrnoError;
+using android::base::Result;
+
 namespace android {
 namespace apex {
 namespace apexd_private {
 
-Status BindMount(const std::string& target, const std::string& source) {
+Result<void> BindMount(const std::string& target, const std::string& source) {
   LOG(VERBOSE) << "Creating bind-mount for " << target << " for " << source;
   // Ensure the directory exists, try to unmount.
   {
@@ -67,8 +70,7 @@ Status BindMount(const std::string& target, const std::string& source) {
     if (!exists) {
       LOG(VERBOSE) << "Creating mountpoint " << target;
       if (mkdir(target.c_str(), kMkdirMode) != 0) {
-        return Status::Fail(PStringLog()
-                            << "Could not create mountpoint " << target);
+        return ErrnoError() << "Could not create mountpoint " << target;
       }
     };
     // Unmount any active bind-mount.
@@ -83,10 +85,9 @@ Status BindMount(const std::string& target, const std::string& source) {
 
   LOG(VERBOSE) << "Bind-mounting " << source << " to " << target;
   if (mount(source.c_str(), target.c_str(), nullptr, MS_BIND, nullptr) == 0) {
-    return Status::Success();
+    return {};
   }
-  return Status::Fail(PStringLog()
-                      << "Could not bind-mount " << source << " to " << target);
+  return ErrnoError() << "Could not bind-mount " << source << " to " << target;
 }
 
 }  // namespace apexd_private
