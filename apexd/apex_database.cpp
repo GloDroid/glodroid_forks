@@ -152,7 +152,7 @@ inode_map scanFlattendedPackages() {
   inode_map map;
 
   for (const auto& dir : kApexPackageBuiltinDirs) {
-    WalkDir(dir, [&](const fs::directory_entry& entry) {
+    auto status = WalkDir(dir, [&](const fs::directory_entry& entry) {
       const auto& path = entry.path();
       if (isFlattenedApex(path)) {
         auto inode = inodeFor(path);
@@ -161,6 +161,9 @@ inode_map scanFlattendedPackages() {
         }
       }
     });
+    if (!status.Ok()) {
+      LOG(ERROR) << "Failed to walk " << dir << " : " << status.ErrorMessage();
+    }
   }
 
   return map;

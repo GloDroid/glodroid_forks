@@ -391,7 +391,7 @@ StatusOr<std::unique_ptr<AvbHashtreeDescriptor>> verifyDescriptor(
 
   if (!avb_hashtree_descriptor_validate_and_byteswap(desc,
                                                      verifiedDesc.get())) {
-    StatusOr<std::unique_ptr<AvbHashtreeDescriptor>>::MakeError(
+    return StatusOr<std::unique_ptr<AvbHashtreeDescriptor>>::MakeError(
         "Couldn't validate AvbDescriptor.");
   }
 
