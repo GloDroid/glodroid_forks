@@ -227,13 +227,11 @@ class ApexServiceTest : public ::testing::Test {
 
   static std::vector<std::string> ListDir(const std::string& path) {
     std::vector<std::string> ret;
-    namespace fs = std::filesystem;
     std::error_code ec;
     if (!fs::is_directory(path, ec)) {
       return ret;
     }
-
-    for (const auto& entry : fs::directory_iterator(path)) {
+    WalkDir(path, [&](const fs::directory_entry& entry) {
       std::string tmp;
       switch (entry.symlink_status(ec).type()) {
         case fs::file_type::directory:
@@ -247,11 +245,9 @@ class ApexServiceTest : public ::testing::Test {
           break;
         default:
           tmp = "[other]";
-          break;
       }
-      tmp = tmp.append(entry.path().filename().string());
-      ret.push_back(tmp);
-    }
+      ret.push_back(tmp.append(entry.path().filename()));
+    });
     std::sort(ret.begin(), ret.end());
     return ret;
   }
@@ -281,7 +277,7 @@ class ApexServiceTest : public ::testing::Test {
     static constexpr const char* kTestDir = "/data/app-staging/apexservice_tmp";
 
     // This is given to the constructor.
-    std::string test_input;  // Original test file.
+    std::string test_input;           // Original test file.
     std::string selinux_label_input;  // SELinux label to apply.
     std::string test_dir_input;
 
@@ -413,16 +409,20 @@ class ApexServiceTest : public ::testing::Test {
 
  private:
   void CleanUp() {
-    for (const auto& p : fs::directory_iterator(kApexDataDir)) {
+    auto status = WalkDir(kApexDataDir, [](const fs::directory_entry& p) {
       std::error_code ec;
-      if (p.is_directory()) {
+      fs::file_status status = p.status(ec);
+      ASSERT_FALSE(ec) << "Failed to stat " << p.path() << " : "
+                       << ec.message();
+      if (fs::is_directory(status)) {
         fs::remove_all(p.path(), ec);
-        ASSERT_FALSE(ec) << "Failed to delete " << p.path() << " : " << ec;
       } else {
         fs::remove(p.path(), ec);
-        ASSERT_FALSE(ec) << "Failed to delete " << p.path() << " : " << ec;
       }
-    }
+      ASSERT_FALSE(ec) << "Failed to delete " << p.path() << " : "
+                       << ec.message();
+    });
+    ASSERT_TRUE(IsOk(status));
   }
 };
 
@@ -780,19 +780,12 @@ TEST_F(ApexServiceActivationSuccessTest, Activate) {
     // Collect direct entries of a folder.
     auto collect_entries_fn = [](const std::string& path) {
       std::vector<std::string> ret;
-      std::error_code ec;
-      namespace fs = std::filesystem;
-      // Check that there is something in there.
-      if (!fs::is_directory(path, ec)) {
-        return ret;
-      }
-
-      for (const auto& entry : fs::directory_iterator(path)) {
+      WalkDir(path, [&](const fs::directory_entry& entry) {
         if (!entry.is_directory()) {
-          continue;
+          return;
         }
-        ret.emplace_back(entry.path().filename().string());
-      }
+        ret.emplace_back(entry.path().filename());
+      });
       std::sort(ret.begin(), ret.end());
       return ret;
     };
@@ -1503,7 +1496,6 @@ TEST_F(ApexServiceTest, ActivePackagesFolderDoesNotExist) {
   }
 
   // Make sure that /data/apex/active does not exist
-  namespace fs = std::filesystem;
   std::error_code ec;
   fs::remove_all(fs::path(kActiveApexPackagesDataDir), ec);
   ASSERT_FALSE(ec) << "Failed to delete " << kActiveApexPackagesDataDir;
