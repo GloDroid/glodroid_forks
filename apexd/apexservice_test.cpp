@@ -231,7 +231,7 @@ class ApexServiceTest : public ::testing::Test {
     if (!fs::is_directory(path, ec)) {
       return ret;
     }
-    WalkDir(path, [&](const fs::directory_entry& entry) {
+    auto status = WalkDir(path, [&](const fs::directory_entry& entry) {
       std::string tmp;
       switch (entry.symlink_status(ec).type()) {
         case fs::file_type::directory:
@@ -248,6 +248,8 @@ class ApexServiceTest : public ::testing::Test {
       }
       ret.push_back(tmp.append(entry.path().filename()));
     });
+    CHECK(status.Ok()) << "Failed to list " << path << " : "
+                       << status.ErrorMessage();
     std::sort(ret.begin(), ret.end());
     return ret;
   }
@@ -778,14 +780,16 @@ TEST_F(ApexServiceActivationSuccessTest, Activate) {
     EXPECT_TRUE(S_ISDIR(buf.st_mode));
 
     // Collect direct entries of a folder.
-    auto collect_entries_fn = [](const std::string& path) {
+    auto collect_entries_fn = [&](const std::string& path) {
       std::vector<std::string> ret;
-      WalkDir(path, [&](const fs::directory_entry& entry) {
+      auto status = WalkDir(path, [&](const fs::directory_entry& entry) {
         if (!entry.is_directory()) {
           return;
         }
         ret.emplace_back(entry.path().filename());
       });
+      CHECK(status.Ok()) << "Failed to list " << path << " : "
+                         << status.ErrorMessage();
       std::sort(ret.begin(), ret.end());
       return ret;
     };
@@ -1350,7 +1354,7 @@ TEST_F(ApexServiceTest, AbortActiveSessionNoSessions) {
 
 TEST_F(ApexServiceTest, AbortActiveSession) {
   auto session = ApexSession::CreateSession(239);
-  session->UpdateStateAndCommit(SessionState::VERIFIED);
+  ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::VERIFIED)));
 
   std::vector<ApexSessionInfo> sessions;
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
