@@ -1344,7 +1344,11 @@ void scanStagedSessionsDirAndStage() {
 
     auto session_failed_fn = [&]() {
       LOG(WARNING) << "Marking session " << sessionId << " as failed.";
-      session.UpdateStateAndCommit(SessionState::ACTIVATION_FAILED);
+      auto st = session.UpdateStateAndCommit(SessionState::ACTIVATION_FAILED);
+      if (!st.Ok()) {
+        LOG(WARNING) << "Failed to mark session " << sessionId
+                     << " as failed : " << st.ErrorMessage();
+      }
     };
     auto scope_guard = android::base::make_scope_guard(session_failed_fn);
 
@@ -1408,7 +1412,11 @@ void scanStagedSessionsDirAndStage() {
     // Session was OK, release scopeguard.
     scope_guard.Disable();
 
-    session.UpdateStateAndCommit(SessionState::ACTIVATED);
+    auto st = session.UpdateStateAndCommit(SessionState::ACTIVATED);
+    if (!st.Ok()) {
+      LOG(ERROR) << "Failed to mark " << session
+                 << " as activated : " << st.ErrorMessage();
+    }
   }
 }
 
@@ -1630,7 +1638,12 @@ int onBootstrap() {
   }
 
   // Activate built-in APEXes for processes launched before /data is mounted.
-  scanPackagesDirAndActivate(kApexPackageSystemDir);
+  status = scanPackagesDirAndActivate(kApexPackageSystemDir);
+  if (!status.Ok()) {
+    LOG(ERROR) << "Failed to activate APEX files in " << kApexPackageSystemDir
+               << " : " << status.ErrorMessage();
+    return 1;
+  }
   LOG(INFO) << "Bootstrapping done";
   return 0;
 }
