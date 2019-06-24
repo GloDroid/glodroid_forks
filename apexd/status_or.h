@@ -29,7 +29,7 @@ namespace android {
 namespace apex {
 
 template <typename T>
-class StatusOr {
+class WARN_UNUSED StatusOr {
  private:
   enum class StatusOrTag { kDummy };
 

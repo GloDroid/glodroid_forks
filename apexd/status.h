@@ -20,11 +20,12 @@
 #include <string>
 
 #include <android-base/logging.h>
+#include <android-base/macros.h>
 
 namespace android {
 namespace apex {
 
-class Status {
+class WARN_UNUSED Status {
  public:
   Status() : ok_(true) {}
   explicit Status(const std::string& error_msg)
