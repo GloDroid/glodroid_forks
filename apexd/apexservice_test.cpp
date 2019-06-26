@@ -710,7 +710,7 @@ class ApexServiceActivationTest : public ApexServiceTest {
 
     installer_.reset();
     // ApexServiceTest::TearDown will wipe out everything under /data/apex.
-    // Since some of that information is required for deactivePackage binder
+    // Since some of that information is required for deactivatePackage binder
     // call, it's required to be called after deactivating package.
     ApexServiceTest::TearDown();
   }
