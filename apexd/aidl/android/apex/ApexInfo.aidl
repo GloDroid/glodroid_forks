@@ -17,8 +17,8 @@
 package android.apex;
 
 parcelable ApexInfo {
-    @utf8InCpp String packageName;
-    @utf8InCpp String packagePath;
+    @utf8InCpp String moduleName;
+    @utf8InCpp String modulePath;
     long versionCode;
     @utf8InCpp String versionName;
     boolean isFactory;
