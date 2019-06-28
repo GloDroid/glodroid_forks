@@ -123,7 +123,7 @@ class ApexServiceTest : public ::testing::Test {
     android::binder::Status status = service_->getActivePackages(&list);
     if (status.isOk()) {
       for (const ApexInfo& p : list) {
-        if (p.packageName == name && p.versionCode == version) {
+        if (p.moduleName == name && p.versionCode == version) {
           return true;
         }
       }
@@ -177,8 +177,8 @@ class ApexServiceTest : public ::testing::Test {
   }
 
   std::string GetPackageString(const ApexInfo& p) {
-    return p.packageName + "@" + std::to_string(p.versionCode) +
-           " [path=" + p.packagePath + "]";
+    return p.moduleName + "@" + std::to_string(p.versionCode) +
+           " [path=" + p.moduleName + "]";
   }
 
   std::vector<std::string> GetPackagesStrings(
@@ -812,15 +812,15 @@ TEST_F(ApexServiceActivationSuccessTest, GetActivePackages) {
   ApexInfo match;
 
   for (const ApexInfo& info : *active) {
-    if (info.packageName == installer_->package) {
+    if (info.moduleName == installer_->package) {
       match = info;
       break;
     }
   }
 
-  ASSERT_EQ(installer_->package, match.packageName);
+  ASSERT_EQ(installer_->package, match.moduleName);
   ASSERT_EQ(installer_->version, static_cast<uint64_t>(match.versionCode));
-  ASSERT_EQ(installer_->test_installed_file, match.packagePath);
+  ASSERT_EQ(installer_->test_installed_file, match.modulePath);
 }
 
 TEST_F(ApexServiceActivationSuccessTest, GetActivePackage) {
@@ -830,9 +830,9 @@ TEST_F(ApexServiceActivationSuccessTest, GetActivePackage) {
   Result<ApexInfo> active = GetActivePackage(installer_->package);
   ASSERT_TRUE(IsOk(active));
 
-  ASSERT_EQ(installer_->package, active->packageName);
+  ASSERT_EQ(installer_->package, active->moduleName);
   ASSERT_EQ(installer_->version, static_cast<uint64_t>(active->versionCode));
-  ASSERT_EQ(installer_->test_installed_file, active->packagePath);
+  ASSERT_EQ(installer_->test_installed_file, active->modulePath);
 }
 
 TEST_F(ApexServiceTest, GetFactoryPackages) {
@@ -842,7 +842,7 @@ TEST_F(ApexServiceTest, GetFactoryPackages) {
   ASSERT_TRUE(factoryPackages->size() > 0);
 
   for (const ApexInfo& package : *factoryPackages) {
-    ASSERT_TRUE(isPathForBuiltinApexes(package.packagePath));
+    ASSERT_TRUE(isPathForBuiltinApexes(package.modulePath));
   }
 }
 
@@ -1059,15 +1059,15 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_EQ(1u, list.apexInfos.size());
   ApexInfo match;
   for (const ApexInfo& info : list.apexInfos) {
-    if (info.packageName == installer.package) {
+    if (info.moduleName == installer.package) {
       match = info;
       break;
     }
   }
 
-  ASSERT_EQ(installer.package, match.packageName);
+  ASSERT_EQ(installer.package, match.moduleName);
   ASSERT_EQ(installer.version, static_cast<uint64_t>(match.versionCode));
-  ASSERT_EQ(installer.test_file, match.packagePath);
+  ASSERT_EQ(installer.test_file, match.modulePath);
 
   ApexSessionInfo session;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(123, &session)))
@@ -1206,18 +1206,18 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   bool package1_found = false;
   bool package2_found = false;
   for (const ApexInfo& info : list.apexInfos) {
-    if (info.packageName == installer.package) {
-      ASSERT_EQ(installer.package, info.packageName);
+    if (info.moduleName == installer.package) {
+      ASSERT_EQ(installer.package, info.moduleName);
       ASSERT_EQ(installer.version, static_cast<uint64_t>(info.versionCode));
-      ASSERT_EQ(installer.test_file, info.packagePath);
+      ASSERT_EQ(installer.test_file, info.modulePath);
       package1_found = true;
-    } else if (info.packageName == installer2.package) {
-      ASSERT_EQ(installer2.package, info.packageName);
+    } else if (info.moduleName == installer2.package) {
+      ASSERT_EQ(installer2.package, info.moduleName);
       ASSERT_EQ(installer2.version, static_cast<uint64_t>(info.versionCode));
-      ASSERT_EQ(installer2.test_file, info.packagePath);
+      ASSERT_EQ(installer2.test_file, info.modulePath);
       package2_found = true;
     } else {
-      FAIL() << "Unexpected package found " << info.packageName
+      FAIL() << "Unexpected package found " << info.moduleName
              << GetDebugStr(&installer) << GetDebugStr(&installer2);
     }
   }
@@ -1952,8 +1952,8 @@ class ApexShimUpdateTest : public ApexServiceTest {
     std::vector<ApexInfo> list;
     ASSERT_TRUE(IsOk(service_->getAllPackages(&list)));
     ApexInfo expected;
-    expected.packageName = "com.android.apex.cts.shim";
-    expected.packagePath = "/system/apex/com.android.apex.cts.shim.apex";
+    expected.moduleName = "com.android.apex.cts.shim";
+    expected.modulePath = "/system/apex/com.android.apex.cts.shim.apex";
     expected.versionCode = 1;
     expected.isFactory = true;
     expected.isActive = true;
