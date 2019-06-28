@@ -170,8 +170,8 @@ BinderStatus ApexService::submitStagedSession(
 
   for (const auto& package : *packages) {
     ApexInfo out;
-    out.packageName = package.GetManifest().name();
-    out.packagePath = package.GetPath();
+    out.moduleName = package.GetManifest().name();
+    out.modulePath = package.GetPath();
     out.versionCode = package.GetManifest().version();
     apex_info_list->apexInfos.push_back(out);
   }
@@ -263,8 +263,8 @@ void convertToApexSessionInfo(const ApexSession& session,
 
 static ApexInfo getApexInfo(const ApexFile& package) {
   ApexInfo out;
-  out.packageName = package.GetManifest().name();
-  out.packagePath = package.GetPath();
+  out.moduleName = package.GetManifest().name();
+  out.modulePath = package.GetPath();
   out.versionCode = package.GetManifest().version();
   out.versionName = package.GetManifest().versionname();
   return out;
@@ -272,10 +272,10 @@ static ApexInfo getApexInfo(const ApexFile& package) {
 
 static std::string toString(const ApexInfo& package) {
   std::string msg = StringLog()
-                    << "Package: " << package.packageName
+                    << "Module: " << package.moduleName
                     << " Version: " << package.versionCode
                     << " VersionName: " << package.versionName
-                    << " Path: " << package.packagePath
+                    << " Path: " << package.modulePath
                     << " IsActive: " << std::boolalpha << package.isActive
                     << " IsFactory: " << std::boolalpha << package.isFactory
                     << std::endl;
@@ -384,8 +384,8 @@ BinderStatus ApexService::getActivePackage(const std::string& packageName,
                                            ApexInfo* aidl_return) {
   Result<ApexFile> apex = ::android::apex::getActivePackage(packageName);
   if (apex) {
-    aidl_return->packageName = apex->GetManifest().name();
-    aidl_return->packagePath = apex->GetPath();
+    aidl_return->moduleName = apex->GetManifest().name();
+    aidl_return->modulePath = apex->GetPath();
     aidl_return->versionCode = apex->GetManifest().version();
     aidl_return->versionName = apex->GetManifest().versionname();
     aidl_return->isActive = true;
