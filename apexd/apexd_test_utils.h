@@ -20,8 +20,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "status.h"
-
 using apex::proto::SessionState;
 
 namespace android {
@@ -33,22 +31,14 @@ using ::testing::Eq;
 using ::testing::ExplainMatchResult;
 using ::testing::Field;
 
-inline ::testing::AssertionResult IsOk(const Status& status) {
-  if (status.Ok()) {
-    return ::testing::AssertionSuccess() << " is Ok";
-  } else {
-    return ::testing::AssertionFailure()
-           << " failed with " << status.ErrorMessage();
-  }
-}
-
 template <typename T>
-inline ::testing::AssertionResult IsOk(const StatusOr<T>& status_or) {
-  if (status_or.Ok()) {
+inline ::testing::AssertionResult IsOk(
+    const android::base::Result<T>& status_or) {
+  if (status_or) {
     return ::testing::AssertionSuccess() << " is Ok";
   } else {
     return ::testing::AssertionFailure()
-           << " failed with " << status_or.ErrorMessage();
+           << " failed with " << status_or.error();
   }
 }
 

@@ -21,18 +21,20 @@
 #include <vector>
 
 #include <android-base/file.h>
+#include <android-base/result.h>
 #include <android-base/unique_fd.h>
 #include <verity/hash_tree_builder.h>
 
 #include "apex_file.h"
 #include "apexd_loop.h"
 #include "apexd_utils.h"
-#include "status.h"
-#include "status_or.h"
 #include "string_log.h"
 
 namespace fs = std::filesystem;
+using android::base::ErrnoError;
+using android::base::Error;
 using android::base::ReadFully;
+using android::base::Result;
 using android::base::unique_fd;
 
 namespace android {
@@ -58,11 +60,12 @@ std::vector<uint8_t> HexToBin(const std::string& hex) {
   return bin;
 }
 
-Status GenerateHashTree(const ApexFile& apex, const ApexVerityData& verity_data,
-                        const std::string& hashtree_file) {
+Result<void> GenerateHashTree(const ApexFile& apex,
+                              const ApexVerityData& verity_data,
+                              const std::string& hashtree_file) {
   unique_fd fd(TEMP_FAILURE_RETRY(open(apex.GetPath().c_str(), O_RDONLY)));
   if (fd.get() == -1) {
-    return Status::Fail(PStringLog() << "Failed to open " << apex.GetPath());
+    return ErrnoError() << "Failed to open " << apex.GetPath();
   }
 
   auto block_size = verity_data.desc->hash_block_size;
@@ -70,32 +73,31 @@ Status GenerateHashTree(const ApexFile& apex, const ApexVerityData& verity_data,
 
   auto hash_fn = HashTreeBuilder::HashFunction(verity_data.hash_algorithm);
   if (hash_fn == nullptr) {
-    return Status::Fail(StringLog() << "Unsupported hash algorithm "
-                                    << verity_data.hash_algorithm);
+    return Error() << "Unsupported hash algorithm "
+                   << verity_data.hash_algorithm;
   }
 
   auto builder = std::make_unique<HashTreeBuilder>(block_size, hash_fn);
   if (!builder->Initialize(image_size, HexToBin(verity_data.salt))) {
-    return Status::Fail(StringLog() << "Invalid image size " << image_size);
+    return Error() << "Invalid image size " << image_size;
   }
 
   if (lseek(fd, apex.GetImageOffset(), SEEK_SET) == -1) {
-    return Status::Fail(PStringLog() << "Failed to seek");
+    return ErrnoError() << "Failed to seek";
   }
 
   auto block_count = image_size / block_size;
   auto buf = std::vector<uint8_t>(block_size);
   while (block_count-- > 0) {
     if (!ReadFully(fd, buf.data(), block_size)) {
-      return Status::Fail(StringLog() << "Failed to read");
+      return Error() << "Failed to read";
     }
     if (!builder->Update(buf.data(), block_size)) {
-      return Status::Fail(StringLog() << "Failed to build hashtree: Update");
+      return Error() << "Failed to build hashtree: Update";
     }
   }
   if (!builder->BuildHashTree()) {
-    return Status::Fail(StringLog()
-                        << "Failed to build hashtree: incomplete data");
+    return Error() << "Failed to build hashtree: incomplete data";
   }
 
   auto golden_digest = HexToBin(verity_data.root_digest);
@@ -104,29 +106,25 @@ Status GenerateHashTree(const ApexFile& apex, const ApexVerityData& verity_data,
   // resize() it to compare with golden digest,
   digest.resize(golden_digest.size());
   if (digest != golden_digest) {
-    return Status::Fail(StringLog()
-                        << "Failed to build hashtree: root digest mismatch");
+    return Error() << "Failed to build hashtree: root digest mismatch";
   }
 
   unique_fd out_fd(TEMP_FAILURE_RETRY(
       open(hashtree_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600)));
   if (!builder->WriteHashTreeToFd(out_fd, 0)) {
-    return Status::Fail(StringLog()
-                        << "Failed to write hashtree to " << hashtree_file);
+    return Error() << "Failed to write hashtree to " << hashtree_file;
   }
-  return Status::Success();
+  return {};
 }
 
 }  // namespace
 
 // Returns loop device of hashtree.
 // If image payload has an embedded hash tree, then returns <empty> loop device
-StatusOr<loop::LoopbackDeviceUniqueFd> GetHashTree(
+Result<loop::LoopbackDeviceUniqueFd> GetHashTree(
     const ApexFile& apex, const ApexVerityData& verity_data) {
-  using Status = StatusOr<loop::LoopbackDeviceUniqueFd>;
-
-  if (auto st = createDirIfNeeded(kHashTreeDir, 0700); !st.Ok()) {
-    return Status::Fail(st.ErrorMessage());
+  if (auto st = createDirIfNeeded(kHashTreeDir, 0700); !st) {
+    return st.error();
   }
 
   // TODO(b/120058143): proper hashtree filename for an apex file
@@ -135,13 +133,13 @@ StatusOr<loop::LoopbackDeviceUniqueFd> GetHashTree(
   // root digests. If they don't match, need to regenerate.
   auto hash_path = kHashTreeDir / GetPackageId(apex.GetManifest());
   auto exists = PathExists(hash_path);
-  if (!exists.Ok()) {
-    return Status::Fail(exists.ErrorMessage());
+  if (!exists) {
+    return exists.error();
   }
   if (!*exists ||
       fs::last_write_time(apex.GetPath()) > fs::last_write_time(hash_path)) {
-    if (auto st = GenerateHashTree(apex, verity_data, hash_path); !st.Ok()) {
-      return Status::Fail(st.ErrorMessage());
+    if (auto st = GenerateHashTree(apex, verity_data, hash_path); !st) {
+      return st.error();
     }
     LOG(INFO) << "hashtree: generated to " << hash_path;
   } else {

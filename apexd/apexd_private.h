@@ -19,9 +19,9 @@
 
 #include <string>
 
+#include <android-base/result.h>
 #include "apex_database.h"
 #include "apex_manifest.h"
-#include "status.h"
 
 namespace android {
 namespace apex {
@@ -37,12 +37,14 @@ using MountedApexData = MountedApexDatabase::MountedApexData;
 std::string GetPackageMountPoint(const ApexManifest& manifest);
 std::string GetActiveMountPoint(const ApexManifest& manifest);
 
-Status BindMount(const std::string& target, const std::string& source);
+android::base::Result<void> BindMount(const std::string& target,
+                                      const std::string& source);
 
 bool IsMounted(const std::string& name, const std::string& full_path);
 
-Status MountPackage(const ApexFile& apex, const std::string& mountPoint);
-Status UnmountPackage(const ApexFile& apex);
+android::base::Result<void> MountPackage(const ApexFile& apex,
+                                         const std::string& mountPoint);
+android::base::Result<void> UnmountPackage(const ApexFile& apex);
 
 }  // namespace apexd_private
 }  // namespace apex
