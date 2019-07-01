@@ -20,12 +20,11 @@
 
 #include "apex_file.h"
 #include "apexd_loop.h"
-#include "status_or.h"
 
 namespace android {
 namespace apex {
 
-StatusOr<loop::LoopbackDeviceUniqueFd> GetHashTree(
+android::base::Result<loop::LoopbackDeviceUniqueFd> GetHashTree(
     const ApexFile& apex, const ApexVerityData& verity_data);
 
 void RemoveObsoleteHashTrees();

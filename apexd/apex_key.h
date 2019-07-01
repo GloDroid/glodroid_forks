@@ -19,14 +19,15 @@
 #include <string>
 #include <vector>
 
-#include "status.h"
-#include "status_or.h"
+#include <android-base/result.h>
 
 namespace android {
 namespace apex {
 
-Status collectApexKeys(const std::vector<std::string>& apex_dirs);
-StatusOr<const std::string> getApexKey(const std::string& key_name);
+android::base::Result<void> collectApexKeys(
+    const std::vector<std::string>& apex_dirs);
+android::base::Result<const std::string> getApexKey(
+    const std::string& key_name);
 
 }  // namespace apex
 }  // namespace android

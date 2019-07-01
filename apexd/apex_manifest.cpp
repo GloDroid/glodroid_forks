@@ -23,6 +23,8 @@
 #include <memory>
 #include <string>
 
+using android::base::Error;
+using android::base::Result;
 using google::protobuf::DescriptorPool;
 using google::protobuf::scoped_ptr;
 using google::protobuf::util::NewTypeResolverForDescriptorPool;
@@ -43,49 +45,44 @@ std::string GetTypeUrl(const ApexManifest& apex_manifest) {
 // https://developers.google.com/protocol-buffers/docs/reference/cpp/
 // google.protobuf.util.json_util#JsonStringToMessage.details
 // as and when the android tree gets updated
-StatusOr<ApexManifest> JsonToApexManifestMessage(const std::string& content,
-                                                 ApexManifest& apex_manifest) {
+Result<ApexManifest> JsonToApexManifestMessage(const std::string& content,
+                                               ApexManifest& apex_manifest) {
   scoped_ptr<TypeResolver> resolver(NewTypeResolverForDescriptorPool(
       kTypeUrlPrefix, DescriptorPool::generated_pool()));
   std::string binary;
   auto parse_status = JsonToBinaryString(
       resolver.get(), GetTypeUrl(apex_manifest), content, &binary);
   if (!parse_status.ok()) {
-    return StatusOr<ApexManifest>::MakeError(
-        StringLog() << "Failed to parse APEX Manifest JSON config: "
-                    << parse_status.error_message().as_string());
+    return Error() << "Failed to parse APEX Manifest JSON config: "
+                   << parse_status.error_message().as_string();
   }
 
   if (!apex_manifest.ParseFromString(binary)) {
-    return StatusOr<ApexManifest>::MakeError(
-        StringLog() << "Unexpected fields in APEX Manifest JSON config");
+    return Error() << "Unexpected fields in APEX Manifest JSON config";
   }
-  return StatusOr<ApexManifest>(apex_manifest);
+  return apex_manifest;
 }
 
 }  // namespace
 
-StatusOr<ApexManifest> ParseManifest(const std::string& content) {
+Result<ApexManifest> ParseManifest(const std::string& content) {
   ApexManifest apex_manifest;
   std::string err;
-  StatusOr<ApexManifest> parse_manifest_status =
+  Result<ApexManifest> parse_manifest_status =
       JsonToApexManifestMessage(content, apex_manifest);
-  if (!parse_manifest_status.Ok()) {
+  if (!parse_manifest_status) {
     return parse_manifest_status;
   }
 
   // Verifying required fields.
   // name
   if (apex_manifest.name().empty()) {
-    err = StringLog() << "Missing required field \"name\" from APEX manifest.";
-    return StatusOr<ApexManifest>::MakeError(err);
+    return Error() << "Missing required field \"name\" from APEX manifest.";
   }
 
   // version
   if (apex_manifest.version() == 0) {
-    err =
-        StringLog() << "Missing required field \"version\" from APEX manifest.";
-    return StatusOr<ApexManifest>::MakeError(err);
+    return Error() << "Missing required field \"version\" from APEX manifest.";
   }
   return parse_manifest_status;
 }
