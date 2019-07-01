@@ -19,7 +19,7 @@
 
     <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer"/>
     <target_preparer class="com.android.tradefed.targetprep.InstallApexModuleTargetPreparer" >
-         <option name="test-file-name" value="apex.test.apex" />
+         <option name="test-file-name" value="com.android.apex.cts.shim.v2.apex" />
     </target_preparer>
     <test class="com.android.tradefed.testtype.HostTest" >
          <option name="jar" value="apex_targetprep_tests.jar" />
