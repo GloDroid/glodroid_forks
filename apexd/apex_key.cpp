@@ -21,13 +21,16 @@
 #include <unordered_map>
 
 #include <android-base/file.h>
+#include <android-base/result.h>
 #include <android-base/strings.h>
 
 #include "apex_constants.h"
 #include "apex_file.h"
 #include "apexd_utils.h"
-#include "status_or.h"
 #include "string_log.h"
+
+using android::base::Error;
+using android::base::Result;
 
 namespace android {
 namespace apex {
@@ -37,79 +40,74 @@ namespace {
 std::unordered_map<std::string, const std::string> gScannedApexKeys;
 
 using KeyPair = std::pair<std::string, std::string>;
-StatusOr<std::vector<KeyPair>> collectEmbedddedApexKeysFromDir(
+Result<std::vector<KeyPair>> collectEmbedddedApexKeysFromDir(
     const std::string& dir) {
   LOG(INFO) << "Scanning " << dir << " for embedded keys";
   // list of <key_name, key_content> pairs
   std::vector<KeyPair> ret;
   if (access(dir.c_str(), F_OK) != 0 && errno == ENOENT) {
     LOG(INFO) << "... does not exist. Skipping";
-    return StatusOr<std::vector<KeyPair>>(std::move(ret));
+    return ret;
   }
   const bool scanBuiltinApexes = isPathForBuiltinApexes(dir);
   if (!scanBuiltinApexes) {
-    return StatusOr<std::vector<KeyPair>>::MakeError(
-        StringLog() << "Can't scan embedded APEX keys from " << dir);
+    return Error() << "Can't scan embedded APEX keys from " << dir;
   }
-  StatusOr<std::vector<std::string>> apex_files = FindApexFilesByName(dir);
-  if (!apex_files.Ok()) {
-    return StatusOr<std::vector<KeyPair>>::MakeError(apex_files.ErrorStatus());
+  Result<std::vector<std::string>> apex_files = FindApexFilesByName(dir);
+  if (!apex_files) {
+    return apex_files.error();
   }
 
   for (const auto& file : *apex_files) {
-    StatusOr<ApexFile> apex_file = ApexFile::Open(file);
-    if (!apex_file.Ok()) {
-      return StatusOr<std::vector<KeyPair>>::MakeError(
-          StringLog() << "Failed to open " << file << " : "
-                      << apex_file.ErrorMessage());
+    Result<ApexFile> apex_file = ApexFile::Open(file);
+    if (!apex_file) {
+      return Error() << "Failed to open " << file << " : " << apex_file.error();
     }
     // name of the key is the name of the apex that the key is bundled in
     ret.push_back(std::make_pair(apex_file->GetManifest().name(),
                                  apex_file->GetBundledPublicKey()));
   }
-  return StatusOr<std::vector<KeyPair>>(std::move(ret));
+  return ret;
 }
 
-Status updateScannedApexKeys(const std::vector<KeyPair>& key_pairs) {
+Result<void> updateScannedApexKeys(const std::vector<KeyPair>& key_pairs) {
   for (const KeyPair& kp : key_pairs) {
     if (gScannedApexKeys.find(kp.first) == gScannedApexKeys.end()) {
       gScannedApexKeys.insert({kp.first, kp.second});
     } else {
       const std::string& existing_key = gScannedApexKeys.at(kp.first);
       if (existing_key != kp.second) {
-        return Status::Fail(StringLog()
-                            << "Key for package " << kp.first
-                            << " does not match with the existing key");
+        return Error() << "Key for package " << kp.first
+                       << " does not match with the existing key";
       }
     }
   }
-  return Status::Success();
+  return {};
 }
 
 }  // namespace
 
-Status collectApexKeys(const std::vector<std::string>& dirs) {
+Result<void> collectApexKeys(const std::vector<std::string>& dirs) {
   for (const auto& dir : dirs) {
-    StatusOr<std::vector<KeyPair>> key_pairs =
+    Result<std::vector<KeyPair>> key_pairs =
         collectEmbedddedApexKeysFromDir(dir);
-    if (!key_pairs.Ok()) {
-      return Status::Fail(StringLog() << "Failed to collect keys from " << dir
-                                      << " : " << key_pairs.ErrorMessage());
+    if (!key_pairs) {
+      return Error() << "Failed to collect keys from " << dir << " : "
+                     << key_pairs.error();
     }
-    Status st = updateScannedApexKeys(*key_pairs);
-    if (!st.Ok()) {
+    Result<void> st = updateScannedApexKeys(*key_pairs);
+    if (!st) {
       return st;
     }
   }
-  return Status::Success();
+  return {};
 }
 
-StatusOr<const std::string> getApexKey(const std::string& key_name) {
+Result<const std::string> getApexKey(const std::string& key_name) {
   if (gScannedApexKeys.find(key_name) == gScannedApexKeys.end()) {
-    return StatusOr<const std::string>::MakeError(
-        StringLog() << "No key found for package " << key_name);
+    return Error() << "No key found for package " << key_name;
   }
-  return StatusOr<const std::string>(gScannedApexKeys[key_name]);
+  return gScannedApexKeys[key_name];
 }
 
 }  // namespace apex
