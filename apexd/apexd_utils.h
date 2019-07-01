@@ -30,10 +30,14 @@
 
 #include <android-base/chrono_utils.h>
 #include <android-base/logging.h>
+#include <android-base/result.h>
 #include <cutils/android_reboot.h>
 
-#include "status_or.h"
 #include "string_log.h"
+
+using android::base::ErrnoError;
+using android::base::Error;
+using android::base::Result;
 
 namespace android {
 namespace apex {
@@ -83,7 +87,7 @@ inline int ForkAndRun(const std::vector<std::string>& args,
 }
 
 template <typename Fn>
-Status WalkDir(const std::string& path, Fn fn) {
+Result<void> WalkDir(const std::string& path, Fn fn) {
   namespace fs = std::filesystem;
   std::error_code ec;
   auto it = fs::directory_iterator(path, ec);
@@ -93,17 +97,15 @@ Status WalkDir(const std::string& path, Fn fn) {
     it.increment(ec);
   }
   if (ec) {
-    return Status::Fail(StringLog() << "Can't open " << path
-                                    << " for reading : " << ec.message());
+    return Error() << "Can't open " << path
+                   << " for reading : " << ec.message();
   }
-  return Status::Success();
+  return {};
 }
 
 template <typename FilterFn>
-StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
-                                           FilterFn fn) {
+Result<std::vector<std::string>> ReadDir(const std::string& path, FilterFn fn) {
   namespace fs = std::filesystem;
-  using Status = StatusOr<std::vector<std::string>>;
 
   std::vector<std::string> ret;
   auto status = WalkDir(path, [&](const fs::directory_entry& entry) {
@@ -111,71 +113,68 @@ StatusOr<std::vector<std::string>> ReadDir(const std::string& path,
       ret.push_back(entry.path());
     }
   });
-  if (!status.Ok()) {
-    return Status::Fail(status.ErrorMessage());
+  if (!status) {
+    return status.error();
   }
-  return Status(std::move(ret));
+  return ret;
 }
 
 inline bool IsEmptyDirectory(const std::string& path) {
   auto res = ReadDir(path, [](auto _) { return true; });
-  return res.Ok() && res->empty();
+  return res && res->empty();
 }
 
-inline Status createDirIfNeeded(const std::string& path, mode_t mode) {
+inline Result<void> createDirIfNeeded(const std::string& path, mode_t mode) {
   struct stat stat_data;
 
   if (stat(path.c_str(), &stat_data) != 0) {
     if (errno == ENOENT) {
       if (mkdir(path.c_str(), mode) != 0) {
-        return Status::Fail(PStringLog() << "Could not mkdir " << path);
+        return ErrnoError() << "Could not mkdir " << path;
       }
     } else {
-      return Status::Fail(PStringLog() << "Could not stat " << path);
+      return ErrnoError() << "Could not stat " << path;
     }
   } else {
     if (!S_ISDIR(stat_data.st_mode)) {
-      return Status::Fail(path + " exists and is not a directory.");
+      return Error() << path << " exists and is not a directory.";
     }
   }
 
   // Need to manually call chmod because mkdir will create a folder with
   // permissions mode & ~umask.
   if (chmod(path.c_str(), mode) != 0) {
-    return Status::Fail(PStringLog() << "Could not chmod " << path);
+    return ErrnoError() << "Could not chmod " << path;
   }
 
-  return Status::Success();
+  return {};
 }
 
-inline Status DeleteDirContent(const std::string& path) {
+inline Result<void> DeleteDirContent(const std::string& path) {
   auto files = ReadDir(path, [](auto _) { return true; });
-  if (!files.Ok()) {
-    return Status::Fail(StringLog() << "Failed to delete " << path << " : "
-                                    << files.ErrorMessage());
+  if (!files) {
+    return Error() << "Failed to delete " << path << " : " << files.error();
   }
   for (const std::string& file : *files) {
     if (unlink(file.c_str()) != 0) {
-      return Status::Fail(PStringLog() << "Failed to delete " << file);
+      return ErrnoError() << "Failed to delete " << file;
     }
   }
-  return Status::Success();
+  return {};
 }
 
-inline StatusOr<bool> PathExists(const std::string& path) {
+inline Result<bool> PathExists(const std::string& path) {
   namespace fs = std::filesystem;
-  using Status = StatusOr<bool>;
 
   std::error_code ec;
   if (!fs::exists(fs::path(path), ec)) {
     if (ec) {
-      return Status::Fail(StringLog() << "Failed to access " << path << " : "
-                                      << ec.message());
+      return Error() << "Failed to access " << path << " : " << ec.message();
     } else {
-      return Status(false);
+      return false;
     }
   }
-  return Status(true);
+  return true;
 }
 
 inline void Reboot() {
@@ -185,8 +184,8 @@ inline void Reboot() {
   }
 }
 
-inline Status WaitForFile(const std::string& path,
-                          std::chrono::nanoseconds timeout) {
+inline Result<void> WaitForFile(const std::string& path,
+                                std::chrono::nanoseconds timeout) {
   android::base::Timer t;
   bool has_slept = false;
   while (t.duration() < timeout) {
@@ -195,13 +194,12 @@ inline Status WaitForFile(const std::string& path,
       if (has_slept) {
         LOG(INFO) << "wait for '" << path << "' took " << t;
       }
-      return Status::Success();
+      return {};
     }
     std::this_thread::sleep_for(5ms);
     has_slept = true;
   }
-  return Status::Fail(PStringLog()
-                      << "wait for '" << path << "' timed out and took " << t);
+  return ErrnoError() << "wait for '" << path << "' timed out and took " << t;
 }
 
 }  // namespace apex

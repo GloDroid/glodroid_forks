@@ -17,8 +17,9 @@
 #ifndef ANDROID_APEXD_APEXD_SESSION_H_
 #define ANDROID_APEXD_APEXD_SESSION_H_
 
+#include <android-base/result.h>
+
 #include "apex_constants.h"
-#include "status_or.h"
 
 #include "session_state.pb.h"
 
@@ -32,12 +33,12 @@ static const std::string kApexSessionsDir =
 
 class ApexSession {
  public:
-  static StatusOr<ApexSession> CreateSession(int session_id);
-  static StatusOr<ApexSession> GetSession(int session_id);
+  static android::base::Result<ApexSession> CreateSession(int session_id);
+  static android::base::Result<ApexSession> GetSession(int session_id);
   static std::vector<ApexSession> GetSessions();
   static std::vector<ApexSession> GetSessionsInState(
       ::apex::proto::SessionState::State state);
-  static StatusOr<std::optional<ApexSession>> GetActiveSession();
+  static android::base::Result<std::optional<ApexSession>> GetActiveSession();
   ApexSession() = delete;
 
   const google::protobuf::RepeatedField<int> GetChildSessionIds() const;
@@ -46,15 +47,17 @@ class ApexSession {
   bool IsFinalized() const;
 
   void SetChildSessionIds(const std::vector<int>& child_session_ids);
-  Status UpdateStateAndCommit(const ::apex::proto::SessionState::State& state);
+  android::base::Result<void> UpdateStateAndCommit(
+      const ::apex::proto::SessionState::State& state);
 
-  Status DeleteSession() const;
+  android::base::Result<void> DeleteSession() const;
 
  private:
   ApexSession(const ::apex::proto::SessionState& state);
   ::apex::proto::SessionState state_;
 
-  static StatusOr<ApexSession> GetSessionFromFile(const std::string& path);
+  static android::base::Result<ApexSession> GetSessionFromFile(
+      const std::string& path);
 };
 
 std::ostream& operator<<(std::ostream& out, const ApexSession& session);

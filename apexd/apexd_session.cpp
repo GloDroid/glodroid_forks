@@ -17,7 +17,6 @@
 #include "apexd_session.h"
 
 #include "apexd_utils.h"
-#include "status_or.h"
 #include "string_log.h"
 
 #include "session_state.pb.h"
@@ -30,6 +29,8 @@
 #include <fstream>
 #include <optional>
 
+using android::base::Error;
+using android::base::Result;
 using apex::proto::SessionState;
 
 namespace android {
@@ -47,66 +48,65 @@ std::string getSessionStateFilePath(int session_id) {
   return getSessionDir(session_id) + "/" + kStateFileName;
 }
 
-StatusOr<std::string> createSessionDirIfNeeded(int session_id) {
+Result<std::string> createSessionDirIfNeeded(int session_id) {
   // create /data/sessions
   auto res = createDirIfNeeded(kApexSessionsDir, 0700);
-  if (!res.Ok()) {
-    return StatusOr<std::string>(res.ErrorMessage());
+  if (!res) {
+    return res.error();
   }
   // create /data/sessions/session_id
   std::string sessionDir = getSessionDir(session_id);
   res = createDirIfNeeded(sessionDir, 0700);
-  if (!res.Ok()) {
-    return StatusOr<std::string>(res.ErrorMessage());
+  if (!res) {
+    return res.error();
   }
 
-  return StatusOr<std::string>(sessionDir);
+  return sessionDir;
 }
 
-Status deleteSessionDir(int session_id) {
+Result<void> deleteSessionDir(int session_id) {
   std::string session_dir = getSessionDir(session_id);
   LOG(DEBUG) << "Deleting " << session_dir;
   auto path = std::filesystem::path(session_dir);
   std::error_code error_code;
   std::filesystem::remove_all(path, error_code);
   if (error_code) {
-    return Status::Fail(StringLog() << "Failed to delete " << session_dir
-                                    << " : " << error_code);
+    return Error() << "Failed to delete " << session_dir << " : "
+                   << error_code.message();
   }
-  return Status::Success();
+  return {};
 }
 
 }  // namespace
 
 ApexSession::ApexSession(const SessionState& state) : state_(state) {}
 
-StatusOr<ApexSession> ApexSession::CreateSession(int session_id) {
+Result<ApexSession> ApexSession::CreateSession(int session_id) {
   SessionState state;
   // Create session directory
   auto sessionPath = createSessionDirIfNeeded(session_id);
-  if (!sessionPath.Ok()) {
-    return StatusOr<ApexSession>::MakeError(sessionPath.ErrorMessage());
+  if (!sessionPath) {
+    return sessionPath.error();
   }
   state.set_id(session_id);
-  ApexSession session(state);
 
-  return StatusOr<ApexSession>(std::move(session));
+  return ApexSession(state);
 }
-StatusOr<ApexSession> ApexSession::GetSessionFromFile(const std::string& path) {
+Result<ApexSession> ApexSession::GetSessionFromFile(const std::string& path) {
   SessionState state;
   std::fstream stateFile(path, std::ios::in | std::ios::binary);
   if (!stateFile) {
-    return StatusOr<ApexSession>::MakeError("Failed to open " + path);
+    return Error() << "Failed to open " << path;
   }
 
   if (!state.ParseFromIstream(&stateFile)) {
-    return StatusOr<ApexSession>::MakeError("Failed to parse " + path);
+    return Error() << "Failed to parse " << path;
   }
 
-  return StatusOr<ApexSession>(ApexSession(state));
+  return ApexSession(state);
 }
 
-StatusOr<ApexSession> ApexSession::GetSession(int session_id) {
+Result<ApexSession> ApexSession::GetSession(int session_id) {
   auto path = getSessionStateFilePath(session_id);
 
   return GetSessionFromFile(path);
@@ -115,21 +115,21 @@ StatusOr<ApexSession> ApexSession::GetSession(int session_id) {
 std::vector<ApexSession> ApexSession::GetSessions() {
   std::vector<ApexSession> sessions;
 
-  StatusOr<std::vector<std::string>> sessionPaths = ReadDir(
+  Result<std::vector<std::string>> sessionPaths = ReadDir(
       kApexSessionsDir, [](const std::filesystem::directory_entry& entry) {
         std::error_code ec;
         return entry.is_directory(ec);
       });
 
-  if (!sessionPaths.Ok()) {
+  if (!sessionPaths) {
     return sessions;
   }
 
   for (const std::string& sessionDirPath : *sessionPaths) {
     // Try to read session state
     auto session = GetSessionFromFile(sessionDirPath + "/" + kStateFileName);
-    if (!session.Ok()) {
-      LOG(WARNING) << session.ErrorMessage();
+    if (!session) {
+      LOG(WARNING) << session.error();
       continue;
     }
     sessions.push_back(std::move(*session));
@@ -149,19 +149,18 @@ std::vector<ApexSession> ApexSession::GetSessionsInState(
   return sessions;
 }
 
-StatusOr<std::optional<ApexSession>> ApexSession::GetActiveSession() {
+Result<std::optional<ApexSession>> ApexSession::GetActiveSession() {
   auto sessions = GetSessions();
   std::optional<ApexSession> ret = std::nullopt;
   for (const ApexSession& session : sessions) {
     if (!session.IsFinalized()) {
       if (ret) {
-        return StatusOr<std::optional<ApexSession>>::MakeError(
-            "More than one active session");
+        return Error() << "More than one active session";
       }
       ret.emplace(session);
     }
   }
-  return StatusOr<std::optional<ApexSession>>(std::move(ret));
+  return ret;
 }
 
 SessionState::State ApexSession::GetState() const { return state_.state(); }
@@ -194,7 +193,7 @@ void ApexSession::SetChildSessionIds(
                                            child_session_ids.end()};
 }
 
-Status ApexSession::UpdateStateAndCommit(
+Result<void> ApexSession::UpdateStateAndCommit(
     const SessionState::State& session_state) {
   state_.set_state(session_state);
 
@@ -203,13 +202,15 @@ Status ApexSession::UpdateStateAndCommit(
   std::fstream stateFile(stateFilePath,
                          std::ios::out | std::ios::trunc | std::ios::binary);
   if (!state_.SerializeToOstream(&stateFile)) {
-    return Status::Fail("Failed to write state file " + stateFilePath);
+    return Error() << "Failed to write state file " << stateFilePath;
   }
 
-  return Status::Success();
+  return {};
 }
 
-Status ApexSession::DeleteSession() const { return deleteSessionDir(GetId()); }
+Result<void> ApexSession::DeleteSession() const {
+  return deleteSessionDir(GetId());
+}
 
 std::ostream& operator<<(std::ostream& out, const ApexSession& session) {
   return out << "[id = " << session.GetId()
