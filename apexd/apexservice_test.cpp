@@ -97,6 +97,10 @@ class ApexServiceTest : public ::testing::Test {
 
  protected:
   void SetUp() override {
+    // TODO(b/136647373): Move this check to environment setup
+    if (!android::base::GetBoolProperty("ro.apex.updatable", false)) {
+      GTEST_SKIP() << "Skipping test because device doesn't support APEX";
+    }
     ASSERT_NE(nullptr, service_.get());
     ASSERT_NE(nullptr, vold_service_.get());
     android::binder::Status status =
@@ -672,6 +676,10 @@ class ApexServiceActivationTest : public ApexServiceTest {
       : stage_package(stage_package) {}
 
   void SetUp() override {
+    // TODO(b/136647373): Move this check to environment setup
+    if (!android::base::GetBoolProperty("ro.apex.updatable", false)) {
+      GTEST_SKIP() << "Skipping test because device doesn't support APEX";
+    }
     ApexServiceTest::SetUp();
     ASSERT_NE(nullptr, service_.get());
 
@@ -1852,6 +1860,10 @@ static void ExecInMountNamespaceOf(pid_t pid,
 }
 
 TEST(ApexdTest, ApexdIsInSameMountNamespaceAsInit) {
+  // TODO(b/136647373): Move this check to environment setup
+  if (!android::base::GetBoolProperty("ro.apex.updatable", false)) {
+    GTEST_SKIP() << "Skipping test because device doesn't support APEX";
+  }
   std::string ns_apexd;
   std::string ns_init;
 
@@ -1877,10 +1889,10 @@ static const std::vector<const std::string> kEarlyProcesses = {
 };
 
 TEST(ApexdTest, EarlyProcessesAreInDifferentMountNamespace) {
+  // TODO(b/136647373): Move this check to environment setup
   if (!android::base::GetBoolProperty("ro.apex.updatable", false)) {
-    return;
+    GTEST_SKIP() << "Skipping test because device doesn't support APEX";
   }
-
   std::string ns_apexd;
 
   ExecInMountNamespaceOf(GetPidOf("apexd"), [&](pid_t /*pid*/) {
@@ -1900,6 +1912,10 @@ TEST(ApexdTest, EarlyProcessesAreInDifferentMountNamespace) {
 }
 
 TEST(ApexdTest, ApexIsAPrivateMountPoint) {
+  // TODO(b/136647373): Move this check to environment setup
+  if (!android::base::GetBoolProperty("ro.apex.updatable", false)) {
+    GTEST_SKIP() << "Skipping test because device doesn't support APEX";
+  }
   std::string mountinfo;
   ASSERT_TRUE(
       android::base::ReadFileToString("/proc/self/mountinfo", &mountinfo));
@@ -1924,6 +1940,10 @@ static const std::vector<const std::string> kEarlyApexes = {
 };
 
 TEST(ApexdTest, ApexesAreActivatedForEarlyProcesses) {
+  // TODO(b/136647373): Move this check to environment setup
+  if (!android::base::GetBoolProperty("ro.apex.updatable", false)) {
+    GTEST_SKIP() << "Skipping test because device doesn't support APEX";
+  }
   for (const auto& name : kEarlyProcesses) {
     pid_t pid = GetPidOf(name);
     const std::string path =
@@ -1951,6 +1971,10 @@ TEST(ApexdTest, ApexesAreActivatedForEarlyProcesses) {
 class ApexShimUpdateTest : public ApexServiceTest {
  protected:
   void SetUp() override {
+    // TODO(b/136647373): Move this check to environment setup
+    if (!android::base::GetBoolProperty("ro.apex.updatable", false)) {
+      GTEST_SKIP() << "Skipping test because device doesn't support APEX";
+    }
     ApexServiceTest::SetUp();
 
     // Assert that shim apex is pre-installed.
