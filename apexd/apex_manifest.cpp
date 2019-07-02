@@ -45,22 +45,22 @@ std::string GetTypeUrl(const ApexManifest& apex_manifest) {
 // https://developers.google.com/protocol-buffers/docs/reference/cpp/
 // google.protobuf.util.json_util#JsonStringToMessage.details
 // as and when the android tree gets updated
-Result<ApexManifest> JsonToApexManifestMessage(const std::string& content,
-                                               ApexManifest& apex_manifest) {
+Result<void> JsonToApexManifestMessage(const std::string& content,
+                                       ApexManifest* apex_manifest) {
   scoped_ptr<TypeResolver> resolver(NewTypeResolverForDescriptorPool(
       kTypeUrlPrefix, DescriptorPool::generated_pool()));
   std::string binary;
   auto parse_status = JsonToBinaryString(
-      resolver.get(), GetTypeUrl(apex_manifest), content, &binary);
+      resolver.get(), GetTypeUrl(*apex_manifest), content, &binary);
   if (!parse_status.ok()) {
     return Error() << "Failed to parse APEX Manifest JSON config: "
                    << parse_status.error_message().as_string();
   }
 
-  if (!apex_manifest.ParseFromString(binary)) {
+  if (!apex_manifest->ParseFromString(binary)) {
     return Error() << "Unexpected fields in APEX Manifest JSON config";
   }
-  return apex_manifest;
+  return {};
 }
 
 }  // namespace
@@ -68,10 +68,10 @@ Result<ApexManifest> JsonToApexManifestMessage(const std::string& content,
 Result<ApexManifest> ParseManifest(const std::string& content) {
   ApexManifest apex_manifest;
   std::string err;
-  Result<ApexManifest> parse_manifest_status =
-      JsonToApexManifestMessage(content, apex_manifest);
+  Result<void> parse_manifest_status =
+      JsonToApexManifestMessage(content, &apex_manifest);
   if (!parse_manifest_status) {
-    return parse_manifest_status;
+    return parse_manifest_status.error();
   }
 
   // Verifying required fields.
@@ -84,7 +84,7 @@ Result<ApexManifest> ParseManifest(const std::string& content) {
   if (apex_manifest.version() == 0) {
     return Error() << "Missing required field \"version\" from APEX manifest.";
   }
-  return parse_manifest_status;
+  return apex_manifest;
 }
 
 std::string GetPackageId(const ApexManifest& apexManifest) {
