@@ -55,8 +55,6 @@ class ApexService : public BnApexService {
 
   ApexService(){};
 
-  BinderStatus stagePackage(const std::string& packageTmpPath,
-                            bool* aidl_return) override;
   BinderStatus stagePackages(const std::vector<std::string>& paths,
                              bool* aidl_return) override;
   BinderStatus unstagePackages(const std::vector<std::string>& paths) override;
@@ -100,17 +98,6 @@ BinderStatus CheckDebuggable(const std::string& name) {
                                            String8(tmp.c_str()));
   }
   return BinderStatus::ok();
-}
-
-BinderStatus ApexService::stagePackage(const std::string& packageTmpPath,
-                                       bool* aidl_return) {
-  BinderStatus debugCheck = CheckDebuggable("stagePackage");
-  if (!debugCheck.isOk()) {
-    return debugCheck;
-  }
-  std::vector<std::string> tmp;
-  tmp.push_back(packageTmpPath);
-  return stagePackages(tmp, aidl_return);
 }
 
 BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths,
@@ -583,8 +570,6 @@ status_t ApexService::shellCommand(int in, int out, int err,
     }
     log << "ApexService:" << std::endl
         << "  help - display this help" << std::endl
-        << "  stagePackage [packagePath] - stage package from the given path"
-        << std::endl
         << "  stagePackages [packagePath1] ([packagePath2]...) - stage "
            "multiple packages from the given path"
         << std::endl
@@ -621,13 +606,9 @@ status_t ApexService::shellCommand(int in, int out, int err,
 
   const String16& cmd = args[0];
 
-  if (cmd == String16("stagePackage") || cmd == String16("stagePackages")) {
+  if (cmd == String16("stagePackages")) {
     if (args.size() < 2) {
-      print_help(err, "stagePackage(s) requires at least one packagePath");
-      return BAD_VALUE;
-    }
-    if (args.size() != 2 && cmd == String16("stagePackage")) {
-      print_help(err, "stagePackage requires one packagePath");
+      print_help(err, "stagePackages requires at least one packagePath");
       return BAD_VALUE;
     }
     std::vector<std::string> pkgs;
