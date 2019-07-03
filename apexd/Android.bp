@@ -53,26 +53,20 @@ cc_defaults {
 
 
 cc_defaults {
-  name: "apex_defaults",
-  defaults: ["apex_flags_defaults"],
+  name: "libapexd-deps",
+  defaults: ["libapex-deps"],
   shared_libs: [
-    "libbase",
-    "libcrypto",
-    "libjsoncpp",
-    "libprotobuf-cpp-full",
-    "libziparchive",
-    "libcutils",
+    "libbinder",
+    "libselinux",
   ],
   static_libs: [
-    "lib_apex_session_state_proto",
-    "lib_apex_manifest_proto",
+    "libapex",
+    "libavb",
+    "libdm",
+    "libverity_tree",
+    "libvold_binder",
   ],
-  static: {
-    whole_static_libs: ["libc++fs"],
-  },
-  shared: {
-    static_libs: ["libc++fs"],
-  },
+  whole_static_libs: ["com.android.sysprop.apex"],
 }
 
 aidl_interface {
@@ -97,7 +91,9 @@ aidl_interface {
 cc_binary {
   name: "apexd",
   defaults: [
-    "apex_defaults",
+    "apex_flags_defaults",
+    "libapex-deps",
+    "libapexd-deps",
     "libapexservice-deps",
   ],
   srcs: [
@@ -108,13 +104,6 @@ cc_binary {
     "libapexd",
     "libapexd_checkpoint_vold",
     "libapexservice",
-    "libavb",
-    "libdm",
-    "libverity_tree",
-    "libvold_binder",
-  ],
-  shared_libs: [
-    "libselinux",
   ],
   init_rc: ["apexd.rc"],
   // Just like the init, apexd should be able to run without
@@ -125,7 +114,10 @@ cc_binary {
 
 cc_library_static {
   name: "libapexd",
-  defaults: ["apex_defaults"],
+  defaults: [
+    "apex_flags_defaults",
+    "libapexd-deps",
+  ],
   srcs: [
     "apex_database.cpp",
     "apexd.cpp",
@@ -136,22 +128,13 @@ cc_library_static {
     "apexd_session.cpp",
     "apexd_verity.cpp",
   ],
-  static_libs: [
-    "libapex",
-    "libavb",
-    "libdm",
-    "libverity_tree",
-  ],
-  whole_static_libs: ["com.android.sysprop.apex"],
-  shared_libs: [
-    "libselinux",
-  ],
   export_include_dirs: ["."],
+  // Don't add shared/static libs here; add to libapexd_defaults instead.
 }
 
 cc_library_static {
   name: "libapexd_checkpoint_vold",
-  defaults: ["apex_defaults"],
+  defaults: ["apex_flags_defaults"],
   srcs: [ "apexd_checkpoint_vold.cpp" ],
   static_libs: [
     "libbase",
@@ -173,26 +156,51 @@ cc_defaults {
 cc_library_static {
   name: "libapexservice",
   defaults: [
-    "apex_defaults",
+    "apex_flags_defaults",
+    "libapexd-deps",
     "libapexservice-deps",
   ],
   srcs: ["apexservice.cpp"],
   static_libs: [
     "libapexd",
+  ],
+}
+
+cc_defaults {
+  name: "libapex-deps",
+  shared_libs: [
+    "libbase",
+    "libcrypto",
+    "libcutils",
+    "libjsoncpp",
+    "libprotobuf-cpp-full",
+    "libziparchive",
+  ],
+  static_libs: [
+    "lib_apex_session_state_proto",
+    "lib_apex_manifest_proto",
     "libavb",
   ],
+  static: {
+    whole_static_libs: ["libc++fs"],
+  },
+  shared: {
+    static_libs: ["libc++fs"],
+  },
 }
 
 cc_library_static {
   name: "libapex",
-  defaults: ["apex_defaults"],
+  defaults: [
+    "apex_flags_defaults",
+    "libapex-deps"
+  ],
   srcs: [
     "apex_file.cpp",
     "apex_key.cpp",
     "apex_manifest.cpp",
     "apex_shim.cpp",
   ],
-  static_libs: ["libavb"],
   host_supported: true,
   target: {
     darwin: {
@@ -214,7 +222,7 @@ cc_library_static {
 
 cc_test {
   name: "apex_database_test",
-  defaults: ["apex_defaults"],
+  defaults: ["apex_flags_defaults"],
   srcs: ["apex_database_test.cpp"],
   host_supported: true,
   target: {
@@ -228,7 +236,10 @@ cc_test {
 
 cc_test {
   name: "apex_file_test",
-  defaults: ["apex_defaults"],
+  defaults: [
+    "apex_flags_defaults",
+    "libapex-deps",
+  ],
   data: [
     ":apex.apexd_test",
     ":apex.apexd_test_no_inst_key",
@@ -245,15 +256,16 @@ cc_test {
   },
   static_libs: [
     "libapex",
-    "libavb",
   ],
-  shared_libs: ["libziparchive"],
   test_suites: ["device-tests"],
 }
 
 cc_test {
   name: "apex_manifest_test",
-  defaults: ["apex_defaults"],
+  defaults: [
+    "apex_flags_defaults",
+    "libapex-deps",
+  ],
   srcs: [
     "apex_manifest_test.cpp",
   ],
@@ -265,7 +277,6 @@ cc_test {
   },
   static_libs: [
     "libapex",
-    "libavb",
   ],
   test_suites: ["device-tests"],
 }
@@ -304,7 +315,11 @@ genrule {
 
 cc_test {
   name: "apexservice_test",
-  defaults: ["apex_defaults"],
+  defaults: [
+    "apex_flags_defaults",
+    "libapex-deps",
+    "libapexd-deps"
+  ],
   cflags: [
     // Otherwise libgmock won't compile.
     "-Wno-used-but-marked-unused",
@@ -335,14 +350,10 @@ cc_test {
     "apex_aidl_interface-cpp",
     "libapex",
     "libapexd",
-    "libavb",
-    "libdm",
     "libgmock",
-    "libvold_binder",
   ],
   shared_libs: [
     "libbinder",
-    "libselinux",
     "libutils",
   ],
   test_suites: ["device-tests"],
