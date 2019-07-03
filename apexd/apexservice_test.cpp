@@ -1147,15 +1147,9 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSessionDeletesPreviousSessions) {
   ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(new_session)));
 }
 
-// TODO(jiyong): re-enable this test. This test is disabled because the build
-// system now always bundles the public key that was used to sign the APEX.
-// In debuggable build, the bundled public key is used as the last fallback.
-// As a result, the verification is always successful (and thus test fails).
-// In order to re-enable this test, we have to manually create an APEX
-// where public key is not bundled.
-TEST_F(ApexServiceTest, DISABLED_SubmitSingleSessionTestFail) {
+TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   PrepareTestApexForInstall installer(
-      GetTestFile("apex.apexd_test_no_inst_key.apex"),
+      GetTestFile("apex.apexd_test_corrupt_apex.apex"),
       "/data/app-staging/session_456", "staging_data_file");
   if (!installer.Prepare()) {
     FAIL() << GetDebugStr(&installer);
@@ -1238,20 +1232,14 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   ASSERT_THAT(session, SessionInfoEq(expected));
 }
 
-// TODO(jiyong): re-enable this test. This test is disabled because the build
-// system now always bundles the public key that was used to sign the APEX.
-// In debuggable build, the bundled public key is used as the last fallback.
-// As a result, the verification is always successful (and thus test fails).
-// In order to re-enable this test, we have to manually create an APEX
-// where public key is not bundled.
-TEST_F(ApexServiceTest, DISABLED_SubmitMultiSessionTestFail) {
+TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
   // Parent session id: 11
   // Children session ids: 21 31
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
                                       "/data/app-staging/session_21",
                                       "staging_data_file");
   PrepareTestApexForInstall installer2(
-      GetTestFile("apex.apexd_test_no_inst_key.apex"),
+      GetTestFile("apex.apexd_test_corrupt_apex.apex"),
       "/data/app-staging/session_31", "staging_data_file");
   if (!installer.Prepare() || !installer2.Prepare()) {
     FAIL() << GetDebugStr(&installer) << GetDebugStr(&installer2);
