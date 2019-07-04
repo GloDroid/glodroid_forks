@@ -498,8 +498,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
 // As a result, the verification is always successful (and thus test fails).
 // In order to re-enable this test, we have to manually create an APEX
 // where public key is not bundled.
-#if 0
-TEST_F(ApexServiceTest, StageFailKey) {
+TEST_F(ApexServiceTest, DISABLED_StageFailKey) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_no_inst_key.apex"));
   if (!installer.Prepare()) {
@@ -532,7 +531,6 @@ TEST_F(ApexServiceTest, StageFailKey) {
   const size_t npos = std::string::npos;
   EXPECT_TRUE((pos1 != npos && pos2 != npos) || pos3 != npos) << error;
 }
-#endif
 
 TEST_F(ApexServiceTest, StageSuccess) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
@@ -1163,8 +1161,7 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSessionDeletesPreviousSessions) {
 // As a result, the verification is always successful (and thus test fails).
 // In order to re-enable this test, we have to manually create an APEX
 // where public key is not bundled.
-#if 0
-TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
+TEST_F(ApexServiceTest, DISABLED_SubmitSingleSessionTestFail) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_no_inst_key.apex"),
       "/data/app-staging/session_456", "staging_data_file");
@@ -1187,7 +1184,6 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   expected.isUnknown = true;
   EXPECT_THAT(session, SessionInfoEq(expected));
 }
-#endif
 
 TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   // Parent session id: 10
@@ -1256,8 +1252,7 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
 // As a result, the verification is always successful (and thus test fails).
 // In order to re-enable this test, we have to manually create an APEX
 // where public key is not bundled.
-#if 0
-TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
+TEST_F(ApexServiceTest, DISABLED_SubmitMultiSessionTestFail) {
   // Parent session id: 11
   // Children session ids: 21 31
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
@@ -1277,7 +1272,6 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
       << GetDebugStr(&installer);
   ASSERT_FALSE(ret_value);
 }
-#endif
 
 TEST_F(ApexServiceTest, MarkStagedSessionReadyFail) {
   // We should fail if we ask information about a session we don't know.
