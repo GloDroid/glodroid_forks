@@ -2,9 +2,11 @@
   "presubmit": [
     {
       "name": "apex_targetprep_tests"
-    },
+    }
+  ],
+  "imports": [
     {
-      "name": "CtsStagedInstallHostTestCases"
+      "path": "cts/hostsidetests/stagedinstall"
     }
   ]
 }
