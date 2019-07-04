@@ -97,16 +97,14 @@ TEST(ApexFileTest, VerifyApexVerity) {
 }
 
 // TODO: May consider packaging a debug key in debug builds (again).
-#if 0
-TEST(ApexFileTest, VerifyApexVerityNoKeyDir) {
+TEST(ApexFileTest, DISABLED_VerifyApexVerityNoKeyDir) {
   const std::string filePath = testDataDir + "apex.apexd_test.apex";
   Result<ApexFile> apexFile = ApexFile::Open(filePath);
   ASSERT_TRUE(apexFile) << apexFile.error();
 
-  auto verity_or = apexFile->VerifyApexVerity({"/tmp/"});
+  auto verity_or = apexFile->VerifyApexVerity();
   ASSERT_FALSE(verity_or);
 }
-#endif
 
 // TODO(jiyong): re-enable this test. This test is disabled because the build
 // system now always bundles the public key that was used to sign the APEX.
@@ -114,8 +112,7 @@ TEST(ApexFileTest, VerifyApexVerityNoKeyDir) {
 // As a result, the verification is always successful (and thus test fails).
 // In order to re-enable this test, we have to manually create an APEX
 // where public key is not bundled.
-#if 0
-TEST(ApexFileTest, VerifyApexVerityNoKeyInst) {
+TEST(ApexFileTest, DISABLED_VerifyApexVerityNoKeyInst) {
   const std::string filePath = testDataDir + "apex.apexd_test_no_inst_key.apex";
   Result<ApexFile> apexFile = ApexFile::Open(filePath);
   ASSERT_TRUE(apexFile) << apexFile.error();
@@ -123,7 +120,6 @@ TEST(ApexFileTest, VerifyApexVerityNoKeyInst) {
   auto verity_or = apexFile->VerifyApexVerity();
   ASSERT_FALSE(verity_or);
 }
-#endif
 
 TEST(ApexFileTest, GetBundledPublicKey) {
   const std::string filePath = testDataDir + "apex.apexd_test.apex";
