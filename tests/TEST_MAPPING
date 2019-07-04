@@ -5,9 +5,11 @@
     },
     {
       "name": "timezone_data_e2e_tests"
-    },
+    }
+  ],
+  "imports": [
     {
-      "name": "CtsStagedInstallHostTestCases"
+      "path": "cts/hostsidetests/stagedinstall"
     }
   ]
 }
