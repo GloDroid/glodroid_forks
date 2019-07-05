@@ -75,8 +75,8 @@ MATCHER_P(SessionInfoEq, other, "") {
 
 MATCHER_P(ApexInfoEq, other, "") {
   return ExplainMatchResult(
-      AllOf(Field("packageName", &ApexInfo::packageName, Eq(other.packageName)),
-            Field("packagePath", &ApexInfo::packagePath, Eq(other.packagePath)),
+      AllOf(Field("moduleName", &ApexInfo::moduleName, Eq(other.moduleName)),
+            Field("modulePath", &ApexInfo::modulePath, Eq(other.modulePath)),
             Field("versioncode", &ApexInfo::versionCode, Eq(other.versionCode)),
             Field("isFactory", &ApexInfo::isFactory, Eq(other.isFactory)),
             Field("isActive", &ApexInfo::isActive, Eq(other.isActive))),
