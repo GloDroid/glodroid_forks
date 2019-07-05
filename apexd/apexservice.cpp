@@ -60,8 +60,7 @@ class ApexService : public BnApexService {
   BinderStatus unstagePackages(const std::vector<std::string>& paths) override;
   BinderStatus submitStagedSession(int session_id,
                                    const std::vector<int>& child_session_ids,
-                                   ApexInfoList* apex_info_list,
-                                   bool* aidl_return) override;
+                                   ApexInfoList* apex_info_list) override;
   BinderStatus markStagedSessionReady(int session_id,
                                       bool* aidl_return) override;
   BinderStatus markStagedSessionSuccessful(int session_id) override;
@@ -142,17 +141,18 @@ BinderStatus ApexService::unstagePackages(
 
 BinderStatus ApexService::submitStagedSession(
     int session_id, const std::vector<int>& child_session_ids,
-    ApexInfoList* apex_info_list, bool* aidl_return) {
+    ApexInfoList* apex_info_list) {
   LOG(DEBUG) << "submitStagedSession() received by ApexService, session id "
              << session_id;
 
   Result<std::vector<ApexFile>> packages =
       ::android::apex::submitStagedSession(session_id, child_session_ids);
   if (!packages) {
-    *aidl_return = false;
     LOG(ERROR) << "Failed to submit session id " << session_id << ": "
                << packages.error();
-    return BinderStatus::ok();
+    return BinderStatus::fromExceptionCode(
+        BinderStatus::EX_SERVICE_SPECIFIC,
+        String8(packages.error().message().c_str()));
   }
 
   for (const auto& package : *packages) {
@@ -162,7 +162,6 @@ BinderStatus ApexService::submitStagedSession(
     out.versionCode = package.GetManifest().version();
     apex_info_list->apexInfos.push_back(out);
   }
-  *aidl_return = true;
   return BinderStatus::ok();
 }
 
@@ -766,20 +765,14 @@ status_t ApexService::shellCommand(int in, int out, int err,
 
     ApexInfoList list;
     std::vector<int> empty_child_session_ids;
-    bool ret_value;
 
-    BinderStatus status = submitStagedSession(
-        session_id, empty_child_session_ids, &list, &ret_value);
+    BinderStatus status =
+        submitStagedSession(session_id, empty_child_session_ids, &list);
     if (status.isOk()) {
-      if (ret_value) {
         for (const auto& item : list.apexInfos) {
           std::string msg = toString(item);
           dprintf(out, "%s", msg.c_str());
         }
-      } else {
-        std::string msg = StringLog() << "Verification failed." << std::endl;
-        dprintf(out, "%s", msg.c_str());
-      }
       return OK;
     }
     std::string msg = StringLog() << "Failed to submit session: "
