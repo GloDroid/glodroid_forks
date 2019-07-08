@@ -509,7 +509,7 @@ To build flattened APEXs, build the platform with the following flag.
 ```
 BoardConfig.mk:
 
-TARGET_FLATTENED_APEX := true
+TARGET_FLATTEN_APEX := true
 
 <device.mk>:
 
