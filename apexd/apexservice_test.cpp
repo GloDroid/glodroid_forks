@@ -1076,11 +1076,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   expected.isVerified = true;
   EXPECT_THAT(session, SessionInfoEq(expected));
 
-  bool ret_value;
-  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(123, &ret_value)))
-      << GetDebugStr(&installer);
-  ASSERT_TRUE(ret_value);
-
+  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(123)));
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(123, &session)))
       << GetDebugStr(&installer);
   expected.isVerified = false;
@@ -1088,9 +1084,8 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   EXPECT_THAT(session, SessionInfoEq(expected));
 
   // Call markStagedSessionReady again. Should be a no-op.
-  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(123, &ret_value)))
+  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(123)))
       << GetDebugStr(&installer);
-  ASSERT_TRUE(ret_value);
 
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(123, &session)))
       << GetDebugStr(&installer);
@@ -1217,10 +1212,8 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   expected.isVerified = true;
   ASSERT_THAT(session, SessionInfoEq(expected));
 
-  bool ret_value;
-  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(10, &ret_value)))
+  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(10)))
       << GetDebugStr(&installer);
-  ASSERT_TRUE(ret_value);
 
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(10, &session)))
       << GetDebugStr(&installer);
@@ -1250,9 +1243,7 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
 
 TEST_F(ApexServiceTest, MarkStagedSessionReadyFail) {
   // We should fail if we ask information about a session we don't know.
-  bool ret_value;
-  ASSERT_TRUE(IsOk(service_->markStagedSessionReady(666, &ret_value)));
-  ASSERT_FALSE(ret_value);
+  ASSERT_FALSE(IsOk(service_->markStagedSessionReady(666)));
 
   ApexSessionInfo session;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(666, &session)));
