@@ -61,8 +61,7 @@ class ApexService : public BnApexService {
   BinderStatus submitStagedSession(int session_id,
                                    const std::vector<int>& child_session_ids,
                                    ApexInfoList* apex_info_list) override;
-  BinderStatus markStagedSessionReady(int session_id,
-                                      bool* aidl_return) override;
+  BinderStatus markStagedSessionReady(int session_id) override;
   BinderStatus markStagedSessionSuccessful(int session_id) override;
   BinderStatus getSessions(std::vector<ApexSessionInfo>* aidl_return) override;
   BinderStatus getStagedSessionInfo(
@@ -165,18 +164,17 @@ BinderStatus ApexService::submitStagedSession(
   return BinderStatus::ok();
 }
 
-BinderStatus ApexService::markStagedSessionReady(int session_id,
-                                                 bool* aidl_return) {
+BinderStatus ApexService::markStagedSessionReady(int session_id) {
   LOG(DEBUG) << "markStagedSessionReady() received by ApexService, session id "
              << session_id;
   Result<void> success = ::android::apex::markStagedSessionReady(session_id);
   if (!success) {
-    *aidl_return = false;
     LOG(ERROR) << "Failed to mark session id " << session_id
                << " as ready: " << success.error();
-    return BinderStatus::ok();
+    return BinderStatus::fromExceptionCode(
+        BinderStatus::EX_SERVICE_SPECIFIC,
+        String8(success.error().message().c_str()));
   }
-  *aidl_return = true;
   return BinderStatus::ok();
 }
 
