@@ -55,8 +55,7 @@ class ApexService : public BnApexService {
 
   ApexService(){};
 
-  BinderStatus stagePackages(const std::vector<std::string>& paths,
-                             bool* aidl_return) override;
+  BinderStatus stagePackages(const std::vector<std::string>& paths) override;
   BinderStatus unstagePackages(const std::vector<std::string>& paths) override;
   BinderStatus submitStagedSession(int session_id,
                                    const std::vector<int>& child_session_ids,
@@ -98,8 +97,7 @@ BinderStatus CheckDebuggable(const std::string& name) {
   return BinderStatus::ok();
 }
 
-BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths,
-                                        bool* aidl_return) {
+BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths) {
   BinderStatus debugCheck = CheckDebuggable("stagePackages");
   if (!debugCheck.isOk()) {
     return debugCheck;
@@ -107,11 +105,9 @@ BinderStatus ApexService::stagePackages(const std::vector<std::string>& paths,
   LOG(DEBUG) << "stagePackages() received by ApexService, paths "
              << android::base::Join(paths, ',');
 
-  *aidl_return = false;
   Result<void> res = ::android::apex::stagePackages(paths);
 
   if (res) {
-    *aidl_return = true;
     return BinderStatus::ok();
   }
 
@@ -613,8 +609,7 @@ status_t ApexService::shellCommand(int in, int out, int err,
     for (size_t i = 1; i != args.size(); ++i) {
       pkgs.emplace_back(String8(args[i]).string());
     }
-    bool ret_value;
-    BinderStatus status = stagePackages(pkgs, &ret_value);
+    BinderStatus status = stagePackages(pkgs);
     if (status.isOk()) {
       return OK;
     }
