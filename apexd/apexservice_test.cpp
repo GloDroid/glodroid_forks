@@ -484,8 +484,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
   };
   Deleter del(test_file);
 
-  bool success;
-  android::binder::Status st = service_->stagePackages({test_file}, &success);
+  android::binder::Status st = service_->stagePackages({test_file});
   ASSERT_FALSE(IsOk(st));
   std::string error = st.exceptionMessage().c_str();
   EXPECT_NE(std::string::npos, error.find("Failed to open package")) << error;
@@ -507,9 +506,7 @@ TEST_F(ApexServiceTest, DISABLED_StageFailKey) {
   ASSERT_EQ(std::string("com.android.apex.test_package.no_inst_key"),
             installer.package);
 
-  bool success;
-  android::binder::Status st =
-      service_->stagePackages({installer.test_file}, &success);
+  android::binder::Status st = service_->stagePackages({installer.test_file});
   ASSERT_FALSE(IsOk(st));
 
   // May contain one of two errors.
@@ -539,9 +536,7 @@ TEST_F(ApexServiceTest, StageSuccess) {
   }
   ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
 
-  bool success;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &success)));
-  ASSERT_TRUE(success);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
   EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
 }
 
@@ -599,9 +594,7 @@ TEST_F(ApexServiceTest, StageSuccess_ClearsPreviouslyActivePackage) {
     if (!installer.Prepare()) {
       return;
     }
-    bool success;
-    ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &success)));
-    ASSERT_TRUE(success);
+    ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
     EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
   };
   install_fn(installer1);
@@ -621,14 +614,10 @@ TEST_F(ApexServiceTest, StageAlreadyStagedPackageSuccess) {
   }
   ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
 
-  bool success = false;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &success)));
-  ASSERT_TRUE(success);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
   ASSERT_TRUE(RegularFileExists(installer.test_installed_file));
 
-  success = false;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &success)));
-  ASSERT_TRUE(success);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
   ASSERT_TRUE(RegularFileExists(installer.test_installed_file));
 }
 
@@ -650,9 +639,7 @@ TEST_F(ApexServiceTest, MultiStageSuccess) {
   packages.push_back(installer.test_file);
   packages.push_back(installer2.test_file);
 
-  bool success;
-  ASSERT_TRUE(IsOk(service_->stagePackages(packages, &success)));
-  ASSERT_TRUE(success);
+  ASSERT_TRUE(IsOk(service_->stagePackages(packages)));
   EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
   EXPECT_TRUE(RegularFileExists(installer2.test_installed_file));
 }
@@ -688,10 +675,7 @@ class ApexServiceActivationTest : public ApexServiceTest {
     }
 
     if (stage_package) {
-      bool success;
-      ASSERT_TRUE(
-          IsOk(service_->stagePackages({installer_->test_file}, &success)));
-      ASSERT_TRUE(success);
+      ASSERT_TRUE(IsOk(service_->stagePackages({installer_->test_file})));
     }
   }
 
@@ -893,9 +877,7 @@ TEST_F(ApexServiceActivationSuccessTest, StageAlreadyActivePackageSameVersion) {
   ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
       << GetDebugStr(installer_.get());
 
-  bool success = false;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer_->test_file}, &success)));
-  ASSERT_TRUE(success);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer_->test_file})));
 }
 
 class ApexServiceDeactivationTest : public ApexServiceActivationSuccessTest {
@@ -1346,10 +1328,8 @@ TEST_F(ApexServiceTest, BackupActivePackages) {
   }
 
   // Activate some packages, in order to backup them later.
-  bool ret = false;
   std::vector<std::string> pkgs = {installer1.test_file, installer2.test_file};
-  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs, &ret)));
-  ASSERT_TRUE(ret);
+  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs)));
 
   // Make sure that /data/apex/active has activated packages.
   auto active_pkgs = ReadEntireDir(kActiveApexPackagesDataDir);
@@ -1394,10 +1374,8 @@ TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
   ASSERT_TRUE(old_backup.good());
   old_backup.close();
 
-  bool ret = false;
   std::vector<std::string> pkgs = {installer1.test_file, installer2.test_file};
-  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs, &ret)));
-  ASSERT_TRUE(ret);
+  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs)));
 
   // Make sure that /data/apex/active has activated packages.
   auto active_pkgs = ReadEntireDir(kActiveApexPackagesDataDir);
@@ -1484,10 +1462,8 @@ TEST_F(ApexServiceTest, UnstagePackagesSuccess) {
     return;
   }
 
-  bool ret = false;
   std::vector<std::string> pkgs = {installer1.test_file, installer2.test_file};
-  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs, &ret)));
-  ASSERT_TRUE(ret);
+  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs)));
 
   pkgs = {installer2.test_installed_file};
   ASSERT_TRUE(IsOk(service_->unstagePackages(pkgs)));
@@ -1507,10 +1483,8 @@ TEST_F(ApexServiceTest, UnstagePackagesFail) {
     return;
   }
 
-  bool ret = false;
   std::vector<std::string> pkgs = {installer1.test_file};
-  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs, &ret)));
-  ASSERT_TRUE(ret);
+  ASSERT_TRUE(IsOk(service_->stagePackages(pkgs)));
 
   pkgs = {installer1.test_installed_file, installer2.test_installed_file};
   ASSERT_FALSE(IsOk(service_->unstagePackages(pkgs)));
@@ -1570,9 +1544,7 @@ TEST_F(ApexServiceRollbackTest, AbortActiveSessionSuccessfulRollback) {
   ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::ACTIVATED)));
 
   // Make sure /data/apex/active is non-empty.
-  bool ret;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &ret)));
-  ASSERT_TRUE(ret);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
 
   PrepareBackup({GetTestFile("apex.apexd_test.apex"),
                  GetTestFile("apex.apexd_test_different_app.apex")});
@@ -1607,9 +1579,7 @@ TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledSuccessfulRollback) {
   ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::ACTIVATED)));
 
   // Make sure /data/apex/active is non-empty.
-  bool ret;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &ret)));
-  ASSERT_TRUE(ret);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
 
   PrepareBackup({GetTestFile("apex.apexd_test.apex")});
 
@@ -1630,9 +1600,7 @@ TEST_F(ApexServiceRollbackTest, RollbackLastSessionCalledNoActiveSession) {
   }
 
   // Make sure /data/apex/active is non-empty.
-  bool ret;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &ret)));
-  ASSERT_TRUE(ret);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
 
   PrepareBackup({GetTestFile("apex.apexd_test.apex")});
 
@@ -1676,9 +1644,7 @@ TEST_F(ApexServiceRollbackTest, ResumesRollback) {
   }
 
   // Make sure /data/apex/active is non-empty.
-  bool ret;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &ret)));
-  ASSERT_TRUE(ret);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
 
   auto session = ApexSession::CreateSession(17239);
   ASSERT_TRUE(IsOk(session));
@@ -1711,9 +1677,7 @@ TEST_F(ApexServiceRollbackTest, DoesNotResumeRollback) {
   }
 
   // Make sure /data/apex/active is non-empty.
-  bool ret;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &ret)));
-  ASSERT_TRUE(ret);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
 
   auto session = ApexSession::CreateSession(53);
   ASSERT_TRUE(IsOk(session));
@@ -1947,9 +1911,7 @@ TEST_F(ApexShimUpdateTest, UpdateToV2Success) {
     FAIL() << GetDebugStr(&installer);
   }
 
-  bool success;
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file}, &success)));
-  ASSERT_TRUE(success);
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
 }
 
 TEST_F(ApexShimUpdateTest, UpdateToV2FailureWrongSHA512) {
@@ -1960,8 +1922,7 @@ TEST_F(ApexShimUpdateTest, UpdateToV2FailureWrongSHA512) {
     FAIL() << GetDebugStr(&installer);
   }
 
-  bool success;
-  const auto& status = service_->stagePackages({installer.test_file}, &success);
+  const auto& status = service_->stagePackages({installer.test_file});
   ASSERT_FALSE(IsOk(status));
   const std::string& error_message =
       std::string(status.exceptionMessage().c_str());
