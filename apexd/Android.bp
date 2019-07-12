@@ -63,6 +63,7 @@ cc_defaults {
     "libapex",
     "libavb",
     "libdm",
+    "libext2_uuid",
     "libverity_tree",
     "libvold_binder",
   ],
