@@ -31,6 +31,7 @@ bool mctl_mem_matches(u32 offset)
 {
 	/* Try to write different values to RAM at two addresses */
 	writel(0, CONFIG_SYS_SDRAM_BASE);
+	dsb();
 	writel(0xaa55aa55, (ulong)CONFIG_SYS_SDRAM_BASE + offset);
 	dsb();
 	/* Check if the same value is actually observed when reading back */
