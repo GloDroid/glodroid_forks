@@ -1,8 +1,9 @@
 {
   "presubmit": [
-    {
-      "name": "apex_targetprep_tests"
-    },
+// TODO: add back once b/137755255 is fixed.
+//    {
+//      "name": "apex_targetprep_tests"
+//    },
     {
       "name": "timezone_data_e2e_tests"
     }
