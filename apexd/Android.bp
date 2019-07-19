@@ -361,3 +361,21 @@ cc_test {
   test_config: "apexservice_test_config.xml",
 }
 
+cc_test {
+  name: "flattened_apex_test",
+  defaults: [
+    "apex_flags_defaults",
+    "libapex-deps",
+    "libapexd-deps"
+  ],
+  srcs: ["flattened_apex_test.cpp"],
+  host_supported: false,
+  compile_multilib: "first",
+  static_libs: [
+    "libapex",
+    "libapexd",
+  ],
+  test_suites: ["device-tests"],
+  test_config: "flattened_apex_test_config.xml",
+}
+
