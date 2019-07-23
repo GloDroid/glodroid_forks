@@ -14,6 +14,19 @@
       "name": "timezone_data_e2e_tests"
     }
   ],
+  // The following changes are in post-submit to restrict to physical
+  // devices (currently failing on cf). TODO: Fix and move to presubmit.
+  // b/138242400
+  "postsubmit": [
+    {
+      "name": "media_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "media_swcodec_e2e_tests",
+      "keywords": ["primary-device"]
+    }
+  ],
   "imports": [
     {
       "path": "cts/hostsidetests/stagedinstall"
