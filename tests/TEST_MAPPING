@@ -1,6 +1,9 @@
 {
   "presubmit": [
     {
+      "name": "apex_rollback_tests"
+    },
+    {
       "name": "apex_targetprep_tests"
     }
   ],
