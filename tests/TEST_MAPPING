@@ -1,5 +1,8 @@
 {
   "presubmit": [
+    {
+      "name": "apex_rollback_tests"
+    },
 // TODO: add back once b/137755255 is fixed.
 //    {
 //      "name": "apex_targetprep_tests"
