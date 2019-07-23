@@ -8,6 +8,9 @@
 //      "name": "apex_targetprep_tests"
 //    },
     {
+      "name": "conscrypt_e2e_tests"
+    },
+    {
       "name": "timezone_data_e2e_tests"
     }
   ],
