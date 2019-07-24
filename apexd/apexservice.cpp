@@ -138,7 +138,8 @@ BinderStatus ApexService::submitStagedSession(
     int session_id, const std::vector<int>& child_session_ids,
     ApexInfoList* apex_info_list) {
   LOG(DEBUG) << "submitStagedSession() received by ApexService, session id "
-             << session_id;
+             << session_id << " child sessions: ["
+             << android::base::Join(child_session_ids, ',') << "]";
 
   Result<std::vector<ApexFile>> packages =
       ::android::apex::submitStagedSession(session_id, child_session_ids);
