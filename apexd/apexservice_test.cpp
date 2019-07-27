@@ -1979,6 +1979,29 @@ TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureAdditionalFolder) {
   ASSERT_FALSE(IsOk(service_->submitStagedSession(42, {}, &list)));
 }
 
+TEST_F(ApexShimUpdateTest, UpdateToV1Success) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("com.android.apex.cts.shim.apex"));
+
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
+}
+
+TEST_F(ApexShimUpdateTest, SubmitStagedSessionV1ShimApexSuccess) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("com.android.apex.cts.shim.apex"),
+      "/data/app-staging/session_97", "staging_data_file");
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+
+  ApexInfoList list;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(97, {}, &list)));
+}
+
 TEST_F(ApexServiceTest, SubmitStagedSessionCorruptApexFails) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_corrupt_apex.apex"),
