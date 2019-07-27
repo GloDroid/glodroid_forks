@@ -51,6 +51,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <linux/loop.h>
+#include <sys/inotify.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -65,6 +66,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -1624,6 +1626,63 @@ int onBootstrap() {
   return 0;
 }
 
+Result<void> monitorBuiltinDirs() {
+  int fd = inotify_init1(IN_CLOEXEC);
+  if (fd == -1) {
+    return ErrnoErrorf("inotify_init failed");
+  }
+  std::map<int, std::string> desc_to_dir;
+  for (const auto& dir : kApexPackageBuiltinDirs) {
+    int desc = inotify_add_watch(fd, dir.c_str(), IN_CREATE | IN_MODIFY);
+    if (desc == -1 && errno != ENOENT) {
+      // don't complain about missing directories like /product/apex
+      return ErrnoErrorf("failed to add watch on {}", dir);
+    }
+    desc_to_dir.emplace(desc, dir);
+  }
+  static std::thread th([fd, desc_to_dir]() -> void {
+    constexpr int num_events = 100;
+    constexpr size_t average_path_length = 50;
+    char buffer[num_events *
+                (sizeof(struct inotify_event) + average_path_length)];
+    while (true) {
+      ssize_t length = read(fd, buffer, sizeof(buffer));
+      if (length < 0) {
+        PLOG(ERROR) << "failed to read inotify event: " << strerror(errno);
+        continue;
+      }
+      int i = 0;
+      while (i < length) {
+        struct inotify_event* e = (struct inotify_event*)&buffer[i];
+        if (e->len > 0) {
+          if ((e->mask & (IN_CREATE | IN_MODIFY)) != 0) {
+            if (desc_to_dir.find(e->wd) == desc_to_dir.end()) {
+              LOG(ERROR) << "unexpected watch descriptor " << e->wd
+                         << " for name: " << e->name;
+            } else {
+              std::string path = desc_to_dir.at(e->wd) + "/" + e->name;
+              Result<void> unmountSuccess = deactivatePackage(path);
+              if (unmountSuccess) {
+                Result<void> mountSuccess = activatePackage(path);
+                if (mountSuccess) {
+                  LOG(INFO) << path << " remounted because it was changed";
+                } else {
+                  LOG(ERROR) << mountSuccess.error().message();
+                }
+              } else {
+                LOG(ERROR) << unmountSuccess.error().message();
+              }
+            }
+          }
+        }
+        i += sizeof(struct inotify_event) + e->len;
+      }
+    }
+  });
+
+  return {};
+}
+
 void onStart(CheckpointInterface* checkpoint_service) {
   LOG(INFO) << "Marking APEXd as starting";
   if (!android::base::SetProperty(kApexStatusSysprop, kApexStatusStarting)) {
@@ -1708,6 +1767,13 @@ void onStart(CheckpointInterface* checkpoint_service) {
       // TODO: should we kill apexd in this case?
       LOG(ERROR) << "Failed to activate packages from " << dir << " : "
                  << status.error();
+    }
+  }
+
+  if (android::base::GetBoolProperty("ro.debuggable", false)) {
+    status = monitorBuiltinDirs();
+    if (!status) {
+      LOG(ERROR) << "cannot monitor built-in dirs: " << status.error();
     }
   }
 }
