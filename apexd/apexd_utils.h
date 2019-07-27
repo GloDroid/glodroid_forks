@@ -36,6 +36,7 @@
 #include "string_log.h"
 
 using android::base::ErrnoError;
+using android::base::ErrnoErrorf;
 using android::base::Error;
 using android::base::Result;
 
