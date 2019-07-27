@@ -42,6 +42,16 @@ python_library_host {
     },
 }
 
+java_library_static {
+    name: "apex_manifest_proto_java",
+    host_supported: true,
+    device_supported: false,
+    proto: {
+        type: "full",
+    },
+    srcs: ["apex_manifest.proto"],
+}
+
 cc_library_static {
     name: "lib_apex_session_state_proto",
     host_supported: true,
