@@ -26,6 +26,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "apex_constants.h"
 #include "apex_file.h"
 #include "string_log.h"
 
@@ -78,7 +79,7 @@ Result<std::string> CalculateSha512(const std::string& path) {
   return ss.str();
 }
 
-Result<std::vector<std::string>> ReadSha512(const std::string& path) {
+Result<std::vector<std::string>> GetAllowedHashes(const std::string& path) {
   using android::base::ReadFileToString;
   using android::base::StringPrintf;
   const std::string& file_path =
@@ -88,7 +89,14 @@ Result<std::vector<std::string>> ReadSha512(const std::string& path) {
   if (!ReadFileToString(file_path, &hash, false /* follows symlinks */)) {
     return ErrnoError() << "Failed to read " << file_path;
   }
-  return android::base::Split(hash, "\n");
+  std::vector<std::string> allowed_hashes = android::base::Split(hash, "\n");
+  auto system_shim_hash = CalculateSha512(
+      StringPrintf("%s/%s", kApexPackageSystemDir, shim::kSystemShimApexName));
+  if (!system_shim_hash) {
+    return system_shim_hash.error();
+  }
+  allowed_hashes.push_back(std::move(*system_shim_hash));
+  return allowed_hashes;
 }
 
 Result<void> IsRegularFile(const fs::directory_entry& entry) {
@@ -205,7 +213,7 @@ Result<void> ValidateUpdate(const std::string& system_apex_path,
                             const std::string& new_apex_path) {
   LOG(DEBUG) << "Validating update of shim apex to " << new_apex_path
              << " using system shim apex " << system_apex_path;
-  auto allowed = ReadSha512(system_apex_path);
+  auto allowed = GetAllowedHashes(system_apex_path);
   if (!allowed) {
     return allowed.error();
   }
