@@ -487,6 +487,17 @@ Set the following system property to `true` to support APEX file updates.
 <device.mk>:
 
 PRODUCT_PROPERTY_OVERRIDES += ro.apex.updatable=true
+
+BoardConfig.mk:
+TARGET_FLATTEN_APEX := false
+```
+
+or just
+
+```
+<device.mk>:
+
+$(call inherit-product, $(SRC_TARGET_DIR)/product/updatable_apex.mk)
 ```
 
 ## Flattened APEX
@@ -504,21 +515,20 @@ under the built-in partition. For example, `lib/libFoo.so` in a flattend APEX
 Activating a flattened APEX doesn't involve the loop device. The entire
 directory `/system/apex/my.apex` is directly bind-mounted to `/apex/name@ver`.
 
-To build flattened APEXs, build the platform with the following flag.
-
-```
-BoardConfig.mk:
-
-TARGET_FLATTEN_APEX := true
-
-<device.mk>:
-
-PRODUCT_PROPERTY_OVERRIDES += ro.apex.updatable=false
-```
-
 Flattened APEXs can't be updated by downloading updated versions
 of the APEXs from network because the downloaded APEXs can't be flattened.
 Flattened APEXs can be updated only via a regular OTA.
+
+Note that flattened APEX is the default configuration for now. This means all
+APEXes are by default flattened unless you explicitly configure your device
+to support updatable APEX (explained above).
+
+Also note that, mixing flattened and non-flattened APEXes in a device is NOT
+supported. It should be either all non-flattened or all flattened. This is
+especially important when shipping pre-signed APEX prebuilts for the projects
+like Mainline. APEXes that are not pre-signed (i.e. built from the source)
+should also be non-flattened and signed with proper keys in that case. The
+device should inherit from `updatable_apex.mk` as explained above.
 
 ## Alternatives considered when developing APEX
 
