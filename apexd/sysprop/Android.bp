@@ -13,8 +13,3 @@ sysprop_library {
   api_packages: ["android.sysprop"],
   recovery_available: true,
 }
-
-prebuilt_apis {
-  name: "com.android.sysprop.apex.apis",
-  api_dirs: ["1"],
-}
