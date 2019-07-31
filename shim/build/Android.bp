@@ -154,6 +154,7 @@ genrule {
     ":com.android.apex.cts.shim.v2",
     ":com.android.apex.cts.shim.v2_additional_file",
     ":com.android.apex.cts.shim.v2_additional_folder",
+    ":com.android.apex.cts.shim.v2_different_certificate",
     ":com.android.apex.cts.shim.v2_with_pre_install_hook",
     ":com.android.apex.cts.shim.v2_with_post_install_hook",
     ":com.android.apex.cts.shim.v3",
@@ -207,4 +208,20 @@ apex {
   key: "com.android.apex.cts.shim_not_pre_installed.key",
   prebuilts: ["hash_of_dev_null"],
   installable: false,
+}
+
+apex {
+  name: "com.android.apex.cts.shim.v2_different_certificate",
+  manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifest.xml",
+  file_contexts: "apex.test",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_of_dev_null"],
+  installable: false,
+  certificate: ":com.android.apex.cts.shim.debug.cert",
+}
+
+android_app_certificate {
+  name: "com.android.apex.cts.shim.debug.cert",
+  certificate: "com.android.apex.cts.shim.debug.cert",
 }
