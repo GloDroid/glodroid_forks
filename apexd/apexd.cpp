@@ -1626,6 +1626,16 @@ int onBootstrap() {
   return 0;
 }
 
+Result<void> remountApexFile(const std::string& path) {
+  auto ret = deactivatePackage(path);
+  if (!ret) return ret.error();
+
+  ret = activatePackage(path);
+  if (!ret) return ret.error();
+
+  return {};
+}
+
 Result<void> monitorBuiltinDirs() {
   int fd = inotify_init1(IN_CLOEXEC);
   if (fd == -1) {
@@ -1654,24 +1664,17 @@ Result<void> monitorBuiltinDirs() {
       int i = 0;
       while (i < length) {
         struct inotify_event* e = (struct inotify_event*)&buffer[i];
-        if (e->len > 0) {
-          if ((e->mask & (IN_CREATE | IN_MODIFY)) != 0) {
-            if (desc_to_dir.find(e->wd) == desc_to_dir.end()) {
-              LOG(ERROR) << "unexpected watch descriptor " << e->wd
-                         << " for name: " << e->name;
+        if (e->len > 0 && (e->mask & (IN_CREATE | IN_MODIFY)) != 0) {
+          if (desc_to_dir.find(e->wd) == desc_to_dir.end()) {
+            LOG(ERROR) << "unexpected watch descriptor " << e->wd
+                       << " for name: " << e->name;
+          } else {
+            std::string path = desc_to_dir.at(e->wd) + "/" + e->name;
+            auto ret = remountApexFile(path);
+            if (!ret) {
+              LOG(ERROR) << ret.error().message();
             } else {
-              std::string path = desc_to_dir.at(e->wd) + "/" + e->name;
-              Result<void> unmountSuccess = deactivatePackage(path);
-              if (unmountSuccess) {
-                Result<void> mountSuccess = activatePackage(path);
-                if (mountSuccess) {
-                  LOG(INFO) << path << " remounted because it was changed";
-                } else {
-                  LOG(ERROR) << mountSuccess.error().message();
-                }
-              } else {
-                LOG(ERROR) << unmountSuccess.error().message();
-              }
+              LOG(INFO) << path << " remounted because it was changed";
             }
           }
         }
