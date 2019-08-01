@@ -64,3 +64,10 @@ prebuilt_apex {
   filename: "com.android.apex.cts.shim.v2_with_post_install_hook.apex",
   installable: false,
 }
+
+prebuilt_apex {
+  name: "com.android.apex.cts.shim.v3_prebuilt",
+  src: "com.android.apex.cts.shim.v3.apex",
+  filename: "com.android.apex.cts.shim.v3.apex",
+  installable: false,
+}

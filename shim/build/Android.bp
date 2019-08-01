@@ -155,9 +155,14 @@ genrule {
     ":com.android.apex.cts.shim.v2_additional_file",
     ":com.android.apex.cts.shim.v2_additional_folder",
     ":com.android.apex.cts.shim.v2_different_certificate",
+    ":com.android.apex.cts.shim.v2_signed_bob",
+    ":com.android.apex.cts.shim.v2_signed_bob_rot",
+    ":com.android.apex.cts.shim.v2_signed_bob_rot_rollback",
     ":com.android.apex.cts.shim.v2_with_pre_install_hook",
     ":com.android.apex.cts.shim.v2_with_post_install_hook",
     ":com.android.apex.cts.shim.v3",
+    ":com.android.apex.cts.shim.v3_signed_bob",
+    ":com.android.apex.cts.shim.v3_signed_bob_rot",
   ],
   out: ["hash.txt"],
   cmd: "sha512sum -b $(in) | cut -d' ' -f1 | tee $(out)",
@@ -224,4 +229,129 @@ apex {
 android_app_certificate {
   name: "com.android.apex.cts.shim.debug.cert",
   certificate: "com.android.apex.cts.shim.debug.cert",
+}
+
+// Build rules to build shim apex with rotated keys
+
+// We name the original key used to sign cts.shim.v1 package as alice.
+// We then create a second key called bob. The second key bob is used to rotate the
+// original key alice.
+
+// Create private key bob in pem format
+genrule {
+  name: "com.android.apex.rotation.key.bob.pem",
+  out: ["bob.pem"],
+  cmd: "openssl req -x509 -newkey rsa:4096 -nodes -days 999999 -subj '/DN=/EMAILADDRESS=android@android.com/CN=Android/OU=Android/O=Android/L=Mountain View/ST=California/C=US' -keyout $(out)",
+}
+
+// Converts bob's private key to pk8 format
+genrule {
+  name: "com.android.apex.rotation.key.bob.pk8",
+  srcs: [":com.android.apex.rotation.key.bob.pem"],
+  out: ["bob.pk8"],
+  cmd: "openssl pkcs8 -topk8 -inform PEM -outform DER -in $(in) -out $(out) -nocrypt",
+}
+
+// Extract bob's public key from its private key
+genrule {
+    name: "com.android.apex.rotation.key.bob.x509.pem",
+    srcs: [":com.android.apex.rotation.key.bob.pem"],
+    out: ["bob.x509.pem"],
+    cmd: "openssl req -x509 -key $(in) -newkey rsa:4096 -nodes -days 999999 -subj '/DN=/EMAILADDRESS=android@android.com/CN=Android/OU=Android/O=Android/L=Mountain View/ST=California/C=US' -out $(out)",
+}
+
+// Create lineage file for rotating alice to bob
+genrule {
+  name: "com.android.apex.rotation.key.bob.rot",
+  srcs: [
+    "alice.pk8",
+    "alice.x509.pem",
+    ":com.android.apex.rotation.key.bob.pk8",
+    ":com.android.apex.rotation.key.bob.x509.pem",
+  ],
+  out: ["bob.rot"],
+  tools: [":apksigner"],
+  cmd: "$(location :apksigner) rotate --out $(out) --old-signer --key $(location alice.pk8) --cert $(location alice.x509.pem) --new-signer --key $(location :com.android.apex.rotation.key.bob.pk8) --cert $(location :com.android.apex.rotation.key.bob.x509.pem)",
+}
+
+// Create lineage file for rotating alice to bob with rollback capability
+genrule {
+  name: "com.android.apex.rotation.key.bob.rot.rollback",
+  srcs: [
+    "alice.pk8",
+    "alice.x509.pem",
+    ":com.android.apex.rotation.key.bob.pk8",
+    ":com.android.apex.rotation.key.bob.x509.pem",
+  ],
+  out: ["bob.rot.rollback"],
+  tools: [":apksigner"],
+  cmd: "$(location :apksigner) rotate --out $(out) --old-signer --key $(location alice.pk8) --cert $(location alice.x509.pem) --set-rollback true --new-signer --key $(location :com.android.apex.rotation.key.bob.pk8) --cert $(location :com.android.apex.rotation.key.bob.x509.pem)",
+}
+
+// v2 cts shim package signed by bob, without lineage
+genrule {
+  name: "com.android.apex.cts.shim.v2_signed_bob",
+  out: ["com.android.apex.cts.shim.v2_signed_bob"],
+  tools: [":apksigner"],
+  srcs: [
+    ":com.android.apex.cts.shim.v2_prebuilt",
+    ":com.android.apex.rotation.key.bob.x509.pem",
+    ":com.android.apex.rotation.key.bob.pk8",
+  ],
+  cmd: "$(location :apksigner) sign --v1-signing-enabled false --v2-signing-enabled false --key $(location :com.android.apex.rotation.key.bob.pk8) --cert $(location :com.android.apex.rotation.key.bob.x509.pem) --out $(out) $(location :com.android.apex.cts.shim.v2_prebuilt)",
+}
+
+// v2 cts shim package signed by bob + lineage
+genrule {
+  name: "com.android.apex.cts.shim.v2_signed_bob_rot",
+  out: ["com.android.apex.cts.shim.v2_signed_bob_rot"],
+  tools: [":apksigner"],
+  srcs: [
+    ":com.android.apex.cts.shim.v2_prebuilt",
+    ":com.android.apex.rotation.key.bob.x509.pem",
+    ":com.android.apex.rotation.key.bob.pk8",
+    ":com.android.apex.rotation.key.bob.rot",
+  ],
+  cmd: "$(location :apksigner) sign --v1-signing-enabled false --v2-signing-enabled false --key $(location :com.android.apex.rotation.key.bob.pk8) --cert $(location :com.android.apex.rotation.key.bob.x509.pem) --lineage $(location :com.android.apex.rotation.key.bob.rot) --out $(out) $(location :com.android.apex.cts.shim.v2_prebuilt)",
+}
+
+// v2 cts shim package signed by bob + lineage + rollback capability
+genrule {
+  name: "com.android.apex.cts.shim.v2_signed_bob_rot_rollback",
+  out: ["com.android.apex.cts.shim.v2_signed_bob_rot_rollback"],
+  tools: [":apksigner"],
+  srcs: [
+    ":com.android.apex.cts.shim.v2_prebuilt",
+    ":com.android.apex.rotation.key.bob.x509.pem",
+    ":com.android.apex.rotation.key.bob.pk8",
+    ":com.android.apex.rotation.key.bob.rot.rollback",
+  ],
+  cmd: "$(location :apksigner) sign --v1-signing-enabled false --v2-signing-enabled false --key $(location :com.android.apex.rotation.key.bob.pk8) --cert $(location :com.android.apex.rotation.key.bob.x509.pem) --lineage $(location :com.android.apex.rotation.key.bob.rot.rollback) --out $(out) $(location :com.android.apex.cts.shim.v2_prebuilt)",
+}
+
+// v3 cts shim package signed by bob
+genrule {
+  name: "com.android.apex.cts.shim.v3_signed_bob",
+  out: ["com.android.apex.cts.shim.v3_signed_bob"],
+  tools: [":apksigner"],
+  srcs: [
+    ":com.android.apex.cts.shim.v3_prebuilt",
+    ":com.android.apex.rotation.key.bob.x509.pem",
+    ":com.android.apex.rotation.key.bob.pk8",
+  ],
+  cmd: "$(location :apksigner) sign --v1-signing-enabled false --v2-signing-enabled false --key $(location :com.android.apex.rotation.key.bob.pk8) --cert $(location :com.android.apex.rotation.key.bob.x509.pem) --out $(out) $(location :com.android.apex.cts.shim.v3_prebuilt)",
+}
+
+// v3 cts shim package signed by bob + lineage
+genrule {
+  name: "com.android.apex.cts.shim.v3_signed_bob_rot",
+  out: ["com.android.apex.cts.shim.v3_signed_bob_rot"],
+  tools: [":apksigner"],
+  srcs: [
+    ":com.android.apex.cts.shim.v3_prebuilt",
+    ":com.android.apex.rotation.key.bob.x509.pem",
+    ":com.android.apex.rotation.key.bob.pk8",
+    ":com.android.apex.rotation.key.bob.rot",
+  ],
+  cmd: "$(location :apksigner) sign --v1-signing-enabled false --v2-signing-enabled false --key $(location :com.android.apex.rotation.key.bob.pk8) --cert $(location :com.android.apex.rotation.key.bob.x509.pem) --lineage $(location :com.android.apex.rotation.key.bob.rot) --out $(out) $(location :com.android.apex.cts.shim.v3_prebuilt)",
 }
