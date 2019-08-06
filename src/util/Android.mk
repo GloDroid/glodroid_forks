@@ -79,19 +79,19 @@ POT := $(intermediates)/xmlpool.pot
 
 $(POT): $(LOCAL_PATH)/xmlpool/t_options.h
 	@mkdir -p $(dir $@)
-	xgettext -L C --from-code utf-8 -o $@ $<
+	PATH=/usr/bin:$$PATH xgettext -L C --from-code utf-8 -o $@ $<
 
 $(MESA_DRI_OPTIONS_LANGS:%=$(intermediates)/xmlpool/%.po): $(intermediates)/xmlpool/%.po: $(LOCAL_PATH)/xmlpool/%.po $(POT)
 	lang=$(basename $(notdir $@)); \
 	mkdir -p $(dir $@); \
 	if [ -f $< ]; then \
-		msgmerge -o $@ $^; \
+		PATH=/usr/bin:$$PATH msgmerge -o $@ $^; \
 	else \
-		msginit -i $(POT) \
+		PATH=/usr/bin:$$PATH msginit -i $(POT) \
 			-o $@ \
 			--locale=$$lang \
 			--no-translator; \
-		sed -i -e 's/charset=.*\\n/charset=UTF-8\\n/' $@; \
+		PATH=/usr/bin:$$PATH sed -i -e 's/charset=.*\\n/charset=UTF-8\\n/' $@; \
 	fi
 
 PRIVATE_SCRIPT := $(LOCAL_PATH)/xmlpool/gen_xmlpool.py
@@ -105,7 +105,7 @@ $(LOCAL_GENERATED_SOURCES): PRIVATE_PYTHON := $(MESA_PYTHON2)
 
 $(PRIVATE_MO_FILES): $(intermediates)/xmlpool/%.gmo: $(intermediates)/xmlpool/%.po
 	mkdir -p $(dir $@)
-	msgfmt -o $@ $<
+	PATH=/usr/bin:$$PATH msgfmt -o $@ $<
 
 $(UTIL_GENERATED_SOURCES): PRIVATE_CUSTOM_TOOL = $(PRIVATE_PYTHON) $^ > $@
 $(UTIL_GENERATED_SOURCES): $(intermediates)/%.c: $(LOCAL_PATH)/%.py $(LOCAL_PATH)/format/u_format.csv
