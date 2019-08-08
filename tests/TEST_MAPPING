@@ -3,9 +3,10 @@
     {
       "name": "apex_targetprep_tests"
     },
-    {
-      "name": "timezone_data_e2e_tests"
-    },
+// TODO: add timezone_data_e2e_tests back once b/135515636 is fixed.
+//    {
+//      "name": "timezone_data_e2e_tests"
+//    }
     {
       "name": "CtsStagedInstallHostTestCases"
     }
