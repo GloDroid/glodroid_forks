@@ -873,13 +873,6 @@ TEST_F(ApexServiceTest, GetAllPackages) {
   }
 }
 
-TEST_F(ApexServiceActivationSuccessTest, StageAlreadyActivePackageSameVersion) {
-  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
-      << GetDebugStr(installer_.get());
-
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer_->test_file})));
-}
-
 class ApexServiceDeactivationTest : public ApexServiceActivationSuccessTest {
  public:
   void SetUp() override {
