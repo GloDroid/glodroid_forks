@@ -61,18 +61,6 @@ static unsigned long ion_heap_shrink_scan(struct shrinker *shrinker,
 	return freed;
 }
 
-static int ion_heap_clear_pages(struct page **pages, int num, pgprot_t pgprot)
-{
-	void *addr = vm_map_ram(pages, num, -1, pgprot);
-
-	if (!addr)
-		return -ENOMEM;
-	memset(addr, 0, PAGE_SIZE * num);
-	vm_unmap_ram(addr, num);
-
-	return 0;
-}
-
 static size_t _ion_heap_freelist_drain(struct ion_heap *heap, size_t size,
 				       bool skip_pools)
 {
@@ -213,12 +201,12 @@ int ion_heap_map_user(struct ion_heap *heap, struct ion_buffer *buffer,
 
 static int ion_heap_clear_pages(struct page **pages, int num, pgprot_t pgprot)
 {
-	void *addr = vm_map_ram(pages, num, -1, pgprot);
+	void *addr = vmap(pages, num, VM_MAP, pgprot);
 
 	if (!addr)
 		return -ENOMEM;
 	memset(addr, 0, PAGE_SIZE * num);
-	vm_unmap_ram(addr, num);
+	vunmap(addr);
 
 	return 0;
 }
@@ -243,6 +231,19 @@ static int ion_heap_sglist_zero(struct sg_table *sgt, pgprot_t pgprot)
 		ret = ion_heap_clear_pages(pages, p, pgprot);
 
 	return ret;
+}
+
+int ion_heap_buffer_zero(struct ion_buffer *buffer)
+{
+	struct sg_table *table = buffer->sg_table;
+	pgprot_t pgprot;
+
+	if (buffer->flags & ION_FLAG_CACHED)
+		pgprot = PAGE_KERNEL;
+	else
+		pgprot = pgprot_writecombine(PAGE_KERNEL);
+
+	return ion_heap_sglist_zero(table->sgl, table->nents, pgprot);
 }
 
 int ion_heap_pages_zero(struct page *page, size_t size, pgprot_t pgprot)
