@@ -120,6 +120,7 @@ static const bool kUpdatable =
 
 bool gBootstrap = false;
 static const std::vector<const std::string> kBootstrapApexes = {
+    "com.android.i18n",
     "com.android.runtime",
     "com.android.tzdata",
 };
