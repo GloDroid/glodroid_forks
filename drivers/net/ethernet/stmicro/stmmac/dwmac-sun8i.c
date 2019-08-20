@@ -1271,6 +1271,17 @@ dwmac_exit:
 return ret;
 }
 
+static void sun8i_dwmac_shutdown(struct platform_device *pdev)
+{
+	struct net_device *ndev = dev_get_drvdata(&pdev->dev);;
+	struct stmmac_priv *priv = netdev_priv(ndev);
+	struct sunxi_priv_data *gmac = priv->plat->bsp_priv;
+
+	dev_err(&pdev->dev, "Shutting down\n");
+	regulator_disable(gmac->regulator_phy);
+	regulator_disable(gmac->regulator_phy_io);
+}
+
 static const struct of_device_id sun8i_dwmac_match[] = {
 	{ .compatible = "allwinner,sun8i-h3-emac",
 		.data = &emac_variant_h3 },
@@ -1291,6 +1302,7 @@ MODULE_DEVICE_TABLE(of, sun8i_dwmac_match);
 static struct platform_driver sun8i_dwmac_driver = {
 	.probe  = sun8i_dwmac_probe,
 	.remove = stmmac_pltfr_remove,
+	.shutdown = sun8i_dwmac_shutdown,
 	.driver = {
 		.name           = "dwmac-sun8i",
 		.pm		= &stmmac_pltfr_pm_ops,
