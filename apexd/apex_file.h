@@ -52,7 +52,7 @@ class ApexFile {
   size_t GetImageSize() const { return image_size_; }
   const ApexManifest& GetManifest() const { return manifest_; }
   const std::string& GetBundledPublicKey() const { return apex_pubkey_; }
-
+  bool IsBuiltin() const { return is_builtin_; }
   android::base::Result<ApexVerityData> VerifyApexVerity() const;
   android::base::Result<void> VerifyManifestMatches(
       const std::string& mount_path) const;
@@ -60,18 +60,20 @@ class ApexFile {
  private:
   ApexFile(const std::string& apex_path, int32_t image_offset,
            size_t image_size, ApexManifest& manifest,
-           const std::string& apex_pubkey)
+           const std::string& apex_pubkey, bool is_builtin)
       : apex_path_(apex_path),
         image_offset_(image_offset),
         image_size_(image_size),
         manifest_(std::move(manifest)),
-        apex_pubkey_(apex_pubkey) {}
+        apex_pubkey_(apex_pubkey),
+        is_builtin_(is_builtin) {}
 
   std::string apex_path_;
   int32_t image_offset_;
   size_t image_size_;
   ApexManifest manifest_;
   std::string apex_pubkey_;
+  bool is_builtin_;
 };
 
 android::base::Result<std::vector<std::string>> FindApexes(
