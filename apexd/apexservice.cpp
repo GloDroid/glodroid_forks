@@ -33,6 +33,7 @@
 #include <binder/Status.h>
 #include <utils/String16.h>
 
+#include "apex_file.h"
 #include "apexd.h"
 #include "apexd_session.h"
 #include "string_log.h"
@@ -248,6 +249,8 @@ static ApexInfo getApexInfo(const ApexFile& package) {
   out.modulePath = package.GetPath();
   out.versionCode = package.GetManifest().version();
   out.versionName = package.GetManifest().versionname();
+  out.isFactory = package.IsBuiltin();
+  out.isActive = false;
   return out;
 }
 
@@ -261,17 +264,6 @@ static std::string toString(const ApexInfo& package) {
                     << " IsFactory: " << std::boolalpha << package.isFactory
                     << std::endl;
   return msg;
-}
-
-static bool contains(const std::vector<ApexFile>& list,
-                     const ApexFile& apexFile) {
-  return std::find_if(list.begin(), list.end(),
-                      [&apexFile](const ApexFile& listFile) {
-                        return apexFile.GetManifest().name().compare(
-                                   listFile.GetManifest().name()) == 0 &&
-                               apexFile.GetManifest().version() ==
-                                   listFile.GetManifest().version();
-                      }) != list.end();
 }
 
 BinderStatus ApexService::getSessions(
@@ -353,8 +345,6 @@ BinderStatus ApexService::getActivePackages(
   for (const auto& package : packages) {
     ApexInfo apexInfo = getApexInfo(package);
     apexInfo.isActive = true;
-    apexInfo.isFactory =
-        ::android::apex::isPathForBuiltinApexes(package.GetPath());
     aidl_return->push_back(std::move(apexInfo));
   }
 
@@ -365,38 +355,26 @@ BinderStatus ApexService::getActivePackage(const std::string& packageName,
                                            ApexInfo* aidl_return) {
   Result<ApexFile> apex = ::android::apex::getActivePackage(packageName);
   if (apex) {
-    aidl_return->moduleName = apex->GetManifest().name();
-    aidl_return->modulePath = apex->GetPath();
-    aidl_return->versionCode = apex->GetManifest().version();
-    aidl_return->versionName = apex->GetManifest().versionname();
+    *aidl_return = getApexInfo(*apex);
     aidl_return->isActive = true;
-    aidl_return->isFactory =
-        ::android::apex::isPathForBuiltinApexes(apex->GetPath());
   }
-
   return BinderStatus::ok();
 }
 
 BinderStatus ApexService::getAllPackages(std::vector<ApexInfo>* aidl_return) {
-  auto activePackages = ::android::apex::getActivePackages();
-  auto factoryPackages = ::android::apex::getFactoryPackages();
-  for (const ApexFile& factoryFile : factoryPackages) {
-    ApexInfo apexInfo = getApexInfo(factoryFile);
-    apexInfo.isFactory = true;
-    if (contains(activePackages, factoryFile)) {
-      apexInfo.isActive = true;
-    } else {
-      apexInfo.isActive = false;
-    }
-    aidl_return->push_back(std::move(apexInfo));
+  const auto& active = ::android::apex::getActivePackages();
+  const auto& factory = ::android::apex::getFactoryPackages();
+  for (const ApexFile& pkg : active) {
+    ApexInfo apex_info = getApexInfo(pkg);
+    apex_info.isActive = true;
+    aidl_return->push_back(std::move(apex_info));
   }
-
-  for (const ApexFile& activeFile : activePackages) {
-    if (!contains(factoryPackages, activeFile)) {
-      ApexInfo apexInfo = getApexInfo(activeFile);
-      apexInfo.isFactory = false;
-      apexInfo.isActive = true;
-      aidl_return->push_back(std::move(apexInfo));
+  for (const ApexFile& pkg : factory) {
+    const auto& same_path = [&pkg](const auto& o) {
+      return o.GetPath() == pkg.GetPath();
+    };
+    if (std::find_if(active.begin(), active.end(), same_path) == active.end()) {
+      aidl_return->push_back(getApexInfo(pkg));
     }
   }
   return BinderStatus::ok();
