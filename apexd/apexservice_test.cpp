@@ -873,6 +873,72 @@ TEST_F(ApexServiceTest, GetAllPackages) {
   }
 }
 
+class ApexSameGradeOfPreInstalledVersionTest : public ApexServiceTest {
+ public:
+  void SetUp() override {
+    // TODO(b/136647373): Move this check to environment setup
+    if (!android::base::GetBoolProperty("ro.apex.updatable", false)) {
+      GTEST_SKIP() << "Skipping test because device doesn't support APEX";
+    }
+    ApexServiceTest::SetUp();
+    ASSERT_NE(nullptr, service_.get());
+
+    installer_ = std::make_unique<PrepareTestApexForInstall>(
+        GetTestFile("com.android.apex.cts.shim.apex"));
+    if (!installer_->Prepare()) {
+      return;
+    }
+    ASSERT_EQ("com.android.apex.cts.shim", installer_->package);
+    // First deactivate currently active shim, otherwise activatePackage will be
+    // no-op.
+    {
+      ApexInfo system_shim;
+      ASSERT_TRUE(IsOk(service_->getActivePackage("com.android.apex.cts.shim",
+                                                  &system_shim)));
+      ASSERT_TRUE(IsOk(service_->deactivatePackage(system_shim.modulePath)));
+    }
+    ASSERT_TRUE(IsOk(service_->stagePackages({installer_->test_file})));
+    ASSERT_TRUE(
+        IsOk(service_->activatePackage(installer_->test_installed_file)));
+  }
+
+  void TearDown() override {
+    // Attempt to deactivate.
+    service_->deactivatePackage(installer_->test_installed_file);
+    installer_.reset();
+    // ApexServiceTest::TearDown will wipe out everything under /data/apex.
+    // Since some of that information is required for deactivatePackage binder
+    // call, it's required to be called after deactivating package.
+    ApexServiceTest::TearDown();
+    ASSERT_TRUE(IsOk(service_->activatePackage(
+        "/system/apex/com.android.apex.cts.shim.apex")));
+  }
+
+  std::unique_ptr<PrepareTestApexForInstall> installer_;
+};
+
+TEST_F(ApexSameGradeOfPreInstalledVersionTest, VersionOnDataWins) {
+  std::vector<ApexInfo> all;
+  ASSERT_TRUE(IsOk(service_->getAllPackages(&all)));
+
+  ApexInfo on_data;
+  on_data.moduleName = "com.android.apex.cts.shim";
+  on_data.modulePath = "/data/apex/active/com.android.apex.cts.shim@1.apex";
+  on_data.versionCode = 1;
+  on_data.isFactory = false;
+  on_data.isActive = true;
+
+  ApexInfo preinstalled;
+  preinstalled.moduleName = "com.android.apex.cts.shim";
+  preinstalled.modulePath = "/system/apex/com.android.apex.cts.shim.apex";
+  preinstalled.versionCode = 1;
+  preinstalled.isFactory = true;
+  preinstalled.isActive = false;
+
+  ASSERT_THAT(all, Contains(ApexInfoEq(on_data)));
+  ASSERT_THAT(all, Contains(ApexInfoEq(preinstalled)));
+}
+
 class ApexServiceDeactivationTest : public ApexServiceActivationSuccessTest {
  public:
   void SetUp() override {
