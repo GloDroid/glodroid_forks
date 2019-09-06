@@ -281,10 +281,7 @@ static bool contains(const std::vector<ApexFile>& list,
                      const ApexFile& apexFile) {
   return std::find_if(list.begin(), list.end(),
                       [&apexFile](const ApexFile& listFile) {
-                        return apexFile.GetManifest().name().compare(
-                                   listFile.GetManifest().name()) == 0 &&
-                               apexFile.GetManifest().version() ==
-                                   listFile.GetManifest().version();
+                        return apexFile.GetPath() == listFile.GetPath();
                       }) != list.end();
 }
 
