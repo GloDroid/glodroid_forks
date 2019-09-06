@@ -26,7 +26,6 @@
 using android::base::Error;
 using android::base::Result;
 using google::protobuf::DescriptorPool;
-using google::protobuf::scoped_ptr;
 using google::protobuf::util::NewTypeResolverForDescriptorPool;
 using google::protobuf::util::TypeResolver;
 
@@ -47,7 +46,7 @@ std::string GetTypeUrl(const ApexManifest& apex_manifest) {
 // as and when the android tree gets updated
 Result<void> JsonToApexManifestMessage(const std::string& content,
                                        ApexManifest* apex_manifest) {
-  scoped_ptr<TypeResolver> resolver(NewTypeResolverForDescriptorPool(
+  std::unique_ptr<TypeResolver> resolver(NewTypeResolverForDescriptorPool(
       kTypeUrlPrefix, DescriptorPool::generated_pool()));
   std::string binary;
   auto parse_status = JsonToBinaryString(
