@@ -46,8 +46,10 @@ public class ModuleTestUtils {
     private static final Duration WAIT_FOR_SESSION_READY_TTL = Duration.ofSeconds(10);
     private static final Duration SLEEP_FOR = Duration.ofMillis(200);
 
-    protected final Pattern mIsSessionReadyPattern = Pattern.compile("isReady = true");
-    protected final Pattern mIsSessionAppliedPattern = Pattern.compile("isApplied = true;");
+    protected final Pattern mIsSessionReadyPattern =
+            Pattern.compile("(isReady = true)|(isStagedSessionReady = true)");
+    protected final Pattern mIsSessionAppliedPattern =
+            Pattern.compile("(isApplied = true)|(isStagedSessionApplied = true)");
 
     private IRunUtil mRunUtil = new RunUtil();
     private BaseHostJUnit4Test mTest;
