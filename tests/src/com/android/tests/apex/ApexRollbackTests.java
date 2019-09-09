@@ -41,8 +41,6 @@ import java.util.Set;
 public class ApexRollbackTests extends BaseHostJUnit4Test {
 
     private static final String SHIM_APEX_PACKAGE_NAME = "com.android.apex.cts.shim";
-    private static final String SYSTEM_TRIGGER_WATCHDOG_RC = "/system/etc/init/trigger_watchdog.rc";
-    private static final String SYSTEM_TRIGGER_WATCHDOG_SH = "/system/bin/trigger_watchdog.sh";
 
     /**
      * Uninstalls a shim apex only if its latest version is installed on /data partition (i.e.
@@ -85,17 +83,6 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
     @After
     public void tearDown() throws Exception {
         uninstallShimApexIfNecessary();
-
-        // Only clean up the trigger watchdog files if they exist to avoid
-        // the extra boot loop needed in some cases to remount the system
-        // writable.
-        ITestDevice device = getDevice();
-        if (device.doesFileExist(SYSTEM_TRIGGER_WATCHDOG_RC)
-                || device.doesFileExist(SYSTEM_TRIGGER_WATCHDOG_SH)) {
-            device.remountSystemWritable();
-            device.deleteFile(SYSTEM_TRIGGER_WATCHDOG_RC);
-            device.deleteFile(SYSTEM_TRIGGER_WATCHDOG_SH);
-        }
     }
 
     /**
@@ -113,8 +100,6 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         assumeTrue("Device does not support updating APEX", isApexUpdateSupported());
 
         ModuleTestUtils utils = new ModuleTestUtils(this);
-        File triggerWatchdogRcFile = utils.getTestFile("trigger_watchdog.rc");
-        File triggerWatchdogShFile = utils.getTestFile("trigger_watchdog.sh");
         File apexFile = utils.getTestFile("com.android.apex.cts.shim.v2.apex");
 
         // To simulate an apex update that causes a boot loop, we install a
@@ -125,9 +110,6 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         // trigger_watchdog.sh repeatedly kills the system server causing a
         // boot loop.
         ITestDevice device = getDevice();
-        device.remountSystemWritable();
-        device.pushFile(triggerWatchdogRcFile, SYSTEM_TRIGGER_WATCHDOG_RC);
-        device.pushFile(triggerWatchdogShFile, SYSTEM_TRIGGER_WATCHDOG_SH);
         device.setProperty("persist.debug.trigger_watchdog.apex", "com.android.apex.cts.shim@2");
         String error = device.installPackage(apexFile, false);
         assertThat(error).isNull();
