@@ -140,7 +140,16 @@ Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
 
   std::string device = StringPrintf("/dev/block/loop%d", num);
 
-  unique_fd target_fd(open(target.c_str(), O_RDONLY | O_CLOEXEC));
+  /*
+   * Using O_DIRECT will tell the kernel that we want to use Direct I/O
+   * on the underlying file, which we want to do to avoid double caching.
+   * Note that Direct I/O won't be enabled immediately, because the block
+   * size of the underlying block device may not match the default loop
+   * device block size (512); when we call LOOP_SET_BLOCK_SIZE below, the
+   * kernel driver will automatically enable Direct I/O when it sees that
+   * condition is now met.
+   */
+  unique_fd target_fd(open(target.c_str(), O_RDONLY | O_CLOEXEC | O_DIRECT));
   if (target_fd.get() == -1) {
     return ErrnoError() << "Failed to open " << target;
   }
@@ -203,12 +212,6 @@ Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
   // underlying filesystem.
   if (ioctl(device_fd.get(), LOOP_SET_BLOCK_SIZE, 4096) == -1) {
     PLOG(WARNING) << "Failed to LOOP_SET_BLOCK_SIZE";
-  } else {
-    if (ioctl(device_fd.get(), LOOP_SET_DIRECT_IO, 1) == -1) {
-      PLOG(WARNING) << "Failed to LOOP_SET_DIRECT_IO";
-      // TODO Eventually we'll want to fail on this; right now we can't because
-      // not all devices have the necessary kernel patches.
-    }
   }
 
   Result<void> readAheadStatus = configureReadAhead(device);
