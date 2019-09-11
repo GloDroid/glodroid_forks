@@ -28,6 +28,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <utility>
 
 using android::base::Error;
 using android::base::Result;
@@ -79,7 +80,7 @@ Result<void> deleteSessionDir(int session_id) {
 
 }  // namespace
 
-ApexSession::ApexSession(const SessionState& state) : state_(state) {}
+ApexSession::ApexSession(SessionState state) : state_(std::move(state)) {}
 
 Result<ApexSession> ApexSession::CreateSession(int session_id) {
   SessionState state;

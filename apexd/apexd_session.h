@@ -53,7 +53,7 @@ class ApexSession {
   android::base::Result<void> DeleteSession() const;
 
  private:
-  ApexSession(const ::apex::proto::SessionState& state);
+  ApexSession(::apex::proto::SessionState state);
   ::apex::proto::SessionState state_;
 
   static android::base::Result<ApexSession> GetSessionFromFile(
