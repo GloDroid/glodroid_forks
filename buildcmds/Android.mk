@@ -34,6 +34,7 @@ LOCAL_CPPFLAGS := \
     -Wno-reserved-user-defined-literal \
     -Wno-unused-local-typedef \
     -Wno-unused-variable \
+    -Wno-format-zero-length \
 
 # Optimization is causing relocation for nothrow new to be thrown away.
 # http://llvm.org/bugs/show_bug.cgi?id=21421
