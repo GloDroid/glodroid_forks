@@ -59,7 +59,7 @@ TEST(ApexManifestTest, VersionNotNumber) {
   ASSERT_FALSE(apex_manifest);
   EXPECT_EQ(apex_manifest.error().message(),
             std::string("Failed to parse APEX Manifest JSON config: "
-                        "version: invalid value \"a\" for type TYPE_INT64"))
+                        "(version): invalid value \"a\" for type TYPE_INT64"))
       << apex_manifest.error();
 }
 
