@@ -550,6 +550,8 @@ Result<MountedApexData> VerifyAndTempMountPackage(
 }
 
 Result<void> Unmount(const MountedApexData& data) {
+  LOG(DEBUG) << "Unmounting " << data.full_path << " from mount point "
+             << data.mount_point;
   // Lazily try to umount whatever is mounted.
   if (umount2(data.mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
       errno != EINVAL && errno != ENOENT) {
@@ -574,7 +576,7 @@ Result<void> Unmount(const MountedApexData& data) {
   if (!data.loop_name.empty()) {
     auto log_fn = [](const std::string& path,
                      const std::string& id ATTRIBUTE_UNUSED) {
-      LOG(VERBOSE) << "Freeing loop device " << path << "for unmount.";
+      LOG(VERBOSE) << "Freeing loop device " << path << " for unmount.";
     };
     loop::DestroyLoopDevice(data.loop_name, log_fn);
   }
@@ -582,10 +584,6 @@ Result<void> Unmount(const MountedApexData& data) {
   return {};
 }
 
-std::string GetPackageTempMountPoint(const ApexManifest& manifest) {
-  return StringPrintf("%s.tmp",
-                      apexd_private::GetPackageMountPoint(manifest).c_str());
-}
 
 template <typename VerifyFn>
 Result<void> RunVerifyFnInsideTempMount(const ApexFile& apex,
@@ -594,7 +592,7 @@ Result<void> RunVerifyFnInsideTempMount(const ApexFile& apex,
   // this will also read the entire block device through dm-verity, so
   // we can be sure there is no corruption.
   const std::string& temp_mount_point =
-      GetPackageTempMountPoint(apex.GetManifest());
+      apexd_private::GetPackageTempMountPoint(apex.GetManifest());
 
   Result<MountedApexData> mount_status =
       VerifyAndTempMountPackage(apex, temp_mount_point);
@@ -1025,8 +1023,6 @@ Result<void> UnmountPackage(const ApexFile& apex, bool allow_latest) {
 
 }  // namespace
 
-namespace apexd_private {
-
 Result<void> MountPackage(const ApexFile& apex, const std::string& mountPoint) {
   auto ret =
       MountPackageImpl(apex, mountPoint, GetPackageId(apex.GetManifest()),
@@ -1035,13 +1031,21 @@ Result<void> MountPackage(const ApexFile& apex, const std::string& mountPoint) {
     return ret.error();
   }
 
-  gMountedApexes.AddMountedApex(apex.GetManifest().name(), false,
-                                std::move(*ret));
+  gMountedApexes.AddMountedApex(apex.GetManifest().name(), false, *ret);
   return {};
 }
 
-Result<void> UnmountPackage(const ApexFile& apex) {
-  return android::apex::UnmountPackage(apex, /* allow_latest= */ false);
+namespace apexd_private {
+
+Result<MountedApexData> TempMountPackage(const ApexFile& apex,
+                                         const std::string& mount_point) {
+  // TODO(ioffe): consolidate these two methods.
+  return android::apex::VerifyAndTempMountPackage(apex, mount_point);
+}
+
+Result<void> Unmount(const MountedApexData& data) {
+  // TODO(ioffe): consolidate these two methods.
+  return android::apex::Unmount(data);
 }
 
 bool IsMounted(const std::string& name, const std::string& full_path) {
@@ -1057,6 +1061,10 @@ bool IsMounted(const std::string& name, const std::string& full_path) {
 
 std::string GetPackageMountPoint(const ApexManifest& manifest) {
   return StringPrintf("%s/%s", kApexRoot, GetPackageId(manifest).c_str());
+}
+
+std::string GetPackageTempMountPoint(const ApexManifest& manifest) {
+  return StringPrintf("%s.tmp", GetPackageMountPoint(manifest).c_str());
 }
 
 std::string GetActiveMountPoint(const ApexManifest& manifest) {
@@ -1127,8 +1135,7 @@ Result<void> activatePackageImpl(const ApexFile& apex_file) {
   const std::string& mountPoint = apexd_private::GetPackageMountPoint(manifest);
 
   if (!version_found_mounted) {
-    Result<void> mountStatus =
-        apexd_private::MountPackage(apex_file, mountPoint);
+    auto mountStatus = MountPackage(apex_file, mountPoint);
     if (!mountStatus) {
       return mountStatus;
     }
