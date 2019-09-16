@@ -31,7 +31,8 @@ namespace apex {
 android::base::Result<ApexManifest> ParseManifest(const std::string& content);
 // Returns package id of an ApexManifest
 std::string GetPackageId(const ApexManifest& apex_manifest);
-
+// Reads and parses APEX manifest from the file on disk.
+android::base::Result<ApexManifest> ReadManifest(const std::string& path);
 }  // namespace apex
 }  // namespace android
 

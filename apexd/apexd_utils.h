@@ -31,6 +31,7 @@
 #include <android-base/chrono_utils.h>
 #include <android-base/logging.h>
 #include <android-base/result.h>
+#include <android-base/strings.h>
 #include <cutils/android_reboot.h>
 
 #include "string_log.h"
@@ -59,8 +60,10 @@ inline int WaitChild(pid_t pid) {
   }
 }
 
+// TODO(ioffe): change to Result<void>?
 inline int ForkAndRun(const std::vector<std::string>& args,
                       std::string* error_msg) {
+  LOG(DEBUG) << "Forking : " << android::base::Join(args, " ");
   std::vector<const char*> argv;
   argv.resize(args.size() + 1, nullptr);
   std::transform(args.begin(), args.end(), argv.begin(),

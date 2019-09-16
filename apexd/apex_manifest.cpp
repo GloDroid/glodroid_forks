@@ -15,8 +15,9 @@
  */
 
 #include "apex_manifest.h"
-#include "string_log.h"
+#include <android-base/file.h>
 #include <android-base/logging.h>
+#include "string_log.h"
 
 #include <google/protobuf/util/json_util.h>
 #include <google/protobuf/util/type_resolver_util.h>
@@ -88,6 +89,14 @@ Result<ApexManifest> ParseManifest(const std::string& content) {
 
 std::string GetPackageId(const ApexManifest& apexManifest) {
   return apexManifest.name() + "@" + std::to_string(apexManifest.version());
+}
+
+Result<ApexManifest> ReadManifest(const std::string& path) {
+  std::string content;
+  if (!android::base::ReadFileToString(path, &content)) {
+    return Error() << "Failed to read manifest file: " << path;
+  }
+  return ParseManifest(content);
 }
 
 }  // namespace apex
