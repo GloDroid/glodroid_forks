@@ -137,7 +137,7 @@ apex {
     binaries: ["surfaceflinger", "vold"],
     multilib: {
         prefer32: {
-            binaries: ["dex2oat"],
+            binaries: ["sample_prefer32_binary"],
         },
     },
     native_shared_libs: ["libc", "libcutils"],
@@ -179,6 +179,16 @@ prebuilt_etc {
     src: "testdata/init.rc",
     filename: "init.rc",
     installable: false,
+}
+
+cc_binary {
+    name: "sample_prefer32_binary",
+    srcs: ["sample_prefer32_binary.cc"],
+    target: {
+        android: {
+            compile_multilib: "prefer32",
+        },
+    },
 }
 
 java_test_host {
