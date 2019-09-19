@@ -443,6 +443,7 @@ struct sun8i_vi_layer *sun8i_vi_layer_init_one(struct drm_device *drm,
 					       int index)
 {
 	u32 supported_encodings, supported_ranges;
+	enum drm_plane_type type = DRM_PLANE_TYPE_OVERLAY;
 	struct sun8i_vi_layer *layer;
 	unsigned int plane_cnt;
 	int ret;
@@ -451,12 +452,15 @@ struct sun8i_vi_layer *sun8i_vi_layer_init_one(struct drm_device *drm,
 	if (!layer)
 		return ERR_PTR(-ENOMEM);
 
+	if (index == 0)
+		type = DRM_PLANE_TYPE_PRIMARY;
+
 	/* possible crtcs are set later */
 	ret = drm_universal_plane_init(drm, &layer->plane, 0,
 				       &sun8i_vi_layer_funcs,
 				       sun8i_vi_layer_formats,
 				       ARRAY_SIZE(sun8i_vi_layer_formats),
-				       NULL, DRM_PLANE_TYPE_OVERLAY, NULL);
+				       NULL, type, NULL);
 	if (ret) {
 		dev_err(drm->dev, "Couldn't initialize layer\n");
 		return ERR_PTR(ret);
