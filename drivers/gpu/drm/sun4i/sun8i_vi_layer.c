@@ -115,6 +115,36 @@ static int sun8i_vi_layer_update_coord(struct sun8i_mixer *mixer, int channel,
 	insize = SUN8I_MIXER_SIZE(src_w, src_h);
 	outsize = SUN8I_MIXER_SIZE(dst_w, dst_h);
 
+	if (plane->type == DRM_PLANE_TYPE_PRIMARY) {
+		bool interlaced = false;
+		u32 val;
+
+		DRM_DEBUG_DRIVER("Primary layer, updating global size W: %u H: %u\n",
+				 dst_w, dst_h);
+		regmap_write(mixer->engine.regs,
+			     SUN8I_MIXER_GLOBAL_SIZE,
+			     outsize);
+		regmap_write(mixer->engine.regs,
+			     SUN8I_MIXER_BLEND_OUTSIZE(bld_base), outsize);
+
+		if (state->crtc)
+			interlaced = state->crtc->state->adjusted_mode.flags
+				& DRM_MODE_FLAG_INTERLACE;
+
+		if (interlaced)
+			val = SUN8I_MIXER_BLEND_OUTCTL_INTERLACED;
+		else
+			val = 0;
+
+		regmap_update_bits(mixer->engine.regs,
+				   SUN8I_MIXER_BLEND_OUTCTL(bld_base),
+				   SUN8I_MIXER_BLEND_OUTCTL_INTERLACED,
+				   val);
+
+		DRM_DEBUG_DRIVER("Switching display mixer interlaced mode %s\n",
+				 interlaced ? "on" : "off");
+	}
+
 	/* Set height and width */
 	DRM_DEBUG_DRIVER("Layer source offset X: %d Y: %d\n",
 			 (state->src.x1 >> 16) & ~(format->hsub - 1),
@@ -447,6 +477,7 @@ struct sun8i_vi_layer *sun8i_vi_layer_init_one(struct drm_device *drm,
 					       int index)
 {
 	u32 supported_encodings, supported_ranges;
+	enum drm_plane_type type = DRM_PLANE_TYPE_OVERLAY;
 	struct sun8i_vi_layer *layer;
 	unsigned int plane_cnt;
 	int ret;
@@ -455,12 +486,15 @@ struct sun8i_vi_layer *sun8i_vi_layer_init_one(struct drm_device *drm,
 	if (!layer)
 		return ERR_PTR(-ENOMEM);
 
+	if (index == 0)
+		type = DRM_PLANE_TYPE_PRIMARY;
+
 	/* possible crtcs are set later */
 	ret = drm_universal_plane_init(drm, &layer->plane, 0,
 				       &sun8i_vi_layer_funcs,
 				       sun8i_vi_layer_formats,
 				       ARRAY_SIZE(sun8i_vi_layer_formats),
-				       NULL, DRM_PLANE_TYPE_OVERLAY, NULL);
+				       NULL, type, NULL);
 	if (ret) {
 		dev_err(drm->dev, "Couldn't initialize layer\n");
 		return ERR_PTR(ret);
