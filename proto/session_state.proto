@@ -39,4 +39,7 @@ message SessionState {
 
   // Child session ids
   repeated int32 child_session_ids = 3;
+
+  // Build fingerprint before reboot
+  string expected_build_fingerprint = 4;
 }

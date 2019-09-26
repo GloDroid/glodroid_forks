@@ -565,6 +565,21 @@ TEST_F(ApexServiceTest,
   }
 }
 
+TEST_F(ApexServiceTest, SubmitStagedSessionStoresBuildFingerprint) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
+                                      "/data/app-staging/session_1547",
+                                      "staging_data_file");
+  if (!installer.Prepare()) {
+    return;
+  }
+  ApexInfoList list;
+  bool success;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(1547, {}, &list, &success)));
+
+  auto session = ApexSession::GetSession(1547);
+  ASSERT_FALSE(session->GetBuildFingerprint().empty());
+}
+
 TEST_F(ApexServiceTest, SubmitStagedSessionFailDoesNotLeakTempVerityDevices) {
   using android::dm::DeviceMapper;
 

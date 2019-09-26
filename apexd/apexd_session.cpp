@@ -168,6 +168,10 @@ SessionState::State ApexSession::GetState() const { return state_.state(); }
 
 int ApexSession::GetId() const { return state_.id(); }
 
+std::string ApexSession::GetBuildFingerprint() const {
+  return state_.expected_build_fingerprint();
+}
+
 bool ApexSession::IsFinalized() const {
   switch (GetState()) {
     case SessionState::SUCCESS:
@@ -192,6 +196,10 @@ void ApexSession::SetChildSessionIds(
     const std::vector<int>& child_session_ids) {
   *(state_.mutable_child_session_ids()) = {child_session_ids.begin(),
                                            child_session_ids.end()};
+}
+
+void ApexSession::SetBuildFingerprint(const std::string& fingerprint) {
+  *(state_.mutable_expected_build_fingerprint()) = fingerprint;
 }
 
 Status ApexSession::UpdateStateAndCommit(
