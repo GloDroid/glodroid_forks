@@ -98,6 +98,8 @@ static constexpr const char* kApexStatusSysprop = "apexd.status";
 static constexpr const char* kApexStatusStarting = "starting";
 static constexpr const char* kApexStatusReady = "ready";
 
+static constexpr const char* kBuildFingerprintSysprop = "ro.build.fingerprint";
+
 static constexpr const char* kApexVerityOnSystemProp =
     "persist.apexd.verity_on_system";
 static bool gForceDmVerityOnSystem =
@@ -1325,6 +1327,7 @@ Result<void> scanPackagesDirAndActivate(const char* apex_package_dir) {
 }
 
 void scanStagedSessionsDirAndStage() {
+  using android::base::GetProperty;
   LOG(INFO) << "Scanning " << kApexSessionsDir
             << " looking for sessions to be activated.";
 
@@ -1341,6 +1344,12 @@ void scanStagedSessionsDirAndStage() {
       }
     };
     auto scope_guard = android::base::make_scope_guard(session_failed_fn);
+
+    std::string build_fingerprint = GetProperty(kBuildFingerprintSysprop, "");
+    if (session.GetBuildFingerprint().compare(build_fingerprint) != 0) {
+      LOG(ERROR) << "APEX build fingerprint has changed";
+      continue;
+    }
 
     std::vector<std::string> dirsToScan;
     if (session.GetChildSessionIds().empty()) {
@@ -1764,6 +1773,7 @@ void onAllPackagesReady() {
 
 Result<std::vector<ApexFile>> submitStagedSession(
     const int session_id, const std::vector<int>& child_session_ids) {
+  using android::base::GetProperty;
   bool needsBackup = true;
   Result<void> cleanup_status = ClearSessions();
   if (!cleanup_status) {
@@ -1818,6 +1828,8 @@ Result<std::vector<ApexFile>> submitStagedSession(
     return session.error();
   }
   (*session).SetChildSessionIds(child_session_ids);
+  std::string build_fingerprint = GetProperty(kBuildFingerprintSysprop, "");
+  (*session).SetBuildFingerprint(build_fingerprint);
   Result<void> commit_status =
       (*session).UpdateStateAndCommit(SessionState::VERIFIED);
   if (!commit_status) {
