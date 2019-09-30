@@ -109,6 +109,11 @@ def ParseArgs(argv):
       '--target_sdk_version',
       required=False,
       help='Default target SDK version to use for AndroidManifest.xml')
+  parser.add_argument(
+      '--do_not_check_keyname',
+      required=False,
+      action='store_true',
+      help='Do not check key name. Use the name of apex instead of the basename of --key.')
   return parser.parse_args(argv)
 
 
@@ -270,6 +275,8 @@ def CreateApex(args, work_dir):
 
   if args.payload_type == 'image':
     key_name = os.path.basename(os.path.splitext(args.key)[0])
+    if args.do_not_check_keyname:
+      key_name = manifest_apex.name
 
     if manifest_apex.name != key_name:
       print("package name '" + manifest_apex.name +
