@@ -56,18 +56,16 @@ public class ModuleTestUtilsTest extends BaseHostJUnit4Test {
         File apexFile = mUtils.getTestFile(SHIM_V2);
 
         // Install apex package
-        String installResult = getDevice().installPackage(apexFile, false);
+        String installResult = getDevice().installPackage(apexFile, false, "--wait");
         assertWithMessage(String.format("failed to install apex first time %s. Reason: %s",
                         SHIM_V2, installResult)).that(installResult).isNull();
-        mUtils.waitForStagedSessionReady();
 
         // Abandon ready session
         mUtils.abandonActiveStagedSession();
 
         // Install apex again
-        installResult = getDevice().installPackage(apexFile, false);
+        installResult = getDevice().installPackage(apexFile, false, "--wait");
         assertWithMessage(String.format("failed to install apex again %s. Reason: %s",
                 SHIM_V2, installResult)).that(installResult).isNull();
-        mUtils.waitForStagedSessionReady();
     }
 }
