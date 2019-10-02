@@ -127,28 +127,6 @@ apex {
     installable: false,
 }
 
-// This target is not consumed by anyone. It's a sanity
-// check for the build features.
-apex {
-    name: "apex_test_build_features",
-    file_contexts: "apex.test",
-    manifest: "testdata/apex_manifest.json",
-    androidManifest: "testdata/AndroidManifest.xml",
-    binaries: ["surfaceflinger", "vold"],
-    multilib: {
-        prefer32: {
-            binaries: ["sample_prefer32_binary"],
-        },
-    },
-    native_shared_libs: ["libc", "libcutils"],
-    java_libs: ["conscrypt"],
-    prebuilts: ["sample_prebuilt_file", "apex.test.ld.config.txt", "apex.test.init.rc"],
-    compile_multilib: "both",
-    key: "apex.test.key",
-    certificate: ":apex.test.certificate",
-    installable: false,
-}
-
 apex_key {
     name: "apex.test.key",
     public_key: "testdata/com.android.apex.test.avbpubkey",
