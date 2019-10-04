@@ -22,7 +22,6 @@ cc_defaults {
     cflags: ["-Wall", "-Werror", "-Wno-unused-parameter"],
     cppflags: [
         "-std=c++14",
-        "-nostdinc++",
         "-fexceptions",
         "-DLIBCXX_BUILDING_LIBCXXABI",
         "-D_LIBCPP_BUILDING_LIBRARY",
@@ -126,14 +125,10 @@ cc_library_shared {
             force_symbols_not_weak_list: "lib/notweak.exp",
             force_symbols_weak_list: "lib/weak.exp",
             ldflags: [
-                "-nodefaultlibs",
                 "-Wl,-undefined,dynamic_lookup",
             ],
         },
 
-        linux_glibc: {
-            ldflags: ["-nodefaultlibs"],
-        },
         linux_bionic: {
             enabled: true,
         },
