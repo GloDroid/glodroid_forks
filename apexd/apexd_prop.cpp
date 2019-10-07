@@ -35,7 +35,7 @@ void waitForBootStatus(Result<void> (&rollback_fn)(), void (&complete_fn)()) {
     // if not continue waiting for updatable_crashing.
     // We use this strategy so that we can quickly detect if an updatable
     // process is crashing.
-    if (android::base::WaitForProperty("ro.init.updatable_crashing", "1",
+    if (android::base::WaitForProperty("sys.init.updatable_crashing", "1",
                                        std::chrono::seconds(30))) {
       LOG(INFO) << "Updatable crashing, attempting rollback";
       auto status = rollback_fn();
