@@ -194,7 +194,6 @@ java_test_host {
         "apex_manifest_proto_java",
     ],
     test_config: "apex-remount-tests.xml",
-    test_suites: ["general-tests"],
 
     data: [":com.android.apex.cts.shim.v2_prebuilt"],
 }
