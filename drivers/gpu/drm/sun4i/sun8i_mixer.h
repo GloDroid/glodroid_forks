@@ -200,4 +200,26 @@ sun8i_channel_base(struct sun8i_mixer *mixer, int channel)
 }
 
 const struct de2_fmt_info *sun8i_mixer_format_info(u32 format);
+
+union ovl_ui {
+	struct {
+		u32 lay_en		:1;
+		u32 lay_alpha_mode	:2;
+		u32 reserved_3		:1;
+		u32 lay_fillcolor_en	:1;
+		u32 reserved_5_7	:3;
+		u32 lay_fbfmt		:5;
+		u32 reserved_13_15	:3;
+		u32 lay_premul_ctl	:2;
+		u32 reserved_18_22	:5;
+		u32 top_bottom_addr_en	:1;
+		u32 lay_glbalpha	:8;
+	};
+	u32 data;
+};
+
+#define LAY_ALPHA_MODE_PIXEL		0
+#define LAY_ALPHA_MODE_LAYER		1
+#define LAY_ALPHA_MODE_PIXEL_MUL_LAYER	2
+
 #endif /* _SUN8I_MIXER_H_ */

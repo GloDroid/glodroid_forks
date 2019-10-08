@@ -155,10 +155,24 @@ static int sun8i_ui_layer_update_formats(struct sun8i_mixer *mixer, int channel,
 		return -EINVAL;
 	}
 
-	val = fmt_info->de2_fmt << SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_OFFSET;
+	union ovl_ui uival = {
+		.lay_glbalpha = state->alpha >> 8,
+		.lay_fbfmt = fmt_info->de2_fmt,
+		.lay_alpha_mode = LAY_ALPHA_MODE_PIXEL,
+	};
+
+	union ovl_ui uimask = {
+		.lay_alpha_mode = -1,
+		.lay_glbalpha = -1,
+		.lay_fbfmt = -1,
+	};
+
+	if (state->alpha != DRM_BLEND_ALPHA_OPAQUE)
+		uival.lay_alpha_mode = LAY_ALPHA_MODE_PIXEL_MUL_LAYER;
+
 	regmap_update_bits(mixer->engine.regs,
 			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR(ch_base, overlay),
-			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_MASK, val);
+			   uimask.data, uival.data);
 
 	return 0;
 }
@@ -332,6 +346,7 @@ struct sun8i_ui_layer *sun8i_ui_layer_init_one(struct drm_device *drm,
 
 	plane_cnt = mixer->cfg->ui_num + mixer->cfg->vi_num;
 
+	drm_plane_create_alpha_property(&layer->plane);
 	ret = drm_plane_create_zpos_property(&layer->plane, channel,
 					     0, plane_cnt - 1);
 	if (ret) {
