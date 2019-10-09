@@ -114,8 +114,8 @@ java_library_host {
 
 java_library_host {
     name: "module_test_util",
-    srcs: ["util/**/*.java"],
-    libs: ["tradefed"],
+    srcs: ["util/**/ModuleTestUtils.java"],
+    libs: ["tradefed", "truth-prebuilt"],
 }
 
 apex {
@@ -195,5 +195,15 @@ java_test_host {
     ],
     test_config: "apex-remount-tests.xml",
 
+    data: [":com.android.apex.cts.shim.v2_prebuilt"],
+}
+
+java_test_host {
+    name: "module_test_utils_tests",
+    srcs:  ["src/**/ModuleTestUtilsTest.java"],
+    libs: ["tradefed", "truth-prebuilt"],
+    static_libs: ["module_test_util"],
+    test_config: "module-test-utils-tests.xml",
+    test_suites: ["general-tests"],
     data: [":com.android.apex.cts.shim.v2_prebuilt"],
 }

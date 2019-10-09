@@ -58,6 +58,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             CLog.i("Apex updating is not supported on this device. Skipping setup().");
             return;
         }
+        mUtils.abandonActiveStagedSession();
         uninstallApex();
     }
 
@@ -108,6 +109,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             CLog.i("Apex updating is not supported on this device. Skipping teardown().");
             return;
         }
+        mUtils.abandonActiveStagedSession();
         uninstallApex();
     }
 
