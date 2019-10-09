@@ -16,18 +16,18 @@
 
 package com.android.tests.apex;
 
+import static com.google.common.truth.Truth.assertThat;
+
+import static org.junit.Assume.assumeTrue;
+
 import com.android.apex.Protos.ApexManifest;
 import com.android.tests.util.ModuleTestUtils;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
 
-import static com.google.common.truth.Truth.assertThat;
-
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-
-import static org.junit.Assume.assumeTrue;
 
 import org.junit.After;
 import org.junit.Before;
@@ -43,12 +43,14 @@ import java.util.concurrent.TimeUnit;
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class ApexRemountTest extends BaseHostJUnit4Test {
     private File mSavedShimFile;
+    private final ModuleTestUtils mUtils = new ModuleTestUtils(this);
 
-    private static final String SHIM_APEX_PACKAGE_NAME = "com.android.apex.cts.shim";
     private static final String SHIM_APEX_PATH = "/system/apex/com.android.apex.cts.shim.apex";
 
     @Before
     public void setUp() throws Exception {
+        mUtils.abandonActiveStagedSession();
+        mUtils.uninstallShimApexIfNecessary();
         mSavedShimFile = getDevice().pullFile(SHIM_APEX_PATH);
     }
 

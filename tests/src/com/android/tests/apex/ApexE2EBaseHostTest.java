@@ -58,6 +58,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             CLog.i("Apex updating is not supported on this device. Skipping setup().");
             return;
         }
+        mUtils.abandonActiveStagedSession();
         uninstallApex();
     }
 
@@ -76,13 +77,12 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         CLog.i("Found test apex file: " + testAppFile.getAbsoluteFile());
 
         // Install apex package
-        String installResult = getDevice().installPackage(testAppFile, false);
+        String installResult = getDevice().installPackage(testAppFile, false, "--wait");
         Assert.assertNull(
                 String.format("failed to install test app %s. Reason: %s",
                     mApexFileName, installResult),
                 installResult);
 
-        mUtils.waitForStagedSessionReady();
         ApexInfo testApexInfo = mUtils.getApexInfo(testAppFile);
         Assert.assertNotNull(testApexInfo);
 
@@ -108,6 +108,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
             CLog.i("Apex updating is not supported on this device. Skipping teardown().");
             return;
         }
+        mUtils.abandonActiveStagedSession();
         uninstallApex();
     }
 
