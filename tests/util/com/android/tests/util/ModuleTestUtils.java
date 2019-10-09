@@ -16,9 +16,12 @@
 
 package com.android.tests.util;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
@@ -39,7 +42,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class ModuleTestUtils {
-
+    private static final String SHIM = "com.android.apex.cts.shim";
     private static final String APEX_INFO_EXTRACT_REGEX =
             ".*package:\\sname='(\\S+)\\'\\sversionCode='(\\d+)'\\s.*";
 
@@ -161,6 +164,60 @@ public class ModuleTestUtils {
         }
         Assert.assertTrue("Staged session wasn't ready in " + WAIT_FOR_SESSION_READY_TTL,
                 sessionReady);
+    }
+
+    /**
+     * Abandons any staged session that is marked {@code ready}
+     */
+    public void abandonActiveStagedSession() throws DeviceNotAvailableException {
+        CommandResult res = mTest.getDevice().executeShellV2Command("pm list staged-sessions "
+                + "--only-ready --only-parent --only-sessionid");
+        assertThat(res.getStderr()).isEqualTo("");
+        String activeSessionId = res.getStdout();
+        if (activeSessionId != null && !activeSessionId.equals("")) {
+            res = mTest.getDevice().executeShellV2Command("pm install-abandon "
+                    + activeSessionId);
+            if (!res.getStderr().equals("") || res.getStatus() != CommandStatus.SUCCESS) {
+                CLog.d("Failed to abandon session " + activeSessionId
+                        + " Error: " + res.getStderr());
+            }
+        }
+    }
+
+    /**
+     * Uninstalls a shim apex only if its latest version is installed on /data partition
+     *
+     * <p>This is purely to optimize tests run time, since uninstalling an apex requires a reboot.
+     */
+    public void uninstallShimApexIfNecessary() throws Exception {
+        if (!isApexUpdateSupported()) {
+            return;
+        }
+
+        final String errorMessage = mTest.getDevice().uninstallPackage(SHIM);
+        if (errorMessage == null) {
+            CLog.i("Uninstalling shim apex");
+            mTest.getDevice().reboot();
+        } else {
+            // Most likely we tried to uninstall system version and failed. It should be fine to
+            // continue tests.
+            // TODO(b/140813980): use ApexInfo.sourceDir to decide whenever to issue an uninstall.
+            CLog.w("Failed to uninstall shim APEX: " + errorMessage);
+        }
+        assertThat(getShimApex().versionCode).isEqualTo(1L);
+    }
+
+    private ITestDevice.ApexInfo getShimApex() throws DeviceNotAvailableException {
+        return mTest.getDevice().getActiveApexes().stream().filter(
+                apex -> apex.name.equals(SHIM)).findAny().orElseThrow(
+                    () -> new AssertionError("Can't find " + SHIM));
+    }
+
+    /**
+     * Return {@code true} if and only if device supports updating apex.
+     */
+    public boolean isApexUpdateSupported() throws Exception {
+        return "true".equals(mTest.getDevice().getProperty("ro.apex.updatable"));
     }
 
     private boolean isReadyNotApplied(String sessionInfo) {
