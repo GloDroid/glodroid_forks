@@ -67,10 +67,8 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         // boot loop.
         ITestDevice device = getDevice();
         device.setProperty("persist.debug.trigger_watchdog.apex", "com.android.apex.cts.shim@2");
-        String error = device.installPackage(apexFile, false);
+        String error = device.installPackage(apexFile, false, "--wait");
         assertThat(error).isNull();
-
-        mUtils.waitForStagedSessionReady();
 
         // After we reboot the device, we expect the device to go into boot
         // loop from trigger_watchdog.sh. Native watchdog should detect and
