@@ -117,9 +117,6 @@ bool gInFsCheckpointMode = false;
 
 static constexpr size_t kLoopDeviceSetupAttempts = 3u;
 
-static const bool kUpdatable =
-    android::sysprop::ApexProperties::updatable().value_or(false);
-
 bool gBootstrap = false;
 static const std::vector<const std::string> kBootstrapApexes = {
     "com.android.art",
@@ -156,12 +153,11 @@ Result<void> preAllocateLoopDevices() {
     }
   }
 
-  // note: do not call preAllocateLoopDevices() if size == 0
-  // or the device does not support updatable APEX.
+  // note: do not call preAllocateLoopDevices() if size == 0.
   // For devices (e.g. ARC) which doesn't support loop-control
   // preAllocateLoopDevices() can cause problem when it tries
   // to access /dev/loop-control.
-  if (size == 0 || !kUpdatable) {
+  if (size == 0) {
     return {};
   }
   return loop::preAllocateLoopDevices(size);
@@ -711,11 +707,6 @@ Result<void> VerifyPackageInstall(const ApexFile& apex_file) {
   if (!verify_package_boot_status) {
     return verify_package_boot_status;
   }
-  if (!kUpdatable) {
-    return Error() << "Attempted to upgrade apex package "
-                   << apex_file.GetPath()
-                   << " on a device that doesn't support it";
-  }
   Result<ApexVerityData> verity_or = apex_file.VerifyApexVerity();
 
   constexpr const auto kSuccessFn = [](const std::string& /*mount_point*/) {
@@ -1095,9 +1086,6 @@ Result<void> activatePackageImpl(const ApexFile& apex_file) {
 
   if (gBootstrap && !isBootstrapApex(apex_file)) {
     LOG(INFO) << "Skipped when bootstrapping";
-    return {};
-  } else if (!kUpdatable && !gBootstrap && isBootstrapApex(apex_file)) {
-    LOG(INFO) << "Package already activated in bootstrap";
     return {};
   }
 
