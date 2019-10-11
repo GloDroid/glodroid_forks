@@ -69,20 +69,23 @@ struct CombinedLogger {
 int main(int /*argc*/, char** argv) {
   // Use CombinedLogger to also log to the kernel log.
   android::base::InitLogging(argv, CombinedLogger());
+  // TODO: add a -v flag or an external setting to change LogSeverity.
+  android::base::SetMinimumLogSeverity(android::base::VERBOSE);
 
+  const bool has_subcommand = argv[1] != nullptr;
   if (!android::sysprop::ApexProperties::updatable().value_or(false)) {
     LOG(INFO) << "This device does not support updatable APEX. Exiting";
-    android::apex::onAllPackagesReady();  // mark apexd as ready so that init
-                                          // can proceed
-    android::base::SetProperty("ctl.stop", "apexd");
+    if (!has_subcommand) {
+      // mark apexd as ready so that init can proceed
+      android::apex::onAllPackagesReady();
+      android::base::SetProperty("ctl.stop", "apexd");
+    }
     return 0;
   }
 
-  if (argv[1] != nullptr) {
+  if (has_subcommand) {
     return HandleSubcommand(argv);
   }
-  // TODO: add a -v flag or an external setting to change LogSeverity.
-  android::base::SetMinimumLogSeverity(android::base::VERBOSE);
 
   android::base::Result<android::apex::VoldCheckpointInterface>
       vold_service_st = android::apex::VoldCheckpointInterface::Create();
