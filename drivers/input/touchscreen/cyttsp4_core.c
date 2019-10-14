@@ -705,7 +705,7 @@ static void cyttsp4_queue_startup_(struct cyttsp4 *cd)
 {
 	if (cd->startup_state == STARTUP_NONE) {
 		cd->startup_state = STARTUP_QUEUED;
-		schedule_work(&cd->startup_work);
+		queue_work(cd->wq, &cd->startup_work);
 		dev_dbg(cd->dev, "%s: cyttsp4_startup queued\n", __func__);
 	} else {
 		dev_dbg(cd->dev, "%s: startup_state = %d\n", __func__,
@@ -1222,9 +1222,7 @@ static void cyttsp4_watchdog_timer(struct timer_list *t)
 
 	dev_vdbg(cd->dev, "%s: Watchdog timer triggered\n", __func__);
 
-	schedule_work(&cd->watchdog_work);
-
-	return;
+	queue_work(cd->wq, &cd->watchdog_work);
 }
 
 static int cyttsp4_request_exclusive(struct cyttsp4 *cd, void *ownptr,
@@ -2038,6 +2036,13 @@ struct cyttsp4 *cyttsp4_probe(const struct cyttsp4_bus_ops *ops,
 		goto error_disable_vdd;
 	}
 
+	cd->wq = alloc_workqueue("cyttsp4", WQ_SYSFS, 0);
+	if (!cd->wq) {
+		rc = -ENOMEM;
+		dev_err(dev, "failed to allocate workqueue\n");
+		goto error_disable_vdd;
+	}
+
 	/* Initialize device info */
 	cd->dev = dev;
 	cd->bus_ops = ops;
@@ -2061,7 +2066,7 @@ struct cyttsp4 *cyttsp4_probe(const struct cyttsp4_bus_ops *ops,
 	if (rc) {
 		dev_err(cd->dev, "failed to request IRQ %d, err: %d\n",
 			cd->irq, rc);
-		goto error_disable_vdd;
+		goto error_free_wq;
 	}
 
 	/* Setup watchdog timer */
@@ -2095,6 +2100,8 @@ error_startup:
 	cyttsp4_stop_wd_timer(cd);
 	pm_runtime_disable(dev);
 	cyttsp4_free_si_ptrs(cd);
+error_free_wq:
+	destroy_workqueue(cd->wq);
 error_disable_vdd:
 	gpiod_set_value_cansleep(cd->reset_gpio, 1);
 	gpiod_set_value_cansleep(cd->power_gpio, 0);
@@ -2122,8 +2129,9 @@ int cyttsp4_remove(struct cyttsp4 *cd)
 	pm_runtime_suspend(dev);
 	pm_runtime_disable(dev);
 
-	cancel_work_sync(&cd->startup_work);
 	cyttsp4_stop_wd_timer(cd);
+	cancel_work_sync(&cd->startup_work);
+	destroy_workqueue(cd->wq);
 	cyttsp4_free_si_ptrs(cd);
 	return 0;
 }
