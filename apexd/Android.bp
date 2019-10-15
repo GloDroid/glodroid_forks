@@ -198,8 +198,8 @@ cc_library_static {
   ],
   srcs: [
     "apex_file.cpp",
-    "apex_key.cpp",
     "apex_manifest.cpp",
+    "apex_preinstalled_data.cpp",
     "apex_shim.cpp",
   ],
   host_supported: true,
