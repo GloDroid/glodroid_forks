@@ -77,6 +77,8 @@ MATCHER_P(ApexInfoEq, other, "") {
   return ExplainMatchResult(
       AllOf(Field("moduleName", &ApexInfo::moduleName, Eq(other.moduleName)),
             Field("modulePath", &ApexInfo::modulePath, Eq(other.modulePath)),
+            Field("preinstalledModulePath", &ApexInfo::preinstalledModulePath,
+                  Eq(other.preinstalledModulePath)),
             Field("versionCode", &ApexInfo::versionCode, Eq(other.versionCode)),
             Field("isFactory", &ApexInfo::isFactory, Eq(other.isFactory)),
             Field("isActive", &ApexInfo::isActive, Eq(other.isActive))),
@@ -119,6 +121,7 @@ inline void PrintTo(const ApexInfo& apex, std::ostream* os) {
   *os << "apex_info: {\n";
   *os << "  moduleName : " << apex.moduleName << "\n";
   *os << "  modulePath : " << apex.modulePath << "\n";
+  *os << "  preinstalledModulePath : " << apex.preinstalledModulePath << "\n";
   *os << "  versionCode : " << apex.versionCode << "\n";
   *os << "  isFactory : " << apex.isFactory << "\n";
   *os << "  isActive : " << apex.isActive << "\n";
