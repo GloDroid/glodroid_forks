@@ -24,10 +24,11 @@
 namespace android {
 namespace apex {
 
-android::base::Result<void> collectApexKeys(
+android::base::Result<void> collectPreinstalledData(
     const std::vector<std::string>& apex_dirs);
-android::base::Result<const std::string> getApexKey(
-    const std::string& key_name);
+android::base::Result<const std::string> getApexKey(const std::string& name);
+android::base::Result<const std::string> getApexPreinstalledPath(
+    const std::string& name);
 
 }  // namespace apex
 }  // namespace android

@@ -34,6 +34,7 @@
 #include <utils/String16.h>
 
 #include "apex_file.h"
+#include "apex_preinstalled_data.h"
 #include "apexd.h"
 #include "apexd_session.h"
 #include "string_log.h"
@@ -251,6 +252,11 @@ static ApexInfo getApexInfo(const ApexFile& package) {
   out.versionName = package.GetManifest().versionname();
   out.isFactory = package.IsBuiltin();
   out.isActive = false;
+  Result<std::string> preinstalledPath =
+      getApexPreinstalledPath(package.GetManifest().name());
+  if (preinstalledPath) {
+    out.preinstalledModulePath = *preinstalledPath;
+  }
   return out;
 }
 
