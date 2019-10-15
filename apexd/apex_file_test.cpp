@@ -24,7 +24,7 @@
 #include <ziparchive/zip_archive.h>
 
 #include "apex_file.h"
-#include "apex_key.h"
+#include "apex_preinstalled_data.h"
 
 using android::base::Result;
 

@@ -33,7 +33,7 @@
 #include <libavb/libavb.h>
 
 #include "apex_constants.h"
-#include "apex_key.h"
+#include "apex_preinstalled_data.h"
 #include "apexd_utils.h"
 #include "string_log.h"
 

@@ -21,8 +21,8 @@
 
 #include "apex_database.h"
 #include "apex_file.h"
-#include "apex_key.h"
 #include "apex_manifest.h"
+#include "apex_preinstalled_data.h"
 #include "apex_shim.h"
 #include "apexd_checkpoint.h"
 #include "apexd_loop.h"
@@ -1581,7 +1581,7 @@ int onBootstrap() {
                << preAllocate.error();
   }
 
-  Result<void> status = collectApexKeys({kApexPackageSystemDir});
+  Result<void> status = collectPreinstalledData({kApexPackageSystemDir});
   if (!status) {
     LOG(ERROR) << "Failed to collect APEX keys : " << status.error();
     return 1;
@@ -1707,7 +1707,7 @@ void onStart(CheckpointInterface* checkpoint_service) {
     }
   }
 
-  Result<void> status = collectApexKeys(kApexPackageBuiltinDirs);
+  Result<void> status = collectPreinstalledData(kApexPackageBuiltinDirs);
   if (!status) {
     LOG(ERROR) << "Failed to collect APEX keys : " << status.error();
     return;
