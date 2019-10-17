@@ -118,19 +118,12 @@ bool gInFsCheckpointMode = false;
 static constexpr size_t kLoopDeviceSetupAttempts = 3u;
 
 bool gBootstrap = false;
-static const std::vector<std::string> kBootstrapApexes = ([]() {
-  std::vector<std::string> ret = {
-      "com.android.art",
-      "com.android.i18n",
-      "com.android.runtime",
-      "com.android.tzdata",
-  };
-
-  if (auto ver = android::base::GetProperty("ro.vndk.version", ""); ver != "") {
-    ret.push_back("com.android.vndk.v" + ver);
-  }
-  return ret;
-})();
+static const std::vector<const std::string> kBootstrapApexes = {
+    "com.android.art",
+    "com.android.i18n",
+    "com.android.runtime",
+    "com.android.tzdata",
+};
 
 static constexpr const int kNumRetriesWhenCheckpointingEnabled = 1;
 
