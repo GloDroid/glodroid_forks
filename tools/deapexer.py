@@ -16,16 +16,18 @@
 """deapexer is a tool that prints out content of an APEX.
 
 To print content of an APEX to stdout:
-  deapexer foo.apex
+  deapexer list foo.apex
 
-To diff content of an APEX with expected whitelist:
-  deapexer foo.apex foo_whitelist.txt
+To extract content of an APEX to the given directory:
+  deapexer extract foo.apex dest
 """
 
+import argparse
+import os
 import shutil
+import sys
 import subprocess
 import tempfile
-import os
 import zipfile
 
 
@@ -99,7 +101,11 @@ class ApexImageDirectory(object):
           yield ce
 
   def enter_subdir(self, entry):
-    return self._apex._list(self._path + '/' + entry.name)
+    return self._apex._list(self._path + entry.name + '/')
+
+  def extract(self, dest):
+    path = self._path
+    self._apex._extract(self._path, dest)
 
 
 class Apex(object):
@@ -117,7 +123,7 @@ class Apex(object):
     shutil.rmtree(self._tempdir)
 
   def __enter__(self):
-    return self._list('.')
+    return self._list('./')
 
   def __exit__(self, type, value, traceback):
     pass
@@ -145,27 +151,44 @@ class Apex(object):
                                     is_directory=bits[1]=='4', is_symlink=bits[1]=='2'))
     return ApexImageDirectory(path, entries, self)
 
+  def _extract(self, path, dest):
+    process = subprocess.Popen([self._debugfs, '-R', 'rdump %s %s' % (path, dest), self._payload],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               universal_newlines=True)
+    _, stderr = process.communicate()
+    print(stderr, file=sys.stderr)
+
+
+def RunList(args):
+  with Apex(args.apex) as apex:
+    for e in apex.list(is_recursive=True):
+      if e.is_regular_file:
+        print(e.full_path)
+
+
+def RunExtract(args):
+  with Apex(args.apex) as apex:
+     os.makedirs(args.dest, mode=0o755, exist_ok=True)
+     apex.extract(args.dest)
+
 
 def main(argv):
-  apex_content = []
-  with Apex(argv[0]) as apex_dir:
-    for e in apex_dir.list(is_recursive=True):
-      if e.is_regular_file:
-        apex_content.append(e.full_path)
-  if len(argv) > 1:
-    # diffing
-    with open(argv[1], 'r') as f:
-      whitelist = set([line.rstrip() for line in f.readlines()])
-      diff = []
-      for line in apex_content:
-        if line not in whitelist:
-          diff.append(line)
-      if diff:
-        print('%s contains following unexpected entries:\n%s' % (argv[0], '\n'.join(diff)))
-        sys.exit(1)
-  else:
-    for line in apex_content:
-      print(line)
+  parser = argparse.ArgumentParser()
+  subparsers = parser.add_subparsers()
+
+  parser_list = subparsers.add_parser('list', help='prints content of an APEX to stdout')
+  parser_list.add_argument('apex', type=str, help='APEX file')
+  parser_list.set_defaults(func=RunList)
+
+  parser_extract = subparsers.add_parser('extract', help='extracts content of an APEX to the given '
+                                                         'directory')
+  parser_extract.add_argument('apex', type=str, help='APEX file')
+  parser_extract.add_argument('dest', type=str, help='Directory to extract content of APEX to')
+  parser_extract.set_defaults(func=RunExtract)
+
+  args = parser.parse_args(argv)
+
+  args.func(args)
 
 
 if __name__ == '__main__':
