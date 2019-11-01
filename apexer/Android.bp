@@ -49,6 +49,25 @@ python_binary_host {
     required: apexer_tools,
 }
 
+python_binary_host {
+    name: "conv_apex_manifest",
+    srcs: [
+        "conv_apex_manifest.py",
+    ],
+    version: {
+        py2: {
+            enabled: true,
+            embedded_launcher: true,
+        },
+        py3: {
+            enabled: false,
+        },
+    },
+    libs: [
+        "apex_manifest_proto",
+    ],
+}
+
 apex_key {
   name: "com.android.support.apexer.key",
   public_key: "etc/com.android.support.apexer.avbpubkey",
