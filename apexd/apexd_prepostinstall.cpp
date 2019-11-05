@@ -165,11 +165,20 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
       std::string active_point;
       {
         Result<ApexManifest> manifest_or =
-            ReadManifest(mount_point + "/" + kManifestFilename);
+            ReadManifest(mount_point + "/" + kManifestFilenamePb);
         if (!manifest_or) {
-          LOG(ERROR) << "Could not read manifest from  " << mount_point
-                     << " for " << name << ": " << manifest_or.error();
-          _exit(202);
+          LOG(ERROR) << "Could not read manifest from  " << mount_point << "/"
+                     << kManifestFilenamePb << " for " << name << ": "
+                     << manifest_or.error();
+          // Fallback to Json manifest if present.
+          LOG(ERROR) << "Trying to find a JSON manifest";
+          manifest_or = ReadManifest(mount_point + "/" + kManifestFilenameJson);
+          if (!manifest_or) {
+            LOG(ERROR) << "Could not read manifest from  " << mount_point << "/"
+                       << kManifestFilenameJson << " for " << name << ": "
+                       << manifest_or.error();
+            _exit(202);
+          }
         }
         const auto& manifest = *manifest_or;
         hook = (manifest.*fn)();
