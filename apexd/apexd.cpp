@@ -528,7 +528,9 @@ Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
               << mountPoint;
     auto status = VerifyMountedImage(apex, mountPoint);
     if (!status) {
-      umount2(mountPoint.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH);
+      if (umount2(mountPoint.c_str(), UMOUNT_NOFOLLOW) != 0) {
+        PLOG(ERROR) << "Failed to umount " << mountPoint;
+      }
       return Error() << "Failed to verify " << full_path << ": "
                      << status.error();
     }
@@ -558,7 +560,7 @@ Result<void> Unmount(const MountedApexData& data) {
   LOG(DEBUG) << "Unmounting " << data.full_path << " from mount point "
              << data.mount_point;
   // Lazily try to umount whatever is mounted.
-  if (umount2(data.mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0 &&
+  if (umount2(data.mount_point.c_str(), UMOUNT_NOFOLLOW) != 0 &&
       errno != EINVAL && errno != ENOENT) {
     return ErrnoError() << "Failed to unmount directory " << data.mount_point;
   }
@@ -572,8 +574,7 @@ Result<void> Unmount(const MountedApexData& data) {
   if (!data.device_name.empty()) {
     const auto& status = DeleteVerityDevice(data.device_name);
     if (!status) {
-      LOG(DEBUG) << "Failed to free device " << data.device_name << " : "
-                 << status.error();
+      return status;
     }
   }
 
@@ -1007,7 +1008,7 @@ Result<void> UnmountPackage(const ApexFile& apex, bool allow_latest) {
     }
     std::string mount_point = apexd_private::GetActiveMountPoint(manifest);
     LOG(VERBOSE) << "Unmounting and deleting " << mount_point;
-    if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH) != 0) {
+    if (umount2(mount_point.c_str(), UMOUNT_NOFOLLOW) != 0) {
       return ErrnoError() << "Failed to unmount " << mount_point;
     }
     if (rmdir(mount_point.c_str()) != 0) {
