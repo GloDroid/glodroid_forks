@@ -47,6 +47,11 @@ int HandleSubcommand(char** argv) {
     return android::apex::onBootstrap();
   }
 
+  if (strcmp("--unmount-all", argv[1]) == 0) {
+    LOG(INFO) << "Unmount all subcommand detected";
+    return android::apex::unmountAll();
+  }
+
   LOG(ERROR) << "Unknown subcommand: " << argv[1];
   return 1;
 }
