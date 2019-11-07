@@ -1483,8 +1483,10 @@ Result<void> stagePackages(const std::vector<std::string>& tmpPaths) {
     }
     std::string dest_path = StageDestPath(*apex_file);
     if (access(dest_path.c_str(), F_OK) == 0) {
-      LOG(DEBUG) << dest_path << " already exists. Skipping";
-      continue;
+      LOG(DEBUG) << dest_path << " already exists. Deleting";
+      if (TEMP_FAILURE_RETRY(unlink(dest_path.c_str())) != 0) {
+        return ErrnoError() << "Failed to unlink " << dest_path;
+      }
     }
 
     if (link(apex_file->GetPath().c_str(), dest_path.c_str()) != 0) {
