@@ -75,7 +75,7 @@ Result<void> BindMount(const std::string& target, const std::string& source) {
     };
     // Unmount any active bind-mount.
     if (exists) {
-      int rc = umount2(target.c_str(), UMOUNT_NOFOLLOW | MNT_DETACH);
+      int rc = umount2(target.c_str(), UMOUNT_NOFOLLOW);
       if (rc != 0 && errno != EINVAL) {
         // Log error but ignore.
         PLOG(ERROR) << "Could not unmount " << target;
