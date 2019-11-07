@@ -1905,5 +1905,31 @@ void unmountDanglingMounts() {
   RemoveObsoleteHashTrees();
 }
 
+int unmountAll() {
+  gMountedApexes.PopulateFromMounts();
+  int ret = 0;
+  gMountedApexes.ForallMountedApexes([&](const std::string& /*package*/,
+                                         const MountedApexData& data,
+                                         bool latest) {
+    LOG(INFO) << "Unmounting " << data.full_path << " mounted on "
+              << data.mount_point;
+    if (latest) {
+      auto pos = data.mount_point.find('@');
+      CHECK(pos != std::string::npos);
+      std::string bind_mount = data.mount_point.substr(0, pos);
+      if (umount2(bind_mount.c_str(), UMOUNT_NOFOLLOW) != 0) {
+        PLOG(ERROR) << "Failed to unmount bind-mount " << bind_mount;
+        ret = 1;
+      }
+    }
+    if (auto status = Unmount(data); !status) {
+      LOG(ERROR) << "Failed to unmount " << data.mount_point << " : "
+                 << status.error();
+      ret = 1;
+    }
+  });
+  return ret;
+}
+
 }  // namespace apex
 }  // namespace android

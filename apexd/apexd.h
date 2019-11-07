@@ -75,6 +75,8 @@ void onStart(CheckpointInterface* checkpoint_service);
 void onAllPackagesReady();
 void unmountDanglingMounts();
 
+int unmountAll();
+
 }  // namespace apex
 }  // namespace android
 
