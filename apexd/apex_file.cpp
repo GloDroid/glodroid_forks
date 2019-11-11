@@ -85,10 +85,19 @@ Result<ApexFile> ApexFile::Open(const std::string& path) {
   image_offset = entry.offset;
   image_size = entry.uncompressed_length;
 
-  ret = FindEntry(handle, kManifestFilename, &entry);
+  ret = FindEntry(handle, kManifestFilenamePb, &entry);
+  bool isJsonManifest = false;
   if (ret < 0) {
-    return Error() << "Could not find entry \"" << kManifestFilename
-                   << "\" in package " << path << ": " << ErrorCodeString(ret);
+    LOG(ERROR) << "Could not find entry \"" << kManifestFilenamePb
+               << "\" in package " << path << ": " << ErrorCodeString(ret);
+    LOG(ERROR) << "Falling back to JSON if present.";
+    isJsonManifest = true;
+    ret = FindEntry(handle, kManifestFilenameJson, &entry);
+    if (ret < 0) {
+      return Error() << "Could not find entry \"" << kManifestFilenameJson
+                     << "\" in package " << path << ": "
+                     << ErrorCodeString(ret);
+    }
   }
 
   uint32_t length = entry.uncompressed_length;
@@ -114,7 +123,12 @@ Result<ApexFile> ApexFile::Open(const std::string& path) {
     }
   }
 
-  Result<ApexManifest> manifest = ParseManifest(manifest_content);
+  Result<ApexManifest> manifest;
+  if (isJsonManifest) {
+    manifest = ParseManifestJson(manifest_content);
+  } else {
+    manifest = ParseManifest(manifest_content);
+  }
   if (!manifest) {
     return manifest.error();
   }
@@ -372,16 +386,17 @@ Result<ApexVerityData> ApexFile::VerifyApexVerity() const {
 
 Result<void> ApexFile::VerifyManifestMatches(
     const std::string& mount_path) const {
-  std::string manifest_content;
-  const std::string manifest_path = mount_path + "/" + kManifestFilename;
-
-  if (!android::base::ReadFileToString(manifest_path, &manifest_content)) {
-    return Error() << "Failed to read manifest file: " << manifest_path;
-  }
-
-  Result<ApexManifest> verifiedManifest = ParseManifest(manifest_content);
+  Result<ApexManifest> verifiedManifest =
+      ReadManifest(mount_path + "/" + kManifestFilenamePb);
   if (!verifiedManifest) {
-    return verifiedManifest.error();
+    LOG(ERROR) << "Could not read manifest from  " << mount_path << "/"
+               << kManifestFilenamePb << " : " << verifiedManifest.error();
+    // Fallback to Json manifest if present.
+    LOG(ERROR) << "Trying to find a JSON manifest";
+    verifiedManifest = ReadManifest(mount_path + "/" + kManifestFilenameJson);
+    if (!verifiedManifest) {
+      return verifiedManifest.error();
+    }
   }
 
   if (!MessageDifferencer::Equals(manifest_, *verifiedManifest)) {
