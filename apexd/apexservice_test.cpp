@@ -635,6 +635,27 @@ TEST_F(ApexServiceTest, StageAlreadyStagedPackageSuccess) {
   ASSERT_TRUE(RegularFileExists(installer.test_installed_file));
 }
 
+TEST_F(ApexServiceTest, StageAlreadyStagedPackageSuccessNewWins) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
+  PrepareTestApexForInstall installer2(
+      GetTestFile("apex.apexd_test_nocode.apex"));
+  if (!installer.Prepare() || !installer2.Prepare()) {
+    return;
+  }
+  ASSERT_EQ(std::string("com.android.apex.test_package"), installer.package);
+  ASSERT_EQ(installer.test_installed_file, installer2.test_installed_file);
+
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
+  const auto& apex = ApexFile::Open(installer.test_installed_file);
+  ASSERT_TRUE(IsOk(apex));
+  ASSERT_FALSE(apex->GetManifest().nocode());
+
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer2.test_file})));
+  const auto& new_apex = ApexFile::Open(installer.test_installed_file);
+  ASSERT_TRUE(IsOk(new_apex));
+  ASSERT_TRUE(new_apex->GetManifest().nocode());
+}
+
 TEST_F(ApexServiceTest, MultiStageSuccess) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
   if (!installer.Prepare()) {
