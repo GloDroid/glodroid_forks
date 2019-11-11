@@ -33,6 +33,7 @@ static constexpr const char* kStagedSessionsDir = "/data/app-staging";
 
 static constexpr const char* kApexPackageSuffix = ".apex";
 
-static constexpr const char* kManifestFilename = "apex_manifest.json";
+static constexpr const char* kManifestFilenameJson = "apex_manifest.json";
+static constexpr const char* kManifestFilenamePb = "apex_manifest.pb";
 }  // namespace apex
 }  // namespace android
