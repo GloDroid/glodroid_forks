@@ -44,8 +44,14 @@ def ParseArgs(argv):
       '-v', '--verbose', action='store_true', help='verbose execution')
   parser.add_argument(
       '--manifest',
-      default='apex_manifest.json',
-      help='path to the APEX manifest file')
+      default='apex_manifest.pb',
+      help='path to the APEX manifest file (.pb)')
+  parser.add_argument(
+      '--manifest_json',
+      help='path to the APEX manifest file (Q compatible .json)')
+  parser.add_argument(
+      '--manifest_json_full',
+      help='path to the APEX manifest file (.json)')
   parser.add_argument(
       '--android_manifest',
       help='path to the AndroidManifest file. If omitted, a default one is created and used'
@@ -244,10 +250,13 @@ def CreateApex(args, work_dir):
   if args.verbose:
     print 'Using tools from ' + str(tool_path_list)
 
+  def copyfile(src, dst):
+    if args.verbose:
+      print('Copying ' + src + ' to ' + dst)
+    shutil.copyfile(src, dst)
+
   try:
-    with open(args.manifest, 'r') as f:
-      manifest_raw = f.read()
-      manifest_apex = ValidateApexManifest(manifest_raw)
+    manifest_apex = ValidateApexManifest(args.manifest)
   except ApexManifestError as err:
     print("'" + args.manifest + "' is not a valid manifest file")
     print err.errmessage
@@ -268,10 +277,10 @@ def CreateApex(args, work_dir):
   # within the zip container).
   manifests_dir = os.path.join(work_dir, 'manifests')
   os.mkdir(manifests_dir)
-  manifest_file = os.path.join(manifests_dir, 'apex_manifest.json')
-  if args.verbose:
-    print('Copying ' + args.manifest + ' to ' + manifest_file)
-  shutil.copyfile(args.manifest, manifest_file)
+  copyfile(args.manifest, os.path.join(manifests_dir, 'apex_manifest.pb'))
+  if args.manifest_json:
+    # manifest_json is for compatibility
+    copyfile(args.manifest_json, os.path.join(manifests_dir, 'apex_manifest.json'))
 
   if args.payload_type == 'image':
     key_name = os.path.basename(os.path.splitext(args.key)[0])
@@ -285,11 +294,11 @@ def CreateApex(args, work_dir):
     img_file = os.path.join(content_dir, 'apex_payload.img')
 
     # margin is for files that are not under args.input_dir. this consists of
-    # one inode for apex_manifest.json and 11 reserved inodes for ext4.
+    # n inodes for apex_manifest files and 11 reserved inodes for ext4.
     # TOBO(b/122991714) eliminate these details. use build_image.py which
     # determines the optimal inode count by first building an image and then
     # count the inodes actually used.
-    inode_num_margin = 12
+    inode_num_margin = GetFilesAndDirsCount(manifests_dir) + 11
     inode_num = GetFilesAndDirsCount(args.input_dir) + inode_num_margin
 
     cmd = ['mke2fs']
@@ -348,7 +357,7 @@ def CreateApex(args, work_dir):
     cmd.extend(['--prop', 'apex.key:' + key_name])
     # Set up the salt based on manifest content which includes name
     # and version
-    salt = hashlib.sha256(manifest_raw).hexdigest()
+    salt = hashlib.sha256(manifest_apex.SerializeToString()).hexdigest()
     cmd.extend(['--salt', salt])
     cmd.extend(['--image', img_file])
     if args.no_hashtree:
@@ -396,8 +405,13 @@ def CreateApex(args, work_dir):
 
   # copy manifest to the content dir so that it is also accessible
   # without mounting the image
-  shutil.copyfile(args.manifest, os.path.join(content_dir,
-                                              'apex_manifest.json'))
+  copyfile(args.manifest, os.path.join(content_dir, 'apex_manifest.pb'))
+  if args.manifest_json:
+    copyfile(args.manifest_json, os.path.join(content_dir, 'apex_manifest.json'))
+    if args.manifest_json_full:
+      copyfile(args.manifest_json_full, os.path.join(content_dir, 'apex_manifest_full.json'))
+  elif args.manifest_json_full:
+    copyfile(args.manifest_json_full, os.path.join(content_dir, 'apex_manifest.json'))
 
   # copy the public key, if specified
   if args.pubkey:
