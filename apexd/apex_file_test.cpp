@@ -89,10 +89,10 @@ TEST(ApexFileTest, VerifyApexVerity) {
 
   const ApexVerityData& data = *verity_or;
   EXPECT_NE(nullptr, data.desc.get());
-  EXPECT_EQ(std::string("e2dfc983b21982053ee049c03310ea89be03a889"
-                        "0f997280fe1b93d9102837fd"),
+  EXPECT_EQ(std::string("368a22e64858647bc45498e92f749f85482ac468"
+                        "50ca7ec8071f49dfa47a243c"),
             data.salt);
-  EXPECT_EQ(std::string("d1c0b25724e35c5af83145d000b556fe45c4c8e5"),
+  EXPECT_EQ(std::string("705d8ec15be38fe416ed75045056434132758008"),
             data.root_digest);
 }
 
