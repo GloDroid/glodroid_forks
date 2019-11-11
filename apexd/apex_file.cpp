@@ -182,13 +182,10 @@ Result<std::unique_ptr<AvbFooter>> getAvbFooter(const ApexFile& apex,
   return footer;
 }
 
-Result<void> verifyPublicKey(const uint8_t* key, size_t length,
-                             std::string public_key_content) {
-  if (public_key_content.length() != length ||
-      memcmp(&public_key_content[0], key, length) != 0) {
-    return Errorf("Failed to compare the bundled public key with key");
-  }
-  return {};
+bool CompareKeys(const uint8_t* key, size_t length,
+                 const std::string& public_key_content) {
+  return public_key_content.length() == length &&
+         memcmp(&public_key_content[0], key, length) == 0;
 }
 
 Result<std::string> getPublicKeyName(const ApexFile& apex, const uint8_t* data,
@@ -240,29 +237,28 @@ Result<void> verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
   }
 
   Result<const std::string> public_key = getApexKey(*key_name);
-  Result<void> st;
   if (public_key) {
     // TODO(b/115718846)
     // We need to decide whether we need rollback protection, and whether
     // we can use the rollback protection provided by libavb.
-    st = verifyPublicKey(pk, pk_len, *public_key);
+    if (!CompareKeys(pk, pk_len, *public_key)) {
+      return Error() << "Error verifying " << apex.GetPath() << ": "
+                     << "public key doesn't match the pre-installed one";
+    }
   } else if (kDebugAllowBundledKey) {
     // Failing to find the matching public key in the built-in partitions
     // is a hard error for non-debuggable build. For debuggable builds,
     // the public key bundled in the APEX itself is used as a fallback.
     LOG(WARNING) << "Verifying " << apex.GetPath() << " with the bundled key";
-    st = verifyPublicKey(pk, pk_len, apex.GetBundledPublicKey());
+    if (!CompareKeys(pk, pk_len, apex.GetBundledPublicKey())) {
+      return Error() << "Error verifying " << apex.GetPath() << ": "
+                     << "public key doesn't match the one bundled in the APEX";
+    }
   } else {
     return public_key.error();
   }
-
-  if (st) {
-    LOG(VERBOSE) << apex.GetPath() << ": public key matches.";
-    return st;
-  }
-
-  return Error() << "Error verifying " << apex.GetPath() << ": "
-                 << "couldn't verify public key: " << st.error();
+  LOG(VERBOSE) << apex.GetPath() << ": public key matches.";
+  return {};
 }
 
 Result<std::unique_ptr<uint8_t[]>> verifyVbMeta(const ApexFile& apex,
