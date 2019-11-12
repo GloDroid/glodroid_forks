@@ -83,7 +83,7 @@ public class ApexRemountTest extends BaseHostJUnit4Test {
     private ApexManifest getShimApexManifest() throws DeviceNotAvailableException,
             InvalidProtocolBufferException {
         String json = getDevice().executeShellCommand(
-                "cat /apex/com.android.apex.cts.shim/apex_manifest.json");
+                "cat /apex/com.android.apex.cts.shim/apex_manifest.pb");
         ApexManifest.Builder builder = ApexManifest.newBuilder();
         JsonFormat.parser().merge(json, builder);
         return builder.build();
