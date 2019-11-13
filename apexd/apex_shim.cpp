@@ -46,7 +46,8 @@ namespace {
 static constexpr const char* kApexCtsShimPackage = "com.android.apex.cts.shim";
 static constexpr const char* kHashFileName = "hash.txt";
 static constexpr const int kBufSize = 1024;
-static constexpr const char* kApexManifestFileName = "apex_manifest.json";
+static constexpr const char* kApexManifestJsonFileName = "apex_manifest.json";
+static constexpr const char* kApexManifestPbFileName = "apex_manifest.pb";
 static constexpr const char* kEtcFolderName = "etc";
 static constexpr const char* kLostFoundFolderName = "lost+found";
 static constexpr const fs::perms kFordbiddenFilePermissions =
@@ -166,7 +167,8 @@ Result<void> IsWhitelistedTopLevelEntry(const fs::directory_entry& entry) {
       }
     }
     return {};
-  } else if (path.filename() == kApexManifestFileName) {
+  } else if (path.filename() == kApexManifestJsonFileName ||
+             path.filename() == kApexManifestPbFileName) {
     return IsRegularFile(entry);
   } else {
     return Error() << "Illegal entry " << path;
