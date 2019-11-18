@@ -44,14 +44,15 @@ namespace fs = std::filesystem;
 namespace {
 
 static constexpr const char* kApexCtsShimPackage = "com.android.apex.cts.shim";
-static constexpr const char* kHashFileName = "hash.txt";
+static constexpr const char* kHashFilePath = "etc/hash.txt";
 static constexpr const int kBufSize = 1024;
-static constexpr const char* kApexManifestJsonFileName = "apex_manifest.json";
-static constexpr const char* kApexManifestPbFileName = "apex_manifest.pb";
-static constexpr const char* kEtcFolderName = "etc";
-static constexpr const char* kLostFoundFolderName = "lost+found";
-static constexpr const fs::perms kFordbiddenFilePermissions =
+static constexpr const fs::perms kForbiddenFilePermissions =
     fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
+static constexpr const char* kExpectedCtsShimFiles[] = {
+    "apex_manifest.json",
+    "apex_manifest.pb",
+    "etc/hash.txt",
+};
 
 Result<std::string> CalculateSha512(const std::string& path) {
   LOG(DEBUG) << "Calculating SHA512 of " << path;
@@ -84,7 +85,7 @@ Result<std::vector<std::string>> GetAllowedHashes(const std::string& path) {
   using android::base::ReadFileToString;
   using android::base::StringPrintf;
   const std::string& file_path =
-      StringPrintf("%s/%s/%s", path.c_str(), kEtcFolderName, kHashFileName);
+      StringPrintf("%s/%s", path.c_str(), kHashFilePath);
   LOG(DEBUG) << "Reading SHA512 from " << file_path;
   std::string hash;
   if (!ReadFileToString(file_path, &hash, false /* follows symlinks */)) {
@@ -99,82 +100,6 @@ Result<std::vector<std::string>> GetAllowedHashes(const std::string& path) {
   allowed_hashes.push_back(std::move(*system_shim_hash));
   return allowed_hashes;
 }
-
-Result<void> IsRegularFile(const fs::directory_entry& entry) {
-  const fs::path& path = entry.path();
-  std::error_code ec;
-  fs::file_status status = entry.status(ec);
-  if (ec) {
-    return Error() << "Failed to stat " << path << " : " << ec.message();
-  }
-  if (!fs::is_regular_file(status)) {
-    return Error() << path << " is not a file";
-  }
-  if ((status.permissions() & kFordbiddenFilePermissions) != fs::perms::none) {
-    return Error() << path << " has illegal permissions";
-  }
-  // TODO: consider checking that file only contains ascii characters.
-  return {};
-}
-
-Result<void> IsHashTxt(const fs::directory_entry& entry) {
-  LOG(DEBUG) << "Checking if " << entry.path() << " is an allowed file";
-  const Result<void>& status = IsRegularFile(entry);
-  if (!status) {
-    return status;
-  }
-  if (entry.path().filename() != kHashFileName) {
-    return Error() << "Illegal file " << entry.path();
-  }
-  return {};
-}
-
-Result<void> IsWhitelistedTopLevelEntry(const fs::directory_entry& entry) {
-  LOG(DEBUG) << "Checking if " << entry.path() << " is an allowed directory";
-  std::error_code ec;
-  const fs::path& path = entry.path();
-  if (path.filename() == kLostFoundFolderName) {
-    bool is_empty = fs::is_empty(path, ec);
-    if (ec) {
-      return Error() << "Failed to scan " << path << " : " << ec.message();
-    }
-    if (is_empty) {
-      return {};
-    } else {
-      return Error() << path << " is not empty";
-    }
-  } else if (path.filename() == kEtcFolderName) {
-    auto iter = fs::directory_iterator(path, ec);
-    if (ec) {
-      return Error() << "Failed to scan " << path << " : " << ec.message();
-    }
-    bool is_empty = fs::is_empty(path, ec);
-    if (ec) {
-      return Error() << "Failed to scan " << path << " : " << ec.message();
-    }
-    if (is_empty) {
-      return Error() << path << " should contain " << kHashFileName;
-    }
-    // TODO: change to non-throwing iterator.
-    while (iter != fs::end(iter)) {
-      const Result<void>& status = IsHashTxt(*iter);
-      if (!status) {
-        return status;
-      }
-      iter = iter.increment(ec);
-      if (ec) {
-        return Error() << "Failed to scan " << path << " : " << ec.message();
-      }
-    }
-    return {};
-  } else if (path.filename() == kApexManifestJsonFileName ||
-             path.filename() == kApexManifestPbFileName) {
-    return IsRegularFile(entry);
-  } else {
-    return Error() << "Illegal entry " << path;
-  }
-}
-
 }  // namespace
 
 bool IsShimApex(const ApexFile& apex_file) {
@@ -190,17 +115,41 @@ Result<void> ValidateShimApex(const std::string& mount_point,
     return Errorf("Shim apex is not allowed to have pre or post install hooks");
   }
   std::error_code ec;
-  auto iter = fs::directory_iterator(mount_point, ec);
-  if (ec) {
-    return Error() << "Failed to scan " << mount_point << " : " << ec.message();
+  std::unordered_set<std::string> expected_files;
+  for (auto file : kExpectedCtsShimFiles) {
+    expected_files.insert(file);
   }
-  // Unfortunately fs::directory_iterator::operator++ can throw an exception,
-  // which means that it's impossible to use range-based for loop here.
+
+  auto iter = fs::recursive_directory_iterator(mount_point, ec);
+  // Unfortunately fs::recursive_directory_iterator::operator++ can throw an
+  // exception, which means that it's impossible to use range-based for loop
+  // here.
   // TODO: wrap into a non-throwing iterator to support range-based for loop.
   while (iter != fs::end(iter)) {
-    const Result<void>& status = IsWhitelistedTopLevelEntry(*iter);
-    if (!status) {
-      return status;
+    auto path = iter->path();
+    // Resolve the mount point to ensure any trailing slash is removed.
+    auto resolved_mount_point = fs::path(mount_point).string();
+    auto local_path = path.string().substr(resolved_mount_point.length() + 1);
+    fs::file_status status = iter->status(ec);
+
+    if (fs::is_symlink(status)) {
+      return Error()
+             << "Shim apex is not allowed to contain symbolic links, found "
+             << path;
+    } else if (fs::is_regular_file(status)) {
+      if ((status.permissions() & kForbiddenFilePermissions) !=
+          fs::perms::none) {
+        return Error() << path << " has illegal permissions";
+      }
+      auto ex = expected_files.find(local_path);
+      if (ex != expected_files.end()) {
+        expected_files.erase(local_path);
+      } else {
+        return Error() << path << " is an unexpected file inside the shim apex";
+      }
+    } else if (!fs::is_directory(status)) {
+      // If this is not a symlink, a file or a directory, fail.
+      return Error() << "Unexpected file entry in shim apex: " << iter->path();
     }
     iter = iter.increment(ec);
     if (ec) {
@@ -208,6 +157,12 @@ Result<void> ValidateShimApex(const std::string& mount_point,
                      << ec.message();
     }
   }
+
+  if (!expected_files.empty()) {
+    return Error() << "Some expected files inside the shim apex are missing: "
+                   << android::base::Join(expected_files, ",");
+  }
+
   return {};
 }
 
