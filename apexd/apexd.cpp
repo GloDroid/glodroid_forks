@@ -766,22 +766,6 @@ Result<ApexFile> verifySessionDir(const int session_id) {
   return std::move((*verified)[0]);
 }
 
-Result<void> ClearSessions() {
-  auto sessions = ApexSession::GetSessions();
-  int cnt = 0;
-  for (ApexSession& session : sessions) {
-    Result<void> status = session.DeleteSession();
-    if (!status) {
-      return status;
-    }
-    cnt++;
-  }
-  if (cnt > 0) {
-    LOG(DEBUG) << "Deleted " << cnt << " sessions";
-  }
-  return {};
-}
-
 Result<void> DeleteBackup() {
   auto exists = PathExists(std::string(kApexBackupDir));
   if (!exists) {
@@ -1722,10 +1706,6 @@ Result<std::vector<ApexFile>> submitStagedSession(
     const int session_id, const std::vector<int>& child_session_ids) {
   using android::base::GetProperty;
   bool needsBackup = true;
-  Result<void> cleanup_status = ClearSessions();
-  if (!cleanup_status) {
-    return cleanup_status.error();
-  }
 
   if (gSupportsFsCheckpoints) {
     Result<void> checkpoint_status =

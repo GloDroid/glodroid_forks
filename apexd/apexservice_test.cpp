@@ -1178,7 +1178,7 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
 }
 
-TEST_F(ApexServiceTest, SubmitSingleStagedSessionDeletesPreviousSessions) {
+TEST_F(ApexServiceTest, SubmitSingleStagedSessionKeepsPreviousSessions) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
                                       "/data/app-staging/session_239",
                                       "staging_data_file");
@@ -1220,7 +1220,10 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSessionDeletesPreviousSessions) {
 
   ApexSessionInfo new_session = CreateSessionInfo(239);
   new_session.isVerified = true;
-  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(new_session)));
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(new_session),
+                                             SessionInfoEq(expected_session1),
+                                             SessionInfoEq(expected_session2),
+                                             SessionInfoEq(expected_session3)));
 }
 
 TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
@@ -2016,7 +2019,7 @@ TEST_F(ApexShimUpdateTest, UpdateToV2FailureWrongSHA512) {
   ASSERT_THAT(error_message, HasSubstr("has unexpected SHA512 hash"));
 }
 
-TEST_F(ApexShimUpdateTest, SubmitStagedSesssionFailureHasPreInstallHook) {
+TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureHasPreInstallHook) {
   PrepareTestApexForInstall installer(
       GetTestFile("com.android.apex.cts.shim.v2_with_pre_install_hook.apex"),
       "/data/app-staging/session_23", "staging_data_file");
