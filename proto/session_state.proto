@@ -27,9 +27,9 @@ message SessionState {
     ACTIVATED = 3;
     ACTIVATION_FAILED = 4;
     SUCCESS = 5;
-    ROLLBACK_IN_PROGRESS = 6;
-    ROLLED_BACK = 7;
-    ROLLBACK_FAILED = 8;
+    REVERT_IN_PROGRESS = 6;
+    REVERTED = 7;
+    REVERT_FAILED = 8;
   }
 
   int32 id = 1;

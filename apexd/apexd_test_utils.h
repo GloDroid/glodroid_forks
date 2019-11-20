@@ -61,15 +61,15 @@ MATCHER_P(SessionInfoEq, other, "") {
           Field("isStaged", &ApexSessionInfo::isStaged, Eq(other.isStaged)),
           Field("isActivated", &ApexSessionInfo::isActivated,
                 Eq(other.isActivated)),
-          Field("isRollbackInProgress", &ApexSessionInfo::isRollbackInProgress,
-                Eq(other.isRollbackInProgress)),
+          Field("isRevertInProgress", &ApexSessionInfo::isRevertInProgress,
+                Eq(other.isRevertInProgress)),
           Field("isActivationFailed", &ApexSessionInfo::isActivationFailed,
                 Eq(other.isActivationFailed)),
           Field("isSuccess", &ApexSessionInfo::isSuccess, Eq(other.isSuccess)),
-          Field("isRolledBack", &ApexSessionInfo::isRolledBack,
-                Eq(other.isRolledBack)),
-          Field("isRollbackFailed", &ApexSessionInfo::isRollbackFailed,
-                Eq(other.isRollbackFailed))),
+          Field("isReverted", &ApexSessionInfo::isReverted,
+                Eq(other.isReverted)),
+          Field("isRevertFailed", &ApexSessionInfo::isRevertFailed,
+                Eq(other.isRevertFailed))),
       arg, result_listener);
 }
 
@@ -92,11 +92,11 @@ inline ApexSessionInfo CreateSessionInfo(int session_id) {
   info.isVerified = false;
   info.isStaged = false;
   info.isActivated = false;
-  info.isRollbackInProgress = false;
+  info.isRevertInProgress = false;
   info.isActivationFailed = false;
   info.isSuccess = false;
-  info.isRolledBack = false;
-  info.isRollbackFailed = false;
+  info.isReverted = false;
+  info.isRevertFailed = false;
   return info;
 }
 
@@ -112,8 +112,8 @@ inline void PrintTo(const ApexSessionInfo& session, std::ostream* os) {
   *os << "  isActivated : " << session.isActivated << "\n";
   *os << "  isActivationFailed : " << session.isActivationFailed << "\n";
   *os << "  isSuccess : " << session.isSuccess << "\n";
-  *os << "  isRolledBack : " << session.isRolledBack << "\n";
-  *os << "  isRollbackFailed : " << session.isRollbackFailed << "\n";
+  *os << "  isReverted : " << session.isReverted << "\n";
+  *os << "  isRevertFailed : " << session.isRevertFailed << "\n";
   *os << "}";
 }
 

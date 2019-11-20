@@ -78,8 +78,8 @@ class ApexService : public BnApexService {
   BinderStatus postinstallPackages(
       const std::vector<std::string>& paths) override;
   BinderStatus abortActiveSession() override;
-  BinderStatus rollbackActiveSession() override;
-  BinderStatus resumeRollbackIfNeeded() override;
+  BinderStatus revertActiveSession() override;
+  BinderStatus resumeRevertIfNeeded() override;
 
   status_t dump(int fd, const Vector<String16>& args) override;
 
@@ -198,11 +198,11 @@ static void ClearSessionInfo(ApexSessionInfo* session_info) {
   session_info->isVerified = false;
   session_info->isStaged = false;
   session_info->isActivated = false;
-  session_info->isRollbackInProgress = false;
+  session_info->isRevertInProgress = false;
   session_info->isActivationFailed = false;
   session_info->isSuccess = false;
-  session_info->isRolledBack = false;
-  session_info->isRollbackFailed = false;
+  session_info->isReverted = false;
+  session_info->isRevertFailed = false;
 }
 
 void convertToApexSessionInfo(const ApexSession& session,
@@ -228,14 +228,14 @@ void convertToApexSessionInfo(const ApexSession& session,
     case SessionState::SUCCESS:
       session_info->isSuccess = true;
       break;
-    case SessionState::ROLLBACK_IN_PROGRESS:
-      session_info->isRollbackInProgress = true;
+    case SessionState::REVERT_IN_PROGRESS:
+      session_info->isRevertInProgress = true;
       break;
-    case SessionState::ROLLED_BACK:
-      session_info->isRolledBack = true;
+    case SessionState::REVERTED:
+      session_info->isReverted = true;
       break;
-    case SessionState::ROLLBACK_FAILED:
-      session_info->isRollbackFailed = true;
+    case SessionState::REVERT_FAILED:
+      session_info->isRevertFailed = true;
       break;
     case SessionState::UNKNOWN:
     default:
@@ -437,14 +437,14 @@ BinderStatus ApexService::abortActiveSession() {
   return BinderStatus::ok();
 }
 
-BinderStatus ApexService::rollbackActiveSession() {
-  BinderStatus debugCheck = CheckDebuggable("rollbackActiveSession");
+BinderStatus ApexService::revertActiveSession() {
+  BinderStatus debugCheck = CheckDebuggable("revertActiveSession");
   if (!debugCheck.isOk()) {
     return debugCheck;
   }
 
-  LOG(DEBUG) << "rollbackActiveSession() received by ApexService.";
-  Result<void> res = ::android::apex::rollbackActiveSession();
+  LOG(DEBUG) << "revertActiveSession() received by ApexService.";
+  Result<void> res = ::android::apex::revertActiveSession();
   if (!res) {
     return BinderStatus::fromExceptionCode(
         BinderStatus::EX_ILLEGAL_ARGUMENT,
@@ -453,14 +453,14 @@ BinderStatus ApexService::rollbackActiveSession() {
   return BinderStatus::ok();
 }
 
-BinderStatus ApexService::resumeRollbackIfNeeded() {
-  BinderStatus debugCheck = CheckDebuggable("resumeRollbackIfNeeded");
+BinderStatus ApexService::resumeRevertIfNeeded() {
+  BinderStatus debugCheck = CheckDebuggable("resumeRevertIfNeeded");
   if (!debugCheck.isOk()) {
     return debugCheck;
   }
 
-  LOG(DEBUG) << "resumeRollbackIfNeeded() received by ApexService.";
-  Result<void> res = ::android::apex::resumeRollbackIfNeeded();
+  LOG(DEBUG) << "resumeRevertIfNeeded() received by ApexService.";
+  Result<void> res = ::android::apex::resumeRevertIfNeeded();
   if (!res) {
     return BinderStatus::fromExceptionCode(
         BinderStatus::EX_ILLEGAL_ARGUMENT,

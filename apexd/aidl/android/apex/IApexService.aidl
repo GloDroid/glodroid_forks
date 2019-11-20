@@ -69,10 +69,10 @@ interface IApexService {
     * Not meant for use outside of testing. The call will not be
     * functional on user builds.
     */
-   void rollbackActiveSession();
+   void revertActiveSession();
    /**
     * Not meant for use outside of testing. The call will not be
     * functional on user builds.
     */
-   void resumeRollbackIfNeeded();
+   void resumeRevertIfNeeded();
 }
