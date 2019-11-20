@@ -98,7 +98,7 @@ int main(int /*argc*/, char** argv) {
   // it.
   android::apex::onAllPackagesReady();
 
-  android::apex::waitForBootStatus(android::apex::revertActiveSessionAndReboot,
+  android::apex::waitForBootStatus(android::apex::revertActiveSessionsAndReboot,
                                    android::apex::unmountDanglingMounts);
 
   android::apex::binder::JoinThreadPool();

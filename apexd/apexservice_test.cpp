@@ -1387,29 +1387,6 @@ TEST_F(ApexServiceTest, MarkStagedSessionSuccessfulNoOp) {
   ASSERT_THAT(session_info, SessionInfoEq(expected));
 }
 
-TEST_F(ApexServiceTest, AbortActiveSessionNoSessions) {
-  // First ensure there are no sessions.
-  std::vector<ApexSessionInfo> sessions;
-  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
-  ASSERT_EQ(0u, sessions.size());
-  ASSERT_TRUE(IsOk(service_->abortActiveSession()));
-}
-
-TEST_F(ApexServiceTest, AbortActiveSession) {
-  auto session = ApexSession::CreateSession(239);
-  ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::VERIFIED)));
-
-  std::vector<ApexSessionInfo> sessions;
-  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
-  ASSERT_EQ(1u, sessions.size());
-
-  ASSERT_TRUE(IsOk(service_->abortActiveSession()));
-
-  sessions.clear();
-  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
-  ASSERT_EQ(0u, sessions.size());
-}
-
 // Should be able to abort individual staged session
 TEST_F(ApexServiceTest, AbortStagedSession) {
   auto session1 = ApexSession::CreateSession(239);
@@ -1670,41 +1647,8 @@ class ApexServiceRevertTest : public ApexServiceTest {
   }
 };
 
-TEST_F(ApexServiceRevertTest, AbortActiveSessionSuccessfulRevert) {
-  if (supports_fs_checkpointing_) {
-    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
-  }
-  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
-  if (!installer.Prepare()) {
-    return;
-  }
-
-  auto session = ApexSession::CreateSession(239);
-  ASSERT_TRUE(IsOk(session));
-  ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::ACTIVATED)));
-
-  // Make sure /data/apex/active is non-empty.
-  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
-
-  PrepareBackup({GetTestFile("apex.apexd_test.apex"),
-                 GetTestFile("apex.apexd_test_different_app.apex")});
-
-  ASSERT_TRUE(IsOk(service_->abortActiveSession()));
-
-  auto pkg1 = StringPrintf("%s/com.android.apex.test_package@1.apex",
-                           kActiveApexPackagesDataDir);
-  auto pkg2 = StringPrintf("%s/com.android.apex.test_package_2@1.apex",
-                           kActiveApexPackagesDataDir);
-  SCOPED_TRACE("");
-  CheckRevertWasPerformed({pkg1, pkg2});
-  std::vector<ApexSessionInfo> sessions;
-  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
-  ApexSessionInfo expected = CreateSessionInfo(239);
-  expected.isReverted = true;
-  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
-}
-
-TEST_F(ApexServiceRevertTest, RevertLastSessionCalledSuccessfulRevert) {
+// Should be able to revert activated sessions
+TEST_F(ApexServiceRevertTest, RevertActiveSessionsSuccessful) {
   if (supports_fs_checkpointing_) {
     GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
   }
@@ -1723,7 +1667,7 @@ TEST_F(ApexServiceRevertTest, RevertLastSessionCalledSuccessfulRevert) {
 
   PrepareBackup({GetTestFile("apex.apexd_test.apex")});
 
-  ASSERT_TRUE(IsOk(service_->revertActiveSession()));
+  ASSERT_TRUE(IsOk(service_->revertActiveSessions()));
 
   auto pkg = StringPrintf("%s/com.android.apex.test_package@1.apex",
                           kActiveApexPackagesDataDir);
@@ -1731,9 +1675,10 @@ TEST_F(ApexServiceRevertTest, RevertLastSessionCalledSuccessfulRevert) {
   CheckRevertWasPerformed({pkg});
 }
 
-TEST_F(ApexServiceRevertTest, RevertLastSessionCalledNoActiveSession) {
+// Should fail to revert active sessions when there are none
+TEST_F(ApexServiceRevertTest, RevertActiveSessionsWithoutActiveSessions) {
   // This test simulates a situation that should never happen on user builds:
-  // abortLastSession was called, but there are no active sessions.
+  // revertActiveSessions was called, but there were no active sessions.
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer.Prepare()) {
     return;
@@ -1746,16 +1691,16 @@ TEST_F(ApexServiceRevertTest, RevertLastSessionCalledNoActiveSession) {
 
   // Even though backup is there, no sessions are active, hence revert request
   // should fail.
-  ASSERT_FALSE(IsOk(service_->revertActiveSession()));
+  ASSERT_FALSE(IsOk(service_->revertActiveSessions()));
 }
 
 TEST_F(ApexServiceRevertTest, RevertFailsNoBackupFolder) {
-  ASSERT_FALSE(IsOk(service_->revertActiveSession()));
+  ASSERT_FALSE(IsOk(service_->revertActiveSessions()));
 }
 
 TEST_F(ApexServiceRevertTest, RevertFailsNoActivePackagesFolder) {
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"));
-  ASSERT_FALSE(IsOk(service_->revertActiveSession()));
+  ASSERT_FALSE(IsOk(service_->revertActiveSessions()));
 }
 
 TEST_F(ApexServiceRevertTest, MarkStagedSessionSuccessfulCleanupBackup) {
@@ -1838,7 +1783,8 @@ TEST_F(ApexServiceRevertTest, DoesNotResumeRevert) {
   ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
 }
 
-TEST_F(ApexServiceRevertTest, FailsRevert) {
+// Should mark sessions as REVERT_FAILED on failed revert
+TEST_F(ApexServiceRevertTest, SessionsMarkedAsRevertFailed) {
   if (supports_fs_checkpointing_) {
     GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
   }
@@ -1847,7 +1793,7 @@ TEST_F(ApexServiceRevertTest, FailsRevert) {
   ASSERT_TRUE(IsOk(session));
   ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::ACTIVATED)));
 
-  ASSERT_FALSE(IsOk(service_->revertActiveSession()));
+  ASSERT_FALSE(IsOk(service_->revertActiveSessions()));
   ApexSessionInfo session_info;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(53, &session_info)));
   ApexSessionInfo expected = CreateSessionInfo(53);
@@ -1864,7 +1810,7 @@ TEST_F(ApexServiceRevertTest, RevertFailedStateRevertAttemptFails) {
   ASSERT_TRUE(IsOk(session));
   ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::REVERT_FAILED)));
 
-  ASSERT_FALSE(IsOk(service_->revertActiveSession()));
+  ASSERT_FALSE(IsOk(service_->revertActiveSessions()));
   ApexSessionInfo session_info;
   ASSERT_TRUE(IsOk(service_->getStagedSessionInfo(17239, &session_info)));
   ApexSessionInfo expected = CreateSessionInfo(17239);
