@@ -68,6 +68,7 @@ android::base::Result<ApexFile> getActivePackage(
 
 std::vector<ApexFile> getFactoryPackages();
 
+android::base::Result<void> abortStagedSession(const int session_id);
 android::base::Result<void> abortActiveSession();
 
 int onBootstrap();

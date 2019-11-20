@@ -1410,6 +1410,49 @@ TEST_F(ApexServiceTest, AbortActiveSession) {
   ASSERT_EQ(0u, sessions.size());
 }
 
+// Should be able to abort individual staged session
+TEST_F(ApexServiceTest, AbortStagedSession) {
+  auto session1 = ApexSession::CreateSession(239);
+  ASSERT_TRUE(IsOk(session1->UpdateStateAndCommit(SessionState::VERIFIED)));
+  auto session2 = ApexSession::CreateSession(240);
+  ASSERT_TRUE(IsOk(session2->UpdateStateAndCommit(SessionState::STAGED)));
+
+  std::vector<ApexSessionInfo> sessions;
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ASSERT_EQ(2u, sessions.size());
+
+  ASSERT_TRUE(IsOk(service_->abortStagedSession(239)));
+
+  sessions.clear();
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ApexSessionInfo expected = CreateSessionInfo(240);
+  expected.isStaged = true;
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected)));
+}
+
+// abortStagedSession should not abort activated session
+TEST_F(ApexServiceTest, AbortStagedSessionActivatedFail) {
+  auto session1 = ApexSession::CreateSession(239);
+  ASSERT_TRUE(IsOk(session1->UpdateStateAndCommit(SessionState::ACTIVATED)));
+  auto session2 = ApexSession::CreateSession(240);
+  ASSERT_TRUE(IsOk(session2->UpdateStateAndCommit(SessionState::STAGED)));
+
+  std::vector<ApexSessionInfo> sessions;
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ASSERT_EQ(2u, sessions.size());
+
+  ASSERT_FALSE(IsOk(service_->abortStagedSession(239)));
+
+  sessions.clear();
+  ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
+  ApexSessionInfo expected1 = CreateSessionInfo(239);
+  expected1.isActivated = true;
+  ApexSessionInfo expected2 = CreateSessionInfo(240);
+  expected2.isStaged = true;
+  ASSERT_THAT(sessions, UnorderedElementsAre(SessionInfoEq(expected1),
+                                             SessionInfoEq(expected2)));
+}
+
 TEST_F(ApexServiceTest, BackupActivePackages) {
   if (supports_fs_checkpointing_) {
     GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";

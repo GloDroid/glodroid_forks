@@ -31,6 +31,7 @@ interface IApexService {
    ApexInfo[] getAllPackages();
 
    void abortActiveSession();
+   void abortStagedSession(int session_id);
 
    void unstagePackages(in @utf8InCpp List<String> active_package_paths);
 
