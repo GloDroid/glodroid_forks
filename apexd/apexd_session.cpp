@@ -150,20 +150,6 @@ std::vector<ApexSession> ApexSession::GetSessionsInState(
   return sessions;
 }
 
-Result<std::optional<ApexSession>> ApexSession::GetActiveSession() {
-  auto sessions = GetSessions();
-  std::optional<ApexSession> ret = std::nullopt;
-  for (const ApexSession& session : sessions) {
-    if (!session.IsFinalized()) {
-      if (ret) {
-        return Error() << "More than one active session";
-      }
-      ret.emplace(session);
-    }
-  }
-  return ret;
-}
-
 std::vector<ApexSession> ApexSession::GetActiveSessions() {
   auto sessions = GetSessions();
   std::vector<ApexSession> activeSessions;

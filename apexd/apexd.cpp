@@ -1439,21 +1439,21 @@ Result<void> unstagePackages(const std::vector<std::string>& paths) {
   return {};
 }
 
-Result<void> revertStagedSessionIfAny() {
-  auto session = ApexSession::GetActiveSession();
-  if (!session) {
-    return session.error();
-  }
-  if (!session->has_value()) {
+void revertAllStagedSessions() {
+  auto sessions = ApexSession::GetSessionsInState(SessionState::STAGED);
+  if (sessions.empty()) {
     LOG(WARNING) << "No session to revert";
-    return {};
+    return;
   }
-  if ((*session)->GetState() == SessionState::STAGED) {
-    LOG(INFO) << "Reverting back session " << **session;
-    return RevertStagedSession(**session);
+
+  for (auto& session : sessions) {
+    LOG(INFO) << "Reverting back session " << session;
+    auto st = RevertStagedSession(session);
+    if (!st) {
+      LOG(ERROR) << "Failed to revert staged session " << session << ": "
+                 << st.error();
+    }
   }
-  return Error() << "Can't revert " << **session
-                 << " because it is not in STAGED state";
 }
 
 /**
@@ -1655,11 +1655,7 @@ void onStart(CheckpointInterface* checkpoint_service) {
       LOG(INFO) << "Exceeded number of session retries ("
                 << kNumRetriesWhenCheckpointingEnabled
                 << "). Starting a revert";
-      Result<void> status = revertStagedSessionIfAny();
-      if (!status) {
-        LOG(ERROR) << "Failed to revert (as requested by fs checkpointing) : "
-                   << status.error();
-      }
+      revertAllStagedSessions();
     }
   }
 
