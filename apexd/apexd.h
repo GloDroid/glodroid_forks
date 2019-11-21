@@ -31,7 +31,7 @@ namespace apex {
 
 class CheckpointInterface;
 
-android::base::Result<void> resumeRollbackIfNeeded();
+android::base::Result<void> resumeRevertIfNeeded();
 
 android::base::Result<void> scanPackagesDirAndActivate(
     const char* apex_package_dir);
@@ -54,8 +54,8 @@ android::base::Result<void> markStagedSessionReady(const int session_id)
     WARN_UNUSED;
 android::base::Result<void> markStagedSessionSuccessful(const int session_id)
     WARN_UNUSED;
-android::base::Result<void> rollbackActiveSession();
-android::base::Result<void> rollbackActiveSessionAndReboot();
+android::base::Result<void> revertActiveSession();
+android::base::Result<void> revertActiveSessionAndReboot();
 
 android::base::Result<void> activatePackage(const std::string& full_path)
     WARN_UNUSED;
