@@ -1243,6 +1243,26 @@ Result<ApexFile> getActivePackage(const std::string& packageName) {
   return ErrnoError() << "Cannot find matching package for: " << packageName;
 }
 
+/**
+ * Abort individual staged session.
+ *
+ * Returns without error only if session was successfully aborted.
+ **/
+Result<void> abortStagedSession(int session_id) {
+  auto session = ApexSession::GetSession(session_id);
+  if (!session) {
+    return Error() << "No session found with id " << session_id;
+  }
+  switch (session->GetState()) {
+    case SessionState::VERIFIED:
+      [[clang::fallthrough]];
+    case SessionState::STAGED:
+      return session->DeleteSession();
+    default:
+      return Error() << "Session " << *session << " can't be aborted";
+  }
+}
+
 Result<void> abortActiveSession() {
   auto session_or_none = ApexSession::GetActiveSession();
   if (!session_or_none) {
