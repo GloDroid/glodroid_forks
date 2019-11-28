@@ -55,6 +55,7 @@ apex {
   file_contexts: ":apex.test-file_contexts",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
+  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
   installable: false,
   whitelisted_files: "default_shim_whitelist.txt",
 }
@@ -66,6 +67,7 @@ apex {
   file_contexts: ":apex.test-file_contexts",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
+  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
   installable: false,
   whitelisted_files: "default_shim_whitelist.txt",
 }
@@ -184,6 +186,7 @@ apex {
   file_contexts: ":apex.test-file_contexts",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_v1"],
+  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
   installable: false,
   whitelisted_files: "default_shim_whitelist.txt",
 }
