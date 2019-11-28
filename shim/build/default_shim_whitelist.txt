@@ -1,2 +1,4 @@
 ./apex_manifest.json
+./app/CtsShimPrebuilt/CtsShimPrebuilt.apk
 ./etc/hash.txt
+./priv-app/CtsShimPrivPrebuilt/CtsShimPrivPrebuilt.apk
