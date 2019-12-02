@@ -1678,8 +1678,15 @@ void onAllPackagesReady() {
 }
 
 Result<std::vector<ApexFile>> submitStagedSession(
-    const int session_id, const std::vector<int>& child_session_ids) {
+    const int session_id, const std::vector<int>& child_session_ids,
+    const bool has_rollback_enabled, const bool is_rollback,
+    const int rollback_id) {
   using android::base::GetProperty;
+
+  if (session_id == 0) {
+    return Error() << "Session id was not provided.";
+  }
+
   bool needsBackup = true;
 
   if (gSupportsFsCheckpoints) {
@@ -1725,6 +1732,11 @@ Result<std::vector<ApexFile>> submitStagedSession(
     return preinstall_status.error();
   }
 
+  if (has_rollback_enabled && is_rollback) {
+    return Error() << "Cannot set session " << session_id << " as both a"
+                   << " rollback and enabled for rollback.";
+  }
+
   auto session = ApexSession::CreateSession(session_id);
   if (!session) {
     return session.error();
@@ -1732,6 +1744,9 @@ Result<std::vector<ApexFile>> submitStagedSession(
   (*session).SetChildSessionIds(child_session_ids);
   std::string build_fingerprint = GetProperty(kBuildFingerprintSysprop, "");
   (*session).SetBuildFingerprint(build_fingerprint);
+  session->SetHasRollbackEnabled(has_rollback_enabled);
+  session->SetIsRollback(is_rollback);
+  session->SetRollbackId(rollback_id);
   Result<void> commit_status =
       (*session).UpdateStateAndCommit(SessionState::VERIFIED);
   if (!commit_status) {

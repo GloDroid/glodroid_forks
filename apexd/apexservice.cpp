@@ -59,8 +59,7 @@ class ApexService : public BnApexService {
 
   BinderStatus stagePackages(const std::vector<std::string>& paths) override;
   BinderStatus unstagePackages(const std::vector<std::string>& paths) override;
-  BinderStatus submitStagedSession(int session_id,
-                                   const std::vector<int>& child_session_ids,
+  BinderStatus submitStagedSession(const ApexSessionParams& params,
                                    ApexInfoList* apex_info_list) override;
   BinderStatus markStagedSessionReady(int session_id) override;
   BinderStatus markStagedSessionSuccessful(int session_id) override;
@@ -136,17 +135,17 @@ BinderStatus ApexService::unstagePackages(
       String8(res.error().message().c_str()));
 }
 
-BinderStatus ApexService::submitStagedSession(
-    int session_id, const std::vector<int>& child_session_ids,
-    ApexInfoList* apex_info_list) {
+BinderStatus ApexService::submitStagedSession(const ApexSessionParams& params,
+                                              ApexInfoList* apex_info_list) {
   LOG(DEBUG) << "submitStagedSession() received by ApexService, session id "
-             << session_id << " child sessions: ["
-             << android::base::Join(child_session_ids, ',') << "]";
+             << params.sessionId << " child sessions: ["
+             << android::base::Join(params.childSessionIds, ',') << "]";
 
-  Result<std::vector<ApexFile>> packages =
-      ::android::apex::submitStagedSession(session_id, child_session_ids);
+  Result<std::vector<ApexFile>> packages = ::android::apex::submitStagedSession(
+      params.sessionId, params.childSessionIds, params.hasRollbackEnabled,
+      params.isRollback, params.rollbackId);
   if (!packages) {
-    LOG(ERROR) << "Failed to submit session id " << session_id << ": "
+    LOG(ERROR) << "Failed to submit session id " << params.sessionId << ": "
                << packages.error();
     return BinderStatus::fromExceptionCode(
         BinderStatus::EX_SERVICE_SPECIFIC,
@@ -738,9 +737,10 @@ status_t ApexService::shellCommand(int in, int out, int err,
 
     ApexInfoList list;
     std::vector<int> empty_child_session_ids;
-
-    BinderStatus status =
-        submitStagedSession(session_id, empty_child_session_ids, &list);
+    ApexSessionParams params;
+    params.sessionId = session_id;
+    params.childSessionIds = empty_child_session_ids;
+    BinderStatus status = submitStagedSession(params, &list);
     if (status.isOk()) {
         for (const auto& item : list.apexInfos) {
           std::string msg = toString(item);
