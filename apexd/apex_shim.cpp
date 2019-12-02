@@ -52,6 +52,8 @@ static constexpr const char* kExpectedCtsShimFiles[] = {
     "apex_manifest.json",
     "apex_manifest.pb",
     "etc/hash.txt",
+    "app/CtsShimPrebuilt/CtsShimPrebuilt.apk",
+    "priv-app/CtsShimPrivPrebuilt/CtsShimPrivPrebuilt.apk",
 };
 
 Result<std::string> CalculateSha512(const std::string& path) {
@@ -156,11 +158,6 @@ Result<void> ValidateShimApex(const std::string& mount_point,
       return Error() << "Failed to scan " << mount_point << " : "
                      << ec.message();
     }
-  }
-
-  if (!expected_files.empty()) {
-    return Error() << "Some expected files inside the shim apex are missing: "
-                   << android::base::Join(expected_files, ",");
   }
 
   return {};
