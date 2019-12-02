@@ -46,9 +46,16 @@ class ApexSession {
   int GetId() const;
   std::string GetBuildFingerprint() const;
   bool IsFinalized() const;
+  bool HasRollbackEnabled() const;
+  bool IsRollback() const;
+  int GetRollbackId() const;
 
   void SetChildSessionIds(const std::vector<int>& child_session_ids);
   void SetBuildFingerprint(const std::string& fingerprint);
+  void SetHasRollbackEnabled(const bool enabled);
+  void SetIsRollback(const bool is_rollback);
+  void SetRollbackId(const int rollback_id);
+
   android::base::Result<void> UpdateStateAndCommit(
       const ::apex::proto::SessionState::State& state);
 
