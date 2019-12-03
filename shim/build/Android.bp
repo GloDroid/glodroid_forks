@@ -187,7 +187,6 @@ apex {
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_v1"],
   apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
-  installable: false,
   whitelisted_files: "default_shim_whitelist.txt",
 }
 
