@@ -157,7 +157,10 @@ def GetDirSize(dir_name):
   for dirpath, _, filenames in os.walk(dir_name):
     size += RoundUp(os.path.getsize(dirpath), BLOCK_SIZE)
     for f in filenames:
-      size += RoundUp(os.path.getsize(os.path.join(dirpath, f)), BLOCK_SIZE)
+      path = os.path.join(dirpath, f)
+      if not os.path.isfile(path):
+        continue
+      size += RoundUp(os.path.getsize(path), BLOCK_SIZE)
   return size
 
 
