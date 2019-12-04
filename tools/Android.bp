@@ -25,6 +25,9 @@ python_binary_host {
             enabled: true,
         },
     },
+    libs: [
+        "apex_manifest",
+    ],
     required: [
         "debugfs",
     ],

@@ -16,6 +16,8 @@
 
 import apex_manifest_pb2
 from google.protobuf import message
+from google.protobuf.json_format import MessageToJson
+import zipfile
 
 class ApexManifestError(Exception):
 
@@ -42,3 +44,13 @@ def ValidateApexManifest(file):
         "'noCode' can't be true when either preInstallHook or postInstallHook is set"
     )
   return manifest_pb
+
+def fromApex(apexFilePath):
+  with zipfile.ZipFile(apexFilePath, 'r') as apexFile:
+    with apexFile.open('apex_manifest.pb') as manifestFile:
+      manifest = apex_manifest_pb2.ApexManifest()
+      manifest.ParseFromString(manifestFile.read())
+      return manifest
+
+def toJsonString(manifest):
+  return MessageToJson(manifest, indent=2)
