@@ -11,6 +11,9 @@
     },
     {
       "name": "timezone_data_e2e_tests"
+    },
+    {
+      "name": "ipsec_e2e_tests"
     }
   ],
   "imports": [
