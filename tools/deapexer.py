@@ -29,7 +29,7 @@ import sys
 import subprocess
 import tempfile
 import zipfile
-
+import apex_manifest
 
 class ApexImageEntry(object):
 
@@ -172,6 +172,11 @@ def RunExtract(args):
      apex.extract(args.dest)
 
 
+def RunInfo(args):
+  manifest = apex_manifest.fromApex(args.apex)
+  print(apex_manifest.toJsonString(manifest))
+
+
 def main(argv):
   parser = argparse.ArgumentParser()
   subparsers = parser.add_subparsers()
@@ -185,6 +190,11 @@ def main(argv):
   parser_extract.add_argument('apex', type=str, help='APEX file')
   parser_extract.add_argument('dest', type=str, help='Directory to extract content of APEX to')
   parser_extract.set_defaults(func=RunExtract)
+
+  parser_info = subparsers.add_parser('info', help='prints APEX manifest')
+  parser_info.add_argument('apex', type=str, help='APEX file')
+  parser_info.set_defaults(func=RunInfo)
+
 
   args = parser.parse_args(argv)
 
