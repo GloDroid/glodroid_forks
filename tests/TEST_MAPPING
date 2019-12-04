@@ -13,6 +13,9 @@
       "name": "neuralnetworks_e2e_tests"
     },
     {
+      "name": "permission_e2e_tests"
+    },
+    {
       "name": "timezone_data_e2e_tests"
     }
   ],
