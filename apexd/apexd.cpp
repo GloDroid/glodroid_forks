@@ -60,6 +60,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -199,62 +200,14 @@ std::unique_ptr<DmTable> createVerityTable(const ApexVerityData& verity_data,
   return table;
 }
 
-enum WaitForDeviceMode {
-  kWaitToBeCreated = 0,
-  kWaitToBeDeleted,
-};
-
-Result<void> waitForDevice(const std::string& device,
-                           const WaitForDeviceMode& mode) {
-  // TODO(b/122059364): Make this more efficient
-  // TODO: use std::chrono?
-
-  // Deleting a device might take more time, so wait a little bit longer.
-  size_t num_tries = mode == kWaitToBeCreated ? 10u : 15u;
-
-  LOG(DEBUG) << "Waiting for " << device << " to be "
-             << (mode == kWaitToBeCreated ? "created" : " deleted");
-  for (size_t i = 0; i < num_tries; ++i) {
-    Result<bool> status = PathExists(device);
-    if (status) {
-      if (mode == kWaitToBeCreated && *status) {
-        return {};
-      }
-      if (mode == kWaitToBeDeleted && !*status) {
-        return {};
-      }
-    }
-    if (i + 1 < num_tries) {
-      usleep(50000);
-    }
-  }
-
-  return Error() << "Failed to wait for device " << device << " to be "
-                 << (mode == kWaitToBeCreated ? " created" : " deleted");
-}
-
-// Deletes a dm-verity device with a given name and path.
+// Deletes a dm-verity device with a given name and path
 // Synchronizes on the device actually being deleted from userspace.
-Result<void> DeleteVerityDevice(const std::string& name,
-                                const std::string& path) {
-  DeviceMapper& dm = DeviceMapper::Instance();
-  if (!dm.DeleteDevice(name)) {
-    return Error() << "Failed to delete device " << name << " with path "
-                   << path;
-  }
-  // Block until device is deleted from userspace.
-  return waitForDevice(path, kWaitToBeDeleted);
-}
-
-// Deletes dm-verity device with a given name.
-// See function above.
 Result<void> DeleteVerityDevice(const std::string& name) {
   DeviceMapper& dm = DeviceMapper::Instance();
-  std::string path;
-  if (!dm.GetDmDevicePathByName(name, &path)) {
-    return Error() << "Unable to get path for dm-verity device " << name;
+  if (!dm.DeleteDevice(name, 750ms)) {
+    return Error() << "Failed to delete dm-device " << name;
   }
-  return DeleteVerityDevice(name, path);
+  return {};
 }
 
 class DmVerityDevice {
@@ -284,7 +237,7 @@ class DmVerityDevice {
 
   ~DmVerityDevice() {
     if (!cleared_) {
-      Result<void> ret = DeleteVerityDevice(name_, dev_path_);
+      Result<void> ret = DeleteVerityDevice(name_);
       if (!ret) {
         LOG(ERROR) << ret.error();
       }
@@ -293,7 +246,6 @@ class DmVerityDevice {
 
   const std::string& GetName() const { return name_; }
   const std::string& GetDevPath() const { return dev_path_; }
-  void SetDevPath(const std::string& dev_path) { dev_path_ = dev_path; }
 
   void Release() { cleared_ = true; }
 
@@ -318,18 +270,11 @@ Result<DmVerityDevice> createVerityDevice(const std::string& name,
     }
   }
 
-  if (!dm.CreateDevice(name, table)) {
+  std::string dev_path;
+  if (!dm.CreateDevice(name, table, &dev_path, 500ms)) {
     return Errorf("Couldn't create verity device.");
   }
-  DmVerityDevice dev(name);
-
-  std::string dev_path;
-  if (!dm.GetDmDevicePathByName(name, &dev_path)) {
-    return Errorf("Couldn't get verity device path!");
-  }
-  dev.SetDevPath(dev_path);
-
-  return dev;
+  return DmVerityDevice(name, dev_path);
 }
 
 Result<void> RemovePreviouslyActiveApexFiles(
@@ -497,17 +442,6 @@ Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
       return readAheadStatus.error();
     }
   }
-
-  // TODO(b/122059364): Even though the kernel has created the verity
-  // device, we still depend on ueventd to run to actually create the
-  // device node in userspace. To solve this properly we should listen on
-  // the netlink socket for uevents, or use inotify. For now, this will
-  // have to do.
-  Result<void> deviceStatus = waitForDevice(blockDevice, kWaitToBeCreated);
-  if (!deviceStatus) {
-    return deviceStatus.error();
-  }
-
   // TODO: consider moving this inside RunVerifyFnInsideTempMount.
   if (mountOnVerity && verifyImage) {
     Result<void> verityStatus =
