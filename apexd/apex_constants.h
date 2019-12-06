@@ -26,9 +26,10 @@ static constexpr const char* kApexDataDir = "/data/apex";
 static constexpr const char* kActiveApexPackagesDataDir = "/data/apex/active";
 static constexpr const char* kApexBackupDir = "/data/apex/backup";
 static constexpr const char* kApexPackageSystemDir = "/system/apex";
+static constexpr const char* kApexPackageSystemExtDir = "/system_ext/apex";
 static const std::vector<std::string> kApexPackageBuiltinDirs = {
     kApexPackageSystemDir,
-    "/system_ext/apex",
+    kApexPackageSystemExtDir,
     "/product/apex",
     "/vendor/apex",
 };

@@ -590,7 +590,6 @@ Result<void> Unmount(const MountedApexData& data) {
   return {};
 }
 
-
 template <typename VerifyFn>
 Result<void> RunVerifyFnInsideTempMount(const ApexFile& apex,
                                         const VerifyFn& verify_fn) {
@@ -1522,18 +1521,22 @@ int onBootstrap() {
                << preAllocate.error();
   }
 
-  Result<void> status = collectPreinstalledData({kApexPackageSystemDir});
+  std::vector<std::string> bootstrap_apex_dirs{kApexPackageSystemDir,
+                                               kApexPackageSystemExtDir};
+  Result<void> status = collectPreinstalledData(bootstrap_apex_dirs);
   if (!status) {
     LOG(ERROR) << "Failed to collect APEX keys : " << status.error();
     return 1;
   }
 
   // Activate built-in APEXes for processes launched before /data is mounted.
-  status = scanPackagesDirAndActivate(kApexPackageSystemDir);
-  if (!status) {
-    LOG(ERROR) << "Failed to activate APEX files in " << kApexPackageSystemDir
-               << " : " << status.error();
-    return 1;
+  for (auto const& dir : bootstrap_apex_dirs) {
+    status = scanPackagesDirAndActivate(dir.c_str());
+    if (!status) {
+      LOG(ERROR) << "Failed to activate APEX files in " << dir << " : "
+                 << status.error();
+      return 1;
+    }
   }
   LOG(INFO) << "Bootstrapping done";
   return 0;
