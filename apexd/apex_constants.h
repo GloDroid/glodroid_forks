@@ -37,6 +37,11 @@ static const std::vector<std::string> kApexPackageBuiltinDirs = {
 static constexpr const char* kApexRoot = "/apex";
 static constexpr const char* kStagedSessionsDir = "/data/app-staging";
 
+static constexpr const char* kApexDataSubDir = "apexdata";
+static constexpr const char* kApexSnapshotSubDir = "apexrollback";
+
+static constexpr const char* kDeSysDataDir = "/data/misc";
+
 static constexpr const char* kApexPackageSuffix = ".apex";
 
 static constexpr const char* kManifestFilenameJson = "apex_manifest.json";
