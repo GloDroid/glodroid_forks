@@ -16,6 +16,9 @@
       "name": "permission_e2e_tests"
     },
     {
+      "name": "statsd_e2e_tests"
+    },
+    {
       "name": "timezone_data_e2e_tests"
     },
     {

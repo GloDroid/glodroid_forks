@@ -34,6 +34,24 @@ java_test_host {
 }
 
 java_test_host {
+    name: "statsd_e2e_tests",
+
+    srcs:  ["src/**/StatsdHostTest.java"],
+
+    libs: ["tradefed"],
+
+    static_libs: ["apex_e2e_base_test"],
+
+    data: [
+        ":test_com.android.os.statsd",
+    ],
+
+    test_config: "statsd-e2e-tests.xml",
+
+    test_suites: ["general-tests"],
+}
+
+java_test_host {
     name: "media_e2e_tests",
 
     srcs:  ["src/**/MediaHostTest.java"],
