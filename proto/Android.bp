@@ -24,6 +24,16 @@ cc_library_static {
     srcs: ["apex_manifest.proto"],
 }
 
+cc_library_static {
+    name: "lib_apex_manifest_proto_lite",
+    host_supported: true,
+    proto: {
+        export_proto_headers: true,
+        type: "lite",
+    },
+    srcs: ["apex_manifest.proto"],
+}
+
 python_library_host {
     name: "apex_manifest_proto",
     version: {
