@@ -116,10 +116,6 @@ cc_library_shared {
     stl: "none",
 
     target: {
-        android_arm: {
-            static_libs: ["libunwind_llvm"],
-            ldflags: ["-Wl,--exclude-libs,libunwind_llvm.a"],
-        },
         darwin: {
             unexported_symbols_list: "lib/libc++unexp.exp",
             force_symbols_not_weak_list: "lib/notweak.exp",
