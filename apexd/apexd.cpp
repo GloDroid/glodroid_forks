@@ -19,6 +19,7 @@
 #include "apexd.h"
 #include "apexd_private.h"
 
+#include "apex_constants.h"
 #include "apex_database.h"
 #include "apex_file.h"
 #include "apex_manifest.h"
@@ -352,6 +353,7 @@ Result<void> VerifyMountedImage(const ApexFile& apex,
 Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
                                          const std::string& mountPoint,
                                          const std::string& device_name,
+                                         const std::string& hashtree_file,
                                          bool verifyImage) {
   LOG(VERBOSE) << "Creating mount point: " << mountPoint;
   // Note: the mount point could exist in case when the APEX was activated
@@ -416,7 +418,7 @@ Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
   if (mountOnVerity) {
     std::string hash_device = loopbackDevice.name;
     if (verityData->desc->tree_size == 0) {
-      auto hash_tree = GetHashTree(apex, *verityData);
+      auto hash_tree = GetHashTree(apex, *verityData, hashtree_file);
       if (!hash_tree) {
         return hash_tree.error();
       }
@@ -481,12 +483,26 @@ Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
   }
 }
 
+std::string GetHashTreeFileName(const ApexFile& apex, bool is_new) {
+  std::string ret =
+      std::string(kApexHashTreeDir) + "/" + GetPackageId(apex.GetManifest());
+  return is_new ? ret + ".new" : ret;
+}
+
 Result<MountedApexData> VerifyAndTempMountPackage(
     const ApexFile& apex, const std::string& mount_point) {
   const std::string& package_id = GetPackageId(apex.GetManifest());
   LOG(DEBUG) << "Temp mounting " << package_id << " to " << mount_point;
   const std::string& temp_device_name = package_id + ".tmp";
+  std::string hashtree_file = GetHashTreeFileName(apex, /* is_new = */ true);
+  if (access(hashtree_file.c_str(), F_OK) == 0) {
+    LOG(DEBUG) << hashtree_file << " already exists. Deleting it";
+    if (TEMP_FAILURE_RETRY(unlink(hashtree_file.c_str())) != 0) {
+      return ErrnoError() << "Failed to unlink " << hashtree_file;
+    }
+  }
   return MountPackageImpl(apex, mount_point, temp_device_name,
+                          GetHashTreeFileName(apex, /* is_new = */ true),
                           /* verifyImage = */ true);
 }
 
@@ -863,6 +879,7 @@ Result<void> UnmountPackage(const ApexFile& apex, bool allow_latest) {
 Result<void> MountPackage(const ApexFile& apex, const std::string& mountPoint) {
   auto ret =
       MountPackageImpl(apex, mountPoint, GetPackageId(apex.GetManifest()),
+                       GetHashTreeFileName(apex, /* is_new = */ false),
                        /* verifyImage = */ false);
   if (!ret) {
     return ret.error();
@@ -1292,10 +1309,16 @@ Result<void> stagePackages(const std::vector<std::string>& tmpPaths) {
 
   // Ensure the APEX gets removed on failure.
   std::unordered_set<std::string> staged_files;
-  auto deleter = [&staged_files]() {
+  std::vector<std::string> changed_hashtree_files;
+  auto deleter = [&staged_files, &changed_hashtree_files]() {
     for (const std::string& staged_path : staged_files) {
       if (TEMP_FAILURE_RETRY(unlink(staged_path.c_str())) != 0) {
         PLOG(ERROR) << "Unable to unlink " << staged_path;
+      }
+    }
+    for (const std::string& hashtree_file : changed_hashtree_files) {
+      if (TEMP_FAILURE_RETRY(unlink(hashtree_file.c_str())) != 0) {
+        PLOG(ERROR) << "Unable to unlink " << hashtree_file;
       }
     }
   };
@@ -1307,6 +1330,21 @@ Result<void> stagePackages(const std::vector<std::string>& tmpPaths) {
     if (!apex_file) {
       return apex_file.error();
     }
+    // First promote new hashtree file to the one that will be used when
+    // mounting apex.
+    std::string new_hashtree_file = GetHashTreeFileName(*apex_file,
+                                                        /* is_new = */ true);
+    std::string old_hashtree_file = GetHashTreeFileName(*apex_file,
+                                                        /* is_new = */ false);
+    if (access(new_hashtree_file.c_str(), F_OK) == 0) {
+      if (TEMP_FAILURE_RETRY(rename(new_hashtree_file.c_str(),
+                                    old_hashtree_file.c_str())) != 0) {
+        return ErrnoError() << "Failed to move " << new_hashtree_file << " to "
+                            << old_hashtree_file;
+      }
+      changed_hashtree_files.emplace_back(std::move(old_hashtree_file));
+    }
+    // And only then move apex to /data/apex/active.
     std::string dest_path = StageDestPath(*apex_file);
     if (access(dest_path.c_str(), F_OK) == 0) {
       LOG(DEBUG) << dest_path << " already exists. Deleting";

@@ -37,6 +37,7 @@
 #include <android-base/strings.h>
 #include <android/os/IVold.h>
 #include <binder/IServiceManager.h>
+#include <fstab/fstab.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libdm/dm.h>
@@ -68,7 +69,12 @@ using android::apex::testing::IsOk;
 using android::apex::testing::SessionInfoEq;
 using android::base::Errorf;
 using android::base::Join;
+using android::base::ReadFully;
 using android::base::StringPrintf;
+using android::base::unique_fd;
+using android::fs_mgr::Fstab;
+using android::fs_mgr::GetEntryForMountPoint;
+using android::fs_mgr::ReadFstabFromFile;
 using ::testing::Contains;
 using ::testing::EndsWith;
 using ::testing::HasSubstr;
@@ -441,6 +447,41 @@ bool RegularFileExists(const std::string& path) {
 Result<std::vector<std::string>> ReadEntireDir(const std::string& path) {
   static const auto kAcceptAll = [](auto /*entry*/) { return true; };
   return ReadDir(path, kAcceptAll);
+}
+
+Result<std::string> GetBlockDeviceForApex(const std::string& package_id) {
+  std::string mount_point = std::string(kApexRoot) + "/" + package_id;
+  Fstab fstab;
+  if (!ReadFstabFromFile("/proc/mounts", &fstab)) {
+    return Error() << "Failed to read /proc/mounts";
+  }
+  auto entry = GetEntryForMountPoint(&fstab, mount_point);
+  if (entry == nullptr) {
+    return Error() << "Can't find " << mount_point << " in /proc/mounts";
+  }
+  return entry->blk_device;
+}
+
+Result<void> ReadDevice(const std::string& block_device) {
+  static constexpr int kBlockSize = 4096;
+  static constexpr size_t kBufSize = 1024 * kBlockSize;
+  std::vector<uint8_t> buffer(kBufSize);
+
+  unique_fd fd(TEMP_FAILURE_RETRY(open(block_device.c_str(), O_RDONLY)));
+  if (fd.get() == -1) {
+    return ErrnoError() << "Can't open " << block_device;
+  }
+
+  while (true) {
+    int n = read(fd.get(), buffer.data(), kBufSize);
+    if (n < 0) {
+      return ErrnoError() << "Failed to read " << block_device;
+    }
+    if (n == 0) {
+      break;
+    }
+  }
+  return {};
 }
 
 }  // namespace
@@ -854,6 +895,146 @@ TEST_F(ApexServiceActivationSuccessTest, GetActivePackage) {
   ASSERT_EQ(installer_->package, active->moduleName);
   ASSERT_EQ(installer_->version, static_cast<uint64_t>(active->versionCode));
   ASSERT_EQ(installer_->test_installed_file, active->modulePath);
+}
+
+struct NoHashtreeApexNameProvider {
+  static std::string GetTestName() {
+    return "apex.apexd_test_no_hashtree.apex";
+  }
+  static std::string GetPackageName() {
+    return "com.android.apex.test_package";
+  }
+};
+
+class ApexServiceNoHashtreeApexActivationTest
+    : public ApexServiceActivationTest<NoHashtreeApexNameProvider> {};
+
+TEST_F(ApexServiceNoHashtreeApexActivationTest, Activate) {
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+  {
+    // Check package is active.
+    Result<bool> active = IsActive(installer_->package, installer_->version);
+    ASSERT_TRUE(IsOk(active));
+    ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
+  }
+
+  std::string package_id =
+      installer_->package + "@" + std::to_string(installer_->version);
+  // Check that hashtree file was created.
+  {
+    std::string hashtree_path =
+        std::string(kApexHashTreeDir) + "/" + package_id;
+    auto exists = PathExists(hashtree_path);
+    ASSERT_TRUE(IsOk(exists));
+    ASSERT_TRUE(*exists);
+  }
+
+  // Check that block device can be read.
+  auto block_device = GetBlockDeviceForApex(package_id);
+  ASSERT_TRUE(IsOk(block_device));
+  ASSERT_TRUE(IsOk(ReadDevice(*block_device)));
+}
+
+TEST_F(ApexServiceNoHashtreeApexActivationTest,
+       NewSessionDoesNotImpactActivePackage) {
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+  {
+    // Check package is active.
+    Result<bool> active = IsActive(installer_->package, installer_->version);
+    ASSERT_TRUE(IsOk(active));
+    ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
+  }
+
+  PrepareTestApexForInstall installer2(
+      GetTestFile("apex.apexd_test_no_hashtree_2.apex"),
+      "/data/app-staging/session_123", "staging_data_file");
+  if (!installer2.Prepare()) {
+    FAIL();
+  }
+
+  ApexInfoList list;
+  std::vector<int> empty_child_session_ids;
+  ASSERT_TRUE(
+      IsOk(service_->submitStagedSession(123, empty_child_session_ids, &list)));
+
+  std::string package_id =
+      installer_->package + "@" + std::to_string(installer_->version);
+  // Check that new hashtree file was created.
+  {
+    std::string hashtree_path =
+        std::string(kApexHashTreeDir) + "/" + package_id + ".new";
+    auto exists = PathExists(hashtree_path);
+    ASSERT_TRUE(IsOk(exists));
+    ASSERT_TRUE(*exists);
+  }
+
+  // Check that block device of active APEX can still be read.
+  auto block_device = GetBlockDeviceForApex(package_id);
+  ASSERT_TRUE(IsOk(block_device));
+}
+
+TEST_F(ApexServiceTest, NoHashtreeApexStagePackagesMovesHashtree) {
+  PrepareTestApexForInstall installer(
+      GetTestFile("apex.apexd_test_no_hashtree.apex"),
+      "/data/app-staging/session_239", "staging_data_file");
+  if (!installer.Prepare()) {
+    FAIL();
+  }
+
+  auto read_fn = [](const std::string& path) -> std::vector<uint8_t> {
+    static constexpr size_t kBufSize = 4096;
+    std::vector<uint8_t> buffer(kBufSize);
+    unique_fd fd(TEMP_FAILURE_RETRY(open(path.c_str(), O_RDONLY)));
+    if (fd.get() == -1) {
+      PLOG(ERROR) << "Failed to open " << path;
+      ADD_FAILURE();
+      return buffer;
+    }
+    if (!ReadFully(fd.get(), buffer.data(), kBufSize)) {
+      PLOG(ERROR) << "Failed to read " << path;
+      ADD_FAILURE();
+    }
+    return buffer;
+  };
+
+  ApexInfoList list;
+  std::vector<int> empty_child_session_ids;
+  ASSERT_TRUE(
+      IsOk(service_->submitStagedSession(239, empty_child_session_ids, &list)));
+
+  std::string package_id =
+      installer.package + "@" + std::to_string(installer.version);
+  // Check that new hashtree file was created.
+  std::vector<uint8_t> original_hashtree_data;
+  {
+    std::string hashtree_path =
+        std::string(kApexHashTreeDir) + "/" + package_id + ".new";
+    auto exists = PathExists(hashtree_path);
+    ASSERT_TRUE(IsOk(exists));
+    ASSERT_TRUE(*exists);
+    original_hashtree_data = read_fn(hashtree_path);
+  }
+
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
+  // Check that hashtree file was moved.
+  {
+    std::string hashtree_path =
+        std::string(kApexHashTreeDir) + "/" + package_id + ".new";
+    auto exists = PathExists(hashtree_path);
+    ASSERT_TRUE(IsOk(exists));
+    ASSERT_FALSE(*exists);
+  }
+  {
+    std::string hashtree_path =
+        std::string(kApexHashTreeDir) + "/" + package_id;
+    auto exists = PathExists(hashtree_path);
+    ASSERT_TRUE(IsOk(exists));
+    ASSERT_TRUE(*exists);
+    std::vector<uint8_t> moved_hashtree_data = read_fn(hashtree_path);
+    ASSERT_EQ(moved_hashtree_data, original_hashtree_data);
+  }
 }
 
 TEST_F(ApexServiceTest, GetFactoryPackages) {
