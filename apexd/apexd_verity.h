@@ -25,7 +25,8 @@ namespace android {
 namespace apex {
 
 android::base::Result<loop::LoopbackDeviceUniqueFd> GetHashTree(
-    const ApexFile& apex, const ApexVerityData& verity_data);
+    const ApexFile& apex, const ApexVerityData& verity_data,
+    const std::string& hashtree_file);
 
 void RemoveObsoleteHashTrees();
 

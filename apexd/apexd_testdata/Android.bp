@@ -32,6 +32,32 @@ apex {
 }
 
 apex {
+    name: "apex.apexd_test_no_hashtree",
+    manifest: "manifest.json",
+    file_contexts: ":apex.test-file_contexts",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.key",
+    installable: false,
+    test_only_no_hashtree: true,
+}
+
+// This APEX has same name and version as apex.apexd_test_no_hashtree, but has
+// different content. It's used to test that staging a same version of already
+// active APEX without hashtree doesn't impact already active one.
+apex {
+    name: "apex.apexd_test_no_hashtree_2",
+    manifest: "manifest.json",
+    file_contexts: ":apex.test-file_contexts",
+    prebuilts: [
+      "another_prebuilt_file",
+      "sample_prebuilt_file",
+    ],
+    key: "com.android.apex.test_package.key",
+    installable: false,
+    test_only_no_hashtree: true,
+}
+
+apex {
     name: "apex.apexd_test_v2",
     manifest: "manifest_v2.json",
     file_contexts: ":apex.test-file_contexts",
@@ -145,4 +171,9 @@ apex {
     prebuilts: ["sample_prebuilt_file"],
     key: "com.android.apex.test_package.key",
     installable: false,
+}
+
+prebuilt_etc {
+  name: "another_prebuilt_file",
+  src: "another_prebuilt_file",
 }
