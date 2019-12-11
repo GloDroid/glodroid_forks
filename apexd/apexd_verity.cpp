@@ -25,6 +25,7 @@
 #include <android-base/unique_fd.h>
 #include <verity/hash_tree_builder.h>
 
+#include "apex_constants.h"
 #include "apex_file.h"
 #include "apexd_loop.h"
 #include "apexd_utils.h"
@@ -41,8 +42,6 @@ namespace android {
 namespace apex {
 
 namespace {
-
-const fs::path kHashTreeDir{"/data/apex/hashtree"};
 
 uint8_t HexToBin(char h) {
   if (h >= 'A' && h <= 'H') return h - 'A' + 10;
@@ -122,8 +121,9 @@ Result<void> GenerateHashTree(const ApexFile& apex,
 // Returns loop device of hashtree.
 // If image payload has an embedded hash tree, then returns <empty> loop device
 Result<loop::LoopbackDeviceUniqueFd> GetHashTree(
-    const ApexFile& apex, const ApexVerityData& verity_data) {
-  if (auto st = createDirIfNeeded(kHashTreeDir, 0700); !st) {
+    const ApexFile& apex, const ApexVerityData& verity_data,
+    const std::string& hashtree_file) {
+  if (auto st = createDirIfNeeded(kApexHashTreeDir, 0700); !st) {
     return st.error();
   }
 
@@ -131,13 +131,12 @@ Result<loop::LoopbackDeviceUniqueFd> GetHashTree(
   // what if different apex files have same packageId(name@ver)
   // TODO(b/120058143): check if existing hastree is tampered by comparing
   // root digests. If they don't match, need to regenerate.
-  auto hash_path = kHashTreeDir / GetPackageId(apex.GetManifest());
+  auto hash_path = fs::path(hashtree_file);
   auto exists = PathExists(hash_path);
   if (!exists) {
     return exists.error();
   }
-  if (!*exists ||
-      fs::last_write_time(apex.GetPath()) > fs::last_write_time(hash_path)) {
+  if (!*exists) {
     if (auto st = GenerateHashTree(apex, verity_data, hash_path); !st) {
       return st.error();
     }
