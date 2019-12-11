@@ -329,6 +329,8 @@ cc_test {
   data: [
     ":apex.apexd_test",
     ":apex.apexd_test_different_app",
+    ":apex.apexd_test_no_hashtree",
+    ":apex.apexd_test_no_hashtree_2",
     ":apex.apexd_test_no_inst_key",
     ":apex.apexd_test_nocode",
     ":apex.apexd_test_postinstall",
@@ -352,6 +354,7 @@ cc_test {
     "apex_aidl_interface-cpp",
     "libapex",
     "libapexd",
+    "libfstab",
     "libgmock",
   ],
   shared_libs: [
