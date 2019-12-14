@@ -20,6 +20,9 @@ To remove keys which are unknown to Q
 
 To convert into .pb
   conv_apex_manifest proto apex_manifest.json -o apex_manifest.pb
+
+To change property value
+  conv_apex_manifest setprop version 137 apex_manifest.pb
 """
 
 import argparse
@@ -27,8 +30,10 @@ import collections
 import json
 
 import apex_manifest_pb2
+from google.protobuf.descriptor import FieldDescriptor
 from google.protobuf.json_format import ParseDict
 from google.protobuf.json_format import ParseError
+from google.protobuf.text_format import MessageToString
 
 Q_compat_keys = ["name", "version", "preInstallHook", "postInstallHook", "versionName"]
 
@@ -54,6 +59,24 @@ def Proto(args):
   with open(args.out, "wb") as f:
     f.write(pb.SerializeToString())
 
+def SetProp(args):
+  with open(args.input, "rb") as f:
+    pb = apex_manifest_pb2.ApexManifest()
+    pb.ParseFromString(f.read())
+
+  if getattr(type(pb), args.property).DESCRIPTOR.label == FieldDescriptor.LABEL_REPEATED:
+    getattr(pb, args.property)[:] = args.value.split(",")
+  else:
+    setattr(pb, args.property, type(getattr(pb, args.property))(args.value))
+  with open(args.input, "wb") as f:
+    f.write(pb.SerializeToString())
+
+def Print(args):
+  with open(args.input, "rb") as f:
+    pb = apex_manifest_pb2.ApexManifest()
+    pb.ParseFromString(f.read())
+  print(MessageToString(pb))
+
 def main():
   parser = argparse.ArgumentParser()
   subparsers = parser.add_subparsers()
@@ -67,6 +90,16 @@ def main():
   parser_proto.add_argument('input', type=str, help='APEX manifest file (JSON)')
   parser_proto.add_argument('-o', '--out', required=True, type=str, help='Directory to extract content of APEX to')
   parser_proto.set_defaults(func=Proto)
+
+  parser_proto = subparsers.add_parser('setprop', help='change proprety value')
+  parser_proto.add_argument('property', type=str, help='name of property')
+  parser_proto.add_argument('value', type=str, help='new value of property')
+  parser_proto.add_argument('input', type=str, help='APEX manifest file (PB)')
+  parser_proto.set_defaults(func=SetProp)
+
+  parser_proto = subparsers.add_parser('print', help='print APEX manifest')
+  parser_proto.add_argument('input', type=str, help='APEX manifest file (PB)')
+  parser_proto.set_defaults(func=Print)
 
   args = parser.parse_args()
   args.func(args)
