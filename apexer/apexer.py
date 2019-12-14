@@ -48,10 +48,8 @@ def ParseArgs(argv):
       help='path to the APEX manifest file (.pb)')
   parser.add_argument(
       '--manifest_json',
+      required=False,
       help='path to the APEX manifest file (Q compatible .json)')
-  parser.add_argument(
-      '--manifest_json_full',
-      help='path to the APEX manifest file (.json)')
   parser.add_argument(
       '--android_manifest',
       help='path to the AndroidManifest file. If omitted, a default one is created and used'
@@ -195,7 +193,7 @@ def ValidateAndroidManifest(package, android_manifest):
   if package_in_xml != package:
     raise Exception("Package name '" + package_in_xml + "' in '" +
                     android_manifest + " differ from package name '" + package +
-                    "' in the apex_manifest.json")
+                    "' in the apex_manifest.pb")
 
 
 def ValidateArgs(args):
@@ -411,10 +409,6 @@ def CreateApex(args, work_dir):
   copyfile(args.manifest, os.path.join(content_dir, 'apex_manifest.pb'))
   if args.manifest_json:
     copyfile(args.manifest_json, os.path.join(content_dir, 'apex_manifest.json'))
-    if args.manifest_json_full:
-      copyfile(args.manifest_json_full, os.path.join(content_dir, 'apex_manifest_full.json'))
-  elif args.manifest_json_full:
-    copyfile(args.manifest_json_full, os.path.join(content_dir, 'apex_manifest.json'))
 
   # copy the public key, if specified
   if args.pubkey:
