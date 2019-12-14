@@ -290,10 +290,9 @@ genrule {
   srcs: [":apex.apexd_test"],
   tools: ["soong_zip", "zipalign", "conv_apex_manifest"],
   cmd: "unzip -q $(in) -d $(genDir) && " +
-       "sed -i -e 's/\"version\": 1/\"version\": 137/' $(genDir)/apex_manifest.json && " +
-       "$(location conv_apex_manifest) proto $(genDir)/apex_manifest.json -o $(genDir)/apex_manifest.pb && " +
+       "$(location conv_apex_manifest) setprop version 137 $(genDir)/apex_manifest.pb && " +
        "$(location soong_zip) -d -C $(genDir) -D $(genDir) " +
-       "-s apex_manifest.pb -s apex_manifest.json -s apex_payload.img -s apex_pubkey " +
+       "-s apex_manifest.pb -s apex_payload.img -s apex_pubkey " +
        "-o $(genDir)/unaligned.apex && " +
        "$(location zipalign) -f 4096 $(genDir)/unaligned.apex " +
        "$(genDir)/apex.apexd_test_manifest_mismatch.apex"
@@ -309,7 +308,7 @@ genrule {
   cmd: "unzip -q $(in) -d $(genDir) && " +
        "dd if=/dev/zero of=$(genDir)/apex_payload.img conv=notrunc bs=1024 seek=16 count=1 && " +
        "$(location soong_zip) -d -C $(genDir) -D $(genDir) " +
-       "-s apex_manifest.pb -s apex_manifest.json -s apex_payload.img -s apex_pubkey " +
+       "-s apex_manifest.pb -s apex_payload.img -s apex_pubkey " +
        "-o $(genDir)/unaligned.apex && " +
        "$(location zipalign) -f 4096 $(genDir)/unaligned.apex " +
        "$(genDir)/apex.apexd_test_corrupt_apex.apex"
