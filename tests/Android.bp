@@ -135,6 +135,27 @@ java_test_host {
     test_suites: ["general-tests"],
 }
 
+
+java_test_host {
+    name: "cellbroadcast_e2e_tests",
+
+    srcs:  ["src/**/CellbroadcastHostTest.java"],
+
+    libs: ["tradefed"],
+
+    static_libs: [
+        "apex_e2e_base_test",
+    ],
+
+    data: [
+        ":test_com.android.cellbroadcast",
+    ],
+
+    test_config: "cellbroadcast-e2e-tests.xml",
+
+    test_suites: ["general-tests"],
+}
+
 java_test_host {
     name: "ipsec_e2e_tests",
 

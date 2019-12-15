@@ -29,6 +29,9 @@
     },
     {
       "name": "mediaprovider_e2e_tests"
+    },
+    {
+      "name": "cellbroadcast_e2e_tests"
     }
   ],
   // The following changes are in post-submit to restrict to physical
