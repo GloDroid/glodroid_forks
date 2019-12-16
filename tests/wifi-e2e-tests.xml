@@ -13,13 +13,13 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 -->
-<configuration description="Config for media module e2e test cases">
-    <option name="test-suite-tag" value="media_e2e_tests" />
+<configuration description="Config for wifi apex e2e testing">
+    <option name="test-suite-tag" value="wifi_e2e_tests" />
     <option name="test-suite-tag" value="apct" />
     <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer"/>
     <test class="com.android.tradefed.testtype.HostTest" >
-        <option name="jar" value="media_e2e_tests.jar" />
-        <option name="set-option" value="apex_file_name:test_com.android.media.apex" />
+        <option name="jar" value="wifi_e2e_tests.jar" />
+        <option name="set-option" value="apex_file_name:test_com.android.wifi.apex" />
     </test>
 </configuration>
 

@@ -23,6 +23,9 @@
     },
     {
       "name": "ipsec_e2e_tests"
+    },
+    {
+      "name": "wifi_e2e_tests"
     }
   ],
   // The following changes are in post-submit to restrict to physical
