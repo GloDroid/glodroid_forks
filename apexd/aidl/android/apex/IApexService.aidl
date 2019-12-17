@@ -19,9 +19,10 @@ package android.apex;
 import android.apex.ApexInfo;
 import android.apex.ApexInfoList;
 import android.apex.ApexSessionInfo;
+import android.apex.ApexSessionParams;
 
 interface IApexService {
-   void submitStagedSession(int session_id, in int[] child_session_ids, out ApexInfoList packages);
+   void submitStagedSession(in ApexSessionParams params, out ApexInfoList packages);
    void markStagedSessionReady(int session_id);
    void markStagedSessionSuccessful(int session_id);
 

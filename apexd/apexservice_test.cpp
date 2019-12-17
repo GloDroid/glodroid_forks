@@ -593,7 +593,9 @@ TEST_F(ApexServiceTest,
   }
 
   ApexInfoList list;
-  ASSERT_TRUE(IsOk(service_->submitStagedSession(1543, {}, &list)));
+  ApexSessionParams params;
+  params.sessionId = 1543;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 
   std::vector<DeviceMapper::DmBlockDevice> devices;
   DeviceMapper& dm = DeviceMapper::Instance();
@@ -612,7 +614,9 @@ TEST_F(ApexServiceTest, SubmitStagedSessionStoresBuildFingerprint) {
     return;
   }
   ApexInfoList list;
-  ASSERT_TRUE(IsOk(service_->submitStagedSession(1547, {}, &list)));
+  ApexSessionParams params;
+  params.sessionId = 1547;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 
   auto session = ApexSession::GetSession(1547);
   ASSERT_FALSE(session->GetBuildFingerprint().empty());
@@ -629,7 +633,9 @@ TEST_F(ApexServiceTest, SubmitStagedSessionFailDoesNotLeakTempVerityDevices) {
   }
 
   ApexInfoList list;
-  ASSERT_FALSE(IsOk(service_->submitStagedSession(239, {}, &list)));
+  ApexSessionParams params;
+  params.sessionId = 239;
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)));
 
   std::vector<DeviceMapper::DmBlockDevice> devices;
   DeviceMapper& dm = DeviceMapper::Instance();
@@ -718,6 +724,43 @@ TEST_F(ApexServiceTest, MultiStageSuccess) {
   ASSERT_TRUE(IsOk(service_->stagePackages(packages)));
   EXPECT_TRUE(RegularFileExists(installer.test_installed_file));
   EXPECT_TRUE(RegularFileExists(installer2.test_installed_file));
+}
+
+TEST_F(ApexServiceTest, CannotBeRollbackAndHaveRollbackEnabled) {
+  using android::dm::DeviceMapper;
+
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
+                                      "/data/app-staging/session_1543",
+                                      "staging_data_file");
+  if (!installer.Prepare()) {
+    return;
+  }
+
+  ApexInfoList list;
+  ApexSessionParams params;
+  params.sessionId = 1543;
+  params.isRollback = true;
+  params.hasRollbackEnabled = true;
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)));
+}
+
+TEST_F(ApexServiceTest, SessionParamDefaults) {
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
+                                      "/data/app-staging/session_1547",
+                                      "staging_data_file");
+  if (!installer.Prepare()) {
+    return;
+  }
+  ApexInfoList list;
+  ApexSessionParams params;
+  params.sessionId = 1547;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
+
+  auto session = ApexSession::GetSession(1547);
+  ASSERT_TRUE(session->GetChildSessionIds().empty());
+  ASSERT_FALSE(session->IsRollback());
+  ASSERT_FALSE(session->HasRollbackEnabled());
+  ASSERT_EQ(0, session->GetRollbackId());
 }
 
 template <typename NameProvider>
@@ -955,9 +998,9 @@ TEST_F(ApexServiceNoHashtreeApexActivationTest,
   }
 
   ApexInfoList list;
-  std::vector<int> empty_child_session_ids;
-  ASSERT_TRUE(
-      IsOk(service_->submitStagedSession(123, empty_child_session_ids, &list)));
+  ApexSessionParams params;
+  params.sessionId = 123;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 
   std::string package_id =
       installer_->package + "@" + std::to_string(installer_->version);
@@ -1000,9 +1043,9 @@ TEST_F(ApexServiceTest, NoHashtreeApexStagePackagesMovesHashtree) {
   };
 
   ApexInfoList list;
-  std::vector<int> empty_child_session_ids;
-  ASSERT_TRUE(
-      IsOk(service_->submitStagedSession(239, empty_child_session_ids, &list)));
+  ApexSessionParams params;
+  params.sessionId = 239;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 
   std::string package_id =
       installer.package + "@" + std::to_string(installer.version);
@@ -1313,9 +1356,9 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestSuccess) {
   }
 
   ApexInfoList list;
-  std::vector<int> empty_child_session_ids;
-  ASSERT_TRUE(
-      IsOk(service_->submitStagedSession(123, empty_child_session_ids, &list)))
+  ApexSessionParams params;
+  params.sessionId = 123;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)))
       << GetDebugStr(&installer);
   EXPECT_EQ(1u, list.apexInfos.size());
   ApexInfo match;
@@ -1392,9 +1435,9 @@ TEST_F(ApexServiceTest, SubmitSingleStagedSessionDeletesPreviousSessions) {
                                              SessionInfoEq(expected_session3)));
 
   ApexInfoList list;
-  std::vector<int> empty_child_session_ids;
-  ASSERT_TRUE(
-      IsOk(service_->submitStagedSession(239, empty_child_session_ids, &list)));
+  ApexSessionParams params;
+  params.sessionId = 239;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 
   sessions.clear();
   ASSERT_TRUE(IsOk(service_->getSessions(&sessions)));
@@ -1413,9 +1456,9 @@ TEST_F(ApexServiceTest, SubmitSingleSessionTestFail) {
   }
 
   ApexInfoList list;
-  std::vector<int> empty_child_session_ids;
-  ASSERT_FALSE(
-      IsOk(service_->submitStagedSession(456, empty_child_session_ids, &list)))
+  ApexSessionParams params;
+  params.sessionId = 456;
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)))
       << GetDebugStr(&installer);
 
   ApexSessionInfo session;
@@ -1440,8 +1483,10 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestSuccess) {
   }
 
   ApexInfoList list;
-  std::vector<int> child_session_ids = {20, 30};
-  ASSERT_TRUE(IsOk(service_->submitStagedSession(10, child_session_ids, &list)))
+  ApexSessionParams params;
+  params.sessionId = 10;
+  params.childSessionIds = {20, 30};
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)))
       << GetDebugStr(&installer);
   EXPECT_EQ(2u, list.apexInfos.size());
   ApexInfo match;
@@ -1496,9 +1541,10 @@ TEST_F(ApexServiceTest, SubmitMultiSessionTestFail) {
     FAIL() << GetDebugStr(&installer) << GetDebugStr(&installer2);
   }
   ApexInfoList list;
-  std::vector<int> child_session_ids = {21, 31};
-  ASSERT_FALSE(
-      IsOk(service_->submitStagedSession(11, child_session_ids, &list)))
+  ApexSessionParams params;
+  params.sessionId = 11;
+  params.childSessionIds = {21, 31};
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)))
       << GetDebugStr(&installer);
 }
 
@@ -1618,9 +1664,9 @@ TEST_F(ApexServiceTest, BackupActivePackages) {
                                    installer2.test_installed_file));
 
   ApexInfoList list;
-  std::vector<int> empty_child_session_ids;
-  ASSERT_TRUE(
-      IsOk(service_->submitStagedSession(23, empty_child_session_ids, &list)));
+  ApexSessionParams params;
+  params.sessionId = 23;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 
   auto backups = ReadEntireDir(kApexBackupDir);
   ASSERT_TRUE(IsOk(backups));
@@ -1664,9 +1710,9 @@ TEST_F(ApexServiceTest, BackupActivePackagesClearsPreviousBackup) {
                                    installer2.test_installed_file));
 
   ApexInfoList list;
-  std::vector<int> empty_child_session_ids;
-  ASSERT_TRUE(
-      IsOk(service_->submitStagedSession(43, empty_child_session_ids, &list)));
+  ApexSessionParams params;
+  params.sessionId = 43;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 
   auto backups = ReadEntireDir(kApexBackupDir);
   ASSERT_TRUE(IsOk(backups));
@@ -1697,9 +1743,9 @@ TEST_F(ApexServiceTest, BackupActivePackagesZeroActivePackages) {
   ASSERT_EQ(0u, active_pkgs->size());
 
   ApexInfoList list;
-  std::vector<int> empty_child_session_ids;
-  ASSERT_TRUE(
-      IsOk(service_->submitStagedSession(41, empty_child_session_ids, &list)));
+  ApexSessionParams params;
+  params.sessionId = 41;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 
   auto backups = ReadEntireDir(kApexBackupDir);
   ASSERT_TRUE(IsOk(backups));
@@ -1721,9 +1767,9 @@ TEST_F(ApexServiceTest, ActivePackagesFolderDoesNotExist) {
   ASSERT_FALSE(ec) << "Failed to delete " << kActiveApexPackagesDataDir;
 
   ApexInfoList list;
-  std::vector<int> empty_child_session_ids;
-  ASSERT_TRUE(
-      IsOk(service_->submitStagedSession(41, empty_child_session_ids, &list)));
+  ApexSessionParams params;
+  params.sessionId = 41;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 
   if (!supports_fs_checkpointing_) {
     auto backups = ReadEntireDir(kApexBackupDir);
@@ -2220,7 +2266,9 @@ TEST_F(ApexShimUpdateTest, SubmitStagedSesssionFailureHasPreInstallHook) {
   }
 
   ApexInfoList list;
-  ASSERT_FALSE(IsOk(service_->submitStagedSession(23, {}, &list)));
+  ApexSessionParams params;
+  params.sessionId = 23;
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)));
 }
 
 TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureHasPostInstallHook) {
@@ -2233,7 +2281,9 @@ TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureHasPostInstallHook) {
   }
 
   ApexInfoList list;
-  ASSERT_FALSE(IsOk(service_->submitStagedSession(43, {}, &list)));
+  ApexSessionParams params;
+  params.sessionId = 43;
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)));
 }
 
 TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureAdditionalFile) {
@@ -2245,7 +2295,9 @@ TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureAdditionalFile) {
   }
 
   ApexInfoList list;
-  ASSERT_FALSE(IsOk(service_->submitStagedSession(41, {}, &list)));
+  ApexSessionParams params;
+  params.sessionId = 41;
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)));
 }
 
 TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureAdditionalFolder) {
@@ -2257,7 +2309,9 @@ TEST_F(ApexShimUpdateTest, SubmitStagedSessionFailureAdditionalFolder) {
   }
 
   ApexInfoList list;
-  ASSERT_FALSE(IsOk(service_->submitStagedSession(42, {}, &list)));
+  ApexSessionParams params;
+  params.sessionId = 42;
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)));
 }
 
 TEST_F(ApexShimUpdateTest, UpdateToV1Success) {
@@ -2280,7 +2334,9 @@ TEST_F(ApexShimUpdateTest, SubmitStagedSessionV1ShimApexSuccess) {
   }
 
   ApexInfoList list;
-  ASSERT_TRUE(IsOk(service_->submitStagedSession(97, {}, &list)));
+  ApexSessionParams params;
+  params.sessionId = 97;
+  ASSERT_TRUE(IsOk(service_->submitStagedSession(params, &list)));
 }
 
 TEST_F(ApexServiceTest, SubmitStagedSessionCorruptApexFails) {
@@ -2293,7 +2349,9 @@ TEST_F(ApexServiceTest, SubmitStagedSessionCorruptApexFails) {
   }
 
   ApexInfoList list;
-  ASSERT_FALSE(IsOk(service_->submitStagedSession(57, {}, &list)));
+  ApexSessionParams params;
+  params.sessionId = 57;
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)));
 }
 
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {

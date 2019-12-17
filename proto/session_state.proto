@@ -42,4 +42,13 @@ message SessionState {
 
   // Build fingerprint before reboot
   string expected_build_fingerprint = 4;
+
+  // True if rollback is enabled for this session
+  bool rollback_enabled = 5;
+
+  // True if this session is a rollback of a previous install
+  bool is_rollback = 6;
+
+  // The associated rollback id
+  int32 rollback_id = 7;
 }
