@@ -48,8 +48,9 @@ android::base::Result<void> unstagePackages(
     const std::vector<std::string>& paths) WARN_UNUSED;
 
 android::base::Result<std::vector<ApexFile>> submitStagedSession(
-    const int session_id,
-    const std::vector<int>& child_session_ids) WARN_UNUSED;
+    const int session_id, const std::vector<int>& child_session_ids,
+    const bool has_rollback_enabled, const bool is_rollback,
+    const int rollback_id) WARN_UNUSED;
 android::base::Result<void> markStagedSessionReady(const int session_id)
     WARN_UNUSED;
 android::base::Result<void> markStagedSessionSuccessful(const int session_id)

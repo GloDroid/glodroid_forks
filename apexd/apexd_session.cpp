@@ -187,6 +187,14 @@ bool ApexSession::IsFinalized() const {
   }
 }
 
+bool ApexSession::HasRollbackEnabled() const {
+  return state_.rollback_enabled();
+}
+
+bool ApexSession::IsRollback() const { return state_.is_rollback(); }
+
+int ApexSession::GetRollbackId() const { return state_.rollback_id(); }
+
 const google::protobuf::RepeatedField<int> ApexSession::GetChildSessionIds()
     const {
   return state_.child_session_ids();
@@ -200,6 +208,18 @@ void ApexSession::SetChildSessionIds(
 
 void ApexSession::SetBuildFingerprint(const std::string& fingerprint) {
   *(state_.mutable_expected_build_fingerprint()) = fingerprint;
+}
+
+void ApexSession::SetHasRollbackEnabled(const bool enabled) {
+  state_.set_rollback_enabled(enabled);
+}
+
+void ApexSession::SetIsRollback(const bool is_rollback) {
+  state_.set_is_rollback(is_rollback);
+}
+
+void ApexSession::SetRollbackId(const int rollback_id) {
+  state_.set_rollback_id(rollback_id);
 }
 
 Result<void> ApexSession::UpdateStateAndCommit(
