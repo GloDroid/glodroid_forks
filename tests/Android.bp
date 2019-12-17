@@ -88,6 +88,24 @@ java_test_host {
 }
 
 java_test_host {
+    name: "mediaprovider_e2e_tests",
+
+    srcs:  ["src/**/MediaProviderHostTest.java"],
+
+    libs: ["tradefed"],
+
+    static_libs: ["apex_e2e_base_test"],
+
+    data: [
+        ":test_com.android.mediaprovider",
+    ],
+
+    test_config: "mediaprovider-e2e-tests.xml",
+
+    test_suites: ["general-tests"],
+}
+
+java_test_host {
     name: "conscrypt_e2e_tests",
 
     srcs:  ["src/**/ConscryptHostTest.java"],
