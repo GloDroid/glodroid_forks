@@ -10,6 +10,9 @@
       "name": "conscrypt_e2e_tests"
     },
     {
+      "name": "cronet_e2e_tests"
+    },
+    {
       "name": "neuralnetworks_e2e_tests"
     },
     {
