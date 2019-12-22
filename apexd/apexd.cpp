@@ -1421,16 +1421,20 @@ void revertAllStagedSessions() {
  * so that they do not get activated on next reboot.
  */
 Result<void> revertActiveSessions() {
+  // First check whenever there is anything to revert. If there is none, then
+  // fail. This prevents apexd from boot looping a device in case a native
+  // process is crashing and there are no apex updates.
+  auto activeSessions = ApexSession::GetActiveSessions();
+  if (activeSessions.empty()) {
+    return Error() << "Revert requested, when there are no active sessions.";
+  }
+
   if (gInFsCheckpointMode) {
     LOG(DEBUG) << "Checkpoint mode is enabled";
     // On checkpointing devices, our modifications on /data will be
     // automatically reverted when we abort changes. Updating the session
     // state is pointless here, as it will be reverted as well.
     return {};
-  }
-  auto activeSessions = ApexSession::GetActiveSessions();
-  if (activeSessions.empty()) {
-    return Error() << "Revert requested, when there are no active sessions.";
   }
 
   for (auto& session : activeSessions) {
