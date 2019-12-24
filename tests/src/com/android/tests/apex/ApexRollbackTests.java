@@ -17,6 +17,7 @@
 package com.android.tests.apex;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth.assertWithMessage;
 
 import static org.junit.Assume.assumeTrue;
 
@@ -31,6 +32,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.Set;
 
 /**
@@ -84,5 +86,23 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         Set<ApexInfo> activatedApexes = device.getActiveApexes();
         assertThat(activatedApexes).contains(ctsShimV1);
         assertThat(activatedApexes).doesNotContain(ctsShimV2);
+    }
+
+    /**
+     * Test to verify that apexd won't boot loop a device in case {@code sys.init
+     * .updatable_crashing} is {@code true} and there is no apex session to revert.
+     */
+    @Test
+    public void testApexdDoesNotBootLoopDeviceIfThereIsNothingToRevert() throws Exception {
+        assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
+        // On next boot trigger setprop sys.init.updatable_crashing 1, which will trigger a
+        // revert mechanism in apexd. Since there is nothing to revert, this should be a no-op
+        // and device will boot successfully.
+        getDevice().setProperty("persist.debug.trigger_updatable_crashing_for_testing", "1");
+        getDevice().reboot();
+        assertWithMessage("Device didn't boot in 1 minute").that(
+                getDevice().waitForBootComplete(Duration.ofMinutes(1).toMillis())).isTrue();
+        // Verify that property was set to true.
+        assertThat(getDevice().getBooleanProperty("sys.init.updatable_crashing", false)).isTrue();
     }
 }
