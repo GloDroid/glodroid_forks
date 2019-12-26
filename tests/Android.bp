@@ -117,6 +117,28 @@ java_test_host {
     test_suites: ["general-tests"],
 }
 
+
+java_test_host {
+    name: "telephony_e2e_tests",
+
+    srcs:  ["src/**/TelephonyHostTest.java"],
+
+    libs: ["tradefed"],
+
+    static_libs: [
+        "apex_e2e_base_test",
+        "platformprotos",
+    ],
+
+    data: [
+        ":test_com.android.telephony",
+    ],
+
+    test_config: "telephony-e2e-tests.xml",
+
+    test_suites: ["general-tests"],
+}
+
 java_test_host {
     name: "apex_targetprep_tests",
 
