@@ -156,7 +156,8 @@ class Apex(object):
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                universal_newlines=True)
     _, stderr = process.communicate()
-    print(stderr, file=sys.stderr)
+    if process.returncode != 0:
+      print(stderr, file=sys.stderr)
 
 
 def RunList(args):
