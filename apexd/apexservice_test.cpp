@@ -375,19 +375,13 @@ class ApexServiceTest : public ::testing::Test {
     }
 
     ~PrepareTestApexForInstall() {
+      LOG(INFO) << "Deleting file " << test_file;
       if (unlink(test_file.c_str()) != 0) {
         PLOG(ERROR) << "Unable to unlink " << test_file;
       }
+      LOG(INFO) << "Deleting directory " << test_dir_input;
       if (rmdir(test_dir_input.c_str()) != 0) {
         PLOG(ERROR) << "Unable to rmdir " << test_dir_input;
-      }
-
-      if (!package.empty()) {
-        // For cleanliness, also attempt to delete apexd's file.
-        // TODO: to the unstaging using APIs
-        if (unlink(test_installed_file.c_str()) != 0) {
-          PLOG(ERROR) << "Unable to unlink " << test_installed_file;
-        }
       }
     }
   };
@@ -1286,7 +1280,7 @@ class ApexServicePrePostInstallTest : public ApexServiceTest {
 
     if (test_message != nullptr) {
       std::string logcat = GetLogcat();
-      EXPECT_NE(std::string::npos, logcat.find(test_message)) << logcat;
+      EXPECT_THAT(logcat, HasSubstr(test_message));
     }
 
     // Ensure that the package is neither active nor mounted.
