@@ -1004,7 +1004,15 @@ TEST_F(ApexServiceNoHashtreeApexActivationTest,
         std::string(kApexHashTreeDir) + "/" + package_id + ".new";
     auto exists = PathExists(hashtree_path);
     ASSERT_TRUE(IsOk(exists));
-    ASSERT_TRUE(*exists);
+    ASSERT_TRUE(*exists) << hashtree_path << " does not exist";
+  }
+  // Check that active hashtree is still there.
+  {
+    std::string hashtree_path =
+        std::string(kApexHashTreeDir) + "/" + package_id;
+    auto exists = PathExists(hashtree_path);
+    ASSERT_TRUE(IsOk(exists));
+    ASSERT_TRUE(*exists) << hashtree_path << " does not exist";
   }
 
   // Check that block device of active APEX can still be read.
