@@ -405,7 +405,8 @@ Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
   }
   std::string blockDevice = loopbackDevice.name;
   MountedApexData apex_data(loopbackDevice.name, apex.GetPath(), mountPoint,
-                            /* device_name = */ "");
+                            /* device_name = */ "",
+                            /* hashtree_loop_name = */ "");
 
   // for APEXes in immutable partitions, we don't need to mount them on
   // dm-verity because they are already in the dm-verity protected partition;
@@ -424,6 +425,7 @@ Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
       }
       loop_for_hash = std::move(*hash_tree);
       hash_device = loop_for_hash.name;
+      apex_data.hashtree_loop_name = hash_device;
     }
     auto verityTable =
         createVerityTable(*verityData, loopbackDevice.name, hash_device,
@@ -530,13 +532,11 @@ Result<void> Unmount(const MountedApexData& data) {
 
   // Try to free up the loop device.
   if (!data.loop_name.empty()) {
-    auto log_fn = [](const std::string& path,
-                     const std::string& id ATTRIBUTE_UNUSED) {
+    auto log_fn = [](const std::string& path, const std::string& /*id*/) {
       LOG(VERBOSE) << "Freeing loop device " << path << " for unmount.";
     };
     loop::DestroyLoopDevice(data.loop_name, log_fn);
   }
-
   return {};
 }
 
