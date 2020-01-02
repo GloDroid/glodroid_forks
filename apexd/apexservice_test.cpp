@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 #include <grp.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -47,6 +48,7 @@
 #include <android/apex/IApexService.h>
 
 #include "apex_constants.h"
+#include "apex_database.h"
 #include "apex_file.h"
 #include "apex_manifest.h"
 #include "apexd_private.h"
@@ -70,8 +72,10 @@ using android::apex::testing::SessionInfoEq;
 using android::base::Errorf;
 using android::base::Join;
 using android::base::ReadFully;
+using android::base::StartsWith;
 using android::base::StringPrintf;
 using android::base::unique_fd;
+using android::dm::DeviceMapper;
 using android::fs_mgr::Fstab;
 using android::fs_mgr::GetEntryForMountPoint;
 using android::fs_mgr::ReadFstabFromFile;
@@ -81,6 +85,8 @@ using ::testing::HasSubstr;
 using ::testing::Not;
 using ::testing::UnorderedElementsAre;
 using ::testing::UnorderedElementsAreArray;
+
+using MountedApexData = MountedApexDatabase::MountedApexData;
 
 namespace fs = std::filesystem;
 
@@ -577,8 +583,6 @@ TEST_F(ApexServiceTest, StageSuccess) {
 
 TEST_F(ApexServiceTest,
        SubmitStagegSessionSuccessDoesNotLeakTempVerityDevices) {
-  using android::dm::DeviceMapper;
-
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
                                       "/data/app-staging/session_1543",
                                       "staging_data_file");
@@ -617,8 +621,6 @@ TEST_F(ApexServiceTest, SubmitStagedSessionStoresBuildFingerprint) {
 }
 
 TEST_F(ApexServiceTest, SubmitStagedSessionFailDoesNotLeakTempVerityDevices) {
-  using android::dm::DeviceMapper;
-
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_manifest_mismatch.apex"),
       "/data/app-staging/session_239", "staging_data_file");
@@ -721,8 +723,6 @@ TEST_F(ApexServiceTest, MultiStageSuccess) {
 }
 
 TEST_F(ApexServiceTest, CannotBeRollbackAndHaveRollbackEnabled) {
-  using android::dm::DeviceMapper;
-
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test.apex"),
                                       "/data/app-staging/session_1543",
                                       "staging_data_file");
@@ -934,6 +934,44 @@ TEST_F(ApexServiceActivationSuccessTest, GetActivePackage) {
   ASSERT_EQ(installer_->test_installed_file, active->modulePath);
 }
 
+TEST_F(ApexServiceActivationSuccessTest, ShowsUpInMountedApexDatabase) {
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+
+  MountedApexDatabase db;
+  db.PopulateFromMounts();
+
+  std::optional<MountedApexData> mounted_apex;
+  db.ForallMountedApexes(installer_->package,
+                         [&](const MountedApexData& d, bool active) {
+                           if (active) {
+                             mounted_apex.emplace(d);
+                           }
+                         });
+  ASSERT_TRUE(mounted_apex)
+      << "Haven't found " << installer_->test_installed_file
+      << " in the database of mounted apexes";
+
+  // Get all necessary data for assertions on mounted_apex.
+  std::string package_id =
+      installer_->package + "@" + std::to_string(installer_->version);
+  DeviceMapper& dm = DeviceMapper::Instance();
+  std::string dm_path;
+  ASSERT_TRUE(dm.GetDmDevicePathByName(package_id, &dm_path))
+      << "Failed to get path of dm device " << package_id;
+  auto loop_device = dm.GetParentBlockDeviceByPath(dm_path);
+  ASSERT_TRUE(loop_device) << "Failed to find parent block device of "
+                           << dm_path;
+
+  // Now we are ready to assert on mounted_apex.
+  ASSERT_EQ(*loop_device, mounted_apex->loop_name);
+  ASSERT_EQ(installer_->test_installed_file, mounted_apex->full_path);
+  std::string expected_mount = std::string(kApexRoot) + "/" + package_id;
+  ASSERT_EQ(expected_mount, mounted_apex->mount_point);
+  ASSERT_EQ(package_id, mounted_apex->device_name);
+  ASSERT_EQ("", mounted_apex->hashtree_loop_name);
+}
+
 struct NoHashtreeApexNameProvider {
   static std::string GetTestName() {
     return "apex.apexd_test_no_hashtree.apex";
@@ -1020,6 +1058,64 @@ TEST_F(ApexServiceNoHashtreeApexActivationTest,
   ASSERT_TRUE(IsOk(block_device));
 }
 
+TEST_F(ApexServiceNoHashtreeApexActivationTest, ShowsUpInMountedApexDatabase) {
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+
+  MountedApexDatabase db;
+  db.PopulateFromMounts();
+
+  std::optional<MountedApexData> mounted_apex;
+  db.ForallMountedApexes(installer_->package,
+                         [&](const MountedApexData& d, bool active) {
+                           if (active) {
+                             mounted_apex.emplace(d);
+                           }
+                         });
+  ASSERT_TRUE(mounted_apex)
+      << "Haven't found " << installer_->test_installed_file
+      << " in the database of mounted apexes";
+
+  // Get all necessary data for assertions on mounted_apex.
+  std::string package_id =
+      installer_->package + "@" + std::to_string(installer_->version);
+  DeviceMapper& dm = DeviceMapper::Instance();
+  std::string dm_path;
+  ASSERT_TRUE(dm.GetDmDevicePathByName(package_id, &dm_path))
+      << "Failed to get path of dm device " << package_id;
+  // It's a little bit sad we can't use ConsumePrefix here :(
+  constexpr std::string_view kDevPrefix = "/dev/";
+  ASSERT_TRUE(StartsWith(dm_path, kDevPrefix)) << "Illegal path " << dm_path;
+  dm_path = dm_path.substr(kDevPrefix.length());
+  std::vector<std::string> slaves;
+  {
+    std::string slaves_dir = "/sys/" + dm_path + "/slaves";
+    auto st = WalkDir(slaves_dir, [&](const auto& entry) {
+      std::error_code ec;
+      if (entry.is_symlink(ec)) {
+        slaves.push_back("/dev/block/" + entry.path().filename().string());
+      }
+      if (ec) {
+        ADD_FAILURE() << "Failed to scan " << slaves_dir << " : " << ec;
+      }
+    });
+    ASSERT_TRUE(IsOk(st));
+  }
+  ASSERT_EQ(2u, slaves.size())
+      << "Unexpected number of slaves: " << Join(slaves, ",");
+
+  // Now we are ready to assert on mounted_apex.
+  ASSERT_EQ(installer_->test_installed_file, mounted_apex->full_path);
+  std::string expected_mount = std::string(kApexRoot) + "/" + package_id;
+  ASSERT_EQ(expected_mount, mounted_apex->mount_point);
+  ASSERT_EQ(package_id, mounted_apex->device_name);
+  // For loops we only check that both loop_name and hashtree_loop_name are
+  // slaves of the top device mapper device.
+  ASSERT_THAT(slaves, Contains(mounted_apex->loop_name));
+  ASSERT_THAT(slaves, Contains(mounted_apex->hashtree_loop_name));
+  ASSERT_NE(mounted_apex->loop_name, mounted_apex->hashtree_loop_name);
+}
+
 TEST_F(ApexServiceTest, NoHashtreeApexStagePackagesMovesHashtree) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_no_hashtree.apex"),
@@ -1083,7 +1179,6 @@ TEST_F(ApexServiceTest, NoHashtreeApexStagePackagesMovesHashtree) {
 }
 
 TEST_F(ApexServiceTest, GetFactoryPackages) {
-  using ::android::base::StartsWith;
   Result<std::vector<ApexInfo>> factoryPackages = GetFactoryPackages();
   ASSERT_TRUE(IsOk(factoryPackages));
   ASSERT_TRUE(factoryPackages->size() > 0);
@@ -1225,8 +1320,8 @@ TEST_F(ApexServiceActivationSuccessTest, DmDeviceTearDown) {
       installer_->package + "@" + std::to_string(installer_->version);
 
   auto find_fn = [](const std::string& name) {
-    auto& dm = dm::DeviceMapper::Instance();
-    std::vector<dm::DeviceMapper::DmBlockDevice> devices;
+    auto& dm = DeviceMapper::Instance();
+    std::vector<DeviceMapper::DmBlockDevice> devices;
     if (!dm.GetAvailableDevices(&devices)) {
       return Result<bool>(Errorf("GetAvailableDevices failed"));
     }
