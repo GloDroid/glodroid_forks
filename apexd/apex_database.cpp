@@ -125,6 +125,50 @@ bool isActiveMountPoint(const std::string& mountPoint) {
   return (mountPoint.find('@') == std::string::npos);
 }
 
+Result<void> PopulateLoopInfo(const BlockDevice& top_device,
+                              MountedApexData* apex_data) {
+  std::vector<BlockDevice> slaves = top_device.GetSlaves();
+  if (slaves.size() != 1 && slaves.size() != 2) {
+    return Error() << "dm device " << top_device.DevPath()
+                   << " has unexpected number of slaves : " << slaves.size();
+  }
+  std::vector<std::string> backing_files;
+  backing_files.reserve(slaves.size());
+  for (const auto& dev : slaves) {
+    if (dev.GetType() != LoopDevice) {
+      return Error() << dev.DevPath() << " is not a loop device";
+    }
+    auto backing_file = dev.GetProperty("loop/backing_file");
+    if (!backing_file) {
+      return backing_file.error();
+    }
+    backing_files.push_back(std::move(*backing_file));
+  }
+  // Enforce following invariant:
+  //  * slaves[0] always represents a data loop device
+  //  * if size = 2 then slaves[1] represents an external hashtree loop device
+  if (slaves.size() == 2) {
+    if (!StartsWith(backing_files[0], kActiveApexPackagesDataDir)) {
+      std::swap(slaves[0], slaves[1]);
+      std::swap(backing_files[0], backing_files[1]);
+    }
+  }
+  if (!StartsWith(backing_files[0], kActiveApexPackagesDataDir)) {
+    return Error() << "Data loop device " << slaves[0].DevPath()
+                   << " has unexpected backing file " << backing_files[0];
+  }
+  if (slaves.size() == 2) {
+    if (!StartsWith(backing_files[1], kApexHashTreeDir)) {
+      return Error() << "Hashtree loop device " << slaves[1].DevPath()
+                     << " has unexpected backing file " << backing_files[1];
+    }
+    apex_data->hashtree_loop_name = slaves[1].DevPath();
+  }
+  apex_data->loop_name = slaves[0].DevPath();
+  apex_data->full_path = backing_files[0];
+  return {};
+}
+
 Result<MountedApexData> resolveMountInfo(const BlockDevice& block,
                                          const std::string& mountPoint) {
   // Now, see if it is dm-verity or loop mounted
@@ -134,25 +178,22 @@ Result<MountedApexData> resolveMountInfo(const BlockDevice& block,
       if (!backingFile) {
         return backingFile.error();
       }
-      return MountedApexData(block.DevPath(), *backingFile, mountPoint, "");
+      return MountedApexData(block.DevPath(), *backingFile, mountPoint,
+                             /* device_name= */ "",
+                             /* hashtree_loop_name= */ "");
     }
     case DeviceMapperDevice: {
       auto name = block.GetProperty("dm/name");
       if (!name) {
         return name.error();
       }
-      auto slaves = block.GetSlaves();
-      if (slaves.empty() || slaves[0].GetType() != LoopDevice) {
-        return Errorf("DeviceMapper device with no loop devices");
+      MountedApexData result;
+      result.mount_point = mountPoint;
+      result.device_name = *name;
+      if (auto status = PopulateLoopInfo(block, &result); !status) {
+        return status.error();
       }
-      // TODO(jooyung): handle multiple loop devices when hash tree is
-      // externalized
-      auto slave = slaves[0];
-      auto backingFile = slave.GetProperty("loop/backing_file");
-      if (!backingFile) {
-        return backingFile.error();
-      }
-      return MountedApexData(slave.DevPath(), *backingFile, mountPoint, *name);
+      return result;
     }
     case UnknownDevice: {
       return Errorf("Can't resolve {}", block.DevPath().string());
