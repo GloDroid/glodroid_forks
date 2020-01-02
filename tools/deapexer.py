@@ -21,6 +21,7 @@ To print content of an APEX to stdout:
 To extract content of an APEX to the given directory:
   deapexer extract foo.apex dest
 """
+from __future__ import print_function
 
 import argparse
 import os
@@ -110,9 +111,9 @@ class ApexImageDirectory(object):
 
 class Apex(object):
 
-  def __init__(self, apex):
-    self._debugfs = '%s/bin/debugfs' % os.environ['ANDROID_HOST_OUT']
-    self._apex = apex
+  def __init__(self, args):
+    self._debugfs = args.debugfs_path
+    self._apex = args.apex
     self._tempdir = tempfile.mkdtemp()
     # TODO(b/139125405): support flattened APEXes.
     with zipfile.ZipFile(self._apex, 'r') as zip_ref:
@@ -161,16 +162,17 @@ class Apex(object):
 
 
 def RunList(args):
-  with Apex(args.apex) as apex:
+  with Apex(args) as apex:
     for e in apex.list(is_recursive=True):
       if e.is_regular_file:
         print(e.full_path)
 
 
 def RunExtract(args):
-  with Apex(args.apex) as apex:
-     os.makedirs(args.dest, mode=0o755, exist_ok=True)
-     apex.extract(args.dest)
+  with Apex(args) as apex:
+    if not os.path.exists(args.dest):
+      os.makedirs(args.dest, mode=0o755)
+    apex.extract(args.dest)
 
 
 def RunInfo(args):
@@ -180,6 +182,12 @@ def RunInfo(args):
 
 def main(argv):
   parser = argparse.ArgumentParser()
+
+  debugfs_default = 'debugfs'  # assume in PATH by default
+  if 'ANDROID_HOST_OUT' in os.environ:
+    debugfs_default = '%s/bin/debugfs_static' % os.environ['ANDROID_HOST_OUT']
+  parser.add_argument('--debugfs_path', help='The path to debugfs binary', default=debugfs_default)
+
   subparsers = parser.add_subparsers()
 
   parser_list = subparsers.add_parser('list', help='prints content of an APEX to stdout')
@@ -195,7 +203,6 @@ def main(argv):
   parser_info = subparsers.add_parser('info', help='prints APEX manifest')
   parser_info.add_argument('apex', type=str, help='APEX file')
   parser_info.set_defaults(func=RunInfo)
-
 
   args = parser.parse_args(argv)
 
