@@ -476,7 +476,6 @@ Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
     verityDev.Release();
     loopbackDevice.CloseGood();
     loop_for_hash.CloseGood();
-    // TODO(b/120058143): Add loop_fo_hash to apex_data to clean up on unmount.
 
     scope_guard.Disable();  // Accept the mount.
     return apex_data;
@@ -531,12 +530,16 @@ Result<void> Unmount(const MountedApexData& data) {
   }
 
   // Try to free up the loop device.
+  auto log_fn = [](const std::string& path, const std::string& /*id*/) {
+    LOG(VERBOSE) << "Freeing loop device " << path << " for unmount.";
+  };
   if (!data.loop_name.empty()) {
-    auto log_fn = [](const std::string& path, const std::string& /*id*/) {
-      LOG(VERBOSE) << "Freeing loop device " << path << " for unmount.";
-    };
     loop::DestroyLoopDevice(data.loop_name, log_fn);
   }
+  if (!data.hashtree_loop_name.empty()) {
+    loop::DestroyLoopDevice(data.hashtree_loop_name, log_fn);
+  }
+
   return {};
 }
 
