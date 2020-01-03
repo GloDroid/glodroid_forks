@@ -19,6 +19,7 @@ Typical usage: apexer input_dir output.apex
 
 """
 
+import apex_build_info_pb2
 import argparse
 import hashlib
 import os
@@ -118,6 +119,15 @@ def ParseArgs(argv):
       required=False,
       action='store_true',
       help='Do not check key name. Use the name of apex instead of the basename of --key.')
+  parser.add_argument(
+      '--include_build_info',
+      required=False,
+      action='store_true',
+      help='Include build information file in the resulting apex.')
+  parser.add_argument(
+      '--build_info',
+      required=False,
+      help='Build information file to be used for default values.')
   return parser.parse_args(argv)
 
 
@@ -197,6 +207,16 @@ def ValidateAndroidManifest(package, android_manifest):
 
 
 def ValidateArgs(args):
+  build_info = None
+
+  if args.build_info is not None:
+    if not os.path.exists(args.build_info):
+      print("Build info file '" + args.build_info + "' does not exist")
+      return False
+    with open(args.build_info) as buildInfoFile:
+      build_info = apex_build_info_pb2.ApexBuildInfo()
+      build_info.ParseFromString(buildInfoFile.read())
+
   if not os.path.exists(args.manifest):
     print("Manifest file '" + args.manifest + "' does not exist")
     return False
@@ -215,6 +235,10 @@ def ValidateArgs(args):
       print("Android Manifest file '" + args.android_manifest +
             "' is not a file")
       return False
+  elif build_info is not None:
+    with tempfile.NamedTemporaryFile(delete=False) as temp:
+      temp.write(build_info.android_manifest)
+      args.android_manifest = temp.name
 
   if not os.path.exists(args.input_dir):
     print("Input directory '" + args.input_dir + "' does not exist")
@@ -234,15 +258,40 @@ def ValidateArgs(args):
       return False
 
     if not args.file_contexts:
-      print('Missing --file_contexts {contexts} argument!')
-      return False
+      if build_info is not None:
+        with tempfile.NamedTemporaryFile(delete=False) as temp:
+          temp.write(build_info.file_contexts)
+          args.file_contexts = temp.name
+      else:
+        print('Missing --file_contexts {contexts} argument, or a --build_info argument!')
+        return False
 
     if not args.canned_fs_config:
-      print('Missing --canned_fs_config {config} argument!')
-      return False
+      if not args.canned_fs_config:
+        if build_info is not None:
+          with tempfile.NamedTemporaryFile(delete=False) as temp:
+            temp.write(build_info.canned_fs_config)
+            args.canned_fs_config = temp.name
+        else:
+          print('Missing ----canned_fs_config {config} argument, or a --build_info argument!')
+          return False
 
   return True
 
+def GenerateBuildInfo(args):
+  build_info = apex_build_info_pb2.ApexBuildInfo()
+  build_info.apexer_command_line = str(sys.argv)
+
+  with open(args.file_contexts) as f:
+    build_info.file_contexts = f.read()
+
+  with open(args.canned_fs_config) as f:
+    build_info.canned_fs_config = f.read()
+
+  with open(args.android_manifest) as f:
+    build_info.android_manifest = f.read()
+
+  return build_info
 
 def CreateApex(args, work_dir):
   if not ValidateArgs(args):
@@ -400,6 +449,7 @@ def CreateApex(args, work_dir):
     with open(android_manifest_file, 'w+') as f:
       app_package_name = manifest_apex.name
       f.write(PrepareAndroidManifest(app_package_name, manifest_apex.version))
+    args.android_manifest = android_manifest_file
   else:
     ValidateAndroidManifest(manifest_apex.name, args.android_manifest)
     shutil.copyfile(args.android_manifest, android_manifest_file)
@@ -413,6 +463,11 @@ def CreateApex(args, work_dir):
   # copy the public key, if specified
   if args.pubkey:
     shutil.copyfile(args.pubkey, os.path.join(content_dir, 'apex_pubkey'))
+
+  if args.include_build_info:
+    build_info = GenerateBuildInfo(args)
+    with open(os.path.join(content_dir, 'apex_build_info.pb'), "wb") as f:
+      f.write(build_info.SerializeToString())
 
   apk_file = os.path.join(work_dir, 'apex.apk')
   cmd = ['aapt2']
