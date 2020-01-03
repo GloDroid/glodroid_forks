@@ -23,13 +23,14 @@ python_binary_host {
         },
         py3: {
             enabled: true,
+            embedded_launcher: true,
         },
     },
     libs: [
         "apex_manifest",
     ],
     required: [
-        "debugfs",
+        "debugfs_static",
     ],
 }
 
