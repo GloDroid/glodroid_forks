@@ -102,11 +102,6 @@ static constexpr const char* kApexStatusReady = "ready";
 
 static constexpr const char* kBuildFingerprintSysprop = "ro.build.fingerprint";
 
-static constexpr const char* kApexVerityOnSystemProp =
-    "persist.apexd.verity_on_system";
-static bool gForceDmVerityOnSystem =
-    android::base::GetBoolProperty(kApexVerityOnSystemProp, false);
-
 // This should be in UAPI, but it's not :-(
 static constexpr const char* kDmVerityRestartOnCorruption =
     "restart_on_corruption";
@@ -412,8 +407,7 @@ Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
   // dm-verity because they are already in the dm-verity protected partition;
   // system. However, note that we don't skip verification to ensure that APEXes
   // are correctly signed.
-  const bool mountOnVerity =
-      gForceDmVerityOnSystem || !isPathForBuiltinApexes(full_path);
+  const bool mountOnVerity = !isPathForBuiltinApexes(full_path);
   DmVerityDevice verityDev;
   loop::LoopbackDeviceUniqueFd loop_for_hash;
   if (mountOnVerity) {
