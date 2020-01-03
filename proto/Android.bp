@@ -53,6 +53,24 @@ python_library_host {
     },
 }
 
+python_library_host {
+    name: "apex_build_info_proto",
+    version: {
+        py2: {
+            enabled: true,
+        },
+        py3: {
+            enabled: true,
+        },
+    },
+    srcs: [
+        "apex_build_info.proto",
+    ],
+    proto: {
+        canonical_path_from_root: false,
+    },
+}
+
 java_library_static {
     name: "apex_manifest_proto_java",
     host_supported: true,
