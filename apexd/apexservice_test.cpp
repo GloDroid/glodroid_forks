@@ -25,7 +25,9 @@
 #include <vector>
 
 #include <grp.h>
+#include <linux/loop.h>
 #include <stdio.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -482,6 +484,32 @@ Result<void> ReadDevice(const std::string& block_device) {
     }
   }
   return {};
+}
+
+std::vector<std::string> ListSlavesOfDmDevice(const std::string& name) {
+  DeviceMapper& dm = DeviceMapper::Instance();
+  std::string dm_path;
+  EXPECT_TRUE(dm.GetDmDevicePathByName(name, &dm_path))
+      << "Failed to get path of dm device " << name;
+  // It's a little bit sad we can't use ConsumePrefix here :(
+  constexpr std::string_view kDevPrefix = "/dev/";
+  EXPECT_TRUE(StartsWith(dm_path, kDevPrefix)) << "Illegal path " << dm_path;
+  dm_path = dm_path.substr(kDevPrefix.length());
+  std::vector<std::string> slaves;
+  {
+    std::string slaves_dir = "/sys/" + dm_path + "/slaves";
+    auto st = WalkDir(slaves_dir, [&](const auto& entry) {
+      std::error_code ec;
+      if (entry.is_symlink(ec)) {
+        slaves.push_back("/dev/block/" + entry.path().filename().string());
+      }
+      if (ec) {
+        ADD_FAILURE() << "Failed to scan " << slaves_dir << " : " << ec;
+      }
+    });
+    EXPECT_TRUE(IsOk(st));
+  }
+  return slaves;
 }
 
 }  // namespace
@@ -1079,28 +1107,7 @@ TEST_F(ApexServiceNoHashtreeApexActivationTest, ShowsUpInMountedApexDatabase) {
   // Get all necessary data for assertions on mounted_apex.
   std::string package_id =
       installer_->package + "@" + std::to_string(installer_->version);
-  DeviceMapper& dm = DeviceMapper::Instance();
-  std::string dm_path;
-  ASSERT_TRUE(dm.GetDmDevicePathByName(package_id, &dm_path))
-      << "Failed to get path of dm device " << package_id;
-  // It's a little bit sad we can't use ConsumePrefix here :(
-  constexpr std::string_view kDevPrefix = "/dev/";
-  ASSERT_TRUE(StartsWith(dm_path, kDevPrefix)) << "Illegal path " << dm_path;
-  dm_path = dm_path.substr(kDevPrefix.length());
-  std::vector<std::string> slaves;
-  {
-    std::string slaves_dir = "/sys/" + dm_path + "/slaves";
-    auto st = WalkDir(slaves_dir, [&](const auto& entry) {
-      std::error_code ec;
-      if (entry.is_symlink(ec)) {
-        slaves.push_back("/dev/block/" + entry.path().filename().string());
-      }
-      if (ec) {
-        ADD_FAILURE() << "Failed to scan " << slaves_dir << " : " << ec;
-      }
-    });
-    ASSERT_TRUE(IsOk(st));
-  }
+  std::vector<std::string> slaves = ListSlavesOfDmDevice(package_id);
   ASSERT_EQ(2u, slaves.size())
       << "Unexpected number of slaves: " << Join(slaves, ",");
 
@@ -1114,6 +1121,33 @@ TEST_F(ApexServiceNoHashtreeApexActivationTest, ShowsUpInMountedApexDatabase) {
   ASSERT_THAT(slaves, Contains(mounted_apex->loop_name));
   ASSERT_THAT(slaves, Contains(mounted_apex->hashtree_loop_name));
   ASSERT_NE(mounted_apex->loop_name, mounted_apex->hashtree_loop_name);
+}
+
+TEST_F(ApexServiceNoHashtreeApexActivationTest, DeactivateFreesLoopDevices) {
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+
+  std::string package_id =
+      installer_->package + "@" + std::to_string(installer_->version);
+  std::vector<std::string> slaves = ListSlavesOfDmDevice(package_id);
+  ASSERT_EQ(2u, slaves.size())
+      << "Unexpected number of slaves: " << Join(slaves, ",");
+
+  ASSERT_TRUE(
+      IsOk(service_->deactivatePackage(installer_->test_installed_file)));
+
+  for (const auto& loop : slaves) {
+    struct loop_info li;
+    unique_fd fd(TEMP_FAILURE_RETRY(open(loop.c_str(), O_RDWR | O_CLOEXEC)));
+    ASSERT_NE(-1, fd.get())
+        << "Failed to open " << loop << " : " << strerror(errno);
+    ASSERT_EQ(-1, ioctl(fd.get(), LOOP_GET_STATUS, &li))
+        << loop << " is still alive";
+    ASSERT_EQ(ENXIO, errno) << "Unexpected errno : " << strerror(errno);
+  }
+
+  // Skip deactivatePackage on TearDown.
+  installer_.reset();
 }
 
 TEST_F(ApexServiceTest, NoHashtreeApexStagePackagesMovesHashtree) {
@@ -1351,6 +1385,31 @@ TEST_F(ApexServiceActivationSuccessTest, DmDeviceTearDown) {
       IsOk(service_->deactivatePackage(installer_->test_installed_file)));
 
   ASSERT_FIND(FALSE);
+
+  installer_.reset();  // Skip TearDown deactivatePackage.
+}
+
+TEST_F(ApexServiceActivationSuccessTest, DeactivateFreesLoopDevices) {
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+
+  std::string package_id =
+      installer_->package + "@" + std::to_string(installer_->version);
+  std::vector<std::string> slaves = ListSlavesOfDmDevice(package_id);
+  ASSERT_EQ(1u, slaves.size())
+      << "Unexpected number of slaves: " << Join(slaves, ",");
+  const std::string& loop = slaves[0];
+
+  ASSERT_TRUE(
+      IsOk(service_->deactivatePackage(installer_->test_installed_file)));
+
+  struct loop_info li;
+  unique_fd fd(TEMP_FAILURE_RETRY(open(loop.c_str(), O_RDWR | O_CLOEXEC)));
+  ASSERT_NE(-1, fd.get()) << "Failed to open " << loop << " : "
+                          << strerror(errno);
+  ASSERT_EQ(-1, ioctl(fd.get(), LOOP_GET_STATUS, &li))
+      << loop << " is still alive";
+  ASSERT_EQ(ENXIO, errno) << "Unexpected errno : " << strerror(errno);
 
   installer_.reset();  // Skip TearDown deactivatePackage.
 }
