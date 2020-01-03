@@ -72,6 +72,19 @@ apex {
   whitelisted_files: "default_shim_whitelist.txt",
 }
 
+apex {
+  name: "com.android.apex.cts.shim.v2_no_hashtree",
+  manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifest.xml",
+  file_contexts: ":apex.test-file_contexts",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_of_dev_null"],
+  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
+  installable: false,
+  whitelisted_files: "default_shim_whitelist.txt",
+  test_only_no_hashtree: true,
+}
+
 genrule {
   name: "generate_empty_hash",
   out: ["hash.txt"],
@@ -159,6 +172,7 @@ genrule {
     ":com.android.apex.cts.shim.v2_additional_file",
     ":com.android.apex.cts.shim.v2_additional_folder",
     ":com.android.apex.cts.shim.v2_different_certificate",
+    ":com.android.apex.cts.shim.v2_no_hashtree",
     ":com.android.apex.cts.shim.v2_signed_bob",
     ":com.android.apex.cts.shim.v2_signed_bob_rot",
     ":com.android.apex.cts.shim.v2_signed_bob_rot_rollback",
