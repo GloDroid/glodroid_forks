@@ -1162,6 +1162,56 @@ Result<void> scanPackagesDirAndActivate(const char* apex_package_dir) {
   return {};
 }
 
+/**
+ * Snapshots data from base_dir/apexdata/<apex name> to
+ * base_dir/apexrollback/<rollback id>/<apex name>.
+ */
+Result<void> snapshotDataDirectory(const std::string& base_dir,
+                                   const int rollback_id,
+                                   const ApexFile& apex_file) {
+  namespace fs = std::filesystem;
+
+  auto rollback_path = StringPrintf("%s/%s/%d", base_dir.c_str(),
+                                    kApexSnapshotSubDir, rollback_id);
+  const Result<void> result = createDirIfNeeded(rollback_path, 0700);
+  if (!result) {
+    return Error() << "Failed to create snapshot directory for rollback "
+                   << rollback_id << " : " << result.error();
+  }
+
+  auto apex_name = apex_file.GetManifest().name();
+  auto to_path =
+      StringPrintf("%s/%s", rollback_path.c_str(), apex_name.c_str());
+
+  std::error_code error_code;
+  fs::remove_all(to_path, error_code);
+  if (error_code) {
+    return Error() << "Failed to delete snapshot for " << apex_name << " : "
+                   << error_code.message();
+  }
+
+  auto deleter = [&] {
+    std::error_code error_code;
+    fs::remove_all(to_path, error_code);
+    if (error_code) {
+      LOG(ERROR) << "Failed to clean up snapshot for " << apex_name << " : "
+                 << error_code.message();
+    }
+  };
+  auto scope_guard = android::base::make_scope_guard(deleter);
+
+  auto from_path = StringPrintf("%s/%s/%s", base_dir.c_str(), kApexDataSubDir,
+                                apex_name.c_str());
+  fs::copy(from_path, to_path, fs::copy_options::recursive, error_code);
+  if (error_code) {
+    return Error() << "Failed to copy snapshot for " << apex_name << " : "
+                   << " from [" << from_path << "] to [" << to_path
+                   << "] :" << error_code.message();
+  }
+  scope_guard.Disable();
+  return {};
+}
+
 void scanStagedSessionsDirAndStage() {
   using android::base::GetProperty;
   LOG(INFO) << "Scanning " << kApexSessionsDir
@@ -1235,6 +1285,22 @@ void scanStagedSessionsDirAndStage() {
                  << std::to_string(sessionId) << ": "
                  << postinstall_status.error();
       continue;
+    }
+
+    if (session.HasRollbackEnabled()) {
+      for (const auto& apex : apexes) {
+        Result<ApexFile> apex_file = ApexFile::Open(apex);
+        if (!apex_file) {
+          LOG(ERROR) << "Cannot open apex for snapshot: " << apex;
+          continue;
+        }
+        Result<void> result = snapshotDataDirectory(
+            kDeSysDataDir, session.GetRollbackId(), *apex_file);
+        if (!result) {
+          LOG(ERROR) << "Snapshot failed for " << apex << ": "
+                     << result.error();
+        }
+      }
     }
 
     const Result<void> result = stagePackages(apexes);
