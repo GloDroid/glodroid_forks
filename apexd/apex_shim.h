@@ -16,9 +16,6 @@
 
 #include "apex_file.h"
 
-#include "string_log.h"
-
-#include <android-base/logging.h>
 #include <android-base/result.h>
 
 namespace android {
