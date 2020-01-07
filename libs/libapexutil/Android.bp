@@ -40,5 +40,9 @@ cc_test {
     "libapexutil",
     "libgmock",
   ],
+  test_suites: [
+    "device-tests",
+    "general-tests",
+  ],
   host_supported: true,
 }
