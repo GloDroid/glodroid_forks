@@ -125,6 +125,12 @@ def ParseArgs(argv):
       action='store_true',
       help='Include build information file in the resulting apex.')
   parser.add_argument(
+      '--include_cmd_line_in_build_info',
+      required=False,
+      action='store_true',
+      help='Include the command line in the build information file in the resulting apex. '
+           'Note that this makes it harder to make deterministic builds.')
+  parser.add_argument(
       '--build_info',
       required=False,
       help='Build information file to be used for default values.')
@@ -280,7 +286,8 @@ def ValidateArgs(args):
 
 def GenerateBuildInfo(args):
   build_info = apex_build_info_pb2.ApexBuildInfo()
-  build_info.apexer_command_line = str(sys.argv)
+  if (args.include_cmd_line_in_build_info):
+    build_info.apexer_command_line = str(sys.argv)
 
   with open(args.file_contexts) as f:
     build_info.file_contexts = f.read()
