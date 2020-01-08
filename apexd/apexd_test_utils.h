@@ -20,6 +20,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "session_state.pb.h"
+
 using apex::proto::SessionState;
 
 namespace android {

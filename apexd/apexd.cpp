@@ -413,11 +413,14 @@ Result<MountedApexData> MountPackageImpl(const ApexFile& apex,
   if (mountOnVerity) {
     std::string hash_device = loopbackDevice.name;
     if (verityData->desc->tree_size == 0) {
-      auto hash_tree = GetHashTree(apex, *verityData, hashtree_file);
-      if (!hash_tree) {
-        return hash_tree.error();
+      if (auto st = PrepareHashTree(apex, *verityData, hashtree_file); !st) {
+        return st.error();
       }
-      loop_for_hash = std::move(*hash_tree);
+      auto create_loop_status = loop::createLoopDevice(hashtree_file, 0, 0);
+      if (!create_loop_status) {
+        return create_loop_status.error();
+      }
+      loop_for_hash = std::move(*create_loop_status);
       hash_device = loop_for_hash.name;
       apex_data.hashtree_loop_name = hash_device;
     }
