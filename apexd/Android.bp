@@ -64,6 +64,8 @@ cc_defaults {
     "libavb",
     "libdm",
     "libext2_uuid",
+    "liblog",
+    "liblogwrap",
     "libverity_tree",
     "libvold_binder",
   ],

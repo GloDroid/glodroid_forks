@@ -27,6 +27,7 @@
 #include "apexd_loop.h"
 #include "apexd_prepostinstall.h"
 #include "apexd_prop.h"
+#include "apexd_rollback_utils.h"
 #include "apexd_session.h"
 #include "apexd_utils.h"
 #include "apexd_verity.h"
@@ -1308,7 +1309,11 @@ Result<void> restoreDataDirectory(const std::string& base_dir,
                    rollback_id, apex_name.c_str());
   auto to_path = StringPrintf("%s/%s/%s", base_dir.c_str(), kApexDataSubDir,
                               apex_name.c_str());
-  return ReplaceFiles(from_path, to_path);
+  const Result<void> result = ReplaceFiles(from_path, to_path);
+  if (!result) {
+    return result;
+  }
+  return RestoreconPath(to_path);
 }
 
 void snapshotOrRestoreIfNeeded(const std::string& base_dir,
@@ -1332,6 +1337,14 @@ void snapshotOrRestoreIfNeeded(const std::string& base_dir,
                    << result.error();
       }
     }
+  }
+}
+
+void snapshotOrRestoreDeSysData() {
+  auto sessions = ApexSession::GetSessionsInState(SessionState::ACTIVATED);
+
+  for (const ApexSession& session : sessions) {
+    snapshotOrRestoreIfNeeded(kDeSysDataDir, session);
   }
 }
 
@@ -1494,8 +1507,6 @@ void scanStagedSessionsDirAndStage() {
       }
       session.AddApexName(apex_file->GetManifest().name());
     }
-
-    snapshotOrRestoreIfNeeded(kDeSysDataDir, session);
 
     const Result<void> result = stagePackages(apexes);
     if (!result) {
@@ -1876,6 +1887,9 @@ void onStart(CheckpointInterface* checkpoint_service) {
                  << status.error();
     }
   }
+
+  // Now that APEXes are mounted, snapshot or restore DE_sys data.
+  snapshotOrRestoreDeSysData();
 
   if (android::base::GetBoolProperty("ro.debuggable", false)) {
     status = monitorBuiltinDirs();
