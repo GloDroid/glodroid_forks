@@ -27,11 +27,8 @@
 
 #include "apex_constants.h"
 #include "apex_file.h"
-#include "apexd_loop.h"
 #include "apexd_utils.h"
-#include "string_log.h"
 
-namespace fs = std::filesystem;
 using android::base::ErrnoError;
 using android::base::Error;
 using android::base::ReadFully;
@@ -116,36 +113,75 @@ Result<void> GenerateHashTree(const ApexFile& apex,
   return {};
 }
 
+Result<std::string> CalculateRootDigest(const std::string& hashtree_file,
+                                        const ApexVerityData& verity_data) {
+  unique_fd fd(TEMP_FAILURE_RETRY(open(hashtree_file.c_str(), O_RDONLY)));
+  if (fd.get() == -1) {
+    return ErrnoError() << "Failed to open " << hashtree_file;
+  }
+  auto block_size = verity_data.desc->hash_block_size;
+  auto image_size = verity_data.desc->image_size;
+  std::vector<uint8_t> root_verity(block_size);
+  if (!ReadFully(fd.get(), root_verity.data(), block_size)) {
+    return ErrnoError() << "Failed to read " << block_size << " bytes from "
+                        << hashtree_file;
+  }
+  auto hash_fn = HashTreeBuilder::HashFunction(verity_data.hash_algorithm);
+  if (hash_fn == nullptr) {
+    return Error() << "Unsupported hash algorithm "
+                   << verity_data.hash_algorithm;
+  }
+  auto builder = std::make_unique<HashTreeBuilder>(block_size, hash_fn);
+  if (!builder->Initialize(image_size, HexToBin(verity_data.salt))) {
+    return Error() << "Invalid image size " << image_size;
+  }
+  std::vector<unsigned char> root_digest;
+  if (!builder->CalculateRootDigest(root_verity, &root_digest)) {
+    return Error() << "Failed to calculate digest of " << hashtree_file;
+  }
+  auto result = HashTreeBuilder::BytesArrayToString(root_digest);
+  result.resize(verity_data.root_digest.size());
+  return result;
+}
+
 }  // namespace
 
-// Returns loop device of hashtree.
-// If image payload has an embedded hash tree, then returns <empty> loop device
-Result<loop::LoopbackDeviceUniqueFd> GetHashTree(
+Result<PrepareHashTreeResult> PrepareHashTree(
     const ApexFile& apex, const ApexVerityData& verity_data,
     const std::string& hashtree_file) {
   if (auto st = createDirIfNeeded(kApexHashTreeDir, 0700); !st) {
     return st.error();
   }
-
-  // TODO(b/120058143): proper hashtree filename for an apex file
-  // what if different apex files have same packageId(name@ver)
-  // TODO(b/120058143): check if existing hastree is tampered by comparing
-  // root digests. If they don't match, need to regenerate.
-  auto hash_path = fs::path(hashtree_file);
-  auto exists = PathExists(hash_path);
+  bool should_regenerate_hashtree = false;
+  auto exists = PathExists(hashtree_file);
   if (!exists) {
     return exists.error();
   }
-  if (!*exists) {
-    if (auto st = GenerateHashTree(apex, verity_data, hash_path); !st) {
-      return st.error();
+  if (*exists) {
+    auto digest = CalculateRootDigest(hashtree_file, verity_data);
+    if (!digest) {
+      return digest.error();
     }
-    LOG(INFO) << "hashtree: generated to " << hash_path;
+    if (*digest != verity_data.root_digest) {
+      LOG(ERROR) << "Regenerating hashtree! Digest of " << hashtree_file
+                 << " does not match digest of " << apex.GetPath() << " : "
+                 << *digest << "\nvs\n"
+                 << verity_data.root_digest;
+      should_regenerate_hashtree = true;
+    }
   } else {
-    LOG(INFO) << "hashtree: reuse " << hash_path;
+    should_regenerate_hashtree = true;
   }
 
-  return loop::createLoopDevice(hash_path, 0, 0);
+  if (should_regenerate_hashtree) {
+    if (auto st = GenerateHashTree(apex, verity_data, hashtree_file); !st) {
+      return st.error();
+    }
+    LOG(INFO) << "hashtree: generated to " << hashtree_file;
+    return KRegenerate;
+  }
+  LOG(INFO) << "hashtree: reuse " << hashtree_file;
+  return kReuse;
 }
 
 void RemoveObsoleteHashTrees() {
