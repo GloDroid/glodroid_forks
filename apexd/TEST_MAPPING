@@ -11,6 +11,9 @@
     },
     {
       "name": "apexservice_test"
+    },
+    {
+      "name": "apexd_verity_test"
     }
   ],
   "imports": [
