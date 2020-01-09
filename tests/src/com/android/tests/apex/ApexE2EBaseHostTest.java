@@ -65,7 +65,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     /**
      * Check if Apex package can be staged, activated and uninstalled successfully.
      */
-    public void doTestStageActivateUninstallApexPackage()
+    public final void doTestStageActivateUninstallApexPackage()
                                 throws DeviceNotAvailableException, IOException {
 
         if (!mApexUpdatable) {
@@ -100,7 +100,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     /**
      * Do some additional check, invoked by doTestStageActivateUninstallApexPackage.
      */
-    public abstract void additionalCheck();
+    public abstract void additionalCheck() throws DeviceNotAvailableException, IOException;
 
     @After
     public void tearDown() throws Exception {
@@ -112,7 +112,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         uninstallApex();
     }
 
-    private void uninstallApex() throws Exception {
+    protected final void uninstallApex() throws DeviceNotAvailableException, IOException {
         ApexInfo apex = mUtils.getApexInfo(mUtils.getTestFile(mApexFileName));
         String uninstallResult = getDevice().uninstallPackage(apex.name);
         if (uninstallResult != null) {
