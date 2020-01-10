@@ -1171,9 +1171,7 @@ Result<void> scanPackagesDirAndActivate(const char* apex_package_dir) {
  */
 Result<void> snapshotDataDirectory(const std::string& base_dir,
                                    const int rollback_id,
-                                   const ApexFile& apex_file) {
-  namespace fs = std::filesystem;
-
+                                   const std::string& apex_name) {
   auto rollback_path = StringPrintf("%s/%s/%d", base_dir.c_str(),
                                     kApexSnapshotSubDir, rollback_id);
   const Result<void> result = createDirIfNeeded(rollback_path, 0700);
@@ -1181,38 +1179,62 @@ Result<void> snapshotDataDirectory(const std::string& base_dir,
     return Error() << "Failed to create snapshot directory for rollback "
                    << rollback_id << " : " << result.error();
   }
-
-  auto apex_name = apex_file.GetManifest().name();
+  auto from_path = StringPrintf("%s/%s/%s", base_dir.c_str(), kApexDataSubDir,
+                                apex_name.c_str());
   auto to_path =
       StringPrintf("%s/%s", rollback_path.c_str(), apex_name.c_str());
 
-  std::error_code error_code;
-  fs::remove_all(to_path, error_code);
-  if (error_code) {
-    return Error() << "Failed to delete snapshot for " << apex_name << " : "
-                   << error_code.message();
-  }
+  return ReplaceFiles(from_path, to_path);
+}
 
-  auto deleter = [&] {
-    std::error_code error_code;
-    fs::remove_all(to_path, error_code);
-    if (error_code) {
-      LOG(ERROR) << "Failed to clean up snapshot for " << apex_name << " : "
-                 << error_code.message();
+/**
+ * Restores snapshot from base_dir/apexrollback/<rollback id>/<apex name>
+ * to base_dir/apexdata/<apex name>.
+ */
+Result<void> restoreDataDirectory(const std::string& base_dir,
+                                  const int rollback_id,
+                                  const std::string& apex_name) {
+  auto from_path =
+      StringPrintf("%s/%s/%d/%s", base_dir.c_str(), kApexSnapshotSubDir,
+                   rollback_id, apex_name.c_str());
+  auto to_path = StringPrintf("%s/%s/%s", base_dir.c_str(), kApexDataSubDir,
+                              apex_name.c_str());
+  return ReplaceFiles(from_path, to_path);
+}
+
+void snapshotOrRestoreIfNeeded(const ApexSession& session,
+                               const std::vector<std::string>& apexes) {
+  if (session.HasRollbackEnabled()) {
+    for (const auto& apex : apexes) {
+      Result<ApexFile> apex_file = ApexFile::Open(apex);
+      if (!apex_file) {
+        LOG(ERROR) << "Cannot open apex for snapshot: " << apex;
+        continue;
+      }
+      auto apex_name = apex_file->GetManifest().name();
+      Result<void> result = snapshotDataDirectory(
+          kDeSysDataDir, session.GetRollbackId(), apex_name);
+      if (!result) {
+        LOG(ERROR) << "Snapshot failed for " << apex << ": " << result.error();
+      }
     }
-  };
-  auto scope_guard = android::base::make_scope_guard(deleter);
-
-  auto from_path = StringPrintf("%s/%s/%s", base_dir.c_str(), kApexDataSubDir,
-                                apex_name.c_str());
-  fs::copy(from_path, to_path, fs::copy_options::recursive, error_code);
-  if (error_code) {
-    return Error() << "Failed to copy snapshot for " << apex_name << " : "
-                   << " from [" << from_path << "] to [" << to_path
-                   << "] :" << error_code.message();
+  } else if (session.IsRollback()) {
+    for (const auto& apex : apexes) {
+      Result<ApexFile> apex_file = ApexFile::Open(apex);
+      if (!apex_file) {
+        LOG(ERROR) << "Cannot open apex for restore of data: " << apex;
+        continue;
+      }
+      auto apex_name = apex_file->GetManifest().name();
+      // TODO: Back up existing files in case rollback is reverted.
+      Result<void> result = restoreDataDirectory(
+          kDeSysDataDir, session.GetRollbackId(), apex_name);
+      if (!result) {
+        LOG(ERROR) << "Restore of data failed for " << apex << ": "
+                   << result.error();
+      }
+    }
   }
-  scope_guard.Disable();
-  return {};
 }
 
 void scanStagedSessionsDirAndStage() {
@@ -1290,21 +1312,7 @@ void scanStagedSessionsDirAndStage() {
       continue;
     }
 
-    if (session.HasRollbackEnabled()) {
-      for (const auto& apex : apexes) {
-        Result<ApexFile> apex_file = ApexFile::Open(apex);
-        if (!apex_file) {
-          LOG(ERROR) << "Cannot open apex for snapshot: " << apex;
-          continue;
-        }
-        Result<void> result = snapshotDataDirectory(
-            kDeSysDataDir, session.GetRollbackId(), *apex_file);
-        if (!result) {
-          LOG(ERROR) << "Snapshot failed for " << apex << ": "
-                     << result.error();
-        }
-      }
-    }
+    snapshotOrRestoreIfNeeded(session, apexes);
 
     const Result<void> result = stagePackages(apexes);
     if (!result) {
