@@ -270,7 +270,8 @@ static int sun6i_dphy_probe(struct platform_device *pdev)
 	dphy->regs = devm_regmap_init_mmio_clk(&pdev->dev, "bus",
 					       regs, &sun6i_dphy_regmap_config);
 	if (IS_ERR(dphy->regs)) {
-		dev_err(&pdev->dev, "Couldn't create the DPHY encoder regmap\n");
+		if (PTR_ERR(dphy->regs) != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Couldn't create the DPHY encoder regmap\n");
 		return PTR_ERR(dphy->regs);
 	}
 

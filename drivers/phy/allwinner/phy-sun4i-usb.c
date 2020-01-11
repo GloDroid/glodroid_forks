@@ -774,7 +774,8 @@ static int sun4i_usb_phy_probe(struct platform_device *pdev)
 
 		phy->clk = devm_clk_get(dev, name);
 		if (IS_ERR(phy->clk)) {
-			dev_err(dev, "failed to get clock %s\n", name);
+			if (PTR_ERR(phy->clk) != -EPROBE_DEFER)
+				dev_err(dev, "failed to get clock %s\n", name);
 			return PTR_ERR(phy->clk);
 		}
 
