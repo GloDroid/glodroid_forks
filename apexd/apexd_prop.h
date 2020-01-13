@@ -22,8 +22,9 @@
 namespace android {
 namespace apex {
 
-void waitForBootStatus(android::base::Result<void> (&rollback_fn)(),
-                       void (&complete_fn)());
+void waitForBootStatus(
+    android::base::Result<void> (&rollback_fn)(const std::string&),
+    void (&complete_fn)());
 
 }  // namespace apex
 }  // namespace android

@@ -75,6 +75,7 @@
 using android::base::ErrnoError;
 using android::base::Error;
 using android::base::Errorf;
+using android::base::GetProperty;
 using android::base::Join;
 using android::base::ReadFully;
 using android::base::Result;
@@ -123,7 +124,7 @@ static const std::vector<std::string> kBootstrapApexes = ([]() {
       "com.android.tzdata",
   };
 
-  if (auto ver = android::base::GetProperty("ro.vndk.version", ""); ver != "") {
+  if (auto ver = GetProperty("ro.vndk.version", ""); ver != "") {
     ret.push_back("com.android.vndk.v" + ver);
   }
   return ret;
@@ -933,7 +934,7 @@ Result<void> resumeRevertIfNeeded() {
   if (sessions.empty()) {
     return {};
   }
-  return revertActiveSessions();
+  return revertActiveSessions("");
 }
 
 Result<void> activatePackageImpl(const ApexFile& apex_file) {
@@ -1238,7 +1239,6 @@ void snapshotOrRestoreIfNeeded(const ApexSession& session,
 }
 
 void scanStagedSessionsDirAndStage() {
-  using android::base::GetProperty;
   LOG(INFO) << "Scanning " << kApexSessionsDir
             << " looking for sessions to be activated.";
 
@@ -1494,7 +1494,7 @@ void revertAllStagedSessions() {
  * Also, we need to put staged sessions in /data/apex/sessions in REVERTED state
  * so that they do not get activated on next reboot.
  */
-Result<void> revertActiveSessions() {
+Result<void> revertActiveSessions(const std::string& crashing_native_process) {
   // First check whenever there is anything to revert. If there is none, then
   // fail. This prevents apexd from boot looping a device in case a native
   // process is crashing and there are no apex updates.
@@ -1512,6 +1512,9 @@ Result<void> revertActiveSessions() {
   }
 
   for (auto& session : activeSessions) {
+    if (!crashing_native_process.empty()) {
+      session.SetCrashingNativeProcess(crashing_native_process);
+    }
     auto status =
         session.UpdateStateAndCommit(SessionState::REVERT_IN_PROGRESS);
     if (!status) {
@@ -1545,8 +1548,9 @@ Result<void> revertActiveSessions() {
   return {};
 }
 
-Result<void> revertActiveSessionsAndReboot() {
-  auto status = revertActiveSessions();
+Result<void> revertActiveSessionsAndReboot(
+    const std::string& crashing_native_process) {
+  auto status = revertActiveSessions(crashing_native_process);
   if (!status) {
     return status;
   }
@@ -1716,7 +1720,7 @@ void onStart(CheckpointInterface* checkpoint_service) {
   if (!status) {
     LOG(ERROR) << "Failed to activate packages from "
                << kActiveApexPackagesDataDir << " : " << status.error();
-    Result<void> revert_status = revertActiveSessionsAndReboot();
+    Result<void> revert_status = revertActiveSessionsAndReboot("");
     if (!revert_status) {
       // TODO: should we kill apexd in this case?
       LOG(ERROR) << "Failed to revert : " << revert_status.error();
@@ -1759,7 +1763,6 @@ Result<std::vector<ApexFile>> submitStagedSession(
     const int session_id, const std::vector<int>& child_session_ids,
     const bool has_rollback_enabled, const bool is_rollback,
     const int rollback_id) {
-  using android::base::GetProperty;
 
   if (session_id == 0) {
     return Error() << "Session id was not provided.";

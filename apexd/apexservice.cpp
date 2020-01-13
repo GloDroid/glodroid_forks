@@ -438,7 +438,7 @@ BinderStatus ApexService::abortStagedSession(int session_id) {
 
 BinderStatus ApexService::revertActiveSessions() {
   LOG(DEBUG) << "revertActiveSessions() received by ApexService.";
-  Result<void> res = ::android::apex::revertActiveSessions();
+  Result<void> res = ::android::apex::revertActiveSessions("");
   if (!res) {
     return BinderStatus::fromExceptionCode(
         BinderStatus::EX_ILLEGAL_ARGUMENT,
