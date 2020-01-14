@@ -290,6 +290,15 @@ class ApexServiceTest : public ::testing::Test {
     return data;
   }
 
+  static void DeleteIfExists(const std::string& path) {
+    if (fs::exists(path)) {
+      std::error_code ec;
+      fs::remove_all(path, ec);
+      ASSERT_FALSE(ec) << "Failed to delete dir " << path << " : "
+                       << ec.message();
+    }
+  }
+
   struct PrepareTestApexForInstall {
     static constexpr const char* kTestDir = "/data/app-staging/apexservice_tmp";
 
@@ -435,6 +444,9 @@ class ApexServiceTest : public ::testing::Test {
     });
     fs::remove_all(kApexSessionsDir);
     ASSERT_TRUE(IsOk(status));
+
+    DeleteIfExists("/data/misc_ce/0/apexdata/apex.apexd_test");
+    DeleteIfExists("/data/misc_ce/0/apexrollback/123456");
   }
 };
 
@@ -785,6 +797,68 @@ TEST_F(ApexServiceTest, SessionParamDefaults) {
   ASSERT_FALSE(session->IsRollback());
   ASSERT_FALSE(session->HasRollbackEnabled());
   ASSERT_EQ(0, session->GetRollbackId());
+}
+
+TEST_F(ApexServiceTest, SnapshotCeData) {
+  std::error_code ec;
+  fs::create_directory("/data/misc_ce/0/apexdata/apex.apexd_test");
+  ASSERT_FALSE(ec) << "Failed to create data dir "
+                   << " : " << ec.message();
+
+  std::ofstream ofs("/data/misc_ce/0/apexdata/apex.apexd_test/hello.txt");
+  ASSERT_TRUE(ofs.good());
+  ofs.close();
+
+  ASSERT_TRUE(
+      RegularFileExists("/data/misc_ce/0/apexdata/apex.apexd_test/hello.txt"));
+
+  int64_t result;
+  service_->snapshotCeData(0, 123456, "apex.apexd_test", &result);
+
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_ce/0/apexrollback/123456/apex.apexd_test/hello.txt"));
+
+  // Check that the return value is the inode of the snapshot directory.
+  struct stat buf;
+  memset(&buf, 0, sizeof(buf));
+  ASSERT_EQ(0,
+            stat("/data/misc_ce/0/apexrollback/123456/apex.apexd_test", &buf));
+  ASSERT_EQ(int64_t(buf.st_ino), result);
+}
+
+TEST_F(ApexServiceTest, RestoreCeData) {
+  std::error_code ec;
+  fs::create_directory("/data/misc_ce/0/apexdata/apex.apexd_test", ec);
+  ASSERT_FALSE(ec) << "Failed to create data dir "
+                   << " : " << ec.message();
+  fs::create_directory("/data/misc_ce/0/apexrollback/123456", ec);
+  ASSERT_FALSE(ec) << "Failed to create snapshot root dir "
+                   << " : " << ec.message();
+  fs::create_directory("/data/misc_ce/0/apexrollback/123456/apex.apexd_test",
+                       ec);
+  ASSERT_FALSE(ec) << "Failed to create snapshot dir "
+                   << " : " << ec.message();
+
+  std::ofstream newfs("/data/misc_ce/0/apexdata/apex.apexd_test/newfile.txt");
+  ASSERT_TRUE(newfs.good());
+  newfs.close();
+
+  std::ofstream oldfs(
+      "/data/misc_ce/0/apexrollback/123456/apex.apexd_test/oldfile.txt");
+  ASSERT_TRUE(oldfs.good());
+  oldfs.close();
+
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_ce/0/apexdata/apex.apexd_test/newfile.txt"));
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_ce/0/apexrollback/123456/apex.apexd_test/oldfile.txt"));
+
+  service_->restoreCeData(0, 123456, "apex.apexd_test");
+
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_ce/0/apexdata/apex.apexd_test/oldfile.txt"));
+  ASSERT_FALSE(RegularFileExists(
+      "/data/misc_ce/0/apexdata/apex.apexd_test/newfile.txt"));
 }
 
 template <typename NameProvider>

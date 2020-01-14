@@ -34,6 +34,18 @@ interface IApexService {
    void abortStagedSession(int session_id);
    void revertActiveSessions();
 
+   /**
+    * Copies the CE apex data directory for the given user to the backup
+    * location, and returns the inode of the snapshot directory.
+    */
+   long snapshotCeData(int user_id, int rollback_id, in @utf8InCpp String apex_name);
+
+   /**
+    * Restores the snapshot of the CE apex data directory for the given user and
+    * apex.
+    */
+   void restoreCeData(int user_id, int rollback_id, in @utf8InCpp String apex_name);
+
    void unstagePackages(in @utf8InCpp List<String> active_package_paths);
 
    /**

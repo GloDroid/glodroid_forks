@@ -79,6 +79,11 @@ class ApexService : public BnApexService {
   BinderStatus abortStagedSession(int session_id) override;
   BinderStatus revertActiveSessions() override;
   BinderStatus resumeRevertIfNeeded() override;
+  BinderStatus snapshotCeData(int user_id, int rollback_id,
+                              const std::string& apex_name,
+                              int64_t* _aidl_return) override;
+  BinderStatus restoreCeData(int user_id, int rollback_id,
+                             const std::string& apex_name) override;
 
   status_t dump(int fd, const Vector<String16>& args) override;
 
@@ -459,6 +464,34 @@ BinderStatus ApexService::resumeRevertIfNeeded() {
   if (!res) {
     return BinderStatus::fromExceptionCode(
         BinderStatus::EX_ILLEGAL_ARGUMENT,
+        String8(res.error().message().c_str()));
+  }
+  return BinderStatus::ok();
+}
+
+BinderStatus ApexService::snapshotCeData(int user_id, int rollback_id,
+                                         const std::string& apex_name,
+                                         int64_t* _aidl_return) {
+  LOG(DEBUG) << "snapshotCeData() received by ApexService.";
+  Result<ino_t> res =
+      ::android::apex::snapshotCeData(user_id, rollback_id, apex_name);
+  if (!res) {
+    return BinderStatus::fromExceptionCode(
+        BinderStatus::EX_SERVICE_SPECIFIC,
+        String8(res.error().message().c_str()));
+  }
+  *_aidl_return = static_cast<uint64_t>(*res);
+  return BinderStatus::ok();
+}
+
+BinderStatus ApexService::restoreCeData(int user_id, int rollback_id,
+                                        const std::string& apex_name) {
+  LOG(DEBUG) << "restoreCeData() received by ApexService.";
+  Result<void> res =
+      ::android::apex::restoreCeData(user_id, rollback_id, apex_name);
+  if (!res) {
+    return BinderStatus::fromExceptionCode(
+        BinderStatus::EX_SERVICE_SPECIFIC,
         String8(res.error().message().c_str()));
   }
   return BinderStatus::ok();

@@ -199,6 +199,16 @@ inline Result<void> ReplaceFiles(const std::string& from_path,
   return {};
 }
 
+inline Result<ino_t> get_path_inode(const std::string& path) {
+  struct stat buf;
+  memset(&buf, 0, sizeof(buf));
+  if (stat(path.c_str(), &buf) != 0) {
+    return ErrnoError() << "Failed to stat " << path;
+  } else {
+    return buf.st_ino;
+  }
+}
+
 inline Result<bool> PathExists(const std::string& path) {
   namespace fs = std::filesystem;
 
