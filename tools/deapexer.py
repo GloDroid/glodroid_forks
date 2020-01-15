@@ -34,10 +34,11 @@ import apex_manifest
 
 class ApexImageEntry(object):
 
-  def __init__(self, name, base_dir, permissions, is_directory=False, is_symlink=False):
+  def __init__(self, name, base_dir, permissions, size, is_directory=False, is_symlink=False):
     self._name = name
     self._base_dir = base_dir
     self._permissions = permissions
+    self._size = size
     self._is_directory = is_directory
     self._is_symlink = is_symlink
 
@@ -65,6 +66,10 @@ class ApexImageEntry(object):
   def permissions(self):
     return self._permissions
 
+  @property
+  def size(self):
+    return self._size
+
   def __str__(self):
     ret = ''
     if self._is_directory:
@@ -84,7 +89,7 @@ class ApexImageEntry(object):
     ret += mask_as_string((self._permissions >> 3) & 7)
     ret += mask_as_string(self._permissions & 7)
 
-    return ret + ' ' + self._name
+    return ret + ' ' + self._size + ' ' + self._name
 
 
 class ApexImageDirectory(object):
@@ -148,7 +153,8 @@ class Apex(object):
       if not name:
         continue
       bits = parts[2]
-      entries.append(ApexImageEntry(name, base_dir=path, permissions=int(bits[3:], 8),
+      size = parts[6]
+      entries.append(ApexImageEntry(name, base_dir=path, permissions=int(bits[3:], 8), size=size,
                                     is_directory=bits[1]=='4', is_symlink=bits[1]=='2'))
     return ApexImageDirectory(path, entries, self)
 
@@ -164,7 +170,9 @@ class Apex(object):
 def RunList(args):
   with Apex(args) as apex:
     for e in apex.list(is_recursive=True):
-      if e.is_regular_file:
+      if args.size and not e.is_directory:
+        print(e.size, e.full_path)
+      elif e.is_regular_file:
         print(e.full_path)
 
 
@@ -192,6 +200,7 @@ def main(argv):
 
   parser_list = subparsers.add_parser('list', help='prints content of an APEX to stdout')
   parser_list.add_argument('apex', type=str, help='APEX file')
+  parser_list.add_argument('--size', help='also show the size of the files', action="store_true")
   parser_list.set_defaults(func=RunList)
 
   parser_extract = subparsers.add_parser('extract', help='extracts content of an APEX to the given '
