@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "apexd"
-
 #include "apexd.h"
 #include "apexd_private.h"
 
