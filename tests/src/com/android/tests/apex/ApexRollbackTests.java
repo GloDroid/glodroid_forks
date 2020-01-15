@@ -26,6 +26,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 
 import org.junit.After;
 import org.junit.Test;
@@ -104,5 +106,52 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
                 getDevice().waitForBootComplete(Duration.ofMinutes(1).toMillis())).isTrue();
         // Verify that property was set to true.
         assertThat(getDevice().getBooleanProperty("sys.init.updatable_crashing", false)).isTrue();
+    }
+
+    @Test
+    public void testApexUpdateIsRevertedWhenDeviceIsRebootedDuringUpdate()
+            throws Exception {
+        assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
+        assumeTrue("Device doesn't support fs checkpointing", supportsFsCheckpointing());
+
+        File apexFile = mUtils.getTestFile("com.android.apex.cts.shim.v2.apex");
+        // On next boot trigger a reboot.
+        getDevice().setProperty("test.apex_revert_test_force_reboot", "1");
+        String error = getDevice().installPackage(apexFile, false, "--wait");
+        assertWithMessage("Failed to stage com.android.apex.cts.shim.v2.apex : %s", error).that(
+                error).isNull();
+        // After we reboot the device, apexd will apply the update, but since device is rebooted
+        // again later in the boot sequence update will be reverted.
+        getDevice().reboot();
+        Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
+        assertThat(activatedApexes).contains(new ApexInfo("com.android.apex.cts.shim", 1L));
+    }
+
+    @Test
+    public void testFailingUserspaceRebootRevertsUpdate() throws Exception {
+        assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
+        assumeTrue("Device doesn't support usespace reboot",
+                getDevice().getBooleanProperty("ro.init.userspace_reboot.is_supported", false));
+        assumeTrue("Device doesn't support fs checkpointing", supportsFsCheckpointing());
+
+        File apexFile = mUtils.getTestFile("com.android.apex.cts.shim.v2.apex");
+        // Simulate failure in userspace reboot by triggering a full reboot in the middle of the
+        // boot sequence.
+        getDevice().setProperty("test.apex_revert_test_force_reboot", "1");
+        String error = getDevice().installPackage(apexFile, false, "--wait");
+        assertWithMessage("Failed to stage com.android.apex.cts.shim.v2.apex : %s", error).that(
+                error).isNull();
+        // After we reboot the device, apexd will apply the update, but since device is rebooted
+        // again later in the boot sequence update will be reverted.
+        getDevice().rebootUserspace();
+        Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
+        assertThat(activatedApexes).contains(new ApexInfo("com.android.apex.cts.shim", 1L));
+    }
+
+    private boolean supportsFsCheckpointing() throws Exception {
+        CommandResult result = getDevice().executeShellV2Command("sm supports-checkpoint");
+        assertWithMessage("Failed to check if fs checkpointing is supported : %s",
+                result.getStderr()).that(result.getStatus()).isEqualTo(CommandStatus.SUCCESS);
+        return "true".equals(result.getStdout().trim());
     }
 }

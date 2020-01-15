@@ -6,3 +6,10 @@ on boot
 on boot && property:persist.debug.trigger_updatable_crashing_for_testing=1
     # Mock the fact that a service was crashing.
     setprop sys.init.updatable_crashing 1
+
+on boot && property:test.apex_revert_test_force_reboot=1
+    exec_start rebooting_service
+
+service rebooting_service /system/bin/false
+    reboot_on_failure reboot,apex-revert-test
+    disabled
