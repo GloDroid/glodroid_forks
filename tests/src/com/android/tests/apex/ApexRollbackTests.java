@@ -51,6 +51,7 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         mUtils.uninstallShimApexIfNecessary();
         resetProperty("persist.debug.trigger_watchdog.apex");
         resetProperty("persist.debug.trigger_updatable_crashing_for_testing");
+        resetProperty("persist.debug.trigger_reboot_after_activation");
     }
 
     /**
@@ -63,6 +64,7 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         mUtils.uninstallShimApexIfNecessary();
         resetProperty("persist.debug.trigger_watchdog.apex");
         resetProperty("persist.debug.trigger_updatable_crashing_for_testing");
+        resetProperty("persist.debug.trigger_reboot_after_activation");
     }
 
     private void resetProperty(String propertyName) throws Exception {
@@ -92,6 +94,10 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         String error = device.installPackage(apexFile, false, "--wait");
         assertThat(error).isNull();
 
+        String sessionIdToCheck = device.executeShellCommand("pm get-stagedsessions --only-ready "
+                + "--only-parent --only-sessionid").trim();
+        assertThat(sessionIdToCheck).isNotEmpty();
+
         // After we reboot the device, we expect the device to go into boot
         // loop from trigger_watchdog.sh. Native watchdog should detect and
         // report the boot loop, causing apexd to roll back to the previous
@@ -99,6 +105,40 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         // after the forced reboot, trigger_watchdog.sh will see the different
         // version of the apex and refrain from forcing a boot loop, so the
         // device will be recovered.
+        device.reboot();
+
+        ApexInfo ctsShimV1 = new ApexInfo("com.android.apex.cts.shim", 1L);
+        ApexInfo ctsShimV2 = new ApexInfo("com.android.apex.cts.shim", 2L);
+        Set<ApexInfo> activatedApexes = device.getActiveApexes();
+        assertThat(activatedApexes).contains(ctsShimV1);
+        assertThat(activatedApexes).doesNotContain(ctsShimV2);
+
+        // Assert that a session has failed with the expected reason
+        String sessionInfo = device.executeShellCommand("cmd apexservice getStagedSessionInfo "
+                    + sessionIdToCheck);
+        assertThat(sessionInfo).contains("revertReason: zygote");
+    }
+
+    @Test
+    public void testCheckpointingRevertsSession() throws Exception {
+        assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
+        assumeTrue("Device doesn't support fs checkpointing", supportsFsCheckpointing());
+
+        File apexFile = mUtils.getTestFile("com.android.apex.cts.shim.v2.apex");
+
+        ITestDevice device = getDevice();
+        assertThat(device.setProperty("persist.debug.trigger_reboot_after_activation",
+                "com.android.apex.cts.shim@2.apex")).isTrue();
+        String error = device.installPackage(apexFile, false, "--wait");
+        assertThat(error).isNull();
+
+        String sessionIdToCheck = device.executeShellCommand("pm get-stagedsessions --only-ready "
+                + "--only-parent --only-sessionid").trim();
+        assertThat(sessionIdToCheck).isNotEmpty();
+
+        // After we reboot the device, the apexd session should be activated as normal. After this,
+        // trigger_reboot.sh will reboot the device before the system server boots. Checkpointing
+        // will kick in, and at the next boot any non-finalized sessions will be reverted.
         device.reboot();
 
         ApexInfo ctsShimV1 = new ApexInfo("com.android.apex.cts.shim", 1L);

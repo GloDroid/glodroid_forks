@@ -433,6 +433,7 @@ class ApexServiceTest : public ::testing::Test {
       ASSERT_FALSE(ec) << "Failed to delete " << p.path() << " : "
                        << ec.message();
     });
+    fs::remove_all(kApexSessionsDir);
     ASSERT_TRUE(IsOk(status));
   }
 };
@@ -2206,10 +2207,6 @@ TEST_F(ApexServiceRevertTest, RevertFailedStateRevertAttemptFails) {
 }
 
 TEST_F(ApexServiceRevertTest, RevertStoresCrashingNativeProcess) {
-  if (supports_fs_checkpointing_) {
-    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
-  }
-
   PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
   if (!installer.Prepare()) {
     return;
