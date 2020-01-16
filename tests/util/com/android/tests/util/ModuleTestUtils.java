@@ -217,7 +217,7 @@ public class ModuleTestUtils {
      * Return {@code true} if and only if device supports updating apex.
      */
     public boolean isApexUpdateSupported() throws Exception {
-        return "true".equals(mTest.getDevice().getProperty("ro.apex.updatable"));
+        return mTest.getDevice().getBooleanProperty("ro.apex.updatable", false);
     }
 
     private boolean isReadyNotApplied(String sessionInfo) {
