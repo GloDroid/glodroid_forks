@@ -5,4 +5,5 @@ on boot
 
 on boot && property:persist.debug.trigger_updatable_crashing_for_testing=1
     # Mock the fact that a service was crashing.
+    setprop sys.init.updatable_crashing_process_name test_process
     setprop sys.init.updatable_crashing 1

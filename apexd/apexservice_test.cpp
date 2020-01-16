@@ -53,6 +53,7 @@
 #include "apex_database.h"
 #include "apex_file.h"
 #include "apex_manifest.h"
+#include "apexd.h"
 #include "apexd_private.h"
 #include "apexd_session.h"
 #include "apexd_test_utils.h"
@@ -2202,6 +2203,27 @@ TEST_F(ApexServiceRevertTest, RevertFailedStateRevertAttemptFails) {
   ApexSessionInfo expected = CreateSessionInfo(17239);
   expected.isRevertFailed = true;
   ASSERT_THAT(session_info, SessionInfoEq(expected));
+}
+
+TEST_F(ApexServiceRevertTest, RevertStoresCrashingNativeProcess) {
+  if (supports_fs_checkpointing_) {
+    GTEST_SKIP() << "Can't run if filesystem checkpointing is enabled";
+  }
+
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
+  if (!installer.Prepare()) {
+    return;
+  }
+  auto session = ApexSession::CreateSession(1543);
+  ASSERT_TRUE(IsOk(session));
+  ASSERT_TRUE(IsOk(session->UpdateStateAndCommit(SessionState::ACTIVATED)));
+
+  // Make sure /data/apex/active is non-empty.
+  ASSERT_TRUE(IsOk(service_->stagePackages({installer.test_file})));
+  std::string native_process = "test_process";
+  Result<void> res = ::android::apex::revertActiveSessions(native_process);
+  session = ApexSession::GetSession(1543);
+  ASSERT_EQ(session->GetCrashingNativeProcess(), native_process);
 }
 
 static pid_t GetPidOf(const std::string& name) {
