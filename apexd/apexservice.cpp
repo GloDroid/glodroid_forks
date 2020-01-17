@@ -84,6 +84,7 @@ class ApexService : public BnApexService {
                               int64_t* _aidl_return) override;
   BinderStatus restoreCeData(int user_id, int rollback_id,
                              const std::string& apex_name) override;
+  BinderStatus destroyDeSnapshots(int rollback_id) override;
 
   status_t dump(int fd, const Vector<String16>& args) override;
 
@@ -494,6 +495,17 @@ BinderStatus ApexService::restoreCeData(int user_id, int rollback_id,
   Result<void> res =
       ::android::apex::restoreCeData(user_id, rollback_id, apex_name);
   if (!res.ok()) {
+    return BinderStatus::fromExceptionCode(
+        BinderStatus::EX_SERVICE_SPECIFIC,
+        String8(res.error().message().c_str()));
+  }
+  return BinderStatus::ok();
+}
+
+BinderStatus ApexService::destroyDeSnapshots(int rollback_id) {
+  LOG(DEBUG) << "destroyDeSnapshots() received by ApexService.";
+  Result<void> res = ::android::apex::destroyDeSnapshots(rollback_id);
+  if (!res) {
     return BinderStatus::fromExceptionCode(
         BinderStatus::EX_SERVICE_SPECIFIC,
         String8(res.error().message().c_str()));
