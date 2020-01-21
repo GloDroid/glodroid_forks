@@ -7,6 +7,9 @@
       "name": "apex_targetprep_tests"
     },
     {
+      "name": "adbd_e2e_tests"
+    },
+    {
       "name": "conscrypt_e2e_tests"
     },
     {
