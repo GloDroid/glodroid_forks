@@ -115,10 +115,6 @@ def ParseArgs(argv):
       required=False,
       help='Default target SDK version to use for AndroidManifest.xml')
   parser.add_argument(
-      '--min_sdk_version',
-      required=False,
-      help='Default Min SDK version to use for AndroidManifest.xml')
-  parser.add_argument(
       '--do_not_check_keyname',
       required=False,
       action='store_true',
@@ -493,13 +489,10 @@ def CreateApex(args, work_dir):
     cmd.extend(['--version-name', manifest_apex.versionName])
   if args.target_sdk_version:
     cmd.extend(['--target-sdk-version', args.target_sdk_version])
-  if args.min_sdk_version:
-    cmd.extend(['--min-sdk-version', args.min_sdk_version])
-  else:
-    # Default value for minSdkVersion.
-    cmd.extend(['--min-sdk-version', '29'])
   if args.assets_dir:
     cmd.extend(['-A', args.assets_dir])
+  # Default value for minSdkVersion.
+  cmd.extend(['--min-sdk-version', '29'])
   cmd.extend(['-o', apk_file])
   cmd.extend(['-I', args.android_jar_path])
   RunCommand(cmd, args.verbose)
