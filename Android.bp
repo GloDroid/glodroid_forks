@@ -55,6 +55,7 @@ cc_library_static {
     name: "libc++_static",
     defaults: ["libc++ defaults"],
     vendor_available: true,
+    ramdisk_available: true,
     recovery_available: true,
     native_bridge_supported: true,
     srcs: [
@@ -111,6 +112,7 @@ cc_library_shared {
         enabled: true,
         support_system_process: true,
     },
+    ramdisk_available: true,
     recovery_available: true,
     whole_static_libs: ["libc++_static"],
     stl: "none",
