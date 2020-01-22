@@ -238,6 +238,7 @@ struct genfs {
 /* The policy database */
 struct policydb {
 	int mls_enabled;
+	int android_netlink_route;
 
 	/* symbol tables */
 	struct symtab symtab[SYM_NUM];
@@ -325,6 +326,7 @@ extern int policydb_read(struct policydb *p, void *fp);
 extern int policydb_write(struct policydb *p, void *fp);
 
 #define POLICYDB_CONFIG_MLS    1
+#define POLICYDB_CONFIG_ANDROID_NETLINK_ROUTE    (1 << 31)
 
 /* the config flags related to unknown classes/perms are bits 2 and 3 */
 #define REJECT_UNKNOWN	0x00000002
