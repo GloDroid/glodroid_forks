@@ -73,6 +73,7 @@
 using android::base::ErrnoError;
 using android::base::Error;
 using android::base::Errorf;
+using android::base::GetProperty;
 using android::base::Join;
 using android::base::ReadFully;
 using android::base::Result;
@@ -121,7 +122,7 @@ static const std::vector<std::string> kBootstrapApexes = ([]() {
       "com.android.tzdata",
   };
 
-  if (auto ver = android::base::GetProperty("ro.vndk.version", ""); ver != "") {
+  if (auto ver = GetProperty("ro.vndk.version", ""); ver != "") {
     ret.push_back("com.android.vndk.v" + ver);
   }
   return ret;
@@ -1343,7 +1344,6 @@ void snapshotOrRestoreIfNeeded(const ApexSession& session,
 }
 
 void scanStagedSessionsDirAndStage() {
-  using android::base::GetProperty;
   LOG(INFO) << "Scanning " << kApexSessionsDir
             << " looking for sessions to be activated.";
 
@@ -1590,19 +1590,23 @@ Result<void> rollbackStagedSessionIfAny() {
                  << " because it is not in STAGED state";
 }
 
-Result<void> rollbackActiveSession() {
+Result<void> rollbackActiveSession(const std::string& crashing_native_process) {
   auto session = ApexSession::GetActiveSession();
   if (!session) {
     return Error() << "Failed to get active session : " << session.error();
   } else if (!session->has_value()) {
     return Error() << "Rollback requested, when there are no active sessions.";
   } else {
+    if (!crashing_native_process.empty()) {
+      (*session)->SetCrashingNativeProcess(crashing_native_process);
+    }
     return RollbackSession(*(*session));
   }
 }
 
-Result<void> rollbackActiveSessionAndReboot() {
-  auto status = rollbackActiveSession();
+Result<void> rollbackActiveSessionAndReboot(
+    const std::string& crashing_native_process) {
+  auto status = rollbackActiveSession(crashing_native_process);
   if (!status) {
     return status;
   }
@@ -1777,7 +1781,7 @@ void onStart(CheckpointInterface* checkpoint_service) {
   if (!status) {
     LOG(ERROR) << "Failed to activate packages from "
                << kActiveApexPackagesDataDir << " : " << status.error();
-    Result<void> rollback_status = rollbackActiveSessionAndReboot();
+    Result<void> rollback_status = rollbackActiveSessionAndReboot("");
     if (!rollback_status) {
       // TODO: should we kill apexd in this case?
       LOG(ERROR) << "Failed to rollback : " << rollback_status.error();
@@ -1820,7 +1824,6 @@ Result<std::vector<ApexFile>> submitStagedSession(
     const int session_id, const std::vector<int>& child_session_ids,
     const bool has_rollback_enabled, const bool is_rollback,
     const int rollback_id) {
-  using android::base::GetProperty;
 
   if (session_id == 0) {
     return Error() << "Session id was not provided.";

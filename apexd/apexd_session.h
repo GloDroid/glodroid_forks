@@ -45,6 +45,7 @@ class ApexSession {
   ::apex::proto::SessionState::State GetState() const;
   int GetId() const;
   std::string GetBuildFingerprint() const;
+  std::string GetCrashingNativeProcess() const;
   bool IsFinalized() const;
   bool HasRollbackEnabled() const;
   bool IsRollback() const;
@@ -55,6 +56,7 @@ class ApexSession {
   void SetHasRollbackEnabled(const bool enabled);
   void SetIsRollback(const bool is_rollback);
   void SetRollbackId(const int rollback_id);
+  void SetCrashingNativeProcess(const std::string& crashing_process);
 
   android::base::Result<void> UpdateStateAndCommit(
       const ::apex::proto::SessionState::State& state);
