@@ -195,6 +195,10 @@ bool ApexSession::IsRollback() const { return state_.is_rollback(); }
 
 int ApexSession::GetRollbackId() const { return state_.rollback_id(); }
 
+std::string ApexSession::GetCrashingNativeProcess() const {
+  return state_.crashing_native_process();
+}
+
 const google::protobuf::RepeatedField<int> ApexSession::GetChildSessionIds()
     const {
   return state_.child_session_ids();
@@ -220,6 +224,11 @@ void ApexSession::SetIsRollback(const bool is_rollback) {
 
 void ApexSession::SetRollbackId(const int rollback_id) {
   state_.set_rollback_id(rollback_id);
+}
+
+void ApexSession::SetCrashingNativeProcess(
+    const std::string& crashing_process) {
+  state_.set_crashing_native_process(crashing_process);
 }
 
 Result<void> ApexSession::UpdateStateAndCommit(

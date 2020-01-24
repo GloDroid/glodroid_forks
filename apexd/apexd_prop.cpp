@@ -27,7 +27,8 @@ using android::base::Result;
 
 namespace android {
 namespace apex {
-void waitForBootStatus(Result<void> (&rollback_fn)(), void (&complete_fn)()) {
+void waitForBootStatus(Result<void> (&rollback_fn)(const std::string&),
+                       void (&complete_fn)()) {
   while (true) {
     // Check for change in either crashing property or sys.boot_completed
     // Wait for updatable_crashing property change for most of the time
@@ -38,7 +39,9 @@ void waitForBootStatus(Result<void> (&rollback_fn)(), void (&complete_fn)()) {
     if (android::base::WaitForProperty("sys.init.updatable_crashing", "1",
                                        std::chrono::seconds(30))) {
       LOG(INFO) << "Updatable crashing, attempting rollback";
-      auto status = rollback_fn();
+      const std::string& crashing_native_process = android::base::GetProperty(
+          "sys.init.updatable_crashing_process_name", "");
+      auto status = rollback_fn(crashing_native_process);
       if (!status) {
         LOG(ERROR) << "Rollback failed : " << status.error();
       } else {

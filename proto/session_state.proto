@@ -51,4 +51,7 @@ message SessionState {
 
   // The associated rollback id
   int32 rollback_id = 7;
+
+  // The crashing native process that has caused this session to be reverted
+  string crashing_native_process = 8;
 }

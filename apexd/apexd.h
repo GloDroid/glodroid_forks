@@ -55,8 +55,10 @@ android::base::Result<void> markStagedSessionReady(const int session_id)
     WARN_UNUSED;
 android::base::Result<void> markStagedSessionSuccessful(const int session_id)
     WARN_UNUSED;
-android::base::Result<void> rollbackActiveSession();
-android::base::Result<void> rollbackActiveSessionAndReboot();
+android::base::Result<void> rollbackActiveSession(
+    const std::string& crashing_native_process);
+android::base::Result<void> rollbackActiveSessionAndReboot(
+    const std::string& crashing_native_process);
 
 android::base::Result<void> activatePackage(const std::string& full_path)
     WARN_UNUSED;
