@@ -49,10 +49,8 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
     public void setUp() throws Exception {
         mUtils.abandonActiveStagedSession();
         mUtils.uninstallShimApexIfNecessary();
-        assertThat(
-                getDevice().setProperty("persist.debug.trigger_watchdog.apex", "reset")).isTrue();
-        assertThat(getDevice().setProperty("persist.debug.trigger_updatable_crashing_for_testing",
-                "reset")).isTrue();
+        resetProperty("persist.debug.trigger_watchdog.apex");
+        resetProperty("persist.debug.trigger_updatable_crashing_for_testing");
     }
 
     /**
@@ -63,10 +61,13 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
     public void tearDown() throws Exception {
         mUtils.abandonActiveStagedSession();
         mUtils.uninstallShimApexIfNecessary();
-        assertThat(
-                getDevice().setProperty("persist.debug.trigger_watchdog.apex", "reset")).isTrue();
-        assertThat(getDevice().setProperty("persist.debug.trigger_updatable_crashing_for_testing",
-                "reset")).isTrue();
+        resetProperty("persist.debug.trigger_watchdog.apex");
+        resetProperty("persist.debug.trigger_updatable_crashing_for_testing");
+    }
+
+    private void resetProperty(String propertyName) throws Exception {
+        assertWithMessage("Failed to reset value of property %s", propertyName).that(
+                getDevice().setProperty(propertyName, "")).isTrue();
     }
 
     /**
