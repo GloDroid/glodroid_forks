@@ -443,7 +443,7 @@ BinderStatus ApexService::rollbackActiveSession() {
   }
 
   LOG(DEBUG) << "rollbackActiveSession() received by ApexService.";
-  Result<void> res = ::android::apex::rollbackActiveSession();
+  Result<void> res = ::android::apex::rollbackActiveSession("");
   if (!res) {
     return BinderStatus::fromExceptionCode(
         BinderStatus::EX_ILLEGAL_ARGUMENT,
