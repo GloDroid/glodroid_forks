@@ -28,7 +28,8 @@
 namespace android {
 namespace apex {
 
-static const std::string kApexSessionsDir = "/metadata/apex/sessions";
+static const std::string kApexSessionsDir =
+    std::string(kApexDataDir) + "/sessions";
 
 class ApexSession {
  public:

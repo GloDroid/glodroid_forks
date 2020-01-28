@@ -36,7 +36,6 @@ android::base::Result<void> resumeRevertIfNeeded();
 android::base::Result<void> scanPackagesDirAndActivate(
     const char* apex_package_dir);
 void scanStagedSessionsDirAndStage();
-android::base::Result<void> migrateSessionsDirIfNeeded();
 
 android::base::Result<void> preinstallPackages(
     const std::vector<std::string>& paths) WARN_UNUSED;
