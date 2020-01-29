@@ -827,12 +827,6 @@ Result<void> RestoreActivePackages() {
   return {};
 }
 
-Result<void> RevertStagedSession(ApexSession& session) {
-  // If the session is staged, it hasn't been activated yet, and we just need
-  // to update its state to prevent it from being activated later.
-  return session.UpdateStateAndCommit(SessionState::REVERTED);
-}
-
 Result<void> UnmountPackage(const ApexFile& apex, bool allow_latest) {
   LOG(VERBOSE) << "Unmounting " << GetPackageId(apex.GetManifest());
 
@@ -1236,6 +1230,35 @@ void snapshotOrRestoreIfNeeded(const ApexSession& session,
   }
 }
 
+//  Migrates sessions directory from /data/apex/sessions to
+//  /metadata/apex/sessions, if necessary.
+Result<void> migrateSessionsDirIfNeeded() {
+  namespace fs = std::filesystem;
+  auto from_path = std::string(kApexDataDir) + "/sessions";
+  auto exists = PathExists(from_path);
+  if (!exists) {
+    return Error() << "Failed to access " << from_path << ": "
+                   << exists.error();
+  }
+  if (!*exists) {
+    LOG(DEBUG) << from_path << " does not exist. Nothing to migrate.";
+    return {};
+  }
+  auto to_path = kApexSessionsDir;
+  std::error_code error_code;
+  fs::copy(from_path, to_path, fs::copy_options::recursive, error_code);
+  if (error_code) {
+    return Error() << "Failed to copy old sessions directory"
+                   << error_code.message();
+  }
+  fs::remove_all(from_path, error_code);
+  if (error_code) {
+    return Error() << "Failed to delete old sessions directory "
+                   << error_code.message();
+  }
+  return {};
+}
+
 void scanStagedSessionsDirAndStage() {
   LOG(INFO) << "Scanning " << kApexSessionsDir
             << " looking for sessions to be activated.";
@@ -1466,23 +1489,6 @@ Result<void> unstagePackages(const std::vector<std::string>& paths) {
   return {};
 }
 
-void revertAllStagedSessions() {
-  auto sessions = ApexSession::GetSessionsInState(SessionState::STAGED);
-  if (sessions.empty()) {
-    LOG(WARNING) << "No session to revert";
-    return;
-  }
-
-  for (auto& session : sessions) {
-    LOG(INFO) << "Reverting back session " << session;
-    auto st = RevertStagedSession(session);
-    if (!st) {
-      LOG(ERROR) << "Failed to revert staged session " << session << ": "
-                 << st.error();
-    }
-  }
-}
-
 /**
  * During apex installation, staged sessions located in /data/apex/sessions
  * mutate the active sessions in /data/apex/active. If some error occurs during
@@ -1501,14 +1507,6 @@ Result<void> revertActiveSessions(const std::string& crashing_native_process) {
     return Error() << "Revert requested, when there are no active sessions.";
   }
 
-  if (gInFsCheckpointMode) {
-    LOG(DEBUG) << "Checkpoint mode is enabled";
-    // On checkpointing devices, our modifications on /data will be
-    // automatically reverted when we abort changes. Updating the session
-    // state is pointless here, as it will be reverted as well.
-    return {};
-  }
-
   for (auto& session : activeSessions) {
     if (!crashing_native_process.empty()) {
       session.SetCrashingNativeProcess(crashing_native_process);
@@ -1522,17 +1520,21 @@ Result<void> revertActiveSessions(const std::string& crashing_native_process) {
     }
   }
 
-  auto restoreStatus = RestoreActivePackages();
-  if (!restoreStatus) {
-    for (auto& session : activeSessions) {
-      auto st = session.UpdateStateAndCommit(SessionState::REVERT_FAILED);
-      LOG(DEBUG) << "Marking " << session << " as failed to revert";
-      if (!st) {
-        LOG(WARNING) << "Failed to mark session " << session
-                     << " as failed to revert : " << st.error();
+  if (!gInFsCheckpointMode) {
+    auto restoreStatus = RestoreActivePackages();
+    if (!restoreStatus) {
+      for (auto& session : activeSessions) {
+        auto st = session.UpdateStateAndCommit(SessionState::REVERT_FAILED);
+        LOG(DEBUG) << "Marking " << session << " as failed to revert";
+        if (!st) {
+          LOG(WARNING) << "Failed to mark session " << session
+                       << " as failed to revert : " << st.error();
+        }
       }
+      return restoreStatus;
     }
-    return restoreStatus;
+  } else {
+    LOG(INFO) << "Not restoring active packages in checkpoint mode.";
   }
 
   for (auto& session : activeSessions) {
@@ -1682,7 +1684,7 @@ void onStart(CheckpointInterface* checkpoint_service) {
     }
   }
 
-  // Ask whether we should revert any staged sessions; this can happen if
+  // Ask whether we should revert any active sessions; this can happen if
   // we've exceeded the retry count on a device that supports filesystem
   // checkpointing.
   if (gSupportsFsCheckpoints) {
@@ -1694,7 +1696,7 @@ void onStart(CheckpointInterface* checkpoint_service) {
       LOG(INFO) << "Exceeded number of session retries ("
                 << kNumRetriesWhenCheckpointingEnabled
                 << "). Starting a revert";
-      revertAllStagedSessions();
+      revertActiveSessions("");
     }
   }
 

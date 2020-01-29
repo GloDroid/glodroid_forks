@@ -210,6 +210,7 @@ void convertToApexSessionInfo(const ApexSession& session,
 
   ClearSessionInfo(session_info);
   session_info->sessionId = session.GetId();
+  session_info->crashingNativeProcess = session.GetCrashingNativeProcess();
 
   switch (session.GetState()) {
     case SessionState::VERIFIED:
@@ -520,10 +521,15 @@ status_t ApexService::dump(int fd, const Vector<String16>& /*args*/) {
         child_ids_str += " " + std::to_string(childSessionId);
       }
     }
+    std::string revert_reason = "";
+    std::string crashing_native_process = session.GetCrashingNativeProcess();
+    if (!crashing_native_process.empty()) {
+      revert_reason = " Revert Reason: " + crashing_native_process;
+    }
     std::string msg =
         StringLog() << "Session ID: " << session.GetId() << child_ids_str
                     << " State: " << SessionState_State_Name(session.GetState())
-                    << std::endl;
+                    << revert_reason << std::endl;
     dprintf(fd, "%s", msg.c_str());
   }
 
@@ -705,6 +711,11 @@ status_t ApexService::shellCommand(int in, int out, int err,
     ApexSessionInfo session_info;
     BinderStatus status = getStagedSessionInfo(session_id, &session_info);
     if (status.isOk()) {
+      std::string revert_reason = "";
+      std::string crashing_native_process = session_info.crashingNativeProcess;
+      if (!crashing_native_process.empty()) {
+        revert_reason = " revertReason: " + crashing_native_process;
+      }
       std::string msg = StringLog()
                         << "session_info: "
                         << " isUnknown: " << session_info.isUnknown
@@ -712,7 +723,8 @@ status_t ApexService::shellCommand(int in, int out, int err,
                         << " isStaged: " << session_info.isStaged
                         << " isActivated: " << session_info.isActivated
                         << " isActivationFailed: "
-                        << session_info.isActivationFailed << std::endl;
+                        << session_info.isActivationFailed << revert_reason
+                        << std::endl;
       dprintf(out, "%s", msg.c_str());
       return OK;
     }

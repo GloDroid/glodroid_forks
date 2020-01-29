@@ -22,6 +22,7 @@
       <option name="remount-system" value="true" />
       <option name="push" value="trigger_watchdog.rc->/system/etc/init/trigger_watchdog.rc" />
       <option name="push" value="trigger_watchdog.sh->/system/bin/trigger_watchdog.sh" />
+      <option name="push" value="trigger_reboot.sh->/system/bin/trigger_reboot.sh"/>
     </target_preparer>
     <test class="com.android.tradefed.testtype.HostTest" >
         <option name="jar" value="apex_rollback_tests.jar" />

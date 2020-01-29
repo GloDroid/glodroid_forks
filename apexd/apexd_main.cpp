@@ -88,6 +88,7 @@ int main(int /*argc*/, char** argv) {
     vold_service = &*vold_service_st;
   }
 
+  android::apex::migrateSessionsDirIfNeeded();
   android::apex::onStart(vold_service);
   android::apex::binder::CreateAndRegisterService();
   android::apex::binder::StartThreadPool();
