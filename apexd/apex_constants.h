@@ -39,6 +39,7 @@ static constexpr const char* kStagedSessionsDir = "/data/app-staging";
 
 static constexpr const char* kApexDataSubDir = "apexdata";
 static constexpr const char* kApexSnapshotSubDir = "apexrollback";
+static constexpr const char* kPreRestoreSuffix = "-prerestore";
 
 static constexpr const char* kDeSysDataDir = "/data/misc";
 static constexpr const char* kDeNDataDir = "/data/misc_de";

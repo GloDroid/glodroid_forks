@@ -169,6 +169,16 @@ inline Result<void> DeleteDirContent(const std::string& path) {
   return {};
 }
 
+inline Result<void> DeleteDir(const std::string& path) {
+  namespace fs = std::filesystem;
+  std::error_code ec;
+  fs::remove_all(path, ec);
+  if (ec) {
+    return Error() << "Failed to delete path " << path << " : " << ec.message();
+  }
+  return {};
+}
+
 inline Result<ino_t> get_path_inode(const std::string& path) {
   struct stat buf;
   memset(&buf, 0, sizeof(buf));
