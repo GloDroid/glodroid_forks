@@ -286,6 +286,21 @@ def ValidateArgs(args):
           print('Missing ----canned_fs_config {config} argument, or a --build_info argument!')
           return False
 
+  if not args.target_sdk_version:
+    if build_info is not None:
+      if build_info.target_sdk_version:
+        args.target_sdk_version = build_info.target_sdk_version
+
+  if not args.no_hashtree:
+    if build_info is not None:
+      if build_info.no_hashtree:
+        args.no_hashtree = True
+
+  if not args.min_sdk_version:
+    if build_info is not None:
+      if build_info.min_sdk_version:
+        args.min_sdk_version = build_info.min_sdk_version
+
   return True
 
 def GenerateBuildInfo(args):
@@ -301,6 +316,15 @@ def GenerateBuildInfo(args):
 
   with open(args.android_manifest) as f:
     build_info.android_manifest = f.read()
+
+  if args.target_sdk_version:
+    build_info.target_sdk_version = args.target_sdk_version
+
+  if args.min_sdk_version:
+    build_info.min_sdk_version = args.min_sdk_version
+
+  if args.no_hashtree:
+    build_info.no_hashtree = True
 
   return build_info
 
