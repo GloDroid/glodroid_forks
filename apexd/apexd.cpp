@@ -1106,7 +1106,10 @@ Result<void> abortStagedSession(int session_id) {
 
 Result<void> scanPackagesDirAndActivate(const char* apex_package_dir) {
   LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
-
+  if (access(apex_package_dir, F_OK) != 0 && errno == ENOENT) {
+    LOG(INFO) << "... does not exist. Skipping";
+    return {};
+  }
   Result<std::vector<std::string>> scan = FindApexFilesByName(apex_package_dir);
   if (!scan) {
     return Error() << "Failed to scan " << apex_package_dir << " : "
