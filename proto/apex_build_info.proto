@@ -33,4 +33,13 @@ message ApexBuildInfo {
 
   // Content of the original AndroidManifest.xml, before being compiled by aapt.
   bytes android_manifest = 4;
+
+  // Value of --min_sdk_version parameter passed at build time.
+  string min_sdk_version = 5;
+
+  // Value of --target_sdk_version parameter passed at build time.
+  string target_sdk_version = 6;
+
+  // Whether the --no_hashtree option was set at build time.
+  bool no_hashtree = 7;
 }
