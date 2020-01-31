@@ -36,15 +36,6 @@ import java.io.IOException;
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class ApiExtensionsHostTest extends ApexE2EBaseHostTest {
 
-    /**
-     * Tests that if Apex package can be staged, activated and uninstalled successfully.
-     */
-    @Test
-    public void testStageActivateUninstallApexPackage()
-                                throws DeviceNotAvailableException, IOException {
-        doTestStageActivateUninstallApexPackage();
-    }
-
     @Test
     public void testDefault() throws Exception {
         CLog.i("Verifying default version");
@@ -52,7 +43,7 @@ public class ApiExtensionsHostTest extends ApexE2EBaseHostTest {
     }
 
     @Override
-    public void additionalCheck() throws DeviceNotAvailableException, IOException  {
+    public void additionalCheck() throws DeviceNotAvailableException, IOException {
         CLog.i("Reading version");
         int version = getExtensionVersionR();
         assertEquals(45, version);
@@ -60,7 +51,6 @@ public class ApiExtensionsHostTest extends ApexE2EBaseHostTest {
         CLog.i("Waiting for boot complete");
         assertTrue(((IManagedTestDevice) getDevice()).getMonitor().waitForBootComplete(60000));
     }
-
 
     private int getExtensionVersionR() throws DeviceNotAvailableException, IOException {
         CommandResult commandResult =
