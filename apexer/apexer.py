@@ -24,6 +24,7 @@ import argparse
 import hashlib
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -71,6 +72,10 @@ def ParseArgs(argv):
   parser.add_argument(
       '--pubkey',
       help='path to the public key file. Used to bundle the public key in APEX for testing.'
+  )
+  parser.add_argument(
+      '--signing_args',
+      help='the extra signing arguments passed to avbtool. Used for "image" APEXs.'
   )
   parser.add_argument(
       'input_dir',
@@ -447,6 +452,8 @@ def CreateApex(args, work_dir):
     cmd.extend(['--image', img_file])
     if args.no_hashtree:
       cmd.append('--no_hashtree')
+    if args.signing_args:
+      cmd.extend(shlex.split(args.signing_args))
     RunCommand(cmd, args.verbose)
 
     # Get the minimum size of the partition required.
