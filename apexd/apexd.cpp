@@ -1346,6 +1346,54 @@ void snapshotOrRestoreIfNeeded(const ApexSession& session,
   }
 }
 
+Result<ino_t> snapshotCeData(const int user_id, const int rollback_id,
+                             const std::string& apex_name) {
+  auto base_dir = StringPrintf("%s/%d", kCeDataDir, user_id);
+  Result<void> result = snapshotDataDirectory(base_dir, rollback_id, apex_name);
+  if (!result) {
+    return result.error();
+  }
+  auto ce_snapshot_path =
+      StringPrintf("%s/%s/%d/%s", base_dir.c_str(), kApexSnapshotSubDir,
+                   rollback_id, apex_name.c_str());
+  return get_path_inode(ce_snapshot_path);
+}
+
+Result<void> restoreCeData(const int user_id, const int rollback_id,
+                           const std::string& apex_name) {
+  auto base_dir = StringPrintf("%s/%d", kCeDataDir, user_id);
+  return restoreDataDirectory(base_dir, rollback_id, apex_name);
+}
+
+//  Migrates sessions directory from /data/apex/sessions to
+//  /metadata/apex/sessions, if necessary.
+Result<void> migrateSessionsDirIfNeeded() {
+  namespace fs = std::filesystem;
+  auto from_path = std::string(kApexDataDir) + "/sessions";
+  auto exists = PathExists(from_path);
+  if (!exists) {
+    return Error() << "Failed to access " << from_path << ": "
+                   << exists.error();
+  }
+  if (!*exists) {
+    LOG(DEBUG) << from_path << " does not exist. Nothing to migrate.";
+    return {};
+  }
+  auto to_path = kApexSessionsDir;
+  std::error_code error_code;
+  fs::copy(from_path, to_path, fs::copy_options::recursive, error_code);
+  if (error_code) {
+    return Error() << "Failed to copy old sessions directory"
+                   << error_code.message();
+  }
+  fs::remove_all(from_path, error_code);
+  if (error_code) {
+    return Error() << "Failed to delete old sessions directory "
+                   << error_code.message();
+  }
+  return {};
+}
+
 void scanStagedSessionsDirAndStage() {
   LOG(INFO) << "Scanning " << kApexSessionsDir
             << " looking for sessions to be activated.";
