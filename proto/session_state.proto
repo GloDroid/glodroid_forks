@@ -54,4 +54,8 @@ message SessionState {
 
   // The crashing native process that has caused this session to be reverted
   string crashing_native_process = 8;
+
+  // The names of the apexes within this session. Only populated for sessions
+  // that have been activated.
+  repeated string apex_names = 9;
 }
