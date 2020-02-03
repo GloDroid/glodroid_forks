@@ -11,3 +11,9 @@ service apexd-bootstrap /system/bin/apexd --bootstrap
     group system
     oneshot
     disabled
+
+service apexd-snapshotde /system/bin/apexd --snapshotde
+    user root
+    group system
+    oneshot
+    disabled
