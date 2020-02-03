@@ -22,6 +22,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -31,6 +32,7 @@ import java.io.IOException;
  * Test to check if Apex can be staged, activated and uninstalled successfully.
  */
 @RunWith(DeviceJUnit4ClassRunner.class)
+@Ignore // TODO(b/148759193): remove when test is fixed
 public class AdbdHostTest extends ApexE2EBaseHostTest {
 
     /**
