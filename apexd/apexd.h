@@ -86,6 +86,7 @@ int onBootstrap();
 void onStart(CheckpointInterface* checkpoint_service);
 void onAllPackagesReady();
 void unmountDanglingMounts();
+int snapshotOrRestoreDeUserData();
 
 int unmountAll();
 

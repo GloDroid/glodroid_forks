@@ -52,6 +52,11 @@ int HandleSubcommand(char** argv) {
     return android::apex::unmountAll();
   }
 
+  if (strcmp("--snapshotde", argv[1]) == 0) {
+    LOG(INFO) << "Snapshot DE subcommand detected";
+    return android::apex::snapshotOrRestoreDeUserData();
+  }
+
   LOG(ERROR) << "Unknown subcommand: " << argv[1];
   return 1;
 }

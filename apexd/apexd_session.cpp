@@ -207,6 +207,11 @@ void ApexSession::SetChildSessionIds(
                                            child_session_ids.end()};
 }
 
+const google::protobuf::RepeatedPtrField<std::string>
+ApexSession::GetApexNames() const {
+  return state_.apex_names();
+}
+
 void ApexSession::SetBuildFingerprint(const std::string& fingerprint) {
   *(state_.mutable_expected_build_fingerprint()) = fingerprint;
 }
@@ -226,6 +231,10 @@ void ApexSession::SetRollbackId(const int rollback_id) {
 void ApexSession::SetCrashingNativeProcess(
     const std::string& crashing_process) {
   state_.set_crashing_native_process(crashing_process);
+}
+
+void ApexSession::AddApexName(const std::string& apex_name) {
+  state_.add_apex_names(apex_name);
 }
 
 Result<void> ApexSession::UpdateStateAndCommit(
