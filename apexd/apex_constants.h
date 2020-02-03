@@ -41,6 +41,7 @@ static constexpr const char* kApexDataSubDir = "apexdata";
 static constexpr const char* kApexSnapshotSubDir = "apexrollback";
 
 static constexpr const char* kDeSysDataDir = "/data/misc";
+static constexpr const char* kCeDataDir = "/data/misc_ce";
 
 static constexpr const char* kApexPackageSuffix = ".apex";
 
