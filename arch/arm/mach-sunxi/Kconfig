@@ -1010,4 +1010,15 @@ config PINE64_DT_SELECTION
 	  option, the device tree selection code specific to Pine64 which
 	  utilizes the DRAM size will be enabled.
 
+config FIXUP_BDADDR
+	string "Fixup the Bluetooth controller address"
+	default ""
+	help
+	  This option specifies the DT compatible name of the Bluetooth
+	  controller for which to set the "local-bd-address" property.
+	  Set this option if your device ships with the Bluetooth controller
+	  default address.
+	  The used address is "bdaddr" if set, and "ethaddr" with the LSB
+	  flipped elsewise.
+
 endif
