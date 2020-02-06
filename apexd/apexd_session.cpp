@@ -52,13 +52,13 @@ std::string getSessionStateFilePath(int session_id) {
 Result<std::string> createSessionDirIfNeeded(int session_id) {
   // create /data/sessions
   auto res = createDirIfNeeded(kApexSessionsDir, 0700);
-  if (!res) {
+  if (!res.ok()) {
     return res.error();
   }
   // create /data/sessions/session_id
   std::string sessionDir = getSessionDir(session_id);
   res = createDirIfNeeded(sessionDir, 0700);
-  if (!res) {
+  if (!res.ok()) {
     return res.error();
   }
 
@@ -86,7 +86,7 @@ Result<ApexSession> ApexSession::CreateSession(int session_id) {
   SessionState state;
   // Create session directory
   auto sessionPath = createSessionDirIfNeeded(session_id);
-  if (!sessionPath) {
+  if (!sessionPath.ok()) {
     return sessionPath.error();
   }
   state.set_id(session_id);
@@ -122,14 +122,14 @@ std::vector<ApexSession> ApexSession::GetSessions() {
         return entry.is_directory(ec);
       });
 
-  if (!sessionPaths) {
+  if (!sessionPaths.ok()) {
     return sessions;
   }
 
   for (const std::string& sessionDirPath : *sessionPaths) {
     // Try to read session state
     auto session = GetSessionFromFile(sessionDirPath + "/" + kStateFileName);
-    if (!session) {
+    if (!session.ok()) {
       LOG(WARNING) << session.error();
       continue;
     }

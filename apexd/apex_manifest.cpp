@@ -52,7 +52,7 @@ Result<ApexManifest> ParseManifestJson(const std::string& content) {
   ApexManifest apex_manifest;
   Result<void> parse_manifest_status =
       JsonToApexManifestMessage(content, &apex_manifest);
-  if (!parse_manifest_status) {
+  if (!parse_manifest_status.ok()) {
     return parse_manifest_status.error();
   }
 
