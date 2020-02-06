@@ -73,7 +73,6 @@
 
 using android::base::ErrnoError;
 using android::base::Error;
-using android::base::Errorf;
 using android::base::GetProperty;
 using android::base::Join;
 using android::base::ReadFully;
