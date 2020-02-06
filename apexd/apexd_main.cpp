@@ -54,7 +54,15 @@ int HandleSubcommand(char** argv) {
 
   if (strcmp("--snapshotde", argv[1]) == 0) {
     LOG(INFO) << "Snapshot DE subcommand detected";
-    return android::apex::snapshotOrRestoreDeUserData();
+    int result = android::apex::snapshotOrRestoreDeUserData();
+
+    if (result == 0) {
+      // Notify other components (e.g. init) that all APEXs are ready to be used
+      // Note that it's important that the binder service is registered at this
+      // point, since other system services might depend on it.
+      android::apex::onAllPackagesReady();
+    }
+    return result;
   }
 
   LOG(ERROR) << "Unknown subcommand: " << argv[1];
@@ -72,9 +80,12 @@ int main(int /*argc*/, char** argv) {
   if (!android::sysprop::ApexProperties::updatable().value_or(false)) {
     LOG(INFO) << "This device does not support updatable APEX. Exiting";
     if (!has_subcommand) {
-      // mark apexd as ready so that init can proceed
-      android::apex::onAllPackagesReady();
+      // mark apexd as activated so that init can proceed
+      android::apex::onAllPackagesActivated();
       android::base::SetProperty("ctl.stop", "apexd");
+    } else if (strcmp("--snapshotde", argv[1]) == 0) {
+      // mark apexd as ready
+      android::apex::onAllPackagesReady();
     }
     return 0;
   }
@@ -99,10 +110,12 @@ int main(int /*argc*/, char** argv) {
   android::apex::binder::StartThreadPool();
 
   // Notify other components (e.g. init) that all APEXs are correctly mounted
-  // and are ready to be used. Note that it's important that the binder service
-  // is registered at this point, since other system services might depend on
-  // it.
-  android::apex::onAllPackagesReady();
+  // and activated (but are not yet ready to be used).
+  // Configuration based on activated APEXs may be performed at this point, but
+  // use of APEXs themselves should wait for the ready status instead, which
+  // is set when the "--snapshotde" subcommand is received and snapshot/restore
+  // is complete.
+  android::apex::onAllPackagesActivated();
 
   android::apex::waitForBootStatus(android::apex::revertActiveSessionsAndReboot,
                                    android::apex::bootCompletedCleanup);
