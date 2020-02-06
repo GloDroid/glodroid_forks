@@ -122,8 +122,13 @@ static const std::vector<std::string> kBootstrapApexes = ([]() {
       "com.android.tzdata",
   };
 
-  if (auto ver = GetProperty("ro.vndk.version", ""); ver != "") {
-    ret.push_back("com.android.vndk.v" + ver);
+  auto vendor_vndk_ver = GetProperty("ro.vndk.version", "");
+  if (vendor_vndk_ver != "") {
+    ret.push_back("com.android.vndk.v" + vendor_vndk_ver);
+  }
+  auto product_vndk_ver = GetProperty("ro.product.vndk.version", "");
+  if (product_vndk_ver != "" && product_vndk_ver != vendor_vndk_ver) {
+    ret.push_back("com.android.vndk.v" + product_vndk_ver);
   }
   return ret;
 })();
