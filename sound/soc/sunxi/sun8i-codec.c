@@ -396,6 +396,13 @@ static int sun8i_codec_hw_params(struct snd_pcm_substream *substream,
 	u8 bclk_div;
 	u32 value;
 
+	/*
+	 * There should be at least two slots in each frame, or else the codec
+	 * cuts off the first bit of each sample, and often de-syncs.
+	 */
+	if (channels == 1)
+		slot_width *= 2;
+
 	if (dai->id < 3) {
 		bclk_div = sun8i_codec_get_bclk_div(scodec, params_rate(params),
 						    channels, slot_width);
