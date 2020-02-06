@@ -64,6 +64,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
@@ -1110,7 +1111,10 @@ Result<void> abortStagedSession(int session_id) {
   }
 }
 
-Result<void> scanPackagesDirAndActivate(const char* apex_package_dir) {
+// TODO(ioffe): cleanup activation logic to avoid unnecessary scanning.
+namespace {
+
+Result<std::vector<ApexFile>> ScanApexFiles(const char* apex_package_dir) {
   LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
   if (access(apex_package_dir, F_OK) != 0 && errno == ENOENT) {
     LOG(INFO) << "... does not exist. Skipping";
@@ -1121,50 +1125,59 @@ Result<void> scanPackagesDirAndActivate(const char* apex_package_dir) {
     return Error() << "Failed to scan " << apex_package_dir << " : "
                    << scan.error();
   }
-
-  const auto& packages_with_code = GetActivePackagesMap();
-
-  std::vector<std::string> failed_pkgs;
-  size_t activated_cnt = 0;
-  size_t skipped_cnt = 0;
-  for (const std::string& name : *scan) {
+  std::vector<ApexFile> ret;
+  for (const auto& name : *scan) {
     LOG(INFO) << "Found " << name;
-
     Result<ApexFile> apex_file = ApexFile::Open(name);
     if (!apex_file.ok()) {
-      LOG(ERROR) << "Failed to activate " << name << " : " << apex_file.error();
-      failed_pkgs.push_back(name);
-      continue;
+      LOG(ERROR) << "Failed to scan " << name << " : " << apex_file.error();
+    } else {
+      ret.emplace_back(std::move(*apex_file));
     }
+  }
+  return ret;
+}
 
-    uint64_t new_version =
-        static_cast<uint64_t>(apex_file->GetManifest().version());
-    const auto& it = packages_with_code.find(apex_file->GetManifest().name());
+Result<void> ActivateApexPackages(const std::vector<ApexFile>& apexes) {
+  const auto& packages_with_code = GetActivePackagesMap();
+  size_t failed_cnt = 0;
+  size_t skipped_cnt = 0;
+  size_t activated_cnt = 0;
+  for (const auto& apex : apexes) {
+    uint64_t new_version = static_cast<uint64_t>(apex.GetManifest().version());
+    const auto& it = packages_with_code.find(apex.GetManifest().name());
     if (it != packages_with_code.end() && it->second >= new_version) {
-      LOG(INFO) << "Skipping activation of " << name
+      LOG(INFO) << "Skipping activation of " << apex.GetPath()
                 << " same package with higher version " << it->second
                 << " is already active";
       skipped_cnt++;
       continue;
     }
 
-    Result<void> res = activatePackageImpl(*apex_file);
-    if (!res.ok()) {
-      LOG(ERROR) << "Failed to activate " << name << " : " << res.error();
-      failed_pkgs.push_back(name);
+    if (auto res = activatePackageImpl(apex); !res.ok()) {
+      LOG(ERROR) << "Failed to activate " << apex.GetPath() << " : "
+                 << res.error();
+      failed_cnt++;
     } else {
       activated_cnt++;
     }
   }
-
-  if (!failed_pkgs.empty()) {
-    return Error() << "Failed to activate following packages : "
-                   << Join(failed_pkgs, ',');
+  if (failed_cnt > 0) {
+    return Error() << "Failed to activate " << failed_cnt << " APEX packages";
   }
-
   LOG(INFO) << "Activated " << activated_cnt
             << " packages. Skipped: " << skipped_cnt;
   return {};
+}
+
+}  // namespace
+
+Result<void> scanPackagesDirAndActivate(const char* apex_package_dir) {
+  auto apexes = ScanApexFiles(apex_package_dir);
+  if (!apexes) {
+    return apexes.error();
+  }
+  return ActivateApexPackages(*apexes);
 }
 
 /**
@@ -1737,11 +1750,16 @@ int onBootstrap() {
   }
 
   // Activate built-in APEXes for processes launched before /data is mounted.
-  for (auto const& dir : bootstrap_apex_dirs) {
-    status = scanPackagesDirAndActivate(dir.c_str());
-    if (!status.ok()) {
+  for (const auto& dir : bootstrap_apex_dirs) {
+    auto scan_status = ScanApexFiles(dir.c_str());
+    if (!scan_status.ok()) {
+      LOG(ERROR) << "Failed to scan APEX files in " << dir << " : "
+                 << scan_status.error();
+      return 1;
+    }
+    if (auto ret = ActivateApexPackages(*scan_status); !ret.ok()) {
       LOG(ERROR) << "Failed to activate APEX files in " << dir << " : "
-                 << status.error();
+                 << ret.error();
       return 1;
     }
   }
@@ -1869,25 +1887,55 @@ void onStart(CheckpointInterface* checkpoint_service) {
     LOG(ERROR) << "Failed to resume revert : " << status.error();
   }
 
-  status = scanPackagesDirAndActivate(kActiveApexPackagesDataDir);
-  if (!status.ok()) {
+  std::vector<ApexFile> data_apex;
+  if (auto scan = ScanApexFiles(kActiveApexPackagesDataDir); !scan.ok()) {
+    LOG(ERROR) << "Failed to scan packages from " << kActiveApexPackagesDataDir
+               << " : " << scan.error();
+    if (auto revert = revertActiveSessionsAndReboot(""); !revert.ok()) {
+      LOG(ERROR) << "Failed to revert : " << revert.error();
+    }
+  } else {
+    // Don't activate orphaned APEX packages that don't have a pre-installed
+    // version.
+    auto filter_fn = [](const auto& apex) {
+      if (HasPreInstalledVersion(apex.GetManifest().name())) {
+        return true;
+      }
+      LOG(WARNING) << "Skipping " << apex.GetPath()
+                   << " because there is no pre-installed version";
+      return false;
+    };
+    std::copy_if(std::make_move_iterator(scan->begin()),
+                 std::make_move_iterator(scan->end()),
+                 std::back_inserter(data_apex), filter_fn);
+  }
+
+  if (auto ret = ActivateApexPackages(data_apex); !ret.ok()) {
     LOG(ERROR) << "Failed to activate packages from "
                << kActiveApexPackagesDataDir << " : " << status.error();
     Result<void> revert_status = revertActiveSessionsAndReboot("");
     if (!revert_status.ok()) {
       // TODO: should we kill apexd in this case?
-      LOG(ERROR) << "Failed to revert : " << revert_status.error();
+      LOG(ERROR) << "Failed to revert : " << revert_status.error()
+                 << kActiveApexPackagesDataDir << " : " << ret.error();
     }
   }
 
+  // Now also scan and activate APEXes from pre-installed directories.
   for (const auto& dir : kApexPackageBuiltinDirs) {
-    // TODO(b/123622800): if activation failed, revert and reboot.
-    status = scanPackagesDirAndActivate(dir.c_str());
-    if (!status.ok()) {
+    auto scan_status = ScanApexFiles(dir.c_str());
+    if (!scan_status.ok()) {
+      LOG(ERROR) << "Failed to scan APEX packages from " << dir << " : "
+                 << scan_status.error();
+      if (auto revert = revertActiveSessionsAndReboot(""); !revert.ok()) {
+        LOG(ERROR) << "Failed to revert : " << revert.error();
+      }
+    }
+    if (auto activate = ActivateApexPackages(*scan_status); !activate.ok()) {
       // This should never happen. Like **really** never.
       // TODO: should we kill apexd in this case?
       LOG(ERROR) << "Failed to activate packages from " << dir << " : "
-                 << status.error();
+                 << activate.error();
     }
   }
 
