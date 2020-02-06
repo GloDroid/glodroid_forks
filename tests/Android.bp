@@ -239,3 +239,16 @@ java_test_host {
     test_suites: ["general-tests"],
     data: [":com.android.apex.cts.shim.v2_prebuilt"],
 }
+
+java_test_host {
+    name: "apexd_host_tests",
+    srcs:  ["src/**/ApexdHostTest.java"],
+    libs: ["tradefed"],
+    static_libs: [
+        "module_test_util",
+        "truth-prebuilt",
+        "apex_manifest_proto_java",
+    ],
+    test_config: "apexd-host-tests.xml",
+    data: [":apex.apexd_test_v2"],
+}

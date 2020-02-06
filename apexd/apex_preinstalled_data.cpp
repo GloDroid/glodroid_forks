@@ -126,5 +126,9 @@ Result<const std::string> getApexPreinstalledPath(const std::string& name) {
   return gScannedPreinstalledData[name].path;
 }
 
+bool HasPreInstalledVersion(const std::string& name) {
+  return gScannedPreinstalledData.find(name) != gScannedPreinstalledData.end();
+}
+
 }  // namespace apex
 }  // namespace android

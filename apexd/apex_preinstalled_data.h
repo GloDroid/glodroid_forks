@@ -29,6 +29,6 @@ android::base::Result<void> collectPreinstalledData(
 android::base::Result<const std::string> getApexKey(const std::string& name);
 android::base::Result<const std::string> getApexPreinstalledPath(
     const std::string& name);
-
+bool HasPreInstalledVersion(const std::string& name);
 }  // namespace apex
 }  // namespace android
