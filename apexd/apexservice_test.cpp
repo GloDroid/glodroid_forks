@@ -72,7 +72,6 @@ using android::apex::testing::ApexInfoEq;
 using android::apex::testing::CreateSessionInfo;
 using android::apex::testing::IsOk;
 using android::apex::testing::SessionInfoEq;
-using android::base::Errorf;
 using android::base::Join;
 using android::base::ReadFully;
 using android::base::StartsWith;

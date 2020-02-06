@@ -39,7 +39,6 @@
 
 using android::base::EndsWith;
 using android::base::Error;
-using android::base::Errorf;
 using android::base::ReadFullyAtOffset;
 using android::base::Result;
 using android::base::StartsWith;
