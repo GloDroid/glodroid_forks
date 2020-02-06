@@ -32,7 +32,6 @@
 
 using android::base::ErrnoError;
 using android::base::Error;
-using android::base::Errorf;
 using android::base::Result;
 
 namespace android {

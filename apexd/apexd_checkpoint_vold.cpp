@@ -24,7 +24,6 @@
 
 using android::sp;
 using android::base::Error;
-using android::base::Errorf;
 using android::base::Result;
 using android::os::IVold;
 
