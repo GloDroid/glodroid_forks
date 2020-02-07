@@ -1727,8 +1727,8 @@ int onBootstrap() {
                << preAllocate.error();
   }
 
-  std::vector<std::string> bootstrap_apex_dirs{kApexPackageSystemDir,
-                                               kApexPackageSystemExtDir};
+  std::vector<std::string> bootstrap_apex_dirs{
+      kApexPackageSystemDir, kApexPackageSystemExtDir, kApexPackageVendorDir};
   Result<void> status = collectPreinstalledData(bootstrap_apex_dirs);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to collect APEX keys : " << status.error();
