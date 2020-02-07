@@ -23,11 +23,13 @@
 
 #include "apexd_utils.h"
 
+using android::base::GetProperty;
 using android::base::Result;
+using android::base::WaitForProperty;
 
 namespace android {
 namespace apex {
-void waitForBootStatus(Result<void> (&rollback_fn)(const std::string&),
+void waitForBootStatus(Result<void> (&revert_fn)(const std::string&),
                        void (&complete_fn)()) {
   while (true) {
     // Check for change in either crashing property or sys.boot_completed
@@ -36,21 +38,21 @@ void waitForBootStatus(Result<void> (&rollback_fn)(const std::string&),
     // if not continue waiting for updatable_crashing.
     // We use this strategy so that we can quickly detect if an updatable
     // process is crashing.
-    if (android::base::WaitForProperty("sys.init.updatable_crashing", "1",
-                                       std::chrono::seconds(30))) {
-      LOG(INFO) << "Updatable crashing, attempting rollback";
-      const std::string& crashing_native_process = android::base::GetProperty(
-          "sys.init.updatable_crashing_process_name", "");
-      auto status = rollback_fn(crashing_native_process);
+    if (WaitForProperty("sys.init.updatable_crashing", "1",
+                        std::chrono::seconds(30))) {
+      auto name = GetProperty("sys.init.updatable_crashing_process_name", "");
+      LOG(ERROR) << "Native process '" << (name.empty() ? "[unknown]" : name)
+                 << "' is crashing. Attempting a revert";
+      auto status = revert_fn(name);
       if (!status) {
-        LOG(ERROR) << "Rollback failed : " << status.error();
+        LOG(ERROR) << "Revert failed : " << status.error();
       } else {
-        LOG(INFO) << "Successfuly rolled back. Rebooting device";
+        LOG(INFO) << "Successfuly reverted update. Rebooting device";
         Reboot();
       }
       return;
     }
-    if (android::base::GetProperty("sys.boot_completed", "") == "1") {
+    if (GetProperty("sys.boot_completed", "") == "1") {
       // Boot completed we can return
       complete_fn();
       return;
