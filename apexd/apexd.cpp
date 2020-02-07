@@ -1843,7 +1843,7 @@ Result<void> monitorBuiltinDirs() {
     }
     desc_to_dir.emplace(desc, dir);
   }
-  static std::thread th([fd, desc_to_dir]() -> void {
+  std::thread th([fd, desc_to_dir]() -> void {
     constexpr int num_events = 100;
     constexpr size_t average_path_length = 50;
     char buffer[num_events *
@@ -1875,6 +1875,7 @@ Result<void> monitorBuiltinDirs() {
       }
     }
   });
+  th.detach();
 
   return {};
 }

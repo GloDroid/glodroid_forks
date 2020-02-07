@@ -29,6 +29,7 @@
 #include <binder/IPCThreadState.h>
 #include <binder/IResultReceiver.h>
 #include <binder/IServiceManager.h>
+#include <binder/LazyServiceRegistrar.h>
 #include <binder/ProcessState.h>
 #include <binder/Status.h>
 #include <utils/String16.h>
@@ -868,18 +869,24 @@ status_t ApexService::shellCommand(int in, int out, int err,
 
 static constexpr const char* kApexServiceName = "apexservice";
 
-using android::defaultServiceManager;
 using android::IPCThreadState;
 using android::ProcessState;
 using android::sp;
-using android::String16;
+using android::binder::LazyServiceRegistrar;
 
 void CreateAndRegisterService() {
   sp<ProcessState> ps(ProcessState::self());
 
-  // Create binder service and register with servicemanager
+  // Create binder service and register with LazyServiceRegistrar
   sp<ApexService> apexService = new ApexService();
-  defaultServiceManager()->addService(String16(kApexServiceName), apexService);
+  auto lazyRegistrar = LazyServiceRegistrar::getInstance();
+  lazyRegistrar.forcePersist(true);
+  lazyRegistrar.registerService(apexService, kApexServiceName);
+}
+
+void AllowServiceShutdown() {
+  auto lazyRegistrar = LazyServiceRegistrar::getInstance();
+  lazyRegistrar.forcePersist(false);
 }
 
 void StartThreadPool() {
