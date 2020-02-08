@@ -64,7 +64,7 @@ public class ApiExtensionsHostTest extends ApexE2EBaseHostTest {
 
     private int getExtensionVersionR() throws DeviceNotAvailableException, IOException {
         CommandResult commandResult =
-                getDevice().executeShellV2Command("getprop ro.build.version.extensions.r");
+                getDevice().executeShellV2Command("getprop build.version.extensions.r");
         assertEquals(0, (int) commandResult.getExitCode());
 
         String outputString = commandResult.getStdout().replace("\n", "");
