@@ -69,7 +69,7 @@ GetActivePackages(const std::string &apex_root) {
       continue;
     std::string apex_path = apex_root + "/" + entry->d_name;
     auto manifest = ParseApexManifest(apex_path + "/apex_manifest.pb");
-    if (manifest) {
+    if (manifest.ok()) {
       apexes.emplace(std::move(apex_path), std::move(*manifest));
     } else {
       LOG(WARNING) << manifest.error();

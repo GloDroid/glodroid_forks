@@ -149,17 +149,17 @@ Result<std::string> CalculateRootDigest(const std::string& hashtree_file,
 Result<PrepareHashTreeResult> PrepareHashTree(
     const ApexFile& apex, const ApexVerityData& verity_data,
     const std::string& hashtree_file) {
-  if (auto st = createDirIfNeeded(kApexHashTreeDir, 0700); !st) {
+  if (auto st = createDirIfNeeded(kApexHashTreeDir, 0700); !st.ok()) {
     return st.error();
   }
   bool should_regenerate_hashtree = false;
   auto exists = PathExists(hashtree_file);
-  if (!exists) {
+  if (!exists.ok()) {
     return exists.error();
   }
   if (*exists) {
     auto digest = CalculateRootDigest(hashtree_file, verity_data);
-    if (!digest) {
+    if (!digest.ok()) {
       return digest.error();
     }
     if (*digest != verity_data.root_digest) {
@@ -174,7 +174,8 @@ Result<PrepareHashTreeResult> PrepareHashTree(
   }
 
   if (should_regenerate_hashtree) {
-    if (auto st = GenerateHashTree(apex, verity_data, hashtree_file); !st) {
+    if (auto st = GenerateHashTree(apex, verity_data, hashtree_file);
+        !st.ok()) {
       return st.error();
     }
     LOG(INFO) << "hashtree: generated to " << hashtree_file;

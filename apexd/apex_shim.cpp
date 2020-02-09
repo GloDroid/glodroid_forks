@@ -95,7 +95,7 @@ Result<std::vector<std::string>> GetAllowedHashes(const std::string& path) {
   std::vector<std::string> allowed_hashes = android::base::Split(hash, "\n");
   auto system_shim_hash = CalculateSha512(
       StringPrintf("%s/%s", kApexPackageSystemDir, shim::kSystemShimApexName));
-  if (!system_shim_hash) {
+  if (!system_shim_hash.ok()) {
     return system_shim_hash.error();
   }
   allowed_hashes.push_back(std::move(*system_shim_hash));
@@ -167,11 +167,11 @@ Result<void> ValidateUpdate(const std::string& system_apex_path,
   LOG(DEBUG) << "Validating update of shim apex to " << new_apex_path
              << " using system shim apex " << system_apex_path;
   auto allowed = GetAllowedHashes(system_apex_path);
-  if (!allowed) {
+  if (!allowed.ok()) {
     return allowed.error();
   }
   auto actual = CalculateSha512(new_apex_path);
-  if (!actual) {
+  if (!actual.ok()) {
     return actual.error();
   }
   auto it = std::find(allowed->begin(), allowed->end(), *actual);

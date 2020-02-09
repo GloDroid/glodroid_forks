@@ -86,7 +86,7 @@ int main(int /*argc*/, char** argv) {
   android::base::Result<android::apex::VoldCheckpointInterface>
       vold_service_st = android::apex::VoldCheckpointInterface::Create();
   android::apex::VoldCheckpointInterface* vold_service = nullptr;
-  if (!vold_service_st) {
+  if (!vold_service_st.ok()) {
     LOG(ERROR) << "Could not retrieve vold service: "
                << vold_service_st.error();
   } else {

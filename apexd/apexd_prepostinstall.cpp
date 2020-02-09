@@ -83,7 +83,7 @@ Result<void> StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
   auto preinstall_guard = android::base::make_scope_guard([&]() {
     for (const auto& mount : mounted_apexes) {
       Result<void> st = apexd_private::Unmount(mount);
-      if (!st) {
+      if (!st.ok()) {
         LOG(ERROR) << "Failed to unmount " << mount.full_path << " from "
                    << mount.mount_point << " after " << name << ": "
                    << st.error();
@@ -103,7 +103,7 @@ Result<void> StageFnInstall(const std::vector<ApexFile>& apexes, Fn fn,
         apexd_private::GetPackageTempMountPoint(apex.GetManifest());
 
     auto mount_data = apexd_private::TempMountPackage(apex, mount_point);
-    if (!mount_data) {
+    if (!mount_data.ok()) {
       return mount_data.error();
     }
     mounted_apexes.push_back(std::move(*mount_data));
@@ -166,14 +166,14 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
       {
         Result<ApexManifest> manifest_or =
             ReadManifest(mount_point + "/" + kManifestFilenamePb);
-        if (!manifest_or) {
+        if (!manifest_or.ok()) {
           LOG(ERROR) << "Could not read manifest from  " << mount_point << "/"
                      << kManifestFilenamePb << " for " << name << ": "
                      << manifest_or.error();
           // Fallback to Json manifest if present.
           LOG(ERROR) << "Trying to find a JSON manifest";
           manifest_or = ReadManifest(mount_point + "/" + kManifestFilenameJson);
-          if (!manifest_or) {
+          if (!manifest_or.ok()) {
             LOG(ERROR) << "Could not read manifest from  " << mount_point << "/"
                        << kManifestFilenameJson << " for " << name << ": "
                        << manifest_or.error();
@@ -188,7 +188,7 @@ int RunFnInstall(char** in_argv, Fn fn, const char* name) {
       // 3) Activate the new apex.
       Result<void> bind_status =
           apexd_private::BindMount(active_point, mount_point);
-      if (!bind_status) {
+      if (!bind_status.ok()) {
         LOG(ERROR) << "Failed to bind-mount " << mount_point << " to "
                    << active_point << ": " << bind_status.error();
         _exit(203);

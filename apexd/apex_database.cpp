@@ -92,7 +92,7 @@ class BlockDevice {
         slaves.push_back(dev);
       }
     });
-    if (!status) {
+    if (!status.ok()) {
       LOG(WARNING) << status.error();
     }
     return slaves;
@@ -138,7 +138,7 @@ Result<void> PopulateLoopInfo(const BlockDevice& top_device,
       return Error() << dev.DevPath() << " is not a loop device";
     }
     auto backing_file = dev.GetProperty("loop/backing_file");
-    if (!backing_file) {
+    if (!backing_file.ok()) {
       return backing_file.error();
     }
     backing_files.push_back(std::move(*backing_file));
@@ -174,7 +174,7 @@ Result<MountedApexData> resolveMountInfo(const BlockDevice& block,
   switch (block.GetType()) {
     case LoopDevice: {
       auto backingFile = block.GetProperty("loop/backing_file");
-      if (!backingFile) {
+      if (!backingFile.ok()) {
         return backingFile.error();
       }
       return MountedApexData(block.DevPath(), *backingFile, mountPoint,
@@ -183,13 +183,13 @@ Result<MountedApexData> resolveMountInfo(const BlockDevice& block,
     }
     case DeviceMapperDevice: {
       auto name = block.GetProperty("dm/name");
-      if (!name) {
+      if (!name.ok()) {
         return name.error();
       }
       MountedApexData result;
       result.mount_point = mountPoint;
       result.device_name = *name;
-      if (auto status = PopulateLoopInfo(block, &result); !status) {
+      if (auto status = PopulateLoopInfo(block, &result); !status.ok()) {
         return status.error();
       }
       return result;
@@ -241,7 +241,7 @@ void MountedApexDatabase::PopulateFromMounts() {
     }
 
     auto mountData = resolveMountInfo(BlockDevice(block), mountPoint);
-    if (!mountData) {
+    if (!mountData.ok()) {
       LOG(WARNING) << "Can't resolve mount info " << mountData.error();
       continue;
     }
