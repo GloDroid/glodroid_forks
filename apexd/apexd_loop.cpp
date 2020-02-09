@@ -92,7 +92,7 @@ Result<void> configureReadAhead(const std::string& device_path) {
 
 Result<void> preAllocateLoopDevices(size_t num) {
   Result<void> loopReady = WaitForFile("/dev/loop-control", 20s);
-  if (!loopReady) {
+  if (!loopReady.ok()) {
     return loopReady;
   }
   unique_fd ctl_fd(
@@ -215,7 +215,7 @@ Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
   }
 
   Result<void> readAheadStatus = configureReadAhead(device);
-  if (!readAheadStatus) {
+  if (!readAheadStatus.ok()) {
     return readAheadStatus.error();
   }
   return device_fd;

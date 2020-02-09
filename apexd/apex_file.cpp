@@ -128,7 +128,7 @@ Result<ApexFile> ApexFile::Open(const std::string& path) {
   } else {
     manifest = ParseManifest(manifest_content);
   }
-  if (!manifest) {
+  if (!manifest.ok()) {
     return manifest.error();
   }
 
@@ -245,12 +245,12 @@ Result<void> verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
   }
 
   Result<std::string> key_name = getPublicKeyName(apex, data, length);
-  if (!key_name) {
+  if (!key_name.ok()) {
     return key_name.error();
   }
 
   Result<const std::string> public_key = getApexKey(*key_name);
-  if (public_key) {
+  if (public_key.ok()) {
     // TODO(b/115718846)
     // We need to decide whether we need rollback protection, and whether
     // we can use the rollback protection provided by libavb.
@@ -290,7 +290,7 @@ Result<std::unique_ptr<uint8_t[]>> verifyVbMeta(const ApexFile& apex,
 
   Result<void> st =
       verifyVbMetaSignature(apex, vbmeta_buf.get(), footer.vbmeta_size);
-  if (!st) {
+  if (!st.ok()) {
     return st.error();
   }
 
@@ -349,25 +349,25 @@ Result<ApexVerityData> ApexFile::VerifyApexVerity() const {
   }
 
   Result<std::unique_ptr<AvbFooter>> footer = getAvbFooter(*this, fd);
-  if (!footer) {
+  if (!footer.ok()) {
     return footer.error();
   }
 
   Result<std::unique_ptr<uint8_t[]>> vbmeta_data =
       verifyVbMeta(*this, fd, **footer);
-  if (!vbmeta_data) {
+  if (!vbmeta_data.ok()) {
     return vbmeta_data.error();
   }
 
   Result<const AvbHashtreeDescriptor*> descriptor =
       findDescriptor(vbmeta_data->get(), (*footer)->vbmeta_size);
-  if (!descriptor) {
+  if (!descriptor.ok()) {
     return descriptor.error();
   }
 
   Result<std::unique_ptr<AvbHashtreeDescriptor>> verifiedDescriptor =
       verifyDescriptor(*descriptor);
-  if (!verifiedDescriptor) {
+  if (!verifiedDescriptor.ok()) {
     return verifiedDescriptor.error();
   }
   verityData.desc = std::move(*verifiedDescriptor);
@@ -387,13 +387,13 @@ Result<void> ApexFile::VerifyManifestMatches(
     const std::string& mount_path) const {
   Result<ApexManifest> verifiedManifest =
       ReadManifest(mount_path + "/" + kManifestFilenamePb);
-  if (!verifiedManifest) {
+  if (!verifiedManifest.ok()) {
     LOG(ERROR) << "Could not read manifest from  " << mount_path << "/"
                << kManifestFilenamePb << " : " << verifiedManifest.error();
     // Fallback to Json manifest if present.
     LOG(ERROR) << "Trying to find a JSON manifest";
     verifiedManifest = ReadManifest(mount_path + "/" + kManifestFilenameJson);
-    if (!verifiedManifest) {
+    if (!verifiedManifest.ok()) {
       return verifiedManifest.error();
     }
   }
@@ -411,13 +411,13 @@ Result<std::vector<std::string>> FindApexes(
   std::vector<std::string> result;
   for (const auto& path : paths) {
     auto exist = PathExists(path);
-    if (!exist) {
+    if (!exist.ok()) {
       return exist.error();
     }
     if (!*exist) continue;
 
     const auto& apexes = FindApexFilesByName(path);
-    if (!apexes) {
+    if (!apexes.ok()) {
       return apexes;
     }
 

@@ -58,13 +58,13 @@ Result<std::vector<ApexPreinstalledData>> collectPreinstalleDataFromDir(
     return Error() << "Can't scan preinstalled APEX data from " << dir;
   }
   Result<std::vector<std::string>> apex_files = FindApexFilesByName(dir);
-  if (!apex_files) {
+  if (!apex_files.ok()) {
     return apex_files.error();
   }
 
   for (const auto& file : *apex_files) {
     Result<ApexFile> apex_file = ApexFile::Open(file);
-    if (!apex_file) {
+    if (!apex_file.ok()) {
       return Error() << "Failed to open " << file << " : " << apex_file.error();
     }
     ApexPreinstalledData apexPreInstalledData;
@@ -100,12 +100,12 @@ Result<void> collectPreinstalledData(const std::vector<std::string>& dirs) {
   for (const auto& dir : dirs) {
     Result<std::vector<ApexPreinstalledData>> preinstalledData =
         collectPreinstalleDataFromDir(dir);
-    if (!preinstalledData) {
+    if (!preinstalledData.ok()) {
       return Error() << "Failed to collect keys from " << dir << " : "
                      << preinstalledData.error();
     }
     Result<void> st = updatePreinstalledData(*preinstalledData);
-    if (!st) {
+    if (!st.ok()) {
       return st;
     }
   }

@@ -43,9 +43,9 @@ void waitForBootStatus(Result<void> (&revert_fn)(const std::string&),
       auto name = GetProperty("sys.init.updatable_crashing_process_name", "");
       LOG(ERROR) << "Native process '" << (name.empty() ? "[unknown]" : name)
                  << "' is crashing. Attempting a revert";
-      auto status = revert_fn(name);
-      if (!status) {
-        LOG(ERROR) << "Revert failed : " << status.error();
+      auto result = revert_fn(name);
+      if (!result.ok()) {
+        LOG(ERROR) << "Revert failed : " << result.error();
       } else {
         LOG(INFO) << "Successfuly reverted update. Rebooting device";
         Reboot();
