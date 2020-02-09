@@ -34,13 +34,11 @@ using ::testing::ExplainMatchResult;
 using ::testing::Field;
 
 template <typename T>
-inline ::testing::AssertionResult IsOk(
-    const android::base::Result<T>& status_or) {
-  if (status_or) {
+inline ::testing::AssertionResult IsOk(const android::base::Result<T>& result) {
+  if (result.ok()) {
     return ::testing::AssertionSuccess() << " is Ok";
   } else {
-    return ::testing::AssertionFailure()
-           << " failed with " << status_or.error();
+    return ::testing::AssertionFailure() << " failed with " << result.error();
   }
 }
 
