@@ -134,18 +134,6 @@ java_test_host {
     test_suites: ["general-tests"],
 }
 
-
-java_test_host {
-    name: "telephony_e2e_tests",
-    srcs:  ["src/**/TelephonyHostTest.java"],
-    defaults: ["apex_e2e_test_defaults"],
-    data: [
-        ":test_com.android.telephony",
-    ],
-    test_config: "telephony-e2e-tests.xml",
-    test_suites: ["general-tests"],
-}
-
 java_test_host {
     name: "cronet_e2e_tests",
     srcs:  ["src/**/CronetHostTest.java"],
