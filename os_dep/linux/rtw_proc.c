@@ -64,8 +64,14 @@ inline struct proc_dir_entry *rtw_proc_create_dir(const char *name, struct proc_
 	return entry;
 }
 
-inline struct proc_dir_entry *rtw_proc_create_entry(const char *name, struct proc_dir_entry *parent, 
-	const struct file_operations *fops, void * data)
+inline struct proc_dir_entry *rtw_proc_create_entry(const char *name,
+						    struct proc_dir_entry *parent,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+	const struct proc_ops *fops,
+#else
+	const struct file_operations *fops,
+#endif
+	void * data)
 {
 	struct proc_dir_entry *entry;
 
@@ -130,7 +136,7 @@ static ssize_t proc_set_log_level(struct file *file, const char __user *buffer, 
 	} else {
 		return -EFAULT;
 	}
-	
+
 	return count;
 }
 
@@ -177,13 +183,22 @@ static ssize_t rtw_drv_proc_write(struct file *file, const char __user *buffer, 
 	ssize_t index = (ssize_t)PDE_DATA(file_inode(file));
 	const struct rtw_proc_hdl *hdl = drv_proc_hdls+index;
 	ssize_t (*write)(struct file *, const char __user *, size_t, loff_t *, void *) = hdl->write;
-	
+
 	if (write)
 		return write(file, buffer, count, pos, NULL);
 
 	return -EROFS;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static const struct proc_ops rtw_drv_proc_fops = {
+	.proc_open = rtw_drv_proc_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+	.proc_write = rtw_drv_proc_write,
+};
+#else
 static const struct file_operations rtw_drv_proc_fops = {
 	.owner = THIS_MODULE,
 	.open = rtw_drv_proc_open,
@@ -192,6 +207,7 @@ static const struct file_operations rtw_drv_proc_fops = {
 	.release = single_release,
 	.write = rtw_drv_proc_write,
 };
+#endif
 
 int rtw_drv_proc_init(void)
 {
@@ -307,9 +323,9 @@ static ssize_t proc_set_config_gpio(struct file *file, const char __user *buffer
 {
 	struct net_device *dev = data;
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
-	char tmp[32]={0}; 
+	char tmp[32]={0};
 	int num=0,gpio_pin=0,gpio_mode=0;//gpio_mode:0 input  1:output;
-	
+
 	if (count < 2)
 		return -EFAULT;
 
@@ -333,9 +349,9 @@ static ssize_t proc_set_gpio_output_value(struct file *file, const char __user *
 {
 	struct net_device *dev = data;
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
-	char tmp[32]={0}; 
+	char tmp[32]={0};
 	int num=0,gpio_pin=0,pin_mode=0;//pin_mode: 1 high         0:low
-	
+
 	if (count < 2)
 		return -EFAULT;
 
@@ -348,9 +364,9 @@ static ssize_t proc_set_gpio_output_value(struct file *file, const char __user *
 		num	=sscanf(tmp, "%d %d",&gpio_pin,&pin_mode);
 		DBG_871X("num=%d gpio_pin=%d pin_high=%d\n",num,gpio_pin,pin_mode);
 		padapter->pre_gpio_pin=gpio_pin;
-		
+
 		if(pin_mode==0 || pin_mode==1  )
-			rtw_hal_set_gpio_output_value(padapter, gpio_pin,pin_mode);	
+			rtw_hal_set_gpio_output_value(padapter, gpio_pin,pin_mode);
 	}
 	return count;
 }
@@ -358,13 +374,13 @@ static int proc_get_gpio(struct seq_file *m, void *v)
 {
 	u8 gpioreturnvalue=0;
 	struct net_device *dev = m->private;
-	
+
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
-	if(!padapter)	
+	if(!padapter)
 		return -EFAULT;
 	gpioreturnvalue = rtw_hal_get_gpio(padapter, padapter->pre_gpio_pin);
 	DBG_871X_SEL_NL(m, "get_gpio %d:%d \n",padapter->pre_gpio_pin ,gpioreturnvalue);
-	
+
 	return 0;
 
 }
@@ -372,9 +388,9 @@ static ssize_t proc_set_gpio(struct file *file, const char __user *buffer, size_
 {
 	struct net_device *dev = data;
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
-	char tmp[32]={0}; 
+	char tmp[32]={0};
 	int num=0,gpio_pin=0;
-	
+
 	if (count < 1)
 		return -EFAULT;
 
@@ -387,9 +403,9 @@ static ssize_t proc_set_gpio(struct file *file, const char __user *buffer, size_
 		num	=sscanf(tmp, "%d",&gpio_pin);
 		DBG_871X("num=%d gpio_pin=%d\n",num,gpio_pin);
 		padapter->pre_gpio_pin=gpio_pin;
-		
+
 	}
-		return count;
+	return count;
 }
 #endif
 
@@ -398,9 +414,9 @@ static int proc_get_linked_info_dump(struct seq_file *m, void *v)
 {
 	struct net_device *dev = m->private;
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
-	if(padapter)	
+	if(padapter)
 		DBG_871X_SEL_NL(m, "linked_info_dump :%s \n", (padapter->bLinkInfoDump)?"enable":"disable");
-	
+
 	return 0;
 }
 
@@ -1232,6 +1248,15 @@ static ssize_t rtw_adapter_proc_write(struct file *file, const char __user *buff
 	return -EROFS;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static const struct proc_ops rtw_adapter_proc_fops = {
+	.proc_open = rtw_adapter_proc_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+	.proc_write = rtw_adapter_proc_write,
+};
+#else
 static const struct file_operations rtw_adapter_proc_fops = {
 	.owner = THIS_MODULE,
 	.open = rtw_adapter_proc_open,
@@ -1240,6 +1265,7 @@ static const struct file_operations rtw_adapter_proc_fops = {
 	.release = single_release,
 	.write = rtw_adapter_proc_write,
 };
+#endif
 
 int proc_get_odm_dbg_comp(struct seq_file *m, void *v)
 {
@@ -1396,7 +1422,7 @@ ssize_t proc_set_odm_adaptivity(struct file *file, const char __user *buffer, si
 
 		rtw_odm_adaptivity_parm_set(padapter, (s8)TH_L2H_ini, TH_EDCCA_HL_diff, (s8)TH_L2H_ini_mode2, TH_EDCCA_HL_diff_mode2, EDCCA_enable);
 	}
-	
+
 	return count;
 }
 
@@ -1499,13 +1525,22 @@ static ssize_t rtw_odm_proc_write(struct file *file, const char __user *buffer, 
 	ssize_t index = (ssize_t)PDE_DATA(file_inode(file));
 	const struct rtw_proc_hdl *hdl = odm_proc_hdls+index;
 	ssize_t (*write)(struct file *, const char __user *, size_t, loff_t *, void *) = hdl->write;
-	
+
 	if (write)
 		return write(file, buffer, count, pos, ((struct seq_file *)file->private_data)->private);
 
 	return -EROFS;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static const struct proc_ops rtw_odm_proc_fops = {
+	.proc_open = rtw_odm_proc_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+	.proc_write = rtw_odm_proc_write,
+};
+#else
 static const struct file_operations rtw_odm_proc_fops = {
 	.owner = THIS_MODULE,
 	.open = rtw_odm_proc_open,
@@ -1514,6 +1549,7 @@ static const struct file_operations rtw_odm_proc_fops = {
 	.release = single_release,
 	.write = rtw_odm_proc_write,
 };
+#endif
 
 struct proc_dir_entry *rtw_odm_proc_init(struct net_device *dev)
 {
