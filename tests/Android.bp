@@ -180,6 +180,17 @@ java_test_host {
 }
 
 java_test_host {
+    name: "extservices_e2e_tests",
+    srcs:  ["src/**/ExtServicesHostTest.java"],
+    defaults: ["apex_e2e_test_defaults"],
+    data: [
+        ":test_com.android.extservices",
+    ],
+    test_config: "extservices-e2e-tests.xml",
+    test_suites: ["general-tests"],
+}
+
+java_test_host {
     name: "apex_targetprep_tests",
     libs: ["tradefed"],
     srcs:  ["src/**/ApexTargetPrepTest.java"],
