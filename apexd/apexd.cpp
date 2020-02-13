@@ -1886,15 +1886,21 @@ void onStart(CheckpointInterface* checkpoint_service) {
       LOG(ERROR) << "Failed to rollback : " << rollback.error();
     }
   } else {
-    // Don't activate orphaned APEX packages that don't have a pre-installed
-    // version.
-    auto filter_fn = [](const auto& apex) {
-      if (HasPreInstalledVersion(apex.GetManifest().name())) {
-        return true;
+    auto filter_fn = [](const ApexFile& apex) {
+      // Don't activate orphaned APEX packages that don't have a pre-installed
+      // version.
+      if (!HasPreInstalledVersion(apex.GetManifest().name())) {
+        LOG(WARNING) << "Skipping " << apex.GetPath()
+                     << " because there is no pre-installed version";
+        return false;
       }
-      LOG(WARNING) << "Skipping " << apex.GetPath()
-                   << " because there is no pre-installed version";
-      return false;
+      if (apex.HasOnlyJsonManifest()) {
+        LOG(WARNING) << "Skipping " << apex.GetPath()
+                     << " because it doesn't have apex_manifest.pb in the "
+                        ".apex container";
+        return false;
+      }
+      return true;
     };
     std::copy_if(std::make_move_iterator(scan->begin()),
                  std::make_move_iterator(scan->end()),
@@ -1952,7 +1958,6 @@ Result<std::vector<ApexFile>> submitStagedSession(
     const int session_id, const std::vector<int>& child_session_ids,
     const bool has_rollback_enabled, const bool is_rollback,
     const int rollback_id) {
-
   if (session_id == 0) {
     return Error() << "Session id was not provided.";
   }
