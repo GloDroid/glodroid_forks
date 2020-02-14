@@ -132,8 +132,8 @@ Result<ApexFile> ApexFile::Open(const std::string& path) {
     return manifest.error();
   }
 
-  return ApexFile(path, image_offset, image_size, *manifest, pubkey,
-                  isPathForBuiltinApexes(path));
+  return ApexFile(path, image_offset, image_size, std::move(*manifest),
+                  isJsonManifest, pubkey, isPathForBuiltinApexes(path));
 }
 
 // AVB-related code.

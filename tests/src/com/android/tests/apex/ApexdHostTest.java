@@ -59,4 +59,23 @@ public class ApexdHostTest extends BaseHostJUnit4Test  {
             getDevice().executeShellV2Command("rm /data/apex/active/apexd_test_v2.apex");
         }
     }
+    @Test
+    public void testApexWithoutPbIsNotActivated() throws Exception {
+        final String testApexFile = "com.android.apex.cts.shim.v2_no_pb.apex";
+        assumeTrue("Device requires root", getDevice().isAdbRoot());
+        try {
+            assertThat(getDevice().pushFile(mTestUtils.getTestFile(testApexFile),
+                    "/data/apex/active/" + testApexFile)).isTrue();
+            getDevice().reboot();
+            assertWithMessage("Timed out waiting for device to boot").that(
+                    getDevice().waitForBootComplete(Duration.ofMinutes(2).toMillis())).isTrue();
+            final Set<ITestDevice.ApexInfo> activeApexes = getDevice().getActiveApexes();
+            ITestDevice.ApexInfo testApex = new ITestDevice.ApexInfo(
+                    "com.android.apex.cts.shim", 2L);
+            assertThat(activeApexes).doesNotContain(testApex);
+            // TODO(b/137086602): check that com.android.apex.cts.shim.v2_no_pb.apex was deleted.
+        } finally {
+            getDevice().executeShellV2Command("rm /data/apex/active/" + testApexFile);
+        }
+    }
 }
