@@ -10,6 +10,9 @@
       "name": "adbd_e2e_tests"
     },
     {
+      "name": "apexd_host_tests"
+    },
+    {
       "name": "conscrypt_e2e_tests"
     },
     {
