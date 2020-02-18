@@ -63,6 +63,7 @@
 #define SUN8I_AIF1_DACDAT_CTRL_AIF1_DA0R_ENA		14
 #define SUN8I_AIF1_DACDAT_CTRL_AIF1_DA0L_SRC		10
 #define SUN8I_AIF1_DACDAT_CTRL_AIF1_DA0R_SRC		8
+#define SUN8I_AIF1_DACDAT_CTRL_AIF1_LOOP_ENA		0
 #define SUN8I_AIF1_MXR_SRC				0x04c
 #define SUN8I_AIF1_MXR_SRC_AD0L_MXR_SRC_AIF1DA0L	15
 #define SUN8I_AIF1_MXR_SRC_AD0L_MXR_SRC_AIF2DACL	14
@@ -82,6 +83,7 @@
 #define SUN8I_AIF2_DACDAT_CTRL_AIF2_DACR_ENA		14
 #define SUN8I_AIF2_DACDAT_CTRL_AIF2_DACL_SRC		10
 #define SUN8I_AIF2_DACDAT_CTRL_AIF2_DACR_SRC		8
+#define SUN8I_AIF2_DACDAT_CTRL_AIF2_LOOP_ENA		0
 #define SUN8I_AIF2_MXR_SRC				0x08c
 #define SUN8I_AIF2_MXR_SRC_ADCL_MXR_SRC_AIF1DA0L	15
 #define SUN8I_AIF2_MXR_SRC_ADCL_MXR_SRC_AIF1DA1L	14
@@ -519,6 +521,21 @@ static struct snd_soc_dai_driver sun8i_codec_dais[] = {
 	},
 };
 
+static const struct snd_kcontrol_new sun8i_aif1_loopback_switch =
+	SOC_DAPM_SINGLE("AIF1 Loopback Switch",
+			SUN8I_AIF1_DACDAT_CTRL,
+			SUN8I_AIF1_DACDAT_CTRL_AIF1_LOOP_ENA, 1, 0);
+
+static const struct snd_kcontrol_new sun8i_aif2_loopback_switch =
+	SOC_DAPM_SINGLE("AIF2 Loopback Switch",
+			SUN8I_AIF2_DACDAT_CTRL,
+			SUN8I_AIF2_DACDAT_CTRL_AIF2_LOOP_ENA, 1, 0);
+
+static const struct snd_kcontrol_new sun8i_aif3_loopback_switch =
+	SOC_DAPM_SINGLE("Switch",
+			SUN8I_AIF3_DACDAT_CTRL,
+			SUN8I_AIF3_DACDAT_CTRL_AIF3_LOOP_ENA, 1, 0);
+
 static const char *const sun8i_aif_stereo_mux_enum_names[] = {
 	"Stereo", "Reverse Stereo", "Sum Mono", "Mix Mono"
 };
@@ -643,6 +660,20 @@ static const struct snd_kcontrol_new sun8i_dac_mixer_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget sun8i_codec_dapm_widgets[] = {
+	/* AIF Loopback Switches */
+	SND_SOC_DAPM_SWITCH("AIF1 Slot 0 Left Loopback", SND_SOC_NOPM, 0, 0,
+			    &sun8i_aif1_loopback_switch),
+	SND_SOC_DAPM_SWITCH("AIF1 Slot 0 Right Loopback", SND_SOC_NOPM, 0, 0,
+			    &sun8i_aif1_loopback_switch),
+
+	SND_SOC_DAPM_SWITCH("AIF2 Left Loopback", SND_SOC_NOPM, 0, 0,
+			    &sun8i_aif2_loopback_switch),
+	SND_SOC_DAPM_SWITCH("AIF2 Right Loopback", SND_SOC_NOPM, 0, 0,
+			    &sun8i_aif2_loopback_switch),
+
+	SND_SOC_DAPM_SWITCH("AIF3 Loopback", SND_SOC_NOPM, 0, 0,
+			    &sun8i_aif3_loopback_switch),
+
 	/* AIF "ADC" Outputs */
 	SND_SOC_DAPM_AIF_OUT("AIF1 AD0 Left", "AIF1 Capture", 0,
 			     SUN8I_AIF1_ADCDAT_CTRL,
@@ -776,6 +807,15 @@ static const struct snd_soc_dapm_widget sun8i_codec_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route sun8i_codec_dapm_routes[] = {
+	/* AIF Loopback Routes */
+	{ "AIF1 Slot 0 Left Loopback", "AIF1 Loopback Switch", "AIF1 AD0 Left" },
+	{ "AIF1 Slot 0 Right Loopback", "AIF1 Loopback Switch", "AIF1 AD0 Right" },
+
+	{ "AIF2 Left Loopback", "AIF2 Loopback Switch", "AIF2 ADC Left" },
+	{ "AIF2 Right Loopback", "AIF2 Loopback Switch", "AIF2 ADC Right" },
+
+	{ "AIF3 Loopback", "Switch", "AIF3 ADC" },
+
 	/* AIF "ADC" Output Routes */
 	{ "AIF1 AD0 Left", NULL, "AIF1 AD0 Left Stereo Mux" },
 	{ "AIF1 AD0 Right", NULL, "AIF1 AD0 Right Stereo Mux" },
@@ -882,11 +922,19 @@ static const struct snd_soc_dapm_route sun8i_codec_dapm_routes[] = {
 	{ "AIF2 DAC Right Stereo Mux", "Mix Mono", "AIF2 DAC Right" },
 
 	/* AIF "DAC" Input Routes */
+	{ "AIF1 DA0 Left", NULL, "AIF1 Slot 0 Left Loopback" },
+	{ "AIF1 DA0 Right", NULL, "AIF1 Slot 0 Right Loopback" },
+
 	{ "AIF1 DA0 Left", NULL, "AIF1CLK" },
 	{ "AIF1 DA0 Right", NULL, "AIF1CLK" },
 
+	{ "AIF2 DAC Left", NULL, "AIF2 Left Loopback" },
+	{ "AIF2 DAC Right", NULL, "AIF2 Right Loopback" },
+
 	{ "AIF2 DAC Left", NULL, "AIF2CLK" },
 	{ "AIF2 DAC Right", NULL, "AIF2CLK" },
+
+	{ "AIF3 DAC", NULL, "AIF3 Loopback" },
 
 	/* Main DAC Output Routes */
 	{ "DAC Left", NULL, "DAC Left Mixer" },
