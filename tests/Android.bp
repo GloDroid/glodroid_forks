@@ -250,5 +250,6 @@ java_test_host {
         "apex_manifest_proto_java",
     ],
     test_config: "apexd-host-tests.xml",
+    test_suites: ["general-tests"],
     data: [":apex.apexd_test_v2"],
 }
