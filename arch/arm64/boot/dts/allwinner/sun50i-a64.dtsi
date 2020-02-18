@@ -137,10 +137,10 @@
 		simple-audio-card,name = "sun50i-a64-audio";
 		simple-audio-card,aux-devs = <&codec_analog>;
 		simple-audio-card,routing =
-				"Left DAC", "AIF1 Slot 0 Left",
-				"Right DAC", "AIF1 Slot 0 Right",
-				"AIF1 Slot 0 Left ADC", "Left ADC",
-				"AIF1 Slot 0 Right ADC", "Right ADC";
+				"Left DAC", "DAC Left",
+				"Right DAC", "DAC Right",
+				"ADC Left", "Left ADC",
+				"ADC Right", "Right ADC";
 		status = "disabled";
 
 		simple-audio-card,dai-link@0 {
