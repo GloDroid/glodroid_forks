@@ -266,6 +266,7 @@
 		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 		swin-supply = <&reg_dcdc1>;
 		x-powers,drive-vbus-en;
+		x-powers,vbus-acin-shorted;
 	};
 
 	ac100: codec@e89 {

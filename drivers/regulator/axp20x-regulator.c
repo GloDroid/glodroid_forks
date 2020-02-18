@@ -92,6 +92,7 @@
 #define AXP22X_WORKMODE_DCDCX_MASK(x)	BIT_MASK(x)
 
 #define AXP22X_MISC_N_VBUSEN_FUNC	BIT(4)
+#define AXP22X_MISC_VBUS_AC_SHORT	(BIT(5) | BIT(6))
 
 #define AXP22X_DCDC1_V_OUT_MASK		GENMASK(4, 0)
 #define AXP22X_DCDC2_V_OUT_MASK		GENMASK(5, 0)
@@ -1218,6 +1219,7 @@ static int axp20x_regulator_probe(struct platform_device *pdev)
 	const char *dcdc1_name = axp22x_regulators[AXP22X_DCDC1].name;
 	const char *dcdc5_name = axp22x_regulators[AXP22X_DCDC5].name;
 	bool drivevbus = false;
+	bool vbusacshort = false;
 
 	switch (axp20x->variant) {
 	case AXP202_ID:
@@ -1237,6 +1239,8 @@ static int axp20x_regulator_probe(struct platform_device *pdev)
 		nregulators = AXP803_REG_ID_MAX;
 		drivevbus = of_property_read_bool(pdev->dev.parent->of_node,
 						  "x-powers,drive-vbus-en");
+		vbusacshort = of_property_read_bool(pdev->dev.parent->of_node,
+						  "x-powers,vbus-acin-shorted");
 		break;
 	case AXP806_ID:
 		regulators = axp806_regulators;
@@ -1251,6 +1255,8 @@ static int axp20x_regulator_probe(struct platform_device *pdev)
 		nregulators = AXP813_REG_ID_MAX;
 		drivevbus = of_property_read_bool(pdev->dev.parent->of_node,
 						  "x-powers,drive-vbus-en");
+		vbusacshort = of_property_read_bool(pdev->dev.parent->of_node,
+						  "x-powers,vbus-acin-shorted");
 		break;
 	default:
 		dev_err(&pdev->dev, "Unsupported AXP variant: %ld\n",
@@ -1357,6 +1363,11 @@ static int axp20x_regulator_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (vbusacshort) {
+		regmap_update_bits(axp20x->regmap, AXP20X_OVER_TMP,
+				   AXP22X_MISC_VBUS_AC_SHORT,
+				   AXP22X_MISC_VBUS_AC_SHORT);
+	}
 	return 0;
 }
 
