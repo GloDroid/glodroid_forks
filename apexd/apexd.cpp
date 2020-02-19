@@ -1368,16 +1368,7 @@ void snapshotOrRestoreDeSysData() {
 }
 
 int snapshotOrRestoreDeUserData() {
-  auto filter_fn = [](const std::filesystem::directory_entry& entry) {
-    std::error_code ec;
-    bool result = entry.is_directory(ec);
-    if (ec) {
-      LOG(ERROR) << "Failed to check is_directory : " << ec.message();
-      return false;
-    }
-    return result;
-  };
-  auto user_dirs = ReadDir(kDeNDataDir, filter_fn);
+  auto user_dirs = GetDeUserDirs();
 
   if (!user_dirs.ok()) {
     LOG(ERROR) << "Error reading dirs " << user_dirs.error();
@@ -1440,6 +1431,36 @@ Result<void> migrateSessionsDirIfNeeded() {
     return Error() << "Failed to delete old sessions directory "
                    << error_code.message();
   }
+  return {};
+}
+
+Result<void> destroySnapshots(const std::string& base_dir,
+                              const int rollback_id) {
+  namespace fs = std::filesystem;
+  auto path = StringPrintf("%s/%s/%d", base_dir.c_str(), kApexSnapshotSubDir,
+                           rollback_id);
+
+  std::error_code error_code;
+  fs::remove_all(path, error_code);
+  if (error_code) {
+    return Error() << "Failed to delete snapshots at " << path << " : "
+                   << error_code.message();
+  }
+  return {};
+}
+
+Result<void> destroyDeSnapshots(const int rollback_id) {
+  destroySnapshots(kDeSysDataDir, rollback_id);
+
+  auto user_dirs = GetDeUserDirs();
+  if (!user_dirs) {
+    return Error() << "Error reading user dirs " << user_dirs.error();
+  }
+
+  for (const auto& user_dir : *user_dirs) {
+    destroySnapshots(user_dir, rollback_id);
+  }
+
   return {};
 }
 
