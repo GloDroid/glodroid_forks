@@ -35,6 +35,7 @@
 #include <android-base/strings.h>
 #include <cutils/android_reboot.h>
 
+#include "apex_constants.h"
 #include "string_log.h"
 
 using android::base::ErrnoError;
@@ -214,6 +215,20 @@ inline Result<void> WaitForFile(const std::string& path,
     has_slept = true;
   }
   return ErrnoError() << "wait for '" << path << "' timed out and took " << t;
+}
+
+inline Result<std::vector<std::string>> GetDeUserDirs() {
+  namespace fs = std::filesystem;
+  auto filter_fn = [](const std::filesystem::directory_entry& entry) {
+    std::error_code ec;
+    bool result = entry.is_directory(ec);
+    if (ec) {
+      LOG(ERROR) << "Failed to check is_directory : " << ec.message();
+      return false;
+    }
+    return result;
+  };
+  return ReadDir(kDeNDataDir, filter_fn);
 }
 
 }  // namespace apex

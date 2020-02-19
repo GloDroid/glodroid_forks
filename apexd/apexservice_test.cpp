@@ -445,6 +445,8 @@ class ApexServiceTest : public ::testing::Test {
 
     DeleteIfExists("/data/misc_ce/0/apexdata/apex.apexd_test");
     DeleteIfExists("/data/misc_ce/0/apexrollback/123456");
+    DeleteIfExists("/data/misc_de/0/apexrollback/123456");
+    DeleteIfExists("/data/misc/apexrollback/123456");
   }
 };
 
@@ -456,6 +458,27 @@ bool RegularFileExists(const std::string& path) {
     return false;
   }
   return S_ISREG(buf.st_mode);
+}
+
+bool DirExists(const std::string& path) {
+  struct stat buf;
+  if (0 != stat(path.c_str(), &buf)) {
+    return false;
+  }
+  return S_ISDIR(buf.st_mode);
+}
+
+void CreateDir(const std::string& path) {
+  std::error_code ec;
+  fs::create_directory(path, ec);
+  ASSERT_FALSE(ec) << "Failed to create rollback dir "
+                   << " : " << ec.message();
+}
+
+void CreateFile(const std::string& path) {
+  std::ofstream ofs(path);
+  ASSERT_TRUE(ofs.good());
+  ofs.close();
 }
 
 Result<std::vector<std::string>> ReadEntireDir(const std::string& path) {
@@ -798,14 +821,8 @@ TEST_F(ApexServiceTest, SessionParamDefaults) {
 }
 
 TEST_F(ApexServiceTest, SnapshotCeData) {
-  std::error_code ec;
-  fs::create_directory("/data/misc_ce/0/apexdata/apex.apexd_test");
-  ASSERT_FALSE(ec) << "Failed to create data dir "
-                   << " : " << ec.message();
-
-  std::ofstream ofs("/data/misc_ce/0/apexdata/apex.apexd_test/hello.txt");
-  ASSERT_TRUE(ofs.good());
-  ofs.close();
+  CreateDir("/data/misc_ce/0/apexdata/apex.apexd_test");
+  CreateFile("/data/misc_ce/0/apexdata/apex.apexd_test/hello.txt");
 
   ASSERT_TRUE(
       RegularFileExists("/data/misc_ce/0/apexdata/apex.apexd_test/hello.txt"));
@@ -825,26 +842,12 @@ TEST_F(ApexServiceTest, SnapshotCeData) {
 }
 
 TEST_F(ApexServiceTest, RestoreCeData) {
-  std::error_code ec;
-  fs::create_directory("/data/misc_ce/0/apexdata/apex.apexd_test", ec);
-  ASSERT_FALSE(ec) << "Failed to create data dir "
-                   << " : " << ec.message();
-  fs::create_directory("/data/misc_ce/0/apexrollback/123456", ec);
-  ASSERT_FALSE(ec) << "Failed to create snapshot root dir "
-                   << " : " << ec.message();
-  fs::create_directory("/data/misc_ce/0/apexrollback/123456/apex.apexd_test",
-                       ec);
-  ASSERT_FALSE(ec) << "Failed to create snapshot dir "
-                   << " : " << ec.message();
+  CreateDir("/data/misc_ce/0/apexdata/apex.apexd_test");
+  CreateDir("/data/misc_ce/0/apexrollback/123456");
+  CreateDir("/data/misc_ce/0/apexrollback/123456/apex.apexd_test");
 
-  std::ofstream newfs("/data/misc_ce/0/apexdata/apex.apexd_test/newfile.txt");
-  ASSERT_TRUE(newfs.good());
-  newfs.close();
-
-  std::ofstream oldfs(
-      "/data/misc_ce/0/apexrollback/123456/apex.apexd_test/oldfile.txt");
-  ASSERT_TRUE(oldfs.good());
-  oldfs.close();
+  CreateFile("/data/misc_ce/0/apexdata/apex.apexd_test/newfile.txt");
+  CreateFile("/data/misc_ce/0/apexrollback/123456/apex.apexd_test/oldfile.txt");
 
   ASSERT_TRUE(RegularFileExists(
       "/data/misc_ce/0/apexdata/apex.apexd_test/newfile.txt"));
@@ -857,6 +860,42 @@ TEST_F(ApexServiceTest, RestoreCeData) {
       "/data/misc_ce/0/apexdata/apex.apexd_test/oldfile.txt"));
   ASSERT_FALSE(RegularFileExists(
       "/data/misc_ce/0/apexdata/apex.apexd_test/newfile.txt"));
+}
+
+TEST_F(ApexServiceTest, DestroyDeSnapshots_DeSys) {
+  CreateDir("/data/misc/apexrollback/123456");
+  CreateDir("/data/misc/apexrollback/123456/my.apex");
+  CreateFile("/data/misc/apexrollback/123456/my.apex/hello.txt");
+
+  ASSERT_TRUE(
+      RegularFileExists("/data/misc/apexrollback/123456/my.apex/hello.txt"));
+
+  service_->destroyDeSnapshots(8975);
+  ASSERT_TRUE(
+      RegularFileExists("/data/misc/apexrollback/123456/my.apex/hello.txt"));
+
+  service_->destroyDeSnapshots(123456);
+  ASSERT_FALSE(
+      RegularFileExists("/data/misc/apexrollback/123456/my.apex/hello.txt"));
+  ASSERT_FALSE(DirExists("/data/misc/apexrollback/123456"));
+}
+
+TEST_F(ApexServiceTest, DestroyDeSnapshots_DeUser) {
+  CreateDir("/data/misc_de/0/apexrollback/123456");
+  CreateDir("/data/misc_de/0/apexrollback/123456/my.apex");
+  CreateFile("/data/misc_de/0/apexrollback/123456/my.apex/hello.txt");
+
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_de/0/apexrollback/123456/my.apex/hello.txt"));
+
+  service_->destroyDeSnapshots(8975);
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_de/0/apexrollback/123456/my.apex/hello.txt"));
+
+  service_->destroyDeSnapshots(123456);
+  ASSERT_FALSE(RegularFileExists(
+      "/data/misc_de/0/apexrollback/123456/my.apex/hello.txt"));
+  ASSERT_FALSE(DirExists("/data/misc_de/0/apexrollback/123456"));
 }
 
 template <typename NameProvider>

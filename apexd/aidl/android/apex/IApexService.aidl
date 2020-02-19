@@ -45,6 +45,11 @@ interface IApexService {
     */
    void restoreCeData(int user_id, int rollback_id, in @utf8InCpp String apex_name);
 
+   /**
+    * Deletes device-encrypted snapshots for the given rollback id.
+    */
+   void destroyDeSnapshots(int rollback_id);
+
    void unstagePackages(in @utf8InCpp List<String> active_package_paths);
 
    /**

@@ -80,6 +80,7 @@ android::base::Result<ino_t> snapshotCeData(const int user_id,
 android::base::Result<void> restoreCeData(const int user_id,
                                           const int rollback_id,
                                           const std::string& apex_name);
+android::base::Result<void> destroyDeSnapshots(const int rollback_id);
 
 int onBootstrap();
 void onStart(CheckpointInterface* checkpoint_service);
