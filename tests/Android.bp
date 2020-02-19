@@ -251,5 +251,8 @@ java_test_host {
     ],
     test_config: "apexd-host-tests.xml",
     test_suites: ["general-tests"],
-    data: [":apex.apexd_test_v2"],
+    data: [
+        ":apex.apexd_test_v2",
+        ":com.android.apex.cts.shim.v2_no_pb",
+    ],
 }
