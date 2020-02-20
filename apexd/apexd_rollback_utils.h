@@ -21,6 +21,7 @@
 #include <string>
 
 #include <android-base/logging.h>
+#include <android-base/macros.h>
 #include <android-base/result.h>
 #include <android-base/scopeguard.h>
 #include <logwrap/logwrap.h>
@@ -32,7 +33,6 @@ using android::base::Result;
 namespace android {
 namespace apex {
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
 static constexpr const char* kCpPath = "/system/bin/cp";
 
 /**
@@ -41,19 +41,19 @@ static constexpr const char* kCpPath = "/system/bin/cp";
  * dependency on runtime.
  */
 int32_t copy_directory_recursive(const char* from, const char* to) {
-  char* argv[] = {
-      (char*)kCpPath,
-      (char*)"-F", /* delete any existing destination file first
+  const char* const argv[] = {
+      kCpPath,
+      "-F", /* delete any existing destination file first
                       (--remove-destination) */
-      (char*)"-p", /* preserve timestamps, ownership, and permissions */
-      (char*)"-R", /* recurse into subdirectories (DEST must be a directory) */
-      (char*)"-P", /* Do not follow symlinks [default] */
-      (char*)"-d", /* don't dereference symlinks */
-      (char*)from,
-      (char*)to};
+      "-p", /* preserve timestamps, ownership, and permissions */
+      "-R", /* recurse into subdirectories (DEST must be a directory) */
+      "-P", /* Do not follow symlinks [default] */
+      "-d", /* don't dereference symlinks */
+      from,
+      to};
 
   LOG(DEBUG) << "Copying " << from << " to " << to;
-  return logwrap_fork_execvp(ARRAY_SIZE(argv), argv, nullptr, false, LOG_ALOG,
+  return logwrap_fork_execvp(arraysize(argv), argv, nullptr, false, LOG_ALOG,
                              false, nullptr);
 }
 
