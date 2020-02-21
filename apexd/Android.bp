@@ -58,14 +58,14 @@ cc_defaults {
   shared_libs: [
     "libbinder",
     "libselinux",
+    "liblog",
+    "liblogwrap",
   ],
   static_libs: [
     "libapex",
     "libavb",
     "libdm",
     "libext2_uuid",
-    "liblog",
-    "liblogwrap",
     "libverity_tree",
     "libvold_binder",
   ],
