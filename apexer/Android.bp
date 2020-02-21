@@ -63,6 +63,7 @@ python_binary_host {
     libs: [
         "apex_manifest",
         "apex_build_info_proto",
+        "manifest_utils",
     ],
     required: apexer_tools,
 }
