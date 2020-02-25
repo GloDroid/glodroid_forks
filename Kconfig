@@ -1,5 +1,5 @@
 config RTL8723CS
-	tristate "Realtek RTL8723CS SDIO or SPI WiFi driver"
+	tristate "Realtek RTL8723CS SDIO or SPI WiFi driver (2017)"
 	depends on WLAN && MMC && CFG80211
 	select WIRELESS_EXT
 	select WEXT_PRIV
