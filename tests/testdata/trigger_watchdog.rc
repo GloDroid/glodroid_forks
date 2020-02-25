@@ -5,7 +5,12 @@ on boot && property:persist.debug.trigger_watchdog.apex=*
     exec_background u:r:su:s0 -- /system/bin/sh /system/bin/trigger_watchdog.sh
 
 # Only trigger if persist.debug.trigger_reboot_after_activation is non-empty.
-on boot && property:persist.debug.trigger_reboot_after_activation=*
+on boot && property:debug.trigger_reboot_once_after_activation=1 && property:persist.debug.trigger_reboot_after_activation=*
+    setprop debug.trigger_watchdog.status start
+    exec -- /system/bin/log -t TriggerWatchdog "Rebooting once after activation"
+    exec_background u:r:su:s0 -- /system/bin/sh /system/bin/trigger_reboot.sh
+
+on boot && property:persist.debug.trigger_reboot_twice_after_activation=1 && property:persist.debug.trigger_reboot_after_activation=*
     setprop debug.trigger_watchdog.status start
     exec -- /system/bin/log -t TriggerWatchdog "Checking checkpointing revert"
     exec_background u:r:su:s0 -- /system/bin/sh /system/bin/trigger_reboot.sh

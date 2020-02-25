@@ -19,6 +19,7 @@ package com.android.tests.apex;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 import com.android.tests.util.ModuleTestUtils;
@@ -49,9 +50,7 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
     public void setUp() throws Exception {
         mUtils.abandonActiveStagedSession();
         mUtils.uninstallShimApexIfNecessary();
-        resetProperty("persist.debug.trigger_watchdog.apex");
-        resetProperty("persist.debug.trigger_updatable_crashing_for_testing");
-        resetProperty("persist.debug.trigger_reboot_after_activation");
+        resetProperties();
     }
 
     /**
@@ -62,9 +61,14 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
     public void tearDown() throws Exception {
         mUtils.abandonActiveStagedSession();
         mUtils.uninstallShimApexIfNecessary();
+        resetProperties();
+    }
+
+    private void resetProperties() throws Exception {
         resetProperty("persist.debug.trigger_watchdog.apex");
         resetProperty("persist.debug.trigger_updatable_crashing_for_testing");
         resetProperty("persist.debug.trigger_reboot_after_activation");
+        resetProperty("persist.debug.trigger_reboot_twice_after_activation");
     }
 
     private void resetProperty(String propertyName) throws Exception {
@@ -119,6 +123,52 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         assertThat(sessionInfo).contains("revertReason: zygote");
     }
 
+    /**
+     * Test to verify that a device that does not support checkpointing will not revert a session
+     * if it reboots during boot.
+     */
+    @Test
+    public void testSessionNotRevertedWithCheckpointingDisabled() throws Exception {
+        assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
+        assumeFalse("Fs checkpointing is enabled", supportsFsCheckpointing());
+
+        File apexFile = mUtils.getTestFile("com.android.apex.cts.shim.v2.apex");
+
+        ITestDevice device = getDevice();
+        assertThat(device.setProperty("persist.debug.trigger_reboot_after_activation",
+                "com.android.apex.cts.shim@2.apex")).isTrue();
+        assertThat(device.setProperty("debug.trigger_reboot_once_after_activation",
+                "1")).isTrue();
+
+        String error = device.installPackage(apexFile, false, "--wait");
+        assertThat(error).isNull();
+
+        String sessionIdToCheck = device.executeShellCommand("pm get-stagedsessions --only-ready "
+                + "--only-parent --only-sessionid").trim();
+        assertThat(sessionIdToCheck).isNotEmpty();
+
+        // After we reboot the device, the apexd session should be activated as normal. After this,
+        // trigger_reboot.sh will reboot the device before the system server boots.
+        device.reboot();
+
+        ApexInfo ctsShimV1 = new ApexInfo("com.android.apex.cts.shim", 1L);
+        ApexInfo ctsShimV2 = new ApexInfo("com.android.apex.cts.shim", 2L);
+        String stagedSessionsInfo = device.executeShellCommand("pm get-stagedsessions");
+        for (String line: stagedSessionsInfo.split("[\\r\\n]+")) {
+            if (line.contains(sessionIdToCheck)) {
+                assertThat(line).contains("isApplied = true");
+            }
+        }
+
+        Set<ApexInfo> activatedApexes = device.getActiveApexes();
+        assertThat(activatedApexes).contains(ctsShimV2);
+        assertThat(activatedApexes).doesNotContain(ctsShimV1);
+    }
+
+    /**
+     * Test to verify that rebooting twice when a session is activated will cause the session to
+     * be reverted due to filesystem checkpointing.
+     */
     @Test
     public void testCheckpointingRevertsSession() throws Exception {
         assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
@@ -129,6 +179,8 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         ITestDevice device = getDevice();
         assertThat(device.setProperty("persist.debug.trigger_reboot_after_activation",
                 "com.android.apex.cts.shim@2.apex")).isTrue();
+        assertThat(device.setProperty("persist.debug.trigger_reboot_twice_after_activation",
+                "1")).isTrue();
         String error = device.installPackage(apexFile, false, "--wait");
         assertThat(error).isNull();
 
@@ -143,9 +195,58 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
 
         ApexInfo ctsShimV1 = new ApexInfo("com.android.apex.cts.shim", 1L);
         ApexInfo ctsShimV2 = new ApexInfo("com.android.apex.cts.shim", 2L);
+        String stagedSessionsInfo = device.executeShellCommand("pm get-stagedsessions");
+        for (String line: stagedSessionsInfo.split("[\\r\\n]+")) {
+            if (line.contains(sessionIdToCheck)) {
+                assertThat(line).contains("isFailed = true");
+            }
+        }
+
         Set<ApexInfo> activatedApexes = device.getActiveApexes();
         assertThat(activatedApexes).contains(ctsShimV1);
         assertThat(activatedApexes).doesNotContain(ctsShimV2);
+    }
+
+    /**
+     * Test to verify that rebooting once upon apex activation does not cause checkpointing to kick
+     * in and revert a session, since the checkpointing retry count should be 2.
+     */
+    @Test
+    public void testRebootingOnceDoesNotRevertSession() throws Exception {
+        assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
+        assumeTrue("Device doesn't support fs checkpointing", supportsFsCheckpointing());
+
+        File apexFile = mUtils.getTestFile("com.android.apex.cts.shim.v2.apex");
+
+        ITestDevice device = getDevice();
+        assertThat(device.setProperty("persist.debug.trigger_reboot_after_activation",
+                "com.android.apex.cts.shim@2.apex")).isTrue();
+        assertThat(device.setProperty("debug.trigger_reboot_once_after_activation",
+                "1")).isTrue();
+        String error = device.installPackage(apexFile, false, "--wait");
+        assertThat(error).isNull();
+
+        String sessionIdToCheck = device.executeShellCommand("pm get-stagedsessions --only-ready "
+                + "--only-parent --only-sessionid").trim();
+        assertThat(sessionIdToCheck).isNotEmpty();
+
+        // After we reboot the device, the apexd session should be activated as normal. After this,
+        // trigger_reboot.sh will reboot the device before the system server boots. Checkpointing
+        // will kick in, and at the next boot any non-finalized sessions will be reverted.
+        device.reboot();
+
+        ApexInfo ctsShimV1 = new ApexInfo("com.android.apex.cts.shim", 1L);
+        ApexInfo ctsShimV2 = new ApexInfo("com.android.apex.cts.shim", 2L);
+        String stagedSessionsInfo = device.executeShellCommand("pm get-stagedsessions");
+        for (String line: stagedSessionsInfo.split("[\\r\\n]+")) {
+            if (line.contains(sessionIdToCheck)) {
+                assertThat(line).contains("isApplied = true");
+            }
+        }
+
+        Set<ApexInfo> activatedApexes = device.getActiveApexes();
+        assertThat(activatedApexes).contains(ctsShimV2);
+        assertThat(activatedApexes).doesNotContain(ctsShimV1);
     }
 
     // TODO(ioffe): check that we recover from the boot loop in of userspace reboot.
@@ -170,13 +271,13 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
     }
 
     /**
-     * Test to verify that if a hard reboot is triggered far enough during userspace reboot boot
-     * sequence, an apex update will be reverted.
+     * Test to verify that if a hard reboot is triggered during userspace reboot boot
+     * sequence, an apex update will not be reverted.
      */
     @Test
-    public void testFailingUserspaceReboot_revertsUpdate() throws Exception {
+    public void testFailingUserspaceReboot_doesNotRevertUpdate() throws Exception {
         assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
-        assumeTrue("Device doesn't support usespace reboot",
+        assumeTrue("Device doesn't support userspace reboot",
                 getDevice().getBooleanProperty("ro.init.userspace_reboot.is_supported", false));
         assumeTrue("Device doesn't support fs checkpointing", supportsFsCheckpointing());
 
@@ -187,14 +288,14 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         String error = getDevice().installPackage(apexFile, false, "--wait");
         assertWithMessage("Failed to stage com.android.apex.cts.shim.v2.apex : %s", error).that(
                 error).isNull();
-        // After we reboot the device, apexd will apply the update, but since device is rebooted
-        // again later in the boot sequence update will be reverted.
+        // After we reboot the device, apexd will apply the update
         getDevice().rebootUserspace();
         // Verify that hard reboot happened.
         assertThat(getDevice().getIntProperty("sys.init.userspace_reboot.last_finished",
                 -1)).isEqualTo(-1);
         Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
-        assertThat(activatedApexes).contains(new ApexInfo("com.android.apex.cts.shim", 1L));
+        assertThat(activatedApexes).doesNotContain(new ApexInfo("com.android.apex.cts.shim", 1L));
+        assertThat(activatedApexes).contains(new ApexInfo("com.android.apex.cts.shim", 2L));
     }
 
     /**
@@ -205,7 +306,7 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
     @Test
     public void testUserspaceRebootFailedShutdownSequence_doesNotRevertUpdate() throws Exception {
         assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
-        assumeTrue("Device doesn't support usespace reboot",
+        assumeTrue("Device doesn't support userspace reboot",
                 getDevice().getBooleanProperty("ro.init.userspace_reboot.is_supported", false));
         assumeTrue("Device doesn't support fs checkpointing", supportsFsCheckpointing());
 
@@ -233,12 +334,12 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
     /**
      * Test to verify that if a hard reboot is triggered around the time of
      * executing {@code /system/bin/vdc checkpoint markBootAttempt} of userspace reboot boot
-     * sequence, apex update won't be installed.
+     * sequence, apex update will still be installed.
      */
     @Test
     public void testUserspaceRebootFailedRemount_revertsUpdate() throws Exception {
         assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
-        assumeTrue("Device doesn't support usespace reboot",
+        assumeTrue("Device doesn't support userspace reboot",
                 getDevice().getBooleanProperty("ro.init.userspace_reboot.is_supported", false));
         assumeTrue("Device doesn't support fs checkpointing", supportsFsCheckpointing());
 
@@ -250,14 +351,14 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         String error = getDevice().installPackage(apexFile, false, "--wait");
         assertWithMessage("Failed to stage com.android.apex.cts.shim.v2.apex : %s", error).that(
                 error).isNull();
-        // After we reboot the device, apexd will apply the update, but since device is rebooted
-        // again later in the boot sequence update will be reverted.
+        // After we reboot the device, apexd will apply the update
         getDevice().rebootUserspace();
         // Verify that hard reboot happened.
         assertThat(getDevice().getIntProperty("sys.init.userspace_reboot.last_finished",
                 -1)).isEqualTo(-1);
         Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
-        assertThat(activatedApexes).contains(new ApexInfo("com.android.apex.cts.shim", 1L));
+        assertThat(activatedApexes).doesNotContain(new ApexInfo("com.android.apex.cts.shim", 1L));
+        assertThat(activatedApexes).contains(new ApexInfo("com.android.apex.cts.shim", 2L));
     }
 
     private boolean supportsFsCheckpointing() throws Exception {
