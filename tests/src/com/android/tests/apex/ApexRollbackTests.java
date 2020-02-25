@@ -38,6 +38,7 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.time.Duration;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Test for automatic recovery of apex update that causes boot loop.
@@ -267,7 +268,12 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         assertWithMessage("Device didn't boot in 1 minute").that(
                 getDevice().waitForBootComplete(Duration.ofMinutes(1).toMillis())).isTrue();
         // Verify that property was set to true.
-        assertThat(getDevice().getBooleanProperty("sys.init.updatable_crashing", false)).isTrue();
+        // TODO(b/149733368): Revert this workaround when the bug is fixed.
+        // #getBooleanProperty fails due to timeout when the device is busy right after reboot.
+        // Let's call #executeShellV2Command with 2 mins timeout to work around it.
+        String val = getDevice().executeShellV2Command(
+                "getprop sys.init.updatable_crashing", 2, TimeUnit.MINUTES).getStdout().trim();
+        assertThat(val).isEqualTo("1");
     }
 
     /**
