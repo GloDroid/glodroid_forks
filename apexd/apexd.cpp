@@ -1171,6 +1171,11 @@ Result<void> ActivateApexPackages(const std::vector<ApexFile>& apexes) {
   return {};
 }
 
+bool ShouldActivateApexOnData(const ApexFile& apex) {
+  return HasPreInstalledVersion(apex.GetManifest().name()) &&
+         !apex.HasOnlyJsonManifest();
+}
+
 }  // namespace
 
 Result<void> scanPackagesDirAndActivate(const char* apex_package_dir) {
@@ -1897,17 +1902,8 @@ void onStart(CheckpointInterface* checkpoint_service) {
     }
   } else {
     auto filter_fn = [](const ApexFile& apex) {
-      // Don't activate orphaned APEX packages that don't have a pre-installed
-      // version.
-      if (!HasPreInstalledVersion(apex.GetManifest().name())) {
-        LOG(WARNING) << "Skipping " << apex.GetPath()
-                     << " because there is no pre-installed version";
-        return false;
-      }
-      if (apex.HasOnlyJsonManifest()) {
-        LOG(WARNING) << "Skipping " << apex.GetPath()
-                     << " because it doesn't have apex_manifest.pb in the "
-                        ".apex container";
+      if (!ShouldActivateApexOnData(apex)) {
+        LOG(WARNING) << "Skipping " << apex.GetPath();
         return false;
       }
       return true;
@@ -2075,9 +2071,11 @@ Result<void> markStagedSessionSuccessful(const int session_id) {
   }
 }
 
+namespace {
+
 // Find dangling mounts and unmount them.
 // If one is on /data/apex/active, remove it.
-void unmountDanglingMounts() {
+void UnmountDanglingMounts() {
   std::multimap<std::string, MountedApexData> danglings;
   gMountedApexes.ForallMountedApexes([&](const std::string& package,
                                          const MountedApexData& data,
@@ -2103,6 +2101,36 @@ void unmountDanglingMounts() {
   }
 
   RemoveObsoleteHashTrees();
+}
+
+// Removes APEXes on /data that don't have corresponding pre-installed version.
+void RemoveOrphanedApexes() {
+  auto data_apexes = FindApexFilesByName(kActiveApexPackagesDataDir);
+  if (!data_apexes.ok()) {
+    LOG(ERROR) << "Failed to scan " << kActiveApexPackagesDataDir << " : "
+               << data_apexes.error();
+    return;
+  }
+  for (const auto& path : *data_apexes) {
+    auto apex = ApexFile::Open(path);
+    if (!apex.ok()) {
+      LOG(ERROR) << "Failed to open " << path << " : " << apex.error();
+      continue;
+    }
+    if (!ShouldActivateApexOnData(*apex)) {
+      LOG(DEBUG) << "Removing orphaned APEX " << path;
+      if (unlink(path.c_str()) != 0) {
+        PLOG(ERROR) << "Failed to unlink " << path;
+      }
+    }
+  }
+}
+
+}  // namespace
+
+void bootCompletedCleanup() {
+  UnmountDanglingMounts();
+  RemoveOrphanedApexes();
 }
 
 int unmountAll() {
