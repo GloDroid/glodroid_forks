@@ -1421,8 +1421,21 @@ void scanStagedSessionsDirAndStage() {
   LOG(INFO) << "Scanning " << kApexSessionsDir
             << " looking for sessions to be activated.";
 
-  auto stagedSessions = ApexSession::GetSessionsInState(SessionState::STAGED);
-  for (auto& session : stagedSessions) {
+  auto sessionsToActivate =
+      ApexSession::GetSessionsInState(SessionState::STAGED);
+  if (gSupportsFsCheckpoints) {
+    // A session that is in the ACTIVATED state should still be re-activated if
+    // fs checkpointing is supported. In this case, a session may be in the
+    // ACTIVATED state yet the data/apex/active directory may have been
+    // reverted. The session should be reverted in this scenario.
+    auto activatedSessions =
+        ApexSession::GetSessionsInState(SessionState::ACTIVATED);
+    sessionsToActivate.insert(sessionsToActivate.end(),
+                              activatedSessions.begin(),
+                              activatedSessions.end());
+  }
+
+  for (auto& session : sessionsToActivate) {
     auto sessionId = session.GetId();
 
     auto session_failed_fn = [&]() {
