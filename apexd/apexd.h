@@ -87,7 +87,7 @@ android::base::Result<void> destroyDeSnapshots(const int rollback_id);
 int onBootstrap();
 void onStart(CheckpointInterface* checkpoint_service);
 void onAllPackagesReady();
-void unmountDanglingMounts();
+void bootCompletedCleanup();
 int snapshotOrRestoreDeUserData();
 
 int unmountAll();
