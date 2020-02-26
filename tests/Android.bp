@@ -135,17 +135,6 @@ java_test_host {
 }
 
 java_test_host {
-    name: "cronet_e2e_tests",
-    srcs:  ["src/**/CronetHostTest.java"],
-    defaults: ["apex_e2e_test_defaults"],
-    data: [
-        ":test_com.android.cronet",
-    ],
-    test_config: "cronet-e2e-tests.xml",
-    test_suites: ["general-tests"],
-}
-
-java_test_host {
     name: "permission_e2e_tests",
     srcs:  ["src/**/PermissionHostTest.java"],
     defaults: ["apex_e2e_test_defaults"],
