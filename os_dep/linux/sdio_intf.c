@@ -40,6 +40,9 @@
 static int wlan_en_gpio = -1;
 #endif /* CONFIG_PLATFORM_INTEL_BYT */
 
+#include <linux/of.h>
+#include <linux/of_irq.h>
+
 #ifndef dev_to_sdio_func
 #define dev_to_sdio_func(d)     container_of(d, struct sdio_func, dev)
 #endif
@@ -779,6 +782,10 @@ static int rtw_drv_init(
 	PADAPTER padapter = NULL;
 	struct dvobj_priv *dvobj;
 
+#ifdef CONFIG_OF
+	struct device_node *np;
+#endif
+
 #ifdef CONFIG_PLATFORM_INTEL_BYT
 
 #ifdef CONFIG_ACPI
@@ -813,7 +820,15 @@ static int rtw_drv_init(
 #endif
 #endif /* CONFIG_PLATFORM_INTEL_BYT */
 
-
+#if defined(CONFIG_OF)
+	np = func->dev.of_node;
+	if (np) {
+		/* make sure there are interrupts defined in the node */
+		if (of_find_property(np, "interrupts", NULL)) {
+			oob_irq = irq_of_parse_and_map(np, 0);
+		}
+	}
+#endif
 
 	dvobj = sdio_dvobj_init(func, id);
 	if (dvobj == NULL) {
