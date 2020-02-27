@@ -2519,7 +2519,9 @@ static int cfg80211_rtw_scan(struct wiphy *wiphy
 check_need_indicate_scan_done:
 	if (_TRUE == need_indicate_scan_done) {
 		_rtw_cfg80211_surveydone_event_callback(padapter, request);
-		cfg80211_scan_done(request, 0);
+		struct cfg80211_scan_info info;
+		memset(&info, 0, sizeof(info));
+		cfg80211_scan_done(request, &info);
 	}
 
 cancel_ps_deny:
