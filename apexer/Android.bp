@@ -130,6 +130,9 @@ python_test_host {
         },
     },
     test_suites: ["general-tests"],
+    libs: [
+        "apex_manifest",
+    ],
     required: [
         "apexer",
         "deapexer"
