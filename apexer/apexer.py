@@ -154,6 +154,11 @@ def ParseArgs(argv):
       '--build_info',
       required=False,
       help='Build information file to be used for default values.')
+  parser.add_argument(
+      '--payload_only',
+      action='store_true',
+      help='Outputs the payload image/zip only.'
+  )
   return parser.parse_args(argv)
 
 
@@ -540,6 +545,12 @@ def CreateApex(args, work_dir):
     cmd.extend(['-C', manifests_dir])
     cmd.extend(['-D', manifests_dir])
     RunCommand(cmd, args.verbose)
+
+  if args.payload_only:
+    shutil.copyfile(img_file, args.output)
+    if (args.verbose):
+      print('Created (payload only) ' + args.output)
+    return True
 
   # package the image file and APEX manifest as an APK.
   # The AndroidManifest file is automatically generated if not given.
