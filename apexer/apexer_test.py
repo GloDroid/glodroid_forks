@@ -174,12 +174,22 @@ class ApexerRebuildTest(unittest.TestCase):
             zip_obj.extractall(path=dir_name)
         files = {}
         for i in ["apex_manifest.json", "apex_manifest.pb",
-                  "apex_build_info.pb", "assets"]:
+                  "apex_build_info.pb", "assets",
+                  "apex_payload.img", "apex_payload.zip"]:
             file_path = os.path.join(dir_name, i)
             if os.path.exists(file_path):
                 files[i] = file_path
         self.assertIn("apex_manifest.pb", files)
         self.assertIn("apex_build_info.pb", files)
+
+        image_file = None
+        if "apex_payload.img" in files:
+            image_file = files["apex_payload.img"]
+        elif "apex_payload.zip" in files:
+            image_file = files["apex_payload.zip"]
+        self.assertIsNotNone(image_file)
+        files["apex_payload"] = image_file
+
         return files
 
     def _extract_payload(self, apex_file_path):
@@ -196,7 +206,7 @@ class ApexerRebuildTest(unittest.TestCase):
             shutil.rmtree(os.path.join(dir_name, "lost+found"))
         return dir_name
 
-    def _run_apexer(self, container_files, payload_dir):
+    def _run_apexer(self, container_files, payload_dir, args=[]):
         os.environ["APEXER_TOOL_PATH"] = (
             "out/soong/host/linux-x86/bin:prebuilts/sdk/tools/linux/bin")
         cmd = ["apexer", "--force", "--include_build_info", "--do_not_check_keyname"]
@@ -208,7 +218,14 @@ class ApexerRebuildTest(unittest.TestCase):
             cmd.extend(["--assets_dir", "assets"])
         cmd.extend(["--key", os.path.join(get_current_dir(), TEST_PRIVATE_KEY)])
         cmd.extend(["--pubkey", os.path.join(get_current_dir(), TEST_AVB_PUBLIC_KEY)])
-        fd, fn = tempfile.mkstemp(prefix=self._testMethodName+"_repacked_", suffix=".apex.unsigned")
+        cmd.extend(args)
+
+        # Decide on output file name
+        apex_suffix = ".apex.unsigned"
+        if "--payload-only" in args:
+            apex_suffix = ".img"
+
+        fd, fn = tempfile.mkstemp(prefix=self._testMethodName+"_repacked_", suffix=apex_suffix)
         os.close(fd)
         self._to_cleanup.append(fn)
         cmd.extend([payload_dir, fn])
@@ -249,6 +266,15 @@ class ApexerRebuildTest(unittest.TestCase):
 
     def test_legacy_apex(self):
         self._run_build_test(TEST_APEX_LEGACY)
+
+    # Assert that payload-only output from apexer is same as the payload we get by unzipping apex.
+    def test_output_payload_only(self):
+        apex_file_path = os.path.join(get_current_dir(), TEST_APEX + ".apex")
+        container_files = self._get_container_files(apex_file_path)
+        payload_dir = self._extract_payload(apex_file_path)
+        payload_only_file_path = self._run_apexer(container_files, payload_dir, ["--payload_only"])
+        self.assertEqual(get_sha1sum(payload_only_file_path),
+                         get_sha1sum(container_files["apex_payload"]))
 
 
 if __name__ == '__main__':
