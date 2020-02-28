@@ -105,3 +105,33 @@ apex_test {
   key: "com.android.support.apexer.key",
   binaries: apexer_tools,
 }
+
+// TODO(b/148659029): this test can't run in TEST_MAPPING.
+python_test_host {
+    name: "apexer_test",
+    main: "apexer_test.py",
+    srcs: [
+        "apexer_test.py",
+    ],
+    data: [
+        ":com.android.example.apex",
+        ":com.android.example-legacy.apex",
+        "testdata/com.android.example.apex.avbpubkey",
+        "testdata/com.android.example.apex.pem",
+        "testdata/com.android.example.apex.pk8",
+        "testdata/com.android.example.apex.x509.pem",
+    ],
+    version: {
+        py2: {
+            enabled: false,
+        },
+        py3: {
+            enabled: true,
+        },
+    },
+    test_suites: ["general-tests"],
+    required: [
+        "apexer",
+        "deapexer"
+    ],
+}
