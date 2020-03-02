@@ -106,7 +106,7 @@ static void sun8i_ui_layer_update_alpha(struct sun8i_mixer *mixer, int channel,
 	regmap_update_bits(mixer->engine.regs,
 			   SUN8I_MIXER_BLEND_PREMULTIPLY(bld_base),
 			   SUN8I_MIXER_BLEND_PREMULTIPLY_EN(zpos),
-			   SUN8I_MIXER_BLEND_PREMULTIPLY_EN(zpos));
+			   zpos ? SUN8I_MIXER_BLEND_PREMULTIPLY_EN(zpos) : 0);
 }
 
 static int sun8i_ui_layer_update_coord(struct sun8i_mixer *mixer, int channel,
