@@ -19,6 +19,9 @@
       "name": "cronet_e2e_tests"
     },
     {
+      "name": "extservices_e2e_tests"
+    },
+    {
       "name": "neuralnetworks_e2e_tests"
     },
     {
