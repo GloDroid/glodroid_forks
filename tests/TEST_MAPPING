@@ -16,9 +16,6 @@
       "name": "conscrypt_e2e_tests"
     },
     {
-      "name": "cronet_e2e_tests"
-    },
-    {
       "name": "extservices_e2e_tests"
     },
     {
