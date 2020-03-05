@@ -476,7 +476,7 @@ BinderStatus ApexService::snapshotCeData(int user_id, int rollback_id,
   LOG(DEBUG) << "snapshotCeData() received by ApexService.";
   Result<ino_t> res =
       ::android::apex::snapshotCeData(user_id, rollback_id, apex_name);
-  if (!res) {
+  if (!res.ok()) {
     return BinderStatus::fromExceptionCode(
         BinderStatus::EX_SERVICE_SPECIFIC,
         String8(res.error().message().c_str()));
@@ -490,7 +490,7 @@ BinderStatus ApexService::restoreCeData(int user_id, int rollback_id,
   LOG(DEBUG) << "restoreCeData() received by ApexService.";
   Result<void> res =
       ::android::apex::restoreCeData(user_id, rollback_id, apex_name);
-  if (!res) {
+  if (!res.ok()) {
     return BinderStatus::fromExceptionCode(
         BinderStatus::EX_SERVICE_SPECIFIC,
         String8(res.error().message().c_str()));
