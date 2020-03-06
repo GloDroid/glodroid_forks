@@ -16,6 +16,10 @@
 
 package com.android.tests.apex;
 
+import static com.google.common.truth.Truth.assertWithMessage;
+
+import static org.junit.Assume.assumeTrue;
+
 import com.android.tests.util.ModuleTestUtils;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -27,18 +31,21 @@ import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Set;
 
 /**
  * Base test to check if Apex can be staged, activated and uninstalled successfully.
  */
 public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
-    private static final String SUPPORT_APEX_UPDATE_PROPERTY = "ro.apex.updatable";
 
-    protected static final String OPTION_APEX_FILE_NAME = "apex_file_name";
+    private static final String OPTION_APEX_FILE_NAME = "apex_file_name";
+
+    private static final Duration WAIT_FOR_BOOT_COMPLETE_TIMEOUT = Duration.ofMinutes(2);
 
     /* protected so that derived tests can have access to test utils automatically */
     protected final ModuleTestUtils mUtils = new ModuleTestUtils(this);
@@ -52,12 +59,8 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     protected boolean mApexUpdatable = true;
 
     @Before
-    public synchronized void setUp() throws Exception {
-        if (getDevice().getProperty(SUPPORT_APEX_UPDATE_PROPERTY).equals("false")) {
-            mApexUpdatable = false;
-            CLog.i("Apex updating is not supported on this device. Skipping setup().");
-            return;
-        }
+    public void setUp() throws Exception {
+        assumeTrue("Updating APEX is not supported", mUtils.isApexUpdateSupported());
         mUtils.abandonActiveStagedSession();
         uninstallApex();
     }
@@ -65,13 +68,8 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     /**
      * Check if Apex package can be staged, activated and uninstalled successfully.
      */
-    public final void doTestStageActivateUninstallApexPackage()
-                                throws DeviceNotAvailableException, IOException {
-
-        if (!mApexUpdatable) {
-            CLog.i("Apex updating is not supported on this device. Skipping test.");
-            return;
-        }
+    @Test
+    public final void testStageActivateUninstallApexPackage()  throws Exception {
 
         File testAppFile = mUtils.getTestFile(mApexFileName);
         CLog.i("Found test apex file: " + testAppFile.getAbsoluteFile());
@@ -87,7 +85,9 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         Assert.assertNotNull(testApexInfo);
 
         getDevice().reboot(); // for install to take affect
-
+        assertWithMessage("Device didn't boot in %s", WAIT_FOR_BOOT_COMPLETE_TIMEOUT).that(
+                getDevice().waitForBootComplete(
+                        WAIT_FOR_BOOT_COMPLETE_TIMEOUT.toMillis())).isTrue();
         Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
         Assert.assertTrue(
                 String.format("Failed to activate %s %s",
@@ -98,21 +98,18 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     }
 
     /**
-     * Do some additional check, invoked by doTestStageActivateUninstallApexPackage.
+     * Do some additional check, invoked by {@link #testStageActivateUninstallApexPackage()}.
      */
-    public abstract void additionalCheck() throws DeviceNotAvailableException, IOException;
+    public void additionalCheck() throws Exception {};
 
     @After
     public void tearDown() throws Exception {
-        if (!mApexUpdatable) {
-            CLog.i("Apex updating is not supported on this device. Skipping teardown().");
-            return;
-        }
+        assumeTrue("Updating APEX is not supported", mUtils.isApexUpdateSupported());
         mUtils.abandonActiveStagedSession();
         uninstallApex();
     }
 
-    protected final void uninstallApex() throws DeviceNotAvailableException, IOException {
+    private void uninstallApex() throws DeviceNotAvailableException, IOException {
         ApexInfo apex = mUtils.getApexInfo(mUtils.getTestFile(mApexFileName));
         String uninstallResult = getDevice().uninstallPackage(apex.name);
         if (uninstallResult != null) {

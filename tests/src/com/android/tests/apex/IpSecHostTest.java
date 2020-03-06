@@ -16,30 +16,11 @@
 
 package com.android.tests.apex;
 
-import static org.junit.Assert.assertTrue;
-
-import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 
-import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import java.io.IOException;
 
 /** Test to check if Apex can be staged, activated and uninstalled successfully. */
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class IpSecHostTest extends ApexE2EBaseHostTest {
-
-    /** Tests that if Apex package can be staged, activated and uninstalled successfully. */
-    @Test
-    public void testStageActivateUninstallApexPackage()
-            throws DeviceNotAvailableException, IOException {
-        doTestStageActivateUninstallApexPackage();
-    }
-
-    @Override
-    public void additionalCheck() {
-        assertTrue(((IManagedTestDevice) getDevice()).getMonitor().waitForBootComplete(60000));
-    }
 }
