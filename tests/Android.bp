@@ -14,7 +14,10 @@
 
 java_defaults {
     name: "apex_e2e_test_defaults",
-    libs: ["tradefed"],
+    libs: [
+        "tradefed",
+        "truth-prebuilt",
+    ],
     static_libs: [
         "apex_e2e_base_test",
     ],
