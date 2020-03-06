@@ -287,15 +287,6 @@ static void sun8i_mode_set(struct sunxi_engine *engine,
 static void sun8i_atomic_begin(struct sunxi_engine *engine,
 			       struct drm_crtc_state *old_state)
 {
-	int reg, ret;
-
-	ret = regmap_read_poll_timeout(engine->regs, SUN8I_MIXER_GLOBAL_STATUS,
-				       reg,
-				       !(reg & SUN8I_MIXER_GLOBAL_STATUS_BUSY),
-				       200, 100000);
-
-	if (ret)
-		pr_warn("%s: Wait for frame finish timeout\n", __func__);
 }
 
 static void sun8i_mixer_commit(struct sunxi_engine *engine)
