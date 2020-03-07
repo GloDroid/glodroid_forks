@@ -197,6 +197,20 @@ class ApexerRebuildTest(unittest.TestCase):
 
         return files
 
+    def _extract_payload_from_img(self, img_file_path):
+        dir_name = tempfile.mkdtemp(prefix=self._testMethodName+"_extracted_payload_")
+        self._to_cleanup.append(dir_name)
+        cmd = ["debugfs_static", '-R', 'rdump ./ %s' % dir_name, img_file_path]
+        run_host_command(cmd)
+
+        # Remove payload files added by apexer and e2fs tools.
+        for i in ["apex_manifest.json", "apex_manifest.pb"]:
+            if os.path.exists(os.path.join(dir_name, i)):
+                os.remove(os.path.join(dir_name, i))
+        if os.path.isdir(os.path.join(dir_name, "lost+found")):
+            shutil.rmtree(os.path.join(dir_name, "lost+found"))
+        return dir_name
+
     def _extract_payload(self, apex_file_path):
         dir_name = tempfile.mkdtemp(prefix=self._testMethodName+"_extracted_payload_")
         self._to_cleanup.append(dir_name)
@@ -335,6 +349,14 @@ class ApexerRebuildTest(unittest.TestCase):
         signed_payload = self._sign_payload(container_files, unsigned_payload_only_file_path)
         self.assertEqual(get_sha1sum(signed_payload),
                          get_sha1sum(container_files["apex_payload"]))
+
+        # Now assert that given an unsigned image and the original container
+        # files, we can produce an identical unsigned image.
+        unsigned_payload_dir = self._extract_payload_from_img(unsigned_payload_only_file_path)
+        unsigned_payload_only_2_file_path = self._run_apexer(container_files, unsigned_payload_dir,
+                                                             ["--unsigned_payload_only"])
+        self.assertEqual(get_sha1sum(unsigned_payload_only_file_path),
+                         get_sha1sum(unsigned_payload_only_2_file_path))
 
 
 if __name__ == '__main__':
