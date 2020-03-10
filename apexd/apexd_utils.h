@@ -227,7 +227,7 @@ inline Result<void> WaitForFile(const std::string& path,
   return ErrnoError() << "wait for '" << path << "' timed out and took " << t;
 }
 
-inline Result<std::vector<std::string>> GetDeUserDirs() {
+inline Result<std::vector<std::string>> GetSubdirs(const std::string& path) {
   namespace fs = std::filesystem;
   auto filter_fn = [](const std::filesystem::directory_entry& entry) {
     std::error_code ec;
@@ -238,7 +238,11 @@ inline Result<std::vector<std::string>> GetDeUserDirs() {
     }
     return result;
   };
-  return ReadDir(kDeNDataDir, filter_fn);
+  return ReadDir(path, filter_fn);
+}
+
+inline Result<std::vector<std::string>> GetDeUserDirs() {
+  return GetSubdirs(kDeNDataDir);
 }
 
 }  // namespace apex
