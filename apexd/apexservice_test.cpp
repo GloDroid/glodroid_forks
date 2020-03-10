@@ -446,6 +446,8 @@ class ApexServiceTest : public ::testing::Test {
 
     DeleteIfExists("/data/misc_ce/0/apexdata/apex.apexd_test");
     DeleteIfExists("/data/misc_ce/0/apexrollback/123456");
+    DeleteIfExists("/data/misc_ce/0/apexrollback/77777");
+    DeleteIfExists("/data/misc_ce/0/apexrollback/98765");
     DeleteIfExists("/data/misc_de/0/apexrollback/123456");
     DeleteIfExists("/data/misc/apexrollback/123456");
   }
@@ -897,6 +899,37 @@ TEST_F(ApexServiceTest, DestroyDeSnapshots_DeUser) {
   ASSERT_FALSE(RegularFileExists(
       "/data/misc_de/0/apexrollback/123456/my.apex/hello.txt"));
   ASSERT_FALSE(DirExists("/data/misc_de/0/apexrollback/123456"));
+}
+
+TEST_F(ApexServiceTest, DestroyCeSnapshotsNotSpecified) {
+  CreateDir("/data/misc_ce/0/apexrollback/123456");
+  CreateDir("/data/misc_ce/0/apexrollback/123456/apex.apexd_test");
+  CreateFile("/data/misc_ce/0/apexrollback/123456/apex.apexd_test/file.txt");
+
+  CreateDir("/data/misc_ce/0/apexrollback/77777");
+  CreateDir("/data/misc_ce/0/apexrollback/77777/apex.apexd_test");
+  CreateFile("/data/misc_ce/0/apexrollback/77777/apex.apexd_test/thing.txt");
+
+  CreateDir("/data/misc_ce/0/apexrollback/98765");
+  CreateDir("/data/misc_ce/0/apexrollback/98765/apex.apexd_test");
+  CreateFile("/data/misc_ce/0/apexrollback/98765/apex.apexd_test/test.txt");
+
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_ce/0/apexrollback/123456/apex.apexd_test/file.txt"));
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_ce/0/apexrollback/77777/apex.apexd_test/thing.txt"));
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_ce/0/apexrollback/98765/apex.apexd_test/test.txt"));
+
+  std::vector<int> retain{123, 77777, 987654};
+  android::binder::Status st =
+      service_->destroyCeSnapshotsNotSpecified(0, retain);
+  ASSERT_TRUE(IsOk(st));
+
+  ASSERT_TRUE(RegularFileExists(
+      "/data/misc_ce/0/apexrollback/77777/apex.apexd_test/thing.txt"));
+  ASSERT_FALSE(DirExists("/data/misc_ce/0/apexrollback/123456"));
+  ASSERT_FALSE(DirExists("/data/misc_ce/0/apexrollback/98765"));
 }
 
 template <typename NameProvider>

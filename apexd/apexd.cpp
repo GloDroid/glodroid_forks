@@ -37,6 +37,7 @@
 #include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/macros.h>
+#include <android-base/parseint.h>
 #include <android-base/properties.h>
 #include <android-base/scopeguard.h>
 #include <android-base/stringprintf.h>
@@ -51,6 +52,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <linux/loop.h>
+#include <stdlib.h>
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
@@ -76,6 +78,7 @@ using android::base::ErrnoError;
 using android::base::Error;
 using android::base::GetProperty;
 using android::base::Join;
+using android::base::ParseUint;
 using android::base::ReadFully;
 using android::base::Result;
 using android::base::StartsWith;
@@ -1352,6 +1355,36 @@ Result<void> destroyDeSnapshots(const int rollback_id) {
     destroySnapshots(user_dir, rollback_id);
   }
 
+  return {};
+}
+
+/**
+ * Deletes all credential-encrypted snapshots for the given user, except for
+ * those listed in retain_rollback_ids.
+ */
+Result<void> destroyCeSnapshotsNotSpecified(
+    int user_id, const std::vector<int>& retain_rollback_ids) {
+  auto snapshot_root =
+      StringPrintf("%s/%d/%s", kCeDataDir, user_id, kApexSnapshotSubDir);
+  auto snapshot_dirs = GetSubdirs(snapshot_root);
+  if (!snapshot_dirs) {
+    return Error() << "Error reading snapshot dirs " << snapshot_dirs.error();
+  }
+
+  for (const auto& snapshot_dir : *snapshot_dirs) {
+    uint snapshot_id;
+    bool parse_ok = ParseUint(
+        std::filesystem::path(snapshot_dir).filename().c_str(), &snapshot_id);
+    if (parse_ok &&
+        std::find(retain_rollback_ids.begin(), retain_rollback_ids.end(),
+                  snapshot_id) == retain_rollback_ids.end()) {
+      Result<void> result = DeleteDir(snapshot_dir);
+      if (!result) {
+        return Error() << "Destroy CE snapshot failed for " << snapshot_dir
+                       << " : " << result.error();
+      }
+    }
+  }
   return {};
 }
 
