@@ -170,9 +170,11 @@ class Apex(object):
 def RunList(args):
   with Apex(args) as apex:
     for e in apex.list(is_recursive=True):
-      if args.size and not e.is_directory:
+      if e.is_directory:
+        continue
+      if args.size:
         print(e.size, e.full_path)
-      elif e.is_regular_file:
+      else:
         print(e.full_path)
 
 
