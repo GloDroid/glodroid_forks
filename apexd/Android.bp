@@ -1,6 +1,7 @@
 // List of clang-tidy checks that are reported as errors.
 // Please keep this list ordered lexicographically.
 tidy_errors = [
+  "cert-err34-c",
   "google-default-arguments",
   "google-explicit-constructor",
   "google-runtime-int",
