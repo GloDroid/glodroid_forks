@@ -406,7 +406,7 @@ apex {
   prebuilts: ["hash_of_dev_null"],
   apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
   installable: false,
-  legacy_android10_support: true,
+  min_sdk_version: "29",
 }
 
 genrule {
