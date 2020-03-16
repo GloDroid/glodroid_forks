@@ -42,6 +42,6 @@ apex {
     prebuilts: ["sample_prebuilt_file"],
     key: "com.android.example.apex.key",
     certificate: ":com.android.example.apex.certificate",
-    legacy_android10_support: true,
+    min_sdk_version: "29",
     installable: false,
 }
