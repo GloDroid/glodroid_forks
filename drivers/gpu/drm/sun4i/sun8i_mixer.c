@@ -284,20 +284,6 @@ static void sun8i_mode_set(struct sunxi_engine *engine,
 			 val ? "on" : "off");
 }
 
-static void sun8i_atomic_begin(struct sunxi_engine *engine,
-			       struct drm_crtc_state *old_state)
-{
-	int reg, ret;
-
-	ret = regmap_read_poll_timeout(engine->regs, SUN8I_MIXER_GLOBAL_STATUS,
-				       reg,
-				       !(reg & SUN8I_MIXER_GLOBAL_STATUS_BUSY),
-				       200, 100000);
-
-	if (ret)
-		pr_warn("%s: Wait for frame finish timeout\n", __func__);
-}
-
 static void sun8i_mixer_commit(struct sunxi_engine *engine)
 {
 	DRM_DEBUG_DRIVER("Committing changes\n");
@@ -352,7 +338,6 @@ static const struct sunxi_engine_ops sun8i_engine_ops = {
 	.commit		= sun8i_mixer_commit,
 	.layers_init	= sun8i_layers_init,
 	.mode_set	= sun8i_mode_set,
-	.atomic_begin	= sun8i_atomic_begin,
 };
 
 static struct regmap_config sun8i_mixer_regmap_config = {
