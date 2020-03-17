@@ -292,13 +292,12 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	else
 		ctrl |= BIT_CH(PWM_ACT_STATE, pwm->hwpwm);
 
-	ctrl |= BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
-
 	if (state->enabled) {
 		ctrl |= BIT_CH(PWM_EN, pwm->hwpwm);
+		ctrl |= BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
 	} else {
+		/* Turn gate off after delay to ensure proper turning off */
 		ctrl &= ~BIT_CH(PWM_EN, pwm->hwpwm);
-		ctrl &= ~BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
 	}
 
 	sun4i_pwm_writel(sun4i_pwm, ctrl, PWM_CTRL_REG);
