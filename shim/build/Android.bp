@@ -179,6 +179,7 @@ genrule {
     ":com.android.apex.cts.shim.v2_with_pre_install_hook",
     ":com.android.apex.cts.shim.v2_with_post_install_hook",
     ":com.android.apex.cts.shim.v2_sdk_target_p",
+    ":com.android.apex.cts.shim.v2_apk_in_apex_sdk_target_p",
     ":com.android.apex.cts.shim.v3",
     ":com.android.apex.cts.shim.v3_signed_bob",
     ":com.android.apex.cts.shim.v3_signed_bob_rot",
@@ -428,4 +429,16 @@ apex {
   prebuilts: ["hash_of_dev_null"],
   installable: false,
   apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
+}
+
+// Apex shim with apk-in-apex that targets sdk P
+apex {
+  name: "com.android.apex.cts.shim.v2_apk_in_apex_sdk_target_p",
+  manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifest.xml",
+  file_contexts: ":apex.test-file_contexts",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_of_dev_null"],
+  apps: ["CtsShimTargetPSdkPrebuilt"],
+  installable: false,
 }
