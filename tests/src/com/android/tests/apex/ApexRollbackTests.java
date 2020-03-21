@@ -250,7 +250,7 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         assertThat(activatedApexes).doesNotContain(ctsShimV1);
     }
 
-    // TODO(ioffe): check that we recover from the boot loop in of userspace reboot.
+    // TODO(ioffe): check that we recover from the boot loop in case of userspace reboot.
 
     /**
      * Test to verify that apexd won't boot loop a device in case {@code sys.init
@@ -366,6 +366,43 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         assertThat(activatedApexes).doesNotContain(new ApexInfo("com.android.apex.cts.shim", 1L));
         assertThat(activatedApexes).contains(new ApexInfo("com.android.apex.cts.shim", 2L));
     }
+
+    /**
+     * Test to verify that boot cleanup logic in apexd is triggered when there is a crash looping
+     * process, but there is nothing to revert.
+     */
+    @Test
+    public void testBootCompletedCleanupHappensEvenWhenThereIsCrashingProcess() throws Exception {
+        assumeTrue("Device does not support updating APEX", mUtils.isApexUpdateSupported());
+        assumeTrue("Device requires root", getDevice().isAdbRoot());
+        try {
+            // On next boot trigger setprop sys.init.updatable_crashing 1, which will trigger a
+            // revert mechanism in apexd. Since there is nothing to revert, this should be a no-op
+            // and device will boot successfully.
+            getDevice().setProperty("persist.debug.trigger_updatable_crashing_for_testing", "1");
+            assertThat(getDevice().pushFile(mUtils.getTestFile("apex.apexd_test_v2.apex"),
+                    "/data/apex/active/apexd_test_v2.apex")).isTrue();
+            getDevice().reboot();
+            assertWithMessage("Timed out waiting for device to boot").that(
+                    getDevice().waitForBootComplete(Duration.ofMinutes(2).toMillis())).isTrue();
+            // Verify that property was set to true.
+            // TODO(b/149733368): Revert this workaround when the bug is fixed.
+            // #getBooleanProperty fails due to timeout when the device is busy right after reboot.
+            // Let's call #executeShellV2Command with 2 mins timeout to work around it.
+            String val = getDevice().executeShellV2Command(
+                    "getprop sys.init.updatable_crashing", 2, TimeUnit.MINUTES).getStdout().trim();
+            assertThat(val).isEqualTo("1");
+            final Set<ITestDevice.ApexInfo> activeApexes = getDevice().getActiveApexes();
+            ITestDevice.ApexInfo testApex = new ITestDevice.ApexInfo(
+                    "com.android.apex.cts.shim", 2L);
+            assertThat(activeApexes).doesNotContain(testApex);
+            mUtils.waitForFileDeleted("/data/apex/active/apexd_test_v2.apex",
+                    Duration.ofMinutes(3));
+        } finally {
+            getDevice().executeShellV2Command("rm /data/apex/active/apexd_test_v2.apex");
+        }
+    }
+
 
     private boolean supportsFsCheckpointing() throws Exception {
         CommandResult result = getDevice().executeShellV2Command("sm supports-checkpoint");

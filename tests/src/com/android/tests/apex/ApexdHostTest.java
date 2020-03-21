@@ -26,8 +26,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
 
-import com.google.common.base.Stopwatch;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -55,7 +53,8 @@ public class ApexdHostTest extends BaseHostJUnit4Test  {
             ITestDevice.ApexInfo testApex = new ITestDevice.ApexInfo(
                     "com.android.apex.test_package", 2L);
             assertThat(activeApexes).doesNotContain(testApex);
-            waitForFileDeleted("/data/apex/active/apexd_test_v2.apex", Duration.ofMinutes(1));
+            mTestUtils.waitForFileDeleted("/data/apex/active/apexd_test_v2.apex",
+                    Duration.ofMinutes(3));
         } finally {
             getDevice().executeShellV2Command("rm /data/apex/active/apexd_test_v2.apex");
         }
@@ -74,23 +73,10 @@ public class ApexdHostTest extends BaseHostJUnit4Test  {
             ITestDevice.ApexInfo testApex = new ITestDevice.ApexInfo(
                     "com.android.apex.cts.shim", 2L);
             assertThat(activeApexes).doesNotContain(testApex);
-            waitForFileDeleted("/data/apex/active/" + testApexFile, Duration.ofMinutes(1));
+            mTestUtils.waitForFileDeleted("/data/apex/active/" + testApexFile,
+                    Duration.ofMinutes(3));
         } finally {
             getDevice().executeShellV2Command("rm /data/apex/active/" + testApexFile);
         }
-    }
-
-    private void waitForFileDeleted(String filePath, Duration timeout) throws Exception {
-        Stopwatch stopwatch = Stopwatch.createStarted();
-        while (true) {
-            if (!getDevice().doesFileExist(filePath)) {
-                return;
-            }
-            if (stopwatch.elapsed().compareTo(timeout) > 0) {
-                break;
-            }
-            Thread.sleep(500);
-        }
-        throw new AssertionError("Timed out waiting for " + filePath + " to be deleted");
     }
 }

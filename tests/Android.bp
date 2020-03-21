@@ -271,6 +271,7 @@ java_test_host {
         "testdata/trigger_watchdog.rc",
         "testdata/trigger_watchdog.sh",
         "testdata/trigger_reboot.sh",
+        ":apex.apexd_test_v2",
         ":com.android.apex.cts.shim.v2_prebuilt",
     ],
 }

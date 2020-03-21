@@ -23,6 +23,7 @@
 
 #include "apexd_utils.h"
 
+using android::base::GetBoolProperty;
 using android::base::GetProperty;
 using android::base::Result;
 using android::base::WaitForProperty;
@@ -31,7 +32,7 @@ namespace android {
 namespace apex {
 void waitForBootStatus(Result<void> (&revert_fn)(const std::string&),
                        void (&complete_fn)()) {
-  while (true) {
+  while (!GetBoolProperty("sys.boot_completed", false)) {
     // Check for change in either crashing property or sys.boot_completed
     // Wait for updatable_crashing property change for most of the time
     // (arbitrary 30s), briefly check if boot has completed successfully,
@@ -46,17 +47,26 @@ void waitForBootStatus(Result<void> (&revert_fn)(const std::string&),
       auto result = revert_fn(name);
       if (!result.ok()) {
         LOG(ERROR) << "Revert failed : " << result.error();
+        break;
       } else {
-        LOG(INFO) << "Successfuly reverted update. Rebooting device";
+        // This should never be reached, since revert_fn should've rebooted a
+        // device. But if for some reason we end up here, let's reboot it
+        // manually.
+        LOG(ERROR) << "Active sessions were reverted, but reboot wasn't "
+                      "triggered. Rebooting manually";
         Reboot();
+        return;
       }
-      return;
     }
-    if (GetProperty("sys.boot_completed", "") == "1") {
-      // Boot completed we can return
-      complete_fn();
-      return;
-    }
+  }
+  // Wait for boot to complete, and then run complete_fn.
+  // TODO(ioffe): this is a hack, instead we should have a binder call from
+  //  system_server into apexd when boot completes.
+  if (WaitForProperty("sys.boot_completed", "1", std::chrono::minutes(5))) {
+    complete_fn();
+    return;
+  } else {
+    LOG(ERROR) << "Boot never completed";
   }
 }
 }  // namespace apex
