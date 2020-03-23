@@ -178,6 +178,7 @@ genrule {
     ":com.android.apex.cts.shim.v2_signed_bob_rot_rollback",
     ":com.android.apex.cts.shim.v2_with_pre_install_hook",
     ":com.android.apex.cts.shim.v2_with_post_install_hook",
+    ":com.android.apex.cts.shim.v2_sdk_target_p",
     ":com.android.apex.cts.shim.v3",
     ":com.android.apex.cts.shim.v3_signed_bob",
     ":com.android.apex.cts.shim.v3_signed_bob_rot",
@@ -415,4 +416,16 @@ genrule {
   out: ["com.android.apex.cts.shim.v2_no_pb.apex"],
   tools: ["zip2zip"],
   cmd: "$(location zip2zip) -i $(in) -x apex_manifest.pb -o $(out)",
+}
+
+// Apex shim that targets an old sdk (P)
+apex {
+  name: "com.android.apex.cts.shim.v2_sdk_target_p",
+  manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifestSdkTargetP.xml",
+  file_contexts: ":apex.test-file_contexts",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_of_dev_null"],
+  installable: false,
+  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
 }
