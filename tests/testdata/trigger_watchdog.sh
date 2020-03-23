@@ -11,7 +11,12 @@ then
     /system/bin/setprop debug.trigger_watchdog.status kill
     while :
     do
-        /system/bin/pkill system_server
+        pid=`pidof system_server`
+        if [ ! -z "$pid" ]
+        then
+            /system/bin/log -t TriggerWatchdog "Killing system_server pid=$pid ..."
+            kill $pid
+        fi
         sleep 1
     done
 fi
