@@ -45,6 +45,7 @@ ifeq ($(NO_IIO_EVENTS),true)
 LOCAL_CFLAGS += -D__NO_EVENTS__
 endif
 LOCAL_LDFLAGS := -Wl,--gc-sections
+LOCAL_HEADER_LIBRARIES := libhardware_headers libcutils_headers liblog_headers libutils_headers
 LOCAL_SHARED_LIBRARIES := liblog libcutils libdl
 LOCAL_PRELINK_MODULE := false
 LOCAL_SRC_FILES := $(src_files)
