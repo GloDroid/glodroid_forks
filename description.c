@@ -527,6 +527,16 @@ int sensor_get_mounting_matrix (int s, float mm[9])
 	sprintf(mm_path, MOUNTING_MATRIX_PATH, dev_num);
 
 	err = sysfs_read_str(mm_path, mm_buf, sizeof(mm_buf));
+	if (err < 0) {
+		sprintf(mm_path, MOUNTING_MATRIX_PATH_2, dev_num);
+
+		err = sysfs_read_str(mm_path, mm_buf, sizeof(mm_buf));
+	}
+	if (err < 0) {
+		sprintf(mm_path, MOUNTING_MATRIX_PATH_3, dev_num);
+
+		err = sysfs_read_str(mm_path, mm_buf, sizeof(mm_buf));
+	}
 	if (err < 0)
 		return 0;
 

@@ -45,6 +45,8 @@
 #define ILLUMINATION_CALIBPATH	BASE_PATH "in_illuminance_calibscale"
 #define SENSOR_CALIB_BIAS_PATH	BASE_PATH "in_%s_calibbias"
 #define MOUNTING_MATRIX_PATH	BASE_PATH "mounting_matrix"
+#define MOUNTING_MATRIX_PATH_2	BASE_PATH "in_accel_mount_matrix"
+#define MOUNTING_MATRIX_PATH_3	BASE_PATH "in_magn_mount_matrix"
 
 #define CONFIGFS_TRIGGER_PATH	"/sys/kernel/config/iio/triggers/"
 
