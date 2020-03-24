@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 TEST_APEX = "com.android.example.apex"
 TEST_APEX_LEGACY = "com.android.example-legacy.apex"
+TEST_APEX_WITH_LOGGING_PARENT = "com.android.example-logging_parent.apex"
+TEST_APEX_WITH_OVERRIDDEN_PACKAGE_NAME = "com.android.example-overridden_package_name.apex"
 
 TEST_PRIVATE_KEY = os.path.join("testdata", "com.android.example.apex.pem")
 TEST_X509_KEY = os.path.join("testdata", "com.android.example.apex.x509.pem")
@@ -357,6 +359,12 @@ class ApexerRebuildTest(unittest.TestCase):
                                                              ["--unsigned_payload_only"])
         self.assertEqual(get_sha1sum(unsigned_payload_only_file_path),
                          get_sha1sum(unsigned_payload_only_2_file_path))
+
+    def test_apex_with_logging_parent(self):
+      self._run_build_test(TEST_APEX_WITH_LOGGING_PARENT)
+
+    def test_apex_with_overridden_package_name(self):
+      self._run_build_test(TEST_APEX_WITH_OVERRIDDEN_PACKAGE_NAME)
 
 
 if __name__ == '__main__':

@@ -45,3 +45,25 @@ apex {
     min_sdk_version: "29",
     installable: false,
 }
+
+apex {
+    name: "com.android.example-logging_parent.apex",
+    manifest: "manifest.json",
+    file_contexts: ":apex.test-file_contexts",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.example.apex.key",
+    certificate: ":com.android.example.apex.certificate",
+    installable: false,
+    logging_parent: "foobar",
+}
+
+apex {
+    name: "com.android.example-overridden_package_name.apex",
+    manifest: "manifest.json",
+    file_contexts: ":apex.test-file_contexts",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.example.apex.key",
+    certificate: ":com.android.example.apex.certificate",
+    installable: false,
+    package_name: "com.android.overridden.example.apex",
+}

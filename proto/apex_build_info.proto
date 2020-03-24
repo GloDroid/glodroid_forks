@@ -42,4 +42,10 @@ message ApexBuildInfo {
 
   // Whether the --no_hashtree option was set at build time.
   bool no_hashtree = 7;
+
+  // Value of --override_apk_package_name passed at build itme.
+  string override_apk_package_name = 8;
+
+  // Value of --logging_parent passed at build time.
+  string logging_parent = 9;
 }

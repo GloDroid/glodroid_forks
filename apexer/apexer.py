@@ -331,6 +331,16 @@ def ValidateArgs(args):
       if build_info.min_sdk_version:
         args.min_sdk_version = build_info.min_sdk_version
 
+  if not args.override_apk_package_name:
+    if build_info is not None:
+      if build_info.override_apk_package_name:
+        args.override_apk_package_name = build_info.override_apk_package_name
+
+  if not args.logging_parent:
+    if build_info is not None:
+      if build_info.logging_parent:
+        args.logging_parent = build_info.logging_parent
+
   return True
 
 def GenerateBuildInfo(args):
@@ -355,6 +365,12 @@ def GenerateBuildInfo(args):
 
   if args.no_hashtree:
     build_info.no_hashtree = True
+
+  if args.override_apk_package_name:
+    build_info.override_apk_package_name = args.override_apk_package_name
+
+  if args.logging_parent:
+    build_info.logging_parent = args.logging_parent
 
   return build_info
 
