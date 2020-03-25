@@ -32,6 +32,8 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
 
+import com.google.common.base.Stopwatch;
+
 import org.junit.Assert;
 
 import java.io.File;
@@ -224,5 +226,22 @@ public class ModuleTestUtils {
         boolean isReady = mIsSessionReadyPattern.matcher(sessionInfo).find();
         boolean isApplied = mIsSessionAppliedPattern.matcher(sessionInfo).find();
         return isReady && !isApplied;
+    }
+
+    /**
+     * Waits for given {@code timeout} for {@code filePath} to be deleted.
+     */
+    public void waitForFileDeleted(String filePath, Duration timeout) throws Exception {
+        Stopwatch stopwatch = Stopwatch.createStarted();
+        while (true) {
+            if (!mTest.getDevice().doesFileExist(filePath)) {
+                return;
+            }
+            if (stopwatch.elapsed().compareTo(timeout) > 0) {
+                break;
+            }
+            Thread.sleep(500);
+        }
+        throw new AssertionError("Timed out waiting for " + filePath + " to be deleted");
     }
 }
