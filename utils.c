@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
 #include <utils/Log.h>
 #include <hardware/sensors.h>

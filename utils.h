@@ -17,6 +17,8 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
+#include <limits.h>
+#include <time.h>
 #include "common.h"
 
 int	sysfs_read_int	 (const char path[PATH_MAX], int *value);

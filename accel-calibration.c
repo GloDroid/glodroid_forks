@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <utils/Log.h>
 #include <hardware/sensors.h>
 #include "common.h"

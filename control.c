@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <time.h>
 #include <math.h>
