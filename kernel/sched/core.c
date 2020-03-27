@@ -5315,9 +5315,6 @@ recheck:
 			return retval;
 	}
 
-	if (pi)
-		cpuset_read_lock();
-
 	/*
 	 * Make sure no PI-waiters arrive (or leave) while we are
 	 * changing the priority of the task:
@@ -5392,8 +5389,6 @@ change:
 	if (unlikely(oldpolicy != -1 && oldpolicy != p->policy)) {
 		policy = oldpolicy = -1;
 		task_rq_unlock(rq, p, &rf);
-		if (pi)
-			cpuset_read_unlock();
 		goto recheck;
 	}
 
@@ -5454,10 +5449,8 @@ change:
 	preempt_disable();
 	task_rq_unlock(rq, p, &rf);
 
-	if (pi) {
-		cpuset_read_unlock();
+	if (pi)
 		rt_mutex_adjust_pi(p);
-	}
 
 	/* Run balance callbacks after we've adjusted the PI chain: */
 	balance_callback(rq);
@@ -5467,8 +5460,6 @@ change:
 
 unlock:
 	task_rq_unlock(rq, p, &rf);
-	if (pi)
-		cpuset_read_unlock();
 	return retval;
 }
 
@@ -5597,14 +5588,9 @@ do_sched_setscheduler(pid_t pid, int policy, struct sched_param __user *param)
 	rcu_read_lock();
 	retval = -ESRCH;
 	p = find_process_by_pid(pid);
-	if (likely(p))
-		get_task_struct(p);
-	rcu_read_unlock();
-
-	if (likely(p)) {
+	if (p != NULL)
 		retval = sched_setscheduler(p, policy, &lparam);
-		put_task_struct(p);
-	}
+	rcu_read_unlock();
 
 	return retval;
 }
