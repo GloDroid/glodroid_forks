@@ -1,8 +1,10 @@
 service apexd /system/bin/apexd
+    interface aidl apexservice
     class core
     user root
     group system
-    shutdown critical
+    critical
+    oneshot
     disabled # does not start with the core class
 
 service apexd-bootstrap /system/bin/apexd --bootstrap
