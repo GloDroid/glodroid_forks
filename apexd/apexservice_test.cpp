@@ -99,7 +99,7 @@ class ApexServiceTest : public ::testing::Test {
     using android::IServiceManager;
 
     sp<IServiceManager> sm = android::defaultServiceManager();
-    sp<IBinder> binder = sm->getService(String16("apexservice"));
+    sp<IBinder> binder = sm->waitForService(String16("apexservice"));
     if (binder != nullptr) {
       service_ = android::interface_cast<IApexService>(binder);
     }

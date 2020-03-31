@@ -119,7 +119,7 @@ public class ApexRollbackTests extends BaseHostJUnit4Test {
         assertThat(activatedApexes).doesNotContain(ctsShimV2);
 
         // Assert that a session has failed with the expected reason
-        String sessionInfo = device.executeShellCommand("cmd apexservice getStagedSessionInfo "
+        String sessionInfo = device.executeShellCommand("cmd -w apexservice getStagedSessionInfo "
                     + sessionIdToCheck);
         assertThat(sessionInfo).contains("revertReason: zygote");
     }
