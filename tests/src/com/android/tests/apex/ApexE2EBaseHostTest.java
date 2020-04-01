@@ -21,6 +21,8 @@ import static com.google.common.truth.Truth.assertWithMessage;
 
 import static org.junit.Assume.assumeTrue;
 
+import android.platform.test.annotations.RequiresDevice;
+
 import com.android.tests.util.ModuleTestUtils;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -82,6 +84,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
      * userspace reboot.
      */
     @Test
+    @RequiresDevice // TODO(b/147726967): Remove when Userspace reboot works on cuttlefish
     public final void testStageActivateUninstallApexPackageWithUserspaceReboot()  throws Exception {
         assumeTrue("Userspace reboot not supported on the device",
                 getDevice().getBooleanProperty(USERSPACE_REBOOT_SUPPORTED_PROP, false));
