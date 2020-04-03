@@ -19,6 +19,7 @@
 #include <linux/log2.h>
 
 #include <sound/pcm_params.h>
+#include <sound/jack.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/tlv.h>
@@ -184,11 +185,19 @@ enum sun8i_type {
 	SUN8I_TYPE_A64
 };
 
+enum sun8i_jack_event {
+	SUN8I_JACK_INSERTED = 0,
+	SUN8I_JACK_REMOVED,
+	SUN8I_JACK_BUTTON_PRESSED
+};
+
 struct sun8i_codec {
 	struct regmap			*regmap;
 	struct clk			*clk_module;
+	struct delayed_work 		jack_detect_work;
 	struct sun8i_jack_detection	*jackdet;
 	enum sun8i_type			type;
+	enum sun8i_jack_event		jack_event;
 };
 
 static int sun8i_codec_get_hw_rate(struct snd_pcm_hw_params *params)
@@ -1141,6 +1150,55 @@ int sun8i_codec_set_jack_detect(struct sun8i_codec *scodec,
 }
 EXPORT_SYMBOL_GPL(sun8i_codec_set_jack_detect);
 
+static unsigned int jack_read_button(struct sun8i_codec *scodec)
+{
+	unsigned int status, value;
+	int ret = 0;
+
+	regmap_read(scodec->regmap, SUN8I_HMIC_STS, &status);
+	status &= SUN8I_HMIC_STS_HMIC_DATA_MASK;
+	value = (status >> SUN8I_HMIC_STS_HMIC_DATA);
+
+	if (value < 0x2)
+		ret = SND_JACK_BTN_0;
+	else if (value < 0x7)
+		ret = SND_JACK_BTN_1;
+	else if (value < 0x10)
+		ret = SND_JACK_BTN_2;
+
+	return ret;
+}
+
+static void jack_detect(struct work_struct *work)
+{
+	struct sun8i_codec *scodec =
+		container_of(work, struct sun8i_codec, jack_detect_work.work);
+	struct sun8i_jack_detection *jackdet = scodec->jackdet;
+	unsigned int value;
+	int jack_type;
+
+	if (scodec->jack_event == SUN8I_JACK_INSERTED) {
+		jackdet->enable_micdet(jackdet->component, true);
+		msleep(600);
+		value = jack_read_button(scodec);
+		if (value == SND_JACK_BTN_0) {
+			jackdet->enable_micdet(jackdet->component, false);
+			jack_type = SND_JACK_HEADPHONE;
+		} else {
+			jack_type = SND_JACK_HEADSET;
+			regmap_update_bits(scodec->regmap, SUN8I_HMIC_CTRL_1,
+					BIT(SUN8I_HMIC_CTRL_1_MIC_DET_IRQ_EN),
+					BIT(SUN8I_HMIC_CTRL_1_MIC_DET_IRQ_EN));
+		}
+	} else if (scodec->jack_event == SUN8I_JACK_REMOVED) {
+		regmap_update_bits(scodec->regmap, SUN8I_HMIC_CTRL_1,
+				   BIT(SUN8I_HMIC_CTRL_1_MIC_DET_IRQ_EN), 0);
+		jackdet->enable_micdet(jackdet->component, false);
+	} else if (scodec->jack_event == SUN8I_JACK_BUTTON_PRESSED) {
+		value = jack_read_button(scodec);
+	}
+}
+
 static irqreturn_t sun8i_codec_interrupt(int irq, void *dev_id)
 {
 	struct sun8i_codec *scodec = dev_id;
@@ -1154,14 +1212,16 @@ static irqreturn_t sun8i_codec_interrupt(int irq, void *dev_id)
 
 	if (status & irq_mask) {
 		if (status & BIT(SUN8I_HMIC_STS_JACK_DET_IIRQ)) {
-			pr_debug("sun8i-codec: received JACK_IN interrupt\n");
+			scodec->jack_event = SUN8I_JACK_REMOVED;
 		}
 		if (status & BIT(SUN8I_HMIC_STS_JACK_DET_OIRQ)) {
-			pr_debug("sun8i-codec: received JACK_OUT interrupt\n");
+			scodec->jack_event = SUN8I_JACK_INSERTED;
 		}
 		if (status & BIT(SUN8I_HMIC_STS_MIC_DET_ST)) {
-			pr_debug("sun8i-codec: received MIC_DET interrupt\n");
+			scodec->jack_event = SUN8I_JACK_BUTTON_PRESSED;
 		}
+		queue_delayed_work(system_power_efficient_wq,
+				   &scodec->jack_detect_work, 0);
 		regmap_update_bits(scodec->regmap, SUN8I_HMIC_STS,
 				   irq_mask, irq_mask);
 		ret = IRQ_HANDLED;
@@ -1214,6 +1274,8 @@ static int sun8i_codec_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "Failed to setup interrupt\n");
 			return ret;
 		}
+
+		INIT_DELAYED_WORK(&scodec->jack_detect_work, jack_detect);
 	}
 
 	return devm_snd_soc_register_component(&pdev->dev, &sun8i_soc_component,
