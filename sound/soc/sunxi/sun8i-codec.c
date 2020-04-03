@@ -200,6 +200,7 @@ struct sun8i_codec {
 	struct snd_soc_jack 		*jack;
 	enum sun8i_type			type;
 	enum sun8i_jack_event		jack_event;
+	bool				inverted_jackdet;
 };
 
 static int sun8i_codec_get_hw_rate(struct snd_pcm_hw_params *params)
@@ -1222,10 +1223,16 @@ static irqreturn_t sun8i_codec_interrupt(int irq, void *dev_id)
 
 	if (status & irq_mask) {
 		if (status & BIT(SUN8I_HMIC_STS_JACK_DET_IIRQ)) {
-			scodec->jack_event = SUN8I_JACK_REMOVED;
+			if (scodec->inverted_jackdet)
+				scodec->jack_event = SUN8I_JACK_REMOVED;
+			else
+				scodec->jack_event = SUN8I_JACK_INSERTED;
 		}
 		if (status & BIT(SUN8I_HMIC_STS_JACK_DET_OIRQ)) {
-			scodec->jack_event = SUN8I_JACK_INSERTED;
+			if (scodec->inverted_jackdet)
+				scodec->jack_event = SUN8I_JACK_INSERTED;
+			else
+				scodec->jack_event = SUN8I_JACK_REMOVED;
 		}
 		if (status & BIT(SUN8I_HMIC_STS_MIC_DET_ST)) {
 			scodec->jack_event = SUN8I_JACK_BUTTON_PRESSED;
@@ -1242,9 +1249,15 @@ static irqreturn_t sun8i_codec_interrupt(int irq, void *dev_id)
 
 static int sun8i_codec_probe(struct platform_device *pdev)
 {
+	struct device_node *node = pdev->dev.of_node;
 	struct sun8i_codec *scodec;
 	void __iomem *base;
 	int irq, ret;
+
+	if (!node) {
+		dev_err(&pdev->dev, "of node is missing.\n");
+		return -ENODEV;
+	}
 
 	scodec = devm_kzalloc(&pdev->dev, sizeof(*scodec), GFP_KERNEL);
 	if (!scodec)
@@ -1285,6 +1298,8 @@ static int sun8i_codec_probe(struct platform_device *pdev)
 			return ret;
 		}
 
+		scodec->inverted_jackdet = of_property_read_bool(node,
+					"allwinner,inverted-jack-detection");
 		INIT_DELAYED_WORK(&scodec->jack_detect_work, jack_detect);
 	}
 

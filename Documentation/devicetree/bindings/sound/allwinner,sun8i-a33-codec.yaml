@@ -35,6 +35,12 @@ properties:
       - const: bus
       - const: mod
 
+  allwinner,inverted-jack-detection:
+    description:
+      Jack detection IRQ's are inverted on this platform ('in' IRQ is triggered
+      when unplugging, and vice versa)
+    type: boolean
+
 required:
   - "#sound-dai-cells"
   - compatible
