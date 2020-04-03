@@ -1234,6 +1234,7 @@
 		codec_analog: codec-analog@1f015c0 {
 			compatible = "allwinner,sun50i-a64-codec-analog";
 			reg = <0x01f015c0 0x4>;
+			allwinner,codec = <&codec>;
 			status = "disabled";
 		};
 

@@ -121,7 +121,8 @@
 #define SUN50I_ADDA_JACK_MIC_CTRL_HMICBIASEN	5
 
 struct sun50i_codec {
-	bool	internal_bias_resistor;
+	struct sun8i_codec	*codec_data;
+	bool			internal_bias_resistor;
 };
 
 /* mixer controls */
@@ -524,6 +525,9 @@ MODULE_DEVICE_TABLE(of, sun50i_codec_analog_of_match);
 static int sun50i_codec_analog_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
+	struct device_node *codec_node;
+	struct platform_device *codec_pdev;
+	struct sun8i_codec *codec_data;
 	struct sun50i_codec *scodec;
 	struct regmap *regmap;
 	void __iomem *base;
@@ -532,6 +536,25 @@ static int sun50i_codec_analog_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "of node is missing.\n");
 		return -ENODEV;
 	}
+
+	codec_node = of_parse_phandle(node, "allwinner,codec", 0);
+	if (!codec_node) {
+		dev_err(&pdev->dev, "codec phandle is missing.\n");
+		return -ENODEV;
+	}
+
+	/*
+	 * Return -EAGAIN in case of failure as this data is required, but we
+	 * can't be sure the digital codec has been probed before the first
+	 * call to this function.
+	 */
+	codec_pdev = of_find_device_by_node(codec_node);
+	if (!codec_pdev)
+		return -EAGAIN;
+
+	codec_data = platform_get_drvdata(codec_pdev);
+	if (!codec_data)
+		return -EAGAIN;
 
 	scodec = devm_kzalloc(&pdev->dev, sizeof(*scodec), GFP_KERNEL);
 	if (!scodec)
@@ -551,6 +574,8 @@ static int sun50i_codec_analog_probe(struct platform_device *pdev)
 
 	scodec->internal_bias_resistor = of_property_read_bool(node,
 					"allwinner,internal-bias-resistor");
+	scodec->codec_data = codec_data;
+
 	platform_set_drvdata(pdev, scodec);
 
 	return devm_snd_soc_register_component(&pdev->dev,

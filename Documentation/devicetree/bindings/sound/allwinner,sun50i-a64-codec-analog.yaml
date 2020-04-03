@@ -21,6 +21,12 @@ properties:
     description:
       Regulator for the headphone amplifier
 
+  allwinner,codec:
+    description:
+      The digital part of the codec (e.g. the node with compatible value
+      'allwinner,sun50i-a64-codec')
+    type: phandle
+
   allwinner,internal-bias-resistor:
     description:
       Enable the internal 2.2K bias resistor between HBIAS and MICDET pins
@@ -30,6 +36,7 @@ required:
   - compatible
   - reg
   - cpvdd-supply
+  - allwinner,codec
 
 additionalProperties: false
 
