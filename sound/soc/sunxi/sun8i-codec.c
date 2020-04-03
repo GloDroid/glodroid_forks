@@ -14,6 +14,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/of_device.h>
+#include <linux/of_irq.h>
 #include <linux/regmap.h>
 #include <linux/log2.h>
 
@@ -1060,6 +1061,8 @@ static const struct snd_soc_dapm_route sun8i_codec_dapm_routes[] = {
 static int sun8i_codec_component_probe(struct snd_soc_component *component)
 {
 	struct sun8i_codec *scodec = snd_soc_component_get_drvdata(component);
+	unsigned int irq_mask = BIT(SUN8I_HMIC_CTRL_1_JACK_IN_IRQ_EN) |
+				BIT(SUN8I_HMIC_CTRL_1_JACK_OUT_IRQ_EN);
 
 	/* Set AIF1CLK clock source to PLL */
 	regmap_update_bits(scodec->regmap, SUN8I_SYSCLK_CTL,
@@ -1076,7 +1079,32 @@ static int sun8i_codec_component_probe(struct snd_soc_component *component)
 			   BIT(SUN8I_SYSCLK_CTL_SYSCLK_SRC),
 			   SUN8I_SYSCLK_CTL_SYSCLK_SRC_AIF1CLK);
 
+	if (scodec->type == SUN8I_TYPE_A64) {
+		regmap_write(scodec->regmap, SUN8I_HMIC_STS,
+			     0x2 << SUN8I_HMIC_STS_MDATA_DISCARD);
+		regmap_write(scodec->regmap, SUN8I_HMIC_CTRL_2,
+			     0x10 << SUN8I_HMIC_CTRL_2_MDATA_THRESHOLD);
+		regmap_write(scodec->regmap, SUN8I_HMIC_CTRL_1,
+			     SUN8I_HMIC_CTRL_1_HMIC_N_MASK);
+		regmap_update_bits(scodec->regmap, SUN8I_HMIC_CTRL_1,
+				   irq_mask, irq_mask);
+	}
+
 	return 0;
+}
+
+static void sun8i_codec_component_remove(struct snd_soc_component *component)
+{
+	struct sun8i_codec *scodec = snd_soc_component_get_drvdata(component);
+	unsigned int irq_mask = BIT(SUN8I_HMIC_CTRL_1_JACK_IN_IRQ_EN)  |
+				BIT(SUN8I_HMIC_CTRL_1_JACK_OUT_IRQ_EN) |
+				BIT(SUN8I_HMIC_CTRL_1_MIC_DET_IRQ_EN);
+
+	if (scodec->type == SUN8I_TYPE_A64) {
+		/* Disable jack detection interrupts */
+		regmap_update_bits(scodec->regmap, SUN8I_HMIC_CTRL_1,
+				   irq_mask, 0);
+	}
 }
 
 static const struct snd_soc_component_driver sun8i_soc_component = {
@@ -1087,6 +1115,7 @@ static const struct snd_soc_component_driver sun8i_soc_component = {
 	.dapm_routes		= sun8i_codec_dapm_routes,
 	.num_dapm_routes	= ARRAY_SIZE(sun8i_codec_dapm_routes),
 	.probe			= sun8i_codec_component_probe,
+	.remove			= sun8i_codec_component_remove,
 	.use_pmdown_time	= 1,
 	.endianness		= 1,
 	.non_legacy_dai_naming	= 1,
@@ -1099,14 +1128,48 @@ static const struct regmap_config sun8i_codec_regmap_config = {
 	.max_register	= SUN8I_DAC_MXR_SRC,
 };
 
+static irqreturn_t sun8i_codec_interrupt(int irq, void *dev_id)
+{
+	struct sun8i_codec *scodec = dev_id;
+	unsigned int status, irq_mask;
+	irqreturn_t ret = IRQ_NONE;
+
+	regmap_read(scodec->regmap, SUN8I_HMIC_STS, &status);
+	irq_mask = BIT(SUN8I_HMIC_STS_JACK_DET_IIRQ) |
+		   BIT(SUN8I_HMIC_STS_JACK_DET_OIRQ) |
+		   BIT(SUN8I_HMIC_STS_MIC_DET_ST);
+
+	if (status & irq_mask) {
+		if (status & BIT(SUN8I_HMIC_STS_JACK_DET_IIRQ)) {
+			pr_debug("sun8i-codec: received JACK_IN interrupt\n");
+		}
+		if (status & BIT(SUN8I_HMIC_STS_JACK_DET_OIRQ)) {
+			pr_debug("sun8i-codec: received JACK_OUT interrupt\n");
+		}
+		if (status & BIT(SUN8I_HMIC_STS_MIC_DET_ST)) {
+			pr_debug("sun8i-codec: received MIC_DET interrupt\n");
+		}
+		regmap_update_bits(scodec->regmap, SUN8I_HMIC_STS,
+				   irq_mask, irq_mask);
+		ret = IRQ_HANDLED;
+	}
+
+	return ret;
+}
+
 static int sun8i_codec_probe(struct platform_device *pdev)
 {
 	struct sun8i_codec *scodec;
 	void __iomem *base;
+	int irq, ret;
 
 	scodec = devm_kzalloc(&pdev->dev, sizeof(*scodec), GFP_KERNEL);
 	if (!scodec)
 		return -ENOMEM;
+
+	irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
+	if (irq < 0)
+		return irq;
 
 	scodec->clk_module = devm_clk_get(&pdev->dev, "mod");
 	if (IS_ERR(scodec->clk_module)) {
@@ -1130,6 +1193,15 @@ static int sun8i_codec_probe(struct platform_device *pdev)
 	scodec->type = (uintptr_t)of_device_get_match_data(&pdev->dev);
 
 	platform_set_drvdata(pdev, scodec);
+
+	if (scodec->type == SUN8I_TYPE_A64) {
+		ret = devm_request_irq(&pdev->dev, irq, sun8i_codec_interrupt,
+				       0, "sun8i-jackdet-irq", scodec);
+		if (ret) {
+			dev_err(&pdev->dev, "Failed to setup interrupt\n");
+			return ret;
+		}
+	}
 
 	return devm_snd_soc_register_component(&pdev->dev, &sun8i_soc_component,
 					       sun8i_codec_dais,
