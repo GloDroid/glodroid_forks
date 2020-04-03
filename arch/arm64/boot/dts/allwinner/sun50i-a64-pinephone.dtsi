@@ -56,11 +56,13 @@
 };
 
 &codec {
+	allwinner,inverted-jack-detection;
 	status = "okay";
 };
 
 &codec_analog {
 	cpvdd-supply = <&reg_eldo1>;
+	allwinner,internal-bias-resistor;
 	status = "okay";
 };
 
