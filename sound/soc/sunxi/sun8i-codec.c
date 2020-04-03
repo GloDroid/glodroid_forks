@@ -176,10 +176,15 @@
 			     SNDRV_PCM_RATE_192000|\
 			     SNDRV_PCM_RATE_KNOT)
 
+enum sun8i_type {
+	SUN8I_TYPE_A33 = 0,
+	SUN8I_TYPE_A64
+};
+
 struct sun8i_codec {
 	struct regmap	*regmap;
 	struct clk	*clk_module;
-	bool		inverted_lrck;
+	enum sun8i_type	type;
 };
 
 static int sun8i_codec_get_hw_rate(struct snd_pcm_hw_params *params)
@@ -265,7 +270,8 @@ static int sun8i_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	 * that the codec probably gets it backward, and we have to
 	 * invert the value here.
 	 */
-	value ^= scodec->inverted_lrck;
+	if (scodec->type == SUN8I_TYPE_A33)
+		value ^= 0x1;
 	regmap_update_bits(scodec->regmap, reg,
 			   SUN8I_AIF_CLK_CTRL_CLK_INV_MASK,
 			   value << SUN8I_AIF_CLK_CTRL_CLK_INV);
@@ -1121,7 +1127,7 @@ static int sun8i_codec_probe(struct platform_device *pdev)
 		return PTR_ERR(scodec->regmap);
 	}
 
-	scodec->inverted_lrck = (uintptr_t)of_device_get_match_data(&pdev->dev);
+	scodec->type = (uintptr_t)of_device_get_match_data(&pdev->dev);
 
 	platform_set_drvdata(pdev, scodec);
 
@@ -1133,11 +1139,11 @@ static int sun8i_codec_probe(struct platform_device *pdev)
 static const struct of_device_id sun8i_codec_of_match[] = {
 	{
 		.compatible = "allwinner,sun8i-a33-codec",
-		.data = (void *)1,
+		.data = (void *)SUN8I_TYPE_A33,
 	},
 	{
 		.compatible = "allwinner,sun50i-a64-codec",
-		.data = (void *)0,
+		.data = (void *)SUN8I_TYPE_A64,
 	},
 	{}
 };
