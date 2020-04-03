@@ -24,6 +24,7 @@
 #include <sound/tlv.h>
 
 #include "sun8i-adda-pr-regmap.h"
+#include "sun8i-codec.h"
 
 /* Codec analog control register offsets and bit fields */
 #define SUN50I_ADDA_HP_CTRL		0x00
@@ -116,13 +117,22 @@
 #define SUN50I_ADDA_HS_MBIAS_CTRL	0x0e
 #define SUN50I_ADDA_HS_MBIAS_CTRL_MMICBIASEN	7
 
-#define SUN50I_ADDA_JACK_MIC_CTRL	0x1d
+#define SUN50I_ADDA_MDET_CTRL			0x1c
+#define SUN50I_ADDA_MDET_CTRL_SELDETADCFS	4
+#define SUN50I_ADDA_MDET_CTRL_SELDETADCFS_MASK	(0x7<<4)
+#define SUN50I_ADDA_MDET_CTRL_SELDETADCDB	2
+#define SUN50I_ADDA_MDET_CTRL_SELDETADCDB_MASK	(0x3<<2)
+
+#define SUN50I_ADDA_JACK_MIC_CTRL		0x1d
+#define SUN50I_ADDA_JACK_MIC_CTRL_JACKDETEN	7
 #define SUN50I_ADDA_JACK_MIC_CTRL_INNERRESEN	6
 #define SUN50I_ADDA_JACK_MIC_CTRL_HMICBIASEN	5
+#define SUN50I_ADDA_JACK_MIC_CTRL_MICADCEN	4
 
 struct sun50i_codec {
-	struct sun8i_codec	*codec_data;
-	bool			internal_bias_resistor;
+	struct sun8i_jack_detection	jackdet;
+	struct sun8i_codec		*codec_data;
+	bool				internal_bias_resistor;
 };
 
 /* mixer controls */
@@ -475,6 +485,23 @@ static const struct snd_soc_dapm_route sun50i_a64_codec_routes[] = {
 	{ "EARPIECE", NULL, "Earpiece Amp" },
 };
 
+static void sun50i_a64_enable_micdet(struct snd_soc_component *component, bool enable)
+{
+	struct snd_soc_dapm_context *dapm = snd_soc_component_get_dapm(component);
+
+	if (enable) {
+		snd_soc_dapm_force_enable_pin(dapm, "HBIAS");
+		snd_soc_dapm_sync(dapm);
+
+		regmap_update_bits(component->regmap, SUN50I_ADDA_JACK_MIC_CTRL,
+				   BIT(SUN50I_ADDA_JACK_MIC_CTRL_MICADCEN),
+				   BIT(SUN50I_ADDA_JACK_MIC_CTRL_MICADCEN));
+	} else {
+		regmap_update_bits(component->regmap, SUN50I_ADDA_JACK_MIC_CTRL,
+				   BIT(SUN50I_ADDA_JACK_MIC_CTRL_MICADCEN), 0);
+	}
+}
+
 static int sun50i_a64_codec_probe(struct snd_soc_component *component)
 {
 	struct sun50i_codec *scodec = snd_soc_component_get_drvdata(component);
@@ -486,7 +513,18 @@ static int sun50i_a64_codec_probe(struct snd_soc_component *component)
 				   BIT(SUN50I_ADDA_JACK_MIC_CTRL_INNERRESEN));
 	}
 
-	return 0;
+	regmap_write(component->regmap, SUN50I_ADDA_MDET_CTRL,
+		     (0x6 << SUN50I_ADDA_MDET_CTRL_SELDETADCFS) |
+		     (0x2 << SUN50I_ADDA_MDET_CTRL_SELDETADCDB));
+	regmap_update_bits(component->regmap, SUN50I_ADDA_JACK_MIC_CTRL,
+			   BIT(SUN50I_ADDA_JACK_MIC_CTRL_JACKDETEN),
+			   BIT(SUN50I_ADDA_JACK_MIC_CTRL_JACKDETEN));
+
+	scodec->jackdet.component = component;
+	scodec->jackdet.enable_micdet = sun50i_a64_enable_micdet;
+
+	return sun8i_codec_set_jack_detect(scodec->codec_data,
+					   &scodec->jackdet);
 }
 
 static int sun50i_a64_codec_suspend(struct snd_soc_component *component)
