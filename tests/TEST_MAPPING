@@ -46,16 +46,63 @@
       "name": "cellbroadcast_e2e_tests"
     }
   ],
-  // The following changes are in post-submit to restrict to physical
-  // devices (currently failing on cf). TODO: Fix and move to presubmit.
-  // b/138242400
   "postsubmit": [
+    // The following changes are in post-submit to restrict to physical
+    // devices (currently failing on cf). TODO: Fix and move to presubmit.
+    // b/138242400
     {
       "name": "media_e2e_tests",
       "keywords": ["primary-device"]
     },
     {
       "name": "media_swcodec_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    // The following changes are in post-submit to restrict to physical
+    // devices (currently userspace reboot fails on cuttlefish).
+    // TODO(b/147726967): Remove when Userspace reboot works on cuttlefish
+    {
+      "name": "adbd_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "conscrypt_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "extservices_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "neuralnetworks_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "permission_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "sdkextensions_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "timezone_data_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "ipsec_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "wifi_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "mediaprovider_e2e_tests",
+      "keywords": ["primary-device"]
+    },
+    {
+      "name": "cellbroadcast_e2e_tests",
       "keywords": ["primary-device"]
     }
   ],
