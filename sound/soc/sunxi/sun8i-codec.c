@@ -23,6 +23,8 @@
 #include <sound/soc-dapm.h>
 #include <sound/tlv.h>
 
+#include "sun8i-codec.h"
+
 #define SUN8I_SYSCLK_CTL				0x00c
 #define SUN8I_SYSCLK_CTL_AIF1CLK_ENA			11
 #define SUN8I_SYSCLK_CTL_AIF1CLK_SRC_PLL		(0x3 << 8)
@@ -183,9 +185,10 @@ enum sun8i_type {
 };
 
 struct sun8i_codec {
-	struct regmap	*regmap;
-	struct clk	*clk_module;
-	enum sun8i_type	type;
+	struct regmap			*regmap;
+	struct clk			*clk_module;
+	struct sun8i_jack_detection	*jackdet;
+	enum sun8i_type			type;
 };
 
 static int sun8i_codec_get_hw_rate(struct snd_pcm_hw_params *params)
@@ -1061,8 +1064,6 @@ static const struct snd_soc_dapm_route sun8i_codec_dapm_routes[] = {
 static int sun8i_codec_component_probe(struct snd_soc_component *component)
 {
 	struct sun8i_codec *scodec = snd_soc_component_get_drvdata(component);
-	unsigned int irq_mask = BIT(SUN8I_HMIC_CTRL_1_JACK_IN_IRQ_EN) |
-				BIT(SUN8I_HMIC_CTRL_1_JACK_OUT_IRQ_EN);
 
 	/* Set AIF1CLK clock source to PLL */
 	regmap_update_bits(scodec->regmap, SUN8I_SYSCLK_CTL,
@@ -1078,17 +1079,6 @@ static int sun8i_codec_component_probe(struct snd_soc_component *component)
 	regmap_update_bits(scodec->regmap, SUN8I_SYSCLK_CTL,
 			   BIT(SUN8I_SYSCLK_CTL_SYSCLK_SRC),
 			   SUN8I_SYSCLK_CTL_SYSCLK_SRC_AIF1CLK);
-
-	if (scodec->type == SUN8I_TYPE_A64) {
-		regmap_write(scodec->regmap, SUN8I_HMIC_STS,
-			     0x2 << SUN8I_HMIC_STS_MDATA_DISCARD);
-		regmap_write(scodec->regmap, SUN8I_HMIC_CTRL_2,
-			     0x10 << SUN8I_HMIC_CTRL_2_MDATA_THRESHOLD);
-		regmap_write(scodec->regmap, SUN8I_HMIC_CTRL_1,
-			     SUN8I_HMIC_CTRL_1_HMIC_N_MASK);
-		regmap_update_bits(scodec->regmap, SUN8I_HMIC_CTRL_1,
-				   irq_mask, irq_mask);
-	}
 
 	return 0;
 }
@@ -1127,6 +1117,29 @@ static const struct regmap_config sun8i_codec_regmap_config = {
 	.val_bits	= 32,
 	.max_register	= SUN8I_DAC_MXR_SRC,
 };
+
+int sun8i_codec_set_jack_detect(struct sun8i_codec *scodec,
+			        struct sun8i_jack_detection *jackdet)
+{
+	unsigned int irq_mask = BIT(SUN8I_HMIC_CTRL_1_JACK_IN_IRQ_EN) |
+				BIT(SUN8I_HMIC_CTRL_1_JACK_OUT_IRQ_EN);
+
+	if (!jackdet)
+		return -1;
+
+	scodec->jackdet = jackdet;
+	regmap_write(scodec->regmap, SUN8I_HMIC_STS,
+		     0x2 << SUN8I_HMIC_STS_MDATA_DISCARD);
+	regmap_write(scodec->regmap, SUN8I_HMIC_CTRL_2,
+		     0x10 << SUN8I_HMIC_CTRL_2_MDATA_THRESHOLD);
+	regmap_write(scodec->regmap, SUN8I_HMIC_CTRL_1,
+		     SUN8I_HMIC_CTRL_1_HMIC_N_MASK);
+	regmap_update_bits(scodec->regmap, SUN8I_HMIC_CTRL_1,
+			   irq_mask, irq_mask);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(sun8i_codec_set_jack_detect);
 
 static irqreturn_t sun8i_codec_interrupt(int irq, void *dev_id)
 {
