@@ -117,7 +117,12 @@
 #define SUN50I_ADDA_HS_MBIAS_CTRL_MMICBIASEN	7
 
 #define SUN50I_ADDA_JACK_MIC_CTRL	0x1d
+#define SUN50I_ADDA_JACK_MIC_CTRL_INNERRESEN	6
 #define SUN50I_ADDA_JACK_MIC_CTRL_HMICBIASEN	5
+
+struct sun50i_codec {
+	bool	internal_bias_resistor;
+};
 
 /* mixer controls */
 static const struct snd_kcontrol_new sun50i_a64_codec_mixer_controls[] = {
@@ -469,6 +474,20 @@ static const struct snd_soc_dapm_route sun50i_a64_codec_routes[] = {
 	{ "EARPIECE", NULL, "Earpiece Amp" },
 };
 
+static int sun50i_a64_codec_probe(struct snd_soc_component *component)
+{
+	struct sun50i_codec *scodec = snd_soc_component_get_drvdata(component);
+
+	if (scodec->internal_bias_resistor) {
+		regmap_update_bits(component->regmap,
+				   SUN50I_ADDA_JACK_MIC_CTRL,
+				   BIT(SUN50I_ADDA_JACK_MIC_CTRL_INNERRESEN),
+				   BIT(SUN50I_ADDA_JACK_MIC_CTRL_INNERRESEN));
+	}
+
+	return 0;
+}
+
 static int sun50i_a64_codec_suspend(struct snd_soc_component *component)
 {
 	return regmap_update_bits(component->regmap, SUN50I_ADDA_HP_CTRL,
@@ -489,6 +508,7 @@ static const struct snd_soc_component_driver sun50i_codec_analog_cmpnt_drv = {
 	.num_dapm_widgets	= ARRAY_SIZE(sun50i_a64_codec_widgets),
 	.dapm_routes		= sun50i_a64_codec_routes,
 	.num_dapm_routes	= ARRAY_SIZE(sun50i_a64_codec_routes),
+	.probe			= sun50i_a64_codec_probe,
 	.suspend		= sun50i_a64_codec_suspend,
 	.resume			= sun50i_a64_codec_resume,
 };
@@ -503,8 +523,19 @@ MODULE_DEVICE_TABLE(of, sun50i_codec_analog_of_match);
 
 static int sun50i_codec_analog_probe(struct platform_device *pdev)
 {
+	struct device_node *node = pdev->dev.of_node;
+	struct sun50i_codec *scodec;
 	struct regmap *regmap;
 	void __iomem *base;
+
+	if (!node) {
+		dev_err(&pdev->dev, "of node is missing.\n");
+		return -ENODEV;
+	}
+
+	scodec = devm_kzalloc(&pdev->dev, sizeof(*scodec), GFP_KERNEL);
+	if (!scodec)
+		return -ENOMEM;
 
 	base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(base)) {
@@ -517,6 +548,10 @@ static int sun50i_codec_analog_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to create regmap\n");
 		return PTR_ERR(regmap);
 	}
+
+	scodec->internal_bias_resistor = of_property_read_bool(node,
+					"allwinner,internal-bias-resistor");
+	platform_set_drvdata(pdev, scodec);
 
 	return devm_snd_soc_register_component(&pdev->dev,
 					       &sun50i_codec_analog_cmpnt_drv,
