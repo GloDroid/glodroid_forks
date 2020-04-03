@@ -16,6 +16,7 @@ struct sun8i_jack_detection {
 };
 
 int sun8i_codec_set_jack_detect(struct sun8i_codec *codec,
-				struct sun8i_jack_detection *jackdet);
+				struct sun8i_jack_detection *jackdet,
+				struct snd_soc_jack *jack);
 
 #endif /* __SUN8I_CODEC_H__ */
