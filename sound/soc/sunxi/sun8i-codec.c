@@ -195,6 +195,7 @@ enum sun8i_jack_event {
 struct sun8i_codec {
 	struct regmap			*regmap;
 	struct clk			*clk_module;
+	struct delayed_work		jackdet_init_work;
 	struct delayed_work 		jack_detect_work;
 	struct sun8i_jack_detection	*jackdet;
 	struct snd_soc_jack 		*jack;
@@ -1130,18 +1131,13 @@ static const struct regmap_config sun8i_codec_regmap_config = {
 	.max_register	= SUN8I_DAC_MXR_SRC,
 };
 
-int sun8i_codec_set_jack_detect(struct sun8i_codec *scodec,
-			        struct sun8i_jack_detection *jackdet,
-			        struct snd_soc_jack *jack)
+static void jackdet_init(struct work_struct *work)
 {
+	struct sun8i_codec *scodec =
+		container_of(work, struct sun8i_codec, jackdet_init_work.work);
 	unsigned int irq_mask = BIT(SUN8I_HMIC_CTRL_1_JACK_IN_IRQ_EN) |
 				BIT(SUN8I_HMIC_CTRL_1_JACK_OUT_IRQ_EN);
 
-	if (!jackdet || !jack)
-		return -1;
-
-	scodec->jack = jack;
-	scodec->jackdet = jackdet;
 	regmap_write(scodec->regmap, SUN8I_HMIC_STS,
 		     0x2 << SUN8I_HMIC_STS_MDATA_DISCARD);
 	regmap_write(scodec->regmap, SUN8I_HMIC_CTRL_2,
@@ -1150,6 +1146,20 @@ int sun8i_codec_set_jack_detect(struct sun8i_codec *scodec,
 		     SUN8I_HMIC_CTRL_1_HMIC_N_MASK);
 	regmap_update_bits(scodec->regmap, SUN8I_HMIC_CTRL_1,
 			   irq_mask, irq_mask);
+}
+
+int sun8i_codec_set_jack_detect(struct sun8i_codec *scodec,
+			        struct sun8i_jack_detection *jackdet,
+			        struct snd_soc_jack *jack)
+{
+	if (!jackdet || !jack)
+		return -1;
+
+	scodec->jack = jack;
+	scodec->jackdet = jackdet;
+	queue_delayed_work(system_power_efficient_wq,
+			   &scodec->jackdet_init_work,
+			   msecs_to_jiffies(300));
 	snd_soc_jack_report(scodec->jack, 0, SND_JACK_HEADSET);
 
 	return 0;
@@ -1300,6 +1310,7 @@ static int sun8i_codec_probe(struct platform_device *pdev)
 
 		scodec->inverted_jackdet = of_property_read_bool(node,
 					"allwinner,inverted-jack-detection");
+		INIT_DELAYED_WORK(&scodec->jackdet_init_work, jackdet_init);
 		INIT_DELAYED_WORK(&scodec->jack_detect_work, jack_detect);
 	}
 
