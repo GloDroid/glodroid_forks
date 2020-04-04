@@ -18,11 +18,13 @@ package com.android.tests.apex;
 
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 
+import org.junit.Ignore;
 import org.junit.runner.RunWith;
 
 /**
  * Test to check if Apex can be staged, activated and uninstalled successfully.
  */
+@Ignore("b/152717947")
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class PermissionHostTest extends ApexE2EBaseHostTest {
 }
