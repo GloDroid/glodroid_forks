@@ -52,6 +52,7 @@ static constexpr const char* kExpectedCtsShimFiles[] = {
     "apex_manifest.pb",
     "etc/hash.txt",
     "app/CtsShimPrebuilt/CtsShimPrebuilt.apk",
+    "app/CtsShimTargetPSdkPrebuilt/CtsShimTargetPSdkPrebuilt.apk",
     "priv-app/CtsShimPrivPrebuilt/CtsShimPrivPrebuilt.apk",
 };
 
