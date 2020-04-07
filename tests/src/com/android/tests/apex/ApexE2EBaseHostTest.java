@@ -51,7 +51,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     private static final Duration WAIT_FOR_BOOT_COMPLETE_TIMEOUT = Duration.ofMinutes(2);
 
     private static final String USERSPACE_REBOOT_SUPPORTED_PROP =
-            "ro.init.userspace_reboot.is_supported";
+            "init.userspace_reboot.is_supported";
 
     /* protected so that derived tests can have access to test utils automatically */
     protected final ModuleTestUtils mUtils = new ModuleTestUtils(this);
