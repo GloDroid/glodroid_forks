@@ -106,6 +106,16 @@
 		regulator-name = "vbat-wifi";
 	};
 
+	/* This is a charge pump for CC1 and CC2 pins on USB-C connector. */
+	reg_vconn5v0: vconn5v0 {
+		compatible = "regulator-fixed";
+		regulator-name = "vconn5v0";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&pio 3 9 GPIO_ACTIVE_HIGH>; /* PD9 */
+		enable-active-high;
+	};
+
 	speaker_amp: audio-amplifier {
 		compatible = "simple-audio-amplifier";
 		enable-gpios = <&pio 2 7 GPIO_ACTIVE_HIGH>; /* PC7 */
