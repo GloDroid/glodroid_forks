@@ -14,6 +14,7 @@
 / {
 	aliases {
 		serial0 = &uart0;
+		ethernet0 = &rtl8723cs;
 	};
 
 	backlight: backlight {
@@ -47,6 +48,13 @@
 			color = <LED_COLOR_ID_RED>;
 			gpios = <&pio 3 19 GPIO_ACTIVE_HIGH>; /* PD19 */
 		};
+	};
+
+	reg_vbat_wifi: vbat-wifi {
+		compatible = "regulator-fixed";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-name = "vbat-wifi";
 	};
 
 	speaker_amp: audio-amplifier {
@@ -195,6 +203,23 @@
 	disable-wp;
 	bus-width = <4>;
 	status = "okay";
+};
+
+&mmc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc1_pins>;
+	vmmc-supply = <&reg_vbat_wifi>;
+	vqmmc-supply = <&reg_dldo4>;
+	bus-width = <4>;
+	non-removable;
+	status = "okay";
+
+	rtl8723cs: wifi@1 {
+		reg = <1>;
+//		host-wake-gpios = <&r_pio 0 3 GPIO_ACTIVE_HIGH>; /* PL3 */
+//		interrupt-parent = <&r_pio>;
+//		interrupts = <0 3 IRQ_TYPE_EDGE_FALLING>; /* PL3 */
+	};
 };
 
 &mmc2 {
