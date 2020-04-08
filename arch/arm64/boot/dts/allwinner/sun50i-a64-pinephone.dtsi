@@ -24,8 +24,20 @@
 		/* Backlight configuration differs per PinePhone revision. */
 	};
 
+	bt_sco_codec: bt-sco-codec {
+		#sound-dai-cells = <1>;
+		compatible = "linux,bt-sco";
+		sound-name-prefix = "Bluetooth";
+	};
+
 	chosen {
 		stdout-path = "serial0:115200n8";
+	};
+
+	ec25_codec: ec25-codec {
+		#sound-dai-cells = <0>;
+		compatible = "quectel,ec25";
+		sound-name-prefix = "Baseband";
 	};
 
 	i2c_csi: i2c-csi {
