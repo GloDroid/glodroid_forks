@@ -198,7 +198,7 @@ def main(argv):
     debugfs_default = '%s/bin/debugfs_static' % os.environ['ANDROID_HOST_OUT']
   parser.add_argument('--debugfs_path', help='The path to debugfs binary', default=debugfs_default)
 
-  subparsers = parser.add_subparsers()
+  subparsers = parser.add_subparsers(required=True, dest='cmd')
 
   parser_list = subparsers.add_parser('list', help='prints content of an APEX to stdout')
   parser_list.add_argument('apex', type=str, help='APEX file')
