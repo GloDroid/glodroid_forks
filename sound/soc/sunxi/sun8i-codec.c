@@ -14,7 +14,6 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/of_device.h>
-#include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <linux/log2.h>
 
@@ -161,33 +160,6 @@ struct sun8i_codec {
 	struct clk	*clk_module;
 	bool		inverted_lrck;
 };
-
-static int sun8i_codec_runtime_resume(struct device *dev)
-{
-	struct sun8i_codec *scodec = dev_get_drvdata(dev);
-	int ret;
-
-	regcache_cache_only(scodec->regmap, false);
-
-	ret = regcache_sync(scodec->regmap);
-	if (ret) {
-		dev_err(dev, "Failed to sync regmap cache\n");
-		return ret;
-	}
-
-	return 0;
-
-}
-
-static int sun8i_codec_runtime_suspend(struct device *dev)
-{
-	struct sun8i_codec *scodec = dev_get_drvdata(dev);
-
-	regcache_cache_only(scodec->regmap, true);
-	regcache_mark_dirty(scodec->regmap);
-
-	return 0;
-}
 
 static int sun8i_codec_get_hw_rate(struct snd_pcm_hw_params *params)
 {
@@ -1098,15 +1070,12 @@ static const struct regmap_config sun8i_codec_regmap_config = {
 	.reg_stride	= 4,
 	.val_bits	= 32,
 	.max_register	= SUN8I_DAC_MXR_SRC,
-
-	.cache_type	= REGCACHE_FLAT,
 };
 
 static int sun8i_codec_probe(struct platform_device *pdev)
 {
 	struct sun8i_codec *scodec;
 	void __iomem *base;
-	int ret;
 
 	scodec = devm_kzalloc(&pdev->dev, sizeof(*scodec), GFP_KERNEL);
 	if (!scodec)
@@ -1135,40 +1104,9 @@ static int sun8i_codec_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, scodec);
 
-	pm_runtime_enable(&pdev->dev);
-	if (!pm_runtime_enabled(&pdev->dev)) {
-		ret = sun8i_codec_runtime_resume(&pdev->dev);
-		if (ret)
-			goto err_pm_disable;
-	}
-
-	ret = devm_snd_soc_register_component(&pdev->dev, &sun8i_soc_component,
-					      sun8i_codec_dais,
-					      ARRAY_SIZE(sun8i_codec_dais));
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to register codec\n");
-		goto err_suspend;
-	}
-
-	return ret;
-
-err_suspend:
-	if (!pm_runtime_status_suspended(&pdev->dev))
-		sun8i_codec_runtime_suspend(&pdev->dev);
-
-err_pm_disable:
-	pm_runtime_disable(&pdev->dev);
-
-	return ret;
-}
-
-static int sun8i_codec_remove(struct platform_device *pdev)
-{
-	pm_runtime_disable(&pdev->dev);
-	if (!pm_runtime_status_suspended(&pdev->dev))
-		sun8i_codec_runtime_suspend(&pdev->dev);
-
-	return 0;
+	return devm_snd_soc_register_component(&pdev->dev, &sun8i_soc_component,
+					       sun8i_codec_dais,
+					       ARRAY_SIZE(sun8i_codec_dais));
 }
 
 static const struct of_device_id sun8i_codec_of_match[] = {
@@ -1184,19 +1122,12 @@ static const struct of_device_id sun8i_codec_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sun8i_codec_of_match);
 
-static const struct dev_pm_ops sun8i_codec_pm_ops = {
-	SET_RUNTIME_PM_OPS(sun8i_codec_runtime_suspend,
-			   sun8i_codec_runtime_resume, NULL)
-};
-
 static struct platform_driver sun8i_codec_driver = {
 	.driver = {
 		.name = "sun8i-codec",
 		.of_match_table = sun8i_codec_of_match,
-		.pm = &sun8i_codec_pm_ops,
 	},
 	.probe = sun8i_codec_probe,
-	.remove = sun8i_codec_remove,
 };
 module_platform_driver(sun8i_codec_driver);
 
