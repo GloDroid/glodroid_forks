@@ -547,6 +547,21 @@ static struct snd_soc_dai_driver sun8i_codec_dais[] = {
 	},
 };
 
+static int sun8i_codec_aif2clk_event(struct snd_soc_dapm_widget *w,
+				     struct snd_kcontrol *kcontrol, int event)
+{
+	struct sun8i_codec *scodec = snd_soc_component_get_drvdata(w->dapm->component);
+
+	/* Set SYSCLK clock source to AIF2CLK if AIF2 is running. */
+	regmap_update_bits(scodec->regmap, SUN8I_SYSCLK_CTL,
+			   BIT(SUN8I_SYSCLK_CTL_SYSCLK_SRC),
+			   SND_SOC_DAPM_EVENT_ON(event) ?
+			   SUN8I_SYSCLK_CTL_SYSCLK_SRC_AIF2CLK :
+			   SUN8I_SYSCLK_CTL_SYSCLK_SRC_AIF1CLK);
+
+	return 0;
+}
+
 static const DECLARE_TLV_DB_SCALE(sun8i_codec_vol_scale, -12000, 75, 1);
 
 static const struct snd_kcontrol_new sun8i_codec_controls[] = {
@@ -862,7 +877,9 @@ static const struct snd_soc_dapm_widget sun8i_codec_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("AIF1CLK", SUN8I_SYSCLK_CTL,
 			    SUN8I_SYSCLK_CTL_AIF1CLK_ENA, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("AIF2CLK", SUN8I_SYSCLK_CTL,
-			    SUN8I_SYSCLK_CTL_AIF2CLK_ENA, 0, NULL, 0),
+			    SUN8I_SYSCLK_CTL_AIF2CLK_ENA, 0,
+			    sun8i_codec_aif2clk_event,
+			    SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_SUPPLY("SYSCLK", SUN8I_SYSCLK_CTL,
 			    SUN8I_SYSCLK_CTL_SYSCLK_ENA, 0, NULL, 0),
 };
@@ -891,6 +908,8 @@ static const struct snd_soc_dapm_route sun8i_codec_dapm_routes[] = {
 	{ "AIF2 ADC Right", NULL, "AIF2CLK" },
 
 	{ "AIF3 ADC", NULL, "AIF3 ADC Capture Route" },
+
+	{ "AIF3 ADC", NULL, "AIF2CLK" },
 
 	/* AIF "ADC" Mono/Stereo Mux Routes */
 	{ "AIF1 AD0 Left Stereo Mux", "Stereo", "AIF1 AD0 Left Mixer" },
@@ -996,6 +1015,8 @@ static const struct snd_soc_dapm_route sun8i_codec_dapm_routes[] = {
 	{ "AIF2 DAC Right", NULL, "AIF2CLK" },
 
 	{ "AIF3 DAC", NULL, "AIF3 Loopback" },
+
+	{ "AIF3 DAC", NULL, "AIF2CLK" },
 
 	/* Main DAC Output Routes */
 	{ "DAC Left", NULL, "DAC Left Mixer" },
