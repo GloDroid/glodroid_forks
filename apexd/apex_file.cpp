@@ -111,7 +111,6 @@ Result<ApexFile> ApexFile::Open(const std::string& path) {
 
   ret = FindEntry(handle, kBundledPublicKeyFilename, &entry);
   if (ret >= 0) {
-    LOG(VERBOSE) << "Found bundled key in package " << path;
     length = entry.uncompressed_length;
     pubkey.resize(length, '\0');
     ret = ExtractToMemory(handle, &entry,
