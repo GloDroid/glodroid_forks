@@ -178,3 +178,10 @@ prebuilt_etc {
   name: "another_prebuilt_file",
   src: "another_prebuilt_file",
 }
+
+prebuilt_apex {
+  name: "apex.corrupted_b146895998",
+  src: "corrupted_b146895998.apex",
+  filename: "corrupted_b146895998.apex",
+  installable: false,
+}

@@ -276,6 +276,7 @@ cc_test {
     ":apex.apexd_test_preinstall",
     ":apex.apexd_test_prepostinstall.fail",
     ":apex.apexd_test_v2",
+    ":apex.corrupted_b146895998",
     ":gen_bad_apexes",
     ":gen_corrupt_apex",
     ":com.android.apex.cts.shim.v1_prebuilt",
