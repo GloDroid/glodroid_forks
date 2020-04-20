@@ -55,7 +55,7 @@ apex {
   file_contexts: ":apex.test-file_contexts",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
-  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
+  apps: ["CtsShim", "CtsShimPriv"],
   installable: false,
   whitelisted_files: "default_shim_whitelist.txt",
 }
@@ -67,7 +67,7 @@ apex {
   file_contexts: ":apex.test-file_contexts",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
-  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
+  apps: ["CtsShim", "CtsShimPriv"],
   installable: false,
   whitelisted_files: "default_shim_whitelist.txt",
 }
@@ -79,7 +79,7 @@ apex {
   file_contexts: ":apex.test-file_contexts",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
-  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
+  apps: ["CtsShim", "CtsShimPriv"],
   installable: false,
   whitelisted_files: "default_shim_whitelist.txt",
   test_only_no_hashtree: true,
@@ -202,7 +202,7 @@ apex {
   file_contexts: ":apex.test-file_contexts",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_v1"],
-  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
+  apps: ["CtsShim", "CtsShimPriv"],
   whitelisted_files: "default_shim_whitelist.txt",
 }
 
@@ -406,7 +406,7 @@ apex {
   file_contexts: ":apex.test-file_contexts",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
-  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
+  apps: ["CtsShim", "CtsShimPriv"],
   installable: false,
   min_sdk_version: "29",
 }
@@ -428,7 +428,7 @@ apex {
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
   installable: false,
-  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
+  apps: ["CtsShim", "CtsShimPriv"],
 }
 
 // Apex shim with apk-in-apex that targets sdk P
@@ -439,6 +439,6 @@ apex {
   file_contexts: ":apex.test-file_contexts",
   key: "com.android.apex.cts.shim.key",
   prebuilts: ["hash_of_dev_null"],
-  apps: ["CtsShimTargetPSdkPrebuilt"],
+  apps: ["CtsShimTargetPSdk"],
   installable: false,
 }
