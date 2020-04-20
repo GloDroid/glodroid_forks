@@ -75,6 +75,7 @@ cc_defaults {
 
 aidl_interface {
   name: "apex_aidl_interface",
+  unstable: true,
   srcs: [
     "aidl/android/apex/ApexInfo.aidl",
     "aidl/android/apex/ApexInfoList.aidl",
