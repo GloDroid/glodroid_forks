@@ -19,8 +19,6 @@ C_SOURCES := \
 	v3d_simulator.c \
 	v3d_simulator_wrapper.cpp \
 	v3d_simulator_wrapper.h \
-	v3d_tiling.c \
-	v3d_tiling.h \
 	v3d_uniforms.c \
 	$()
 
@@ -34,3 +32,7 @@ V3D_PER_VERSION_SOURCES = \
 	v3dx_simulator.c \
 	v3dx_state.c \
 	$()
+
+NEON_C_SOURCES := \
+	v3d_tiling.c \
+	v3d_tiling.h \
