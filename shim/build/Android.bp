@@ -85,6 +85,12 @@ apex {
   test_only_no_hashtree: true,
 }
 
+override_apex {
+    name: "com.android.apex.cts.shim.v2_different_package_name",
+    package_name: "com.android.apex.cts.shim.different",
+    base: "com.android.apex.cts.shim.v2",
+}
+
 genrule {
   name: "generate_empty_hash",
   out: ["hash.txt"],
@@ -172,6 +178,7 @@ genrule {
     ":com.android.apex.cts.shim.v2_additional_file",
     ":com.android.apex.cts.shim.v2_additional_folder",
     ":com.android.apex.cts.shim.v2_different_certificate",
+    ":com.android.apex.cts.shim.v2_different_package_name",
     ":com.android.apex.cts.shim.v2_no_hashtree",
     ":com.android.apex.cts.shim.v2_signed_bob",
     ":com.android.apex.cts.shim.v2_signed_bob_rot",

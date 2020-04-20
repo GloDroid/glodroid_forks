@@ -30,7 +30,8 @@ m com.android.apex.cts.shim.v3 \
   com.android.apex.cts.shim.v2 \
   com.android.apex.cts.shim.v2_additional_file \
   com.android.apex.cts.shim.v2_additional_folder \
-  com.android.apex.cts.shim.v2_different_certificate
+  com.android.apex.cts.shim.v2_different_certificate \
+  com.android.apex.cts.shim.v2_different_package_name \
   com.android.apex.cts.shim.v2_with_pre_install_hook \
   com.android.apex.cts.shim.v2_with_post_install_hook \
   com.android.apex.cts.shim.v2_wrong_sha \
