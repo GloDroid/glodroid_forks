@@ -1607,7 +1607,7 @@ Result<void> stagePackages(const std::vector<std::string>& tmpPaths) {
 
   // Make sure that kActiveApexPackagesDataDir exists.
   auto create_dir_status =
-      createDirIfNeeded(std::string(kActiveApexPackagesDataDir), 0750);
+      createDirIfNeeded(std::string(kActiveApexPackagesDataDir), 0755);
   if (!create_dir_status.ok()) {
     return create_dir_status.error();
   }
