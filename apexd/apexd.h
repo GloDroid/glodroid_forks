@@ -88,6 +88,7 @@ android::base::Result<void> destroyCeSnapshotsNotSpecified(
 
 int onBootstrap();
 void onStart(CheckpointInterface* checkpoint_service);
+void onAllPackagesActivated();
 void onAllPackagesReady();
 void bootCompletedCleanup();
 int snapshotOrRestoreDeUserData();
