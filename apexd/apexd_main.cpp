@@ -103,22 +103,28 @@ int main(int /*argc*/, char** argv) {
   } else {
     vold_service = &*vold_service_st;
   }
+  android::apex::initialize(vold_service);
 
-  android::apex::migrateSessionsDirIfNeeded();
-  android::apex::onStart(vold_service);
+  bool booting = android::apex::isBooting();
+  if (booting) {
+    android::apex::migrateSessionsDirIfNeeded();
+    android::apex::onStart();
+  }
   android::apex::binder::CreateAndRegisterService();
   android::apex::binder::StartThreadPool();
 
-  // Notify other components (e.g. init) that all APEXs are correctly mounted
-  // and activated (but are not yet ready to be used).
-  // Configuration based on activated APEXs may be performed at this point, but
-  // use of APEXs themselves should wait for the ready status instead, which
-  // is set when the "--snapshotde" subcommand is received and snapshot/restore
-  // is complete.
-  android::apex::onAllPackagesActivated();
-
-  android::apex::waitForBootStatus(android::apex::revertActiveSessionsAndReboot,
-                                   android::apex::bootCompletedCleanup);
+  if (booting) {
+    // Notify other components (e.g. init) that all APEXs are correctly mounted
+    // and activated (but are not yet ready to be used). Configuration based on
+    // activated APEXs may be performed at this point, but use of APEXs
+    // themselves should wait for the ready status instead, which is set when
+    // the "--snapshotde" subcommand is received and snapshot/restore is
+    // complete.
+    android::apex::onAllPackagesActivated();
+    android::apex::waitForBootStatus(
+        android::apex::revertActiveSessionsAndReboot,
+        android::apex::bootCompletedCleanup);
+  }
 
   android::apex::binder::AllowServiceShutdown();
 
