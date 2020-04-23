@@ -38,7 +38,6 @@ android::base::Result<void> resumeRevertIfNeeded();
 android::base::Result<void> scanPackagesDirAndActivate(
     const char* apex_package_dir);
 void scanStagedSessionsDirAndStage();
-android::base::Result<void> migrateSessionsDirIfNeeded();
 android::base::Result<void> preinstallPackages(
     const std::vector<std::string>& paths) WARN_UNUSED;
 android::base::Result<void> postinstallPackages(
@@ -87,8 +86,28 @@ android::base::Result<void> destroyCeSnapshotsNotSpecified(
     int user_id, const std::vector<int>& retain_rollback_ids);
 
 int onBootstrap();
-void onStart(CheckpointInterface* checkpoint_service);
+// Small helper function to tell if device is currently booting.
+bool isBooting();
+// Initializes in-memory state (e.g. pre-installed data, activated apexes).
+// Must be called first before calling any other boot sequence related function.
+void initialize(CheckpointInterface* checkpoint_service);
+// Migrates sessions from /data/apex/session to /metadata/session.i
+// Must only be called during boot (i.e apexd.status is not "ready" or
+// "activated").
+android::base::Result<void> migrateSessionsDirIfNeeded();
+// Apex activation logic. Scans staged apex sessions and activates apexes.
+// Must only be called during boot (i.e apexd.status is not "ready" or
+// "activated").
+void onStart();
+// Notifies system that apexes are activated by setting apexd.status property to
+// "activated".
+// Must only be called during boot (i.e. apexd.status is not "ready" or
+// "activated").
 void onAllPackagesActivated();
+// Notifies system that apexes are ready by setting apexd.status property to
+// "ready".
+// Must only be called during boot (i.e. apexd.status is not "ready" or
+// "activated").
 void onAllPackagesReady();
 void bootCompletedCleanup();
 int snapshotOrRestoreDeUserData();
