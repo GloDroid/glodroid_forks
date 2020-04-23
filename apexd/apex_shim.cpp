@@ -51,9 +51,9 @@ static constexpr const char* kExpectedCtsShimFiles[] = {
     "apex_manifest.json",
     "apex_manifest.pb",
     "etc/hash.txt",
-    "app/CtsShimPrebuilt/CtsShimPrebuilt.apk",
-    "app/CtsShimTargetPSdkPrebuilt/CtsShimTargetPSdkPrebuilt.apk",
-    "priv-app/CtsShimPrivPrebuilt/CtsShimPrivPrebuilt.apk",
+    "app/CtsShim/CtsShim.apk",
+    "app/CtsShimTargetPSdk/CtsShimTargetPSdk.apk",
+    "priv-app/CtsShimPriv/CtsShimPriv.apk",
 };
 
 Result<std::string> CalculateSha512(const std::string& path) {
