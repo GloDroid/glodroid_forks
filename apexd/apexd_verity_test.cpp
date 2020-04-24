@@ -114,9 +114,3 @@ TEST(ApexdVerityTest, RegenerateHashree) {
 
 }  // namespace apex
 }  // namespace android
-
-int main(int argc, char** argv) {
-  android::base::InitLogging(argv, &android::base::StderrLogger);
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
