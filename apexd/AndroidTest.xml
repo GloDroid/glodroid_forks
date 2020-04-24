@@ -28,6 +28,14 @@
          on higher levels (e.g., PackageInstaller). -->
     <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer" />
 
+    <target_preparer class="com.android.tradefed.targetprep.PushFilePreparer">
+      <option name="cleanup" value="true" />
+      <option name="remount-system" value="true" />
+      <option name="push" value="apex.apexd_test.apex->/system_ext/apex/apex.apexd_test.apex" />
+      <option name="push" value="apex.apexd_test_different_app.apex->/system_ext/apex/apex.apexd_test_different_app.apex" />
+      <option name="push" value="apex.apexd_test_postinstall.apex->/system_ext/apex/apex.apexd_test_postinstall.apex" />
+      <option name="push" value="apex.apexd_test_preinstall.apex->/system_ext/apex/apex.apexd_test_preinstall.apex" />
+    </target_preparer>
     <test class="com.android.tradefed.testtype.GTest" >
         <!-- Note: despite how these lines read, the test will run nicely separated out
                    of a subfolder. -->

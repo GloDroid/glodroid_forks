@@ -136,12 +136,14 @@ class ApexServiceTest : public ::testing::Test {
 
   static bool IsSelinuxEnforced() { return 0 != security_getenforce(); }
 
-  Result<bool> IsActive(const std::string& name, int64_t version) {
+  Result<bool> IsActive(const std::string& name, int64_t version,
+                        const std::string& path) {
     std::vector<ApexInfo> list;
     android::binder::Status status = service_->getActivePackages(&list);
     if (status.isOk()) {
       for (const ApexInfo& p : list) {
-        if (p.moduleName == name && p.versionCode == version) {
+        if (p.moduleName == name && p.versionCode == version &&
+            p.modulePath == path) {
           return true;
         }
       }
@@ -957,7 +959,10 @@ class ApexServiceActivationTest : public ApexServiceTest {
 
     {
       // Check package is not active.
-      Result<bool> active = IsActive(installer_->package, installer_->version);
+      std::string path = stage_package ? installer_->test_installed_file
+                                       : installer_->test_file;
+      Result<bool> active =
+          IsActive(installer_->package, installer_->version, path);
       ASSERT_TRUE(IsOk(active));
       ASSERT_FALSE(*active);
     }
@@ -1034,7 +1039,8 @@ TEST_F(ApexServiceActivationSuccessTest, Activate) {
 
   {
     // Check package is active.
-    Result<bool> active = IsActive(installer_->package, installer_->version);
+    Result<bool> active = IsActive(installer_->package, installer_->version,
+                                   installer_->test_installed_file);
     ASSERT_TRUE(IsOk(active));
     ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
   }
@@ -1164,7 +1170,8 @@ TEST_F(ApexServiceNoHashtreeApexActivationTest, Activate) {
       << GetDebugStr(installer_.get());
   {
     // Check package is active.
-    Result<bool> active = IsActive(installer_->package, installer_->version);
+    Result<bool> active = IsActive(installer_->package, installer_->version,
+                                   installer_->test_installed_file);
     ASSERT_TRUE(IsOk(active));
     ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
   }
@@ -1192,7 +1199,8 @@ TEST_F(ApexServiceNoHashtreeApexActivationTest,
       << GetDebugStr(installer_.get());
   {
     // Check package is active.
-    Result<bool> active = IsActive(installer_->package, installer_->version);
+    Result<bool> active = IsActive(installer_->package, installer_->version,
+                                   installer_->test_installed_file);
     ASSERT_TRUE(IsOk(active));
     ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
   }
@@ -1594,7 +1602,8 @@ class ApexServicePrePostInstallTest : public ApexServiceTest {
 
     // Ensure that the package is neither active nor mounted.
     for (const InstallerUPtr& installer : installers) {
-      Result<bool> active = IsActive(installer->package, installer->version);
+      Result<bool> active = IsActive(installer->package, installer->version,
+                                     installer->test_file);
       ASSERT_TRUE(IsOk(active));
       EXPECT_FALSE(*active);
     }
