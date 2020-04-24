@@ -226,67 +226,6 @@ cc_library_static {
   },
 }
 
-cc_test {
-  name: "apex_database_test",
-  defaults: ["apex_flags_defaults"],
-  srcs: ["apex_database_test.cpp"],
-  host_supported: true,
-  target: {
-    darwin: {
-      enabled: false,
-    },
-  },
-  shared_libs: ["libbase"],
-  test_suites: ["device-tests"],
-}
-
-cc_test {
-  name: "apex_file_test",
-  defaults: [
-    "apex_flags_defaults",
-    "libapex-deps",
-  ],
-  data: [
-    ":apex.apexd_test",
-    ":apex.apexd_test_no_inst_key",
-    "apexd_testdata/com.android.apex.test_package.avbpubkey",
-  ],
-  srcs: [
-    "apex_file_test.cpp",
-  ],
-  host_supported: true,
-  target: {
-    darwin: {
-      enabled: false,
-    },
-  },
-  static_libs: [
-    "libapex",
-  ],
-  test_suites: ["device-tests"],
-}
-
-cc_test {
-  name: "apex_manifest_test",
-  defaults: [
-    "apex_flags_defaults",
-    "libapex-deps",
-  ],
-  srcs: [
-    "apex_manifest_test.cpp",
-  ],
-  host_supported: true,
-  target: {
-    darwin: {
-      enabled: false,
-    },
-  },
-  static_libs: [
-    "libapex",
-  ],
-  test_suites: ["device-tests"],
-}
-
 genrule {
   // Generates an apex which has a different manifest outside the filesystem
   // image.
@@ -320,12 +259,13 @@ genrule {
 }
 
 cc_test {
-  name: "apexservice_test",
+  name: "ApexTestCases",
   defaults: [
     "apex_flags_defaults",
     "libapex-deps",
     "libapexd-deps"
   ],
+  require_root: true,
   cflags: [
     // Otherwise libgmock won't compile.
     "-Wno-used-but-marked-unused",
@@ -350,8 +290,15 @@ cc_test {
     ":com.android.apex.cts.shim.v2_additional_folder_prebuilt",
     ":com.android.apex.cts.shim.v2_with_pre_install_hook_prebuilt",
     ":com.android.apex.cts.shim.v2_with_post_install_hook_prebuilt",
+    "apexd_testdata/com.android.apex.test_package.avbpubkey",
   ],
-  srcs: ["apexservice_test.cpp"],
+  srcs: [
+    "apex_database_test.cpp",
+    "apex_file_test.cpp",
+    "apex_manifest_test.cpp",
+    "apexd_verity_test.cpp",
+    "apexservice_test.cpp",
+  ],
   host_supported: false,
   compile_multilib: "first",
   static_libs: [
@@ -366,7 +313,7 @@ cc_test {
     "libutils",
   ],
   test_suites: ["device-tests"],
-  test_config: "apexservice_test_config.xml",
+  test_config: "AndroidTest.xml",
 }
 
 cc_test {
@@ -387,34 +334,3 @@ cc_test {
   test_config: "flattened_apex_test_config.xml",
 }
 
-cc_test {
-  name: "apexd_verity_test",
-  defaults: [
-    "apex_flags_defaults",
-    "libapex-deps",
-    "libapexd-deps"
-  ],
-  cflags: [
-    // Otherwise libgmock won't compile.
-    "-Wno-used-but-marked-unused",
-  ],
-  data: [
-    ":apex.apexd_test_no_hashtree",
-    ":apex.apexd_test_no_hashtree_2",
-  ],
-  srcs: ["apexd_verity_test.cpp"],
-  host_supported: false,
-  compile_multilib: "first",
-  static_libs: [
-    "apex_aidl_interface-cpp",
-    "libapex",
-    "libapexd",
-    "libgmock",
-  ],
-  shared_libs: [
-    "libbinder",
-    "libutils",
-  ],
-  test_suites: ["device-tests"],
-  test_config: "apexd_verity_test_config.xml",
-}
