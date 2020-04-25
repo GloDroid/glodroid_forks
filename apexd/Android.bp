@@ -219,11 +219,6 @@ cc_library_static {
   export_header_lib_headers: [
     "libutils_headers",
   ],
-  product_variables: {
-    debuggable: {
-      cflags: ["-DDEBUG_ALLOW_BUNDLED_KEY"],
-    },
-  },
 }
 
 genrule {
