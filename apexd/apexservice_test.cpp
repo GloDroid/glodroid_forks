@@ -2654,6 +2654,31 @@ TEST_F(ApexServiceTest, SubmitStagedSessionCorruptApexFails) {
   ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)));
 }
 
+TEST_F(ApexServiceTest, SubmitStagedSessionCorruptApexFails_b146895998) {
+  PrepareTestApexForInstall installer(GetTestFile("corrupted_b146895998.apex"),
+                                      "/data/app-staging/session_71",
+                                      "staging_data_file");
+
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+
+  ApexInfoList list;
+  ApexSessionParams params;
+  params.sessionId = 71;
+  ASSERT_FALSE(IsOk(service_->submitStagedSession(params, &list)));
+}
+
+TEST_F(ApexServiceTest, StageCorruptApexFails_b146895998) {
+  PrepareTestApexForInstall installer(GetTestFile("corrupted_b146895998.apex"));
+
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+
+  ASSERT_FALSE(IsOk(service_->stagePackages({installer.test_file})));
+}
+
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {
   void OnTestStart(const ::testing::TestInfo& test_info) override {
 #ifdef __ANDROID__
