@@ -51,11 +51,6 @@ namespace {
 
 constexpr const char* kImageFilename = "apex_payload.img";
 constexpr const char* kBundledPublicKeyFilename = "apex_pubkey";
-#ifdef DEBUG_ALLOW_BUNDLED_KEY
-constexpr const bool kDebugAllowBundledKey = true;
-#else
-constexpr const bool kDebugAllowBundledKey = false;
-#endif
 
 }  // namespace
 
@@ -256,15 +251,6 @@ Result<void> verifyVbMetaSignature(const ApexFile& apex, const uint8_t* data,
     if (!CompareKeys(pk, pk_len, *public_key)) {
       return Error() << "Error verifying " << apex.GetPath() << ": "
                      << "public key doesn't match the pre-installed one";
-    }
-  } else if (kDebugAllowBundledKey) {
-    // Failing to find the matching public key in the built-in partitions
-    // is a hard error for non-debuggable build. For debuggable builds,
-    // the public key bundled in the APEX itself is used as a fallback.
-    LOG(WARNING) << "Verifying " << apex.GetPath() << " with the bundled key";
-    if (!CompareKeys(pk, pk_len, apex.GetBundledPublicKey())) {
-      return Error() << "Error verifying " << apex.GetPath() << ": "
-                     << "public key doesn't match the one bundled in the APEX";
     }
   } else {
     return public_key.error();
