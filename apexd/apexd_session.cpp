@@ -172,11 +172,8 @@ std::string ApexSession::GetBuildFingerprint() const {
 bool ApexSession::IsFinalized() const {
   switch (GetState()) {
     case SessionState::SUCCESS:
-      [[fallthrough]];
     case SessionState::ACTIVATION_FAILED:
-      [[fallthrough]];
     case SessionState::REVERTED:
-      [[fallthrough]];
     case SessionState::REVERT_FAILED:
       return true;
     default:
