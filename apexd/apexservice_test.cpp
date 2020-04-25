@@ -136,12 +136,14 @@ class ApexServiceTest : public ::testing::Test {
 
   static bool IsSelinuxEnforced() { return 0 != security_getenforce(); }
 
-  Result<bool> IsActive(const std::string& name, int64_t version) {
+  Result<bool> IsActive(const std::string& name, int64_t version,
+                        const std::string& path) {
     std::vector<ApexInfo> list;
     android::binder::Status status = service_->getActivePackages(&list);
     if (status.isOk()) {
       for (const ApexInfo& p : list) {
-        if (p.moduleName == name && p.versionCode == version) {
+        if (p.moduleName == name && p.versionCode == version &&
+            p.modulePath == path) {
           return true;
         }
       }
@@ -598,13 +600,7 @@ TEST_F(ApexServiceTest, StageFailAccess) {
   EXPECT_NE(std::string::npos, error.find("I/O error")) << error;
 }
 
-// TODO(jiyong): re-enable this test. This test is disabled because the build
-// system now always bundles the public key that was used to sign the APEX.
-// In debuggable build, the bundled public key is used as the last fallback.
-// As a result, the verification is always successful (and thus test fails).
-// In order to re-enable this test, we have to manually create an APEX
-// where public key is not bundled.
-TEST_F(ApexServiceTest, DISABLED_StageFailKey) {
+TEST_F(ApexServiceTest, StageFailKey) {
   PrepareTestApexForInstall installer(
       GetTestFile("apex.apexd_test_no_inst_key.apex"));
   if (!installer.Prepare()) {
@@ -619,21 +615,8 @@ TEST_F(ApexServiceTest, DISABLED_StageFailKey) {
   // May contain one of two errors.
   std::string error = st.exceptionMessage().c_str();
 
-  constexpr const char* kExpectedError1 = "Failed to get realpath of ";
-  const size_t pos1 = error.find(kExpectedError1);
-  constexpr const char* kExpectedError2 =
-      "/etc/security/apex/com.android.apex.test_package.no_inst_key";
-  const size_t pos2 = error.find(kExpectedError2);
-
-  constexpr const char* kExpectedError3 =
-      "Error verifying "
-      "/data/app-staging/apexservice_tmp/apex.apexd_test_no_inst_key.apex: "
-      "couldn't verify public key: Failed to compare the bundled public key "
-      "with key";
-  const size_t pos3 = error.find(kExpectedError3);
-
-  const size_t npos = std::string::npos;
-  EXPECT_TRUE((pos1 != npos && pos2 != npos) || pos3 != npos) << error;
+  ASSERT_THAT(error, HasSubstr("No preinstalled data found for package "
+                               "com.android.apex.test_package.no_inst_key"));
 }
 
 TEST_F(ApexServiceTest, StageSuccess) {
@@ -957,7 +940,10 @@ class ApexServiceActivationTest : public ApexServiceTest {
 
     {
       // Check package is not active.
-      Result<bool> active = IsActive(installer_->package, installer_->version);
+      std::string path = stage_package ? installer_->test_installed_file
+                                       : installer_->test_file;
+      Result<bool> active =
+          IsActive(installer_->package, installer_->version, path);
       ASSERT_TRUE(IsOk(active));
       ASSERT_FALSE(*active);
     }
@@ -1034,7 +1020,8 @@ TEST_F(ApexServiceActivationSuccessTest, Activate) {
 
   {
     // Check package is active.
-    Result<bool> active = IsActive(installer_->package, installer_->version);
+    Result<bool> active = IsActive(installer_->package, installer_->version,
+                                   installer_->test_installed_file);
     ASSERT_TRUE(IsOk(active));
     ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
   }
@@ -1164,7 +1151,8 @@ TEST_F(ApexServiceNoHashtreeApexActivationTest, Activate) {
       << GetDebugStr(installer_.get());
   {
     // Check package is active.
-    Result<bool> active = IsActive(installer_->package, installer_->version);
+    Result<bool> active = IsActive(installer_->package, installer_->version,
+                                   installer_->test_installed_file);
     ASSERT_TRUE(IsOk(active));
     ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
   }
@@ -1192,7 +1180,8 @@ TEST_F(ApexServiceNoHashtreeApexActivationTest,
       << GetDebugStr(installer_.get());
   {
     // Check package is active.
-    Result<bool> active = IsActive(installer_->package, installer_->version);
+    Result<bool> active = IsActive(installer_->package, installer_->version,
+                                   installer_->test_installed_file);
     ASSERT_TRUE(IsOk(active));
     ASSERT_TRUE(*active) << Join(GetActivePackagesStrings(), ',');
   }
@@ -1594,7 +1583,8 @@ class ApexServicePrePostInstallTest : public ApexServiceTest {
 
     // Ensure that the package is neither active nor mounted.
     for (const InstallerUPtr& installer : installers) {
-      Result<bool> active = IsActive(installer->package, installer->version);
+      Result<bool> active = IsActive(installer->package, installer->version,
+                                     installer->test_file);
       ASSERT_TRUE(IsOk(active));
       EXPECT_FALSE(*active);
     }
