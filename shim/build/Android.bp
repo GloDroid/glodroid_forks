@@ -449,3 +449,14 @@ apex {
   apps: ["CtsShimTargetPSdk"],
   installable: false,
 }
+
+// Apex shim with unsigned apk
+genrule {
+  name: "com.android.apex.cts.shim.v2_unsigned_apk_container",
+  srcs: [":com.android.apex.cts.shim.v2"],
+  out: ["com.android.apex.cts.shim.v2_unsigned_apk_container.apex"],
+  cmd: "cp -v $(in) $(out) && zip -d $(out) META-INF*",
+  dist: {
+    targets: ["apps_only"],
+  }
+}
