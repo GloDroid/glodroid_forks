@@ -165,6 +165,11 @@ def ParseArgs(argv):
       help="""Outputs the unsigned payload image/zip only. Also, setting this flag implies 
                                     --payload_only is set too."""
   )
+  parser.add_argument(
+      '--unsigned_payload',
+      action='store_true',
+      help="""Skip signing the apex payload. Used only for testing purposes."""
+  )
   return parser.parse_args(argv)
 
 
@@ -291,9 +296,10 @@ def ValidateArgs(args):
 
   if args.unsigned_payload_only:
     args.payload_only = True;
+    args.unsigned_payload = True;
 
   if args.payload_type == 'image':
-    if not args.key and not args.unsigned_payload_only:
+    if not args.key and not args.unsigned_payload:
       print('Missing --key {keyfile} argument!')
       return False
 
@@ -462,7 +468,7 @@ def CreateApex(args, work_dir):
     copyfile(args.manifest_json, os.path.join(manifests_dir, 'apex_manifest.json'))
 
   if args.payload_type == 'image':
-    if args.do_not_check_keyname or args.unsigned_payload_only:
+    if args.do_not_check_keyname or args.unsigned_payload:
       key_name = manifest_apex.name
     else:
       key_name = os.path.basename(os.path.splitext(args.key)[0])
@@ -535,39 +541,40 @@ def CreateApex(args, work_dir):
         print('Created (unsigned payload only) ' + args.output)
       return True
 
-    cmd = ['avbtool']
-    cmd.append('add_hashtree_footer')
-    cmd.append('--do_not_generate_fec')
-    cmd.extend(['--algorithm', 'SHA256_RSA4096'])
-    cmd.extend(['--key', args.key])
-    cmd.extend(['--prop', 'apex.key:' + key_name])
-    # Set up the salt based on manifest content which includes name
-    # and version
-    salt = hashlib.sha256(manifest_apex.SerializeToString()).hexdigest()
-    cmd.extend(['--salt', salt])
-    cmd.extend(['--image', img_file])
-    if args.no_hashtree:
-      cmd.append('--no_hashtree')
-    if args.signing_args:
-      cmd.extend(shlex.split(args.signing_args))
-    RunCommand(cmd, args.verbose)
+    if not args.unsigned_payload:
+      cmd = ['avbtool']
+      cmd.append('add_hashtree_footer')
+      cmd.append('--do_not_generate_fec')
+      cmd.extend(['--algorithm', 'SHA256_RSA4096'])
+      cmd.extend(['--key', args.key])
+      cmd.extend(['--prop', 'apex.key:' + key_name])
+      # Set up the salt based on manifest content which includes name
+      # and version
+      salt = hashlib.sha256(manifest_apex.SerializeToString()).hexdigest()
+      cmd.extend(['--salt', salt])
+      cmd.extend(['--image', img_file])
+      if args.no_hashtree:
+        cmd.append('--no_hashtree')
+      if args.signing_args:
+        cmd.extend(shlex.split(args.signing_args))
+      RunCommand(cmd, args.verbose)
 
-    # Get the minimum size of the partition required.
-    # TODO(b/113320014) eliminate this step
-    info, _ = RunCommand(['avbtool', 'info_image', '--image', img_file],
-                         args.verbose)
-    vbmeta_offset = int(re.search('VBMeta\ offset:\ *([0-9]+)', info).group(1))
-    vbmeta_size = int(re.search('VBMeta\ size:\ *([0-9]+)', info).group(1))
-    partition_size = RoundUp(vbmeta_offset + vbmeta_size,
-                             BLOCK_SIZE) + BLOCK_SIZE
+      # Get the minimum size of the partition required.
+      # TODO(b/113320014) eliminate this step
+      info, _ = RunCommand(['avbtool', 'info_image', '--image', img_file],
+                           args.verbose)
+      vbmeta_offset = int(re.search('VBMeta\ offset:\ *([0-9]+)', info).group(1))
+      vbmeta_size = int(re.search('VBMeta\ size:\ *([0-9]+)', info).group(1))
+      partition_size = RoundUp(vbmeta_offset + vbmeta_size,
+                               BLOCK_SIZE) + BLOCK_SIZE
 
-    # Resize to the minimum size
-    # TODO(b/113320014) eliminate this step
-    cmd = ['avbtool']
-    cmd.append('resize_image')
-    cmd.extend(['--image', img_file])
-    cmd.extend(['--partition_size', str(partition_size)])
-    RunCommand(cmd, args.verbose)
+      # Resize to the minimum size
+      # TODO(b/113320014) eliminate this step
+      cmd = ['avbtool']
+      cmd.append('resize_image')
+      cmd.extend(['--image', img_file])
+      cmd.extend(['--partition_size', str(partition_size)])
+      RunCommand(cmd, args.verbose)
   else:
     img_file = os.path.join(content_dir, 'apex_payload.zip')
     cmd = ['soong_zip']
