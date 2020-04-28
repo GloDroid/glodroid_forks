@@ -85,6 +85,19 @@ apex {
   test_only_no_hashtree: true,
 }
 
+apex {
+  name: "com.android.apex.cts.shim.v2_unsigned_payload",
+  manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifest.xml",
+  file_contexts: ":apex.test-file_contexts",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_of_dev_null"],
+  apps: ["CtsShim", "CtsShimPriv"],
+  installable: false,
+  whitelisted_files: "default_shim_whitelist.txt",
+  test_only_unsigned_payload: true,
+}
+
 override_apex {
     name: "com.android.apex.cts.shim.v2_different_package_name",
     package_name: "com.android.apex.cts.shim.different",
