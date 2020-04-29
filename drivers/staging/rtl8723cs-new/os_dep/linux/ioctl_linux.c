@@ -9669,6 +9669,7 @@ exit:
 	return err;
 }
 
+#ifdef CONFIG_MP_INCLUDED
 static int rtw_mp_efuse_set(struct net_device *dev,
 			    struct iw_request_info *info,
 			    union iwreq_data *wdata, char *extra)
@@ -10360,8 +10361,6 @@ exit:
 
 	return err;
 }
-
-#ifdef CONFIG_MP_INCLUDED
 
 #ifdef CONFIG_RTW_CUSTOMER_STR
 static int rtw_mp_customer_str(
@@ -12818,7 +12817,7 @@ static iw_handler rtw_private_handler[] = {
 	rtw_wx_priv_null,				/* 0x17 */
 	rtw_rereg_nd_name,				/* 0x18 */
 	rtw_wx_priv_null,				/* 0x19 */
-#ifdef CONFIG_MP_INCLUDED
+#ifndef CONFIG_MP_INCLUDED
 	rtw_wx_priv_null,				/* 0x1A */
 	rtw_wx_priv_null,				/* 0x1B */
 #else

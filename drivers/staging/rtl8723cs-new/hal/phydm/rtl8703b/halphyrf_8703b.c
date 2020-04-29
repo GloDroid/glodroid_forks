@@ -246,11 +246,15 @@ odm_tx_pwr_track_set_pwr_8703b(
 		tx_rate = (u8) p_mgnt_info->ForcedDataRate;
 #endif
 #elif (DM_ODM_SUPPORT_TYPE & (ODM_CE))
+#ifdef CONFIG_MP_INCLUDED
 	if (p_dm_odm->mp_mode == true) {	/*CE MP*/
 		PMPT_CONTEXT		p_mpt_ctx = &(adapter->mppriv.mpt_ctx);
 
 		tx_rate = mpt_to_mgnt_rate(p_mpt_ctx->mpt_rate_index);
 	} else {	/*CE normal*/
+#else
+        if (1) {
+#endif
 		u16	rate	 = *(p_dm_odm->p_forced_data_rate);
 
 		if (!rate) {	/*auto rate*/
@@ -483,6 +487,7 @@ get_delta_swing_table_8703b(
 	u8			channel		 = *p_dm_odm->p_channel;
 
 
+#ifdef CONFIG_MP_INCLUDED
 	if (p_dm_odm->mp_mode == true) {
 #if (DM_ODM_SUPPORT_TYPE & (ODM_WIN | ODM_CE))
 #if (DM_ODM_SUPPORT_TYPE & ODM_WIN)
@@ -498,6 +503,9 @@ get_delta_swing_table_8703b(
 #endif
 #endif
 	} else {
+#else
+	if (1) {
+#endif
 		u16	rate	 = *(p_dm_odm->p_forced_data_rate);
 
 		if (!rate) { /*auto rate*/
@@ -1970,6 +1978,7 @@ phy_iq_calibrate_8703b(
 	}
 	/*Check & wait if BT is doing IQK*/
 
+#ifdef CONFIG_MP_INCLUDED
 	if (p_dm_odm->mp_mode == false) {
 #if MP_DRIVER != 1
 		/* Set H2C cmd to inform FW (enable). */
@@ -1997,6 +2006,7 @@ phy_iq_calibrate_8703b(
 		}
 #endif
 	}
+#endif
 
 	/* IQK start!!!!!!!!!! */
 
@@ -2136,6 +2146,7 @@ phy_iq_calibrate_8703b(
 	/* fill IQK register */
 	odm_set_iqc_by_rfpath_8703b(p_dm_odm);
 
+#ifdef CONFIG_MP_INCLUDED
 	if (p_dm_odm->mp_mode == false) {
 #if MP_DRIVER != 1
 		/* Set H2C cmd to inform FW (disable). */
@@ -2155,6 +2166,7 @@ phy_iq_calibrate_8703b(
 
 #endif
 	}
+#endif
 
 	odm_acquire_spin_lock(p_dm_odm, RT_IQK_SPINLOCK);
 	p_dm_odm->rf_calibrate_info.is_iqk_in_progress = false;

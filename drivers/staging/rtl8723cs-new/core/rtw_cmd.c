@@ -3865,6 +3865,8 @@ exit:
 	return res;
 }
 
+#ifdef CONFIG_MP_INCLUDED
+
 static s32 rtw_mp_cmd_hdl(_adapter *padapter, u8 mp_cmd_id)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
@@ -4010,6 +4012,7 @@ u8 rtw_mp_cmd(_adapter *adapter, u8 mp_cmd_id, u8 flags)
 exit:
 	return res;
 }
+#endif
 
 #ifdef CONFIG_RTW_CUSTOMER_STR
 static s32 rtw_customer_str_cmd_hdl(_adapter *adapter, u8 write, const u8 *cstr)
@@ -4612,9 +4615,11 @@ u8 rtw_drvextra_cmd_hdl(_adapter *padapter, unsigned char *pbuf)
 	case TEST_H2C_CID:
 		rtw_hal_fill_h2c_cmd(padapter, pdrvextra_cmd->pbuf[0], pdrvextra_cmd->size - 1, &pdrvextra_cmd->pbuf[1]);
 		break;
+#ifdef CONFIG_MP_INCLUDED
 	case MP_CMD_WK_CID:
 		ret = rtw_mp_cmd_hdl(padapter, pdrvextra_cmd->type);
 		break;
+#endif
 #ifdef CONFIG_RTW_CUSTOMER_STR
 	case CUSTOMER_STR_WK_CID:
 		ret = rtw_customer_str_cmd_hdl(padapter, pdrvextra_cmd->type, pdrvextra_cmd->pbuf);
