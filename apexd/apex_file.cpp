@@ -280,6 +280,11 @@ Result<const AvbHashtreeDescriptor*> findDescriptor(uint8_t* vbmeta_data,
       continue;
     }
 
+    // Check that hashtree descriptor actually fits into memory.
+    const uint8_t* vbmeta_end = vbmeta_data + vbmeta_size;
+    if ((uint8_t*)descriptors[i] + sizeof(AvbHashtreeDescriptor) > vbmeta_end) {
+      return Errorf("Invalid length for AvbHashtreeDescriptor");
+    }
     return (const AvbHashtreeDescriptor*)descriptors[i];
   }
 
