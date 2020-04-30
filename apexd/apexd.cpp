@@ -1829,57 +1829,6 @@ Result<void> remountApexFile(const std::string& path) {
   return {};
 }
 
-Result<void> monitorBuiltinDirs() {
-  int fd = inotify_init1(IN_CLOEXEC);
-  if (fd == -1) {
-    return ErrnoErrorf("inotify_init failed");
-  }
-  std::map<int, std::string> desc_to_dir;
-  for (const auto& dir : kApexPackageBuiltinDirs) {
-    int desc = inotify_add_watch(fd, dir.c_str(), IN_CREATE | IN_MODIFY);
-    if (desc == -1 && errno != ENOENT) {
-      // don't complain about missing directories like /product/apex
-      return ErrnoErrorf("failed to add watch on {}", dir);
-    }
-    desc_to_dir.emplace(desc, dir);
-  }
-  std::thread th([fd, desc_to_dir]() -> void {
-    constexpr int num_events = 100;
-    constexpr size_t average_path_length = 50;
-    char buffer[num_events *
-                (sizeof(struct inotify_event) + average_path_length)];
-    while (true) {
-      ssize_t length = read(fd, buffer, sizeof(buffer));
-      if (length < 0) {
-        PLOG(ERROR) << "failed to read inotify event: " << strerror(errno);
-        continue;
-      }
-      int i = 0;
-      while (i < length) {
-        struct inotify_event* e = (struct inotify_event*)&buffer[i];
-        if (e->len > 0 && (e->mask & (IN_CREATE | IN_MODIFY)) != 0) {
-          if (desc_to_dir.find(e->wd) == desc_to_dir.end()) {
-            LOG(ERROR) << "unexpected watch descriptor " << e->wd
-                       << " for name: " << e->name;
-          } else {
-            std::string path = desc_to_dir.at(e->wd) + "/" + e->name;
-            auto ret = remountApexFile(path);
-            if (!ret.ok()) {
-              LOG(ERROR) << ret.error().message();
-            } else {
-              LOG(INFO) << path << " remounted because it was changed";
-            }
-          }
-        }
-        i += sizeof(struct inotify_event) + e->len;
-      }
-    }
-  });
-  th.detach();
-
-  return {};
-}
-
 void initialize(CheckpointInterface* checkpoint_service) {
   if (checkpoint_service != nullptr) {
     gVoldService = checkpoint_service;
@@ -1993,13 +1942,6 @@ void onStart() {
 
   // Now that APEXes are mounted, snapshot or restore DE_sys data.
   snapshotOrRestoreDeSysData();
-
-  if (android::base::GetBoolProperty("ro.debuggable", false)) {
-    status = monitorBuiltinDirs();
-    if (!status.ok()) {
-      LOG(ERROR) << "cannot monitor built-in dirs: " << status.error();
-    }
-  }
 }
 
 void onAllPackagesActivated() {
