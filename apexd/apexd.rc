@@ -3,12 +3,10 @@ service apexd /system/bin/apexd
     class core
     user root
     group system
-    critical
     oneshot
     disabled # does not start with the core class
 
 service apexd-bootstrap /system/bin/apexd --bootstrap
-    critical
     user root
     group system
     oneshot
