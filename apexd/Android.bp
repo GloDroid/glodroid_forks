@@ -306,6 +306,7 @@ cc_test {
   ],
   shared_libs: [
     "libbinder",
+    "libfs_mgr",
     "libutils",
   ],
   test_suites: ["device-tests"],
