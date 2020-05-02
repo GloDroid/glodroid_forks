@@ -66,6 +66,7 @@ LOCAL_STATIC_LIBRARIES += \
 	libpanfrost_midgard \
 	libpanfrost_shared \
 	libpanfrost_util \
+	libmesa_broadcom_common \
 
 ifeq ($(USE_LIBBACKTRACE),true)
 	LOCAL_SHARED_LIBRARIES += libbacktrace

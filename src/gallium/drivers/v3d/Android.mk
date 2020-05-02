@@ -63,7 +63,6 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libbroadcom-v33 \
 	libbroadcom-v41 \
-	libmesa_broadcom_common \
 	libmesa_broadcom_compiler \
 	libmesa_broadcom_cle \
 	libmesa_broadcom_genxml \
