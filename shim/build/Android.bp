@@ -73,6 +73,17 @@ apex {
 }
 
 apex {
+  name: "com.android.apex.cts.shim.v2_without_apk_in_apex",
+  manifest: "manifest_v2.json",
+  androidManifest: "AndroidManifest.xml",
+  file_contexts: ":apex.test-file_contexts",
+  key: "com.android.apex.cts.shim.key",
+  prebuilts: ["hash_of_dev_null"],
+  installable: false,
+  whitelisted_files: "default_shim_whitelist.txt",
+}
+
+apex {
   name: "com.android.apex.cts.shim.v2_no_hashtree",
   manifest: "manifest_v2.json",
   androidManifest: "AndroidManifest.xml",
@@ -188,6 +199,7 @@ genrule {
   name: "generate_hash_v1",
   srcs: [
     ":com.android.apex.cts.shim.v2",
+    ":com.android.apex.cts.shim.v2_without_apk_in_apex",
     ":com.android.apex.cts.shim.v2_additional_file",
     ":com.android.apex.cts.shim.v2_additional_folder",
     ":com.android.apex.cts.shim.v2_different_certificate",
