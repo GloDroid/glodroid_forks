@@ -645,6 +645,12 @@ void sunxi_board_init(void)
 {
 	int power_failed = 0;
 
+#ifdef CONFIG_PINEPHONE_LEDS
+	/* PD18:G PD19:R PD20:B */
+	gpio_request(SUNXI_GPD(19), "led:red");
+	gpio_direction_output(SUNXI_GPD(19), 1);
+#endif
+
 #ifdef CONFIG_SY8106A_POWER
 	power_failed = sy8106a_set_vout1(CONFIG_SY8106A_VOUT1_VOLT);
 #endif
