@@ -34,6 +34,7 @@
 #include <unordered_map>
 #include <utility>
 
+using android::base::ConsumeSuffix;
 using android::base::ParseInt;
 using android::base::ReadFileToString;
 using android::base::Result;
@@ -168,6 +169,25 @@ Result<void> PopulateLoopInfo(const BlockDevice& top_device,
   return {};
 }
 
+// This is not the right place to do this normalization, but proper solution
+// will require some refactoring first. :(
+// TODO(ioffe): introduce MountedApexDataBuilder and delegate all
+//  building/normalization logic to it.
+void NormalizeIfDeleted(MountedApexData* apex_data) {
+  std::string_view full_path = apex_data->full_path;
+  if (ConsumeSuffix(&full_path, "(deleted)")) {
+    apex_data->deleted = true;
+    auto it = full_path.rbegin();
+    while (it != full_path.rend() && isspace(*it)) {
+      it++;
+    }
+    full_path.remove_suffix(it - full_path.rbegin());
+  } else {
+    apex_data->deleted = false;
+  }
+  apex_data->full_path = full_path;
+}
+
 Result<MountedApexData> resolveMountInfo(const BlockDevice& block,
                                          const std::string& mountPoint) {
   // Now, see if it is dm-verity or loop mounted
@@ -177,9 +197,11 @@ Result<MountedApexData> resolveMountInfo(const BlockDevice& block,
       if (!backingFile.ok()) {
         return backingFile.error();
       }
-      return MountedApexData(block.DevPath(), *backingFile, mountPoint,
-                             /* device_name= */ "",
-                             /* hashtree_loop_name= */ "");
+      auto result = MountedApexData(block.DevPath(), *backingFile, mountPoint,
+                                    /* device_name= */ "",
+                                    /* hashtree_loop_name= */ "");
+      NormalizeIfDeleted(&result);
+      return result;
     }
     case DeviceMapperDevice: {
       auto name = block.GetProperty("dm/name");
@@ -192,6 +214,7 @@ Result<MountedApexData> resolveMountInfo(const BlockDevice& block,
       if (auto status = PopulateLoopInfo(block, &result); !status.ok()) {
         return status.error();
       }
+      NormalizeIfDeleted(&result);
       return result;
     }
     case UnknownDevice: {
@@ -254,7 +277,9 @@ void MountedApexDatabase::PopulateFromMounts() {
       activeVersions[package] = version;
       SetLatest(package, mountData->full_path);
     }
-    LOG(INFO) << "Found " << mountPoint;
+    LOG(INFO) << "Found " << mountPoint << " backed by"
+              << (mountData->deleted ? " deleted " : " ") << "file "
+              << mountData->full_path;
   }
 
   LOG(INFO) << mounted_apexes_.size() << " packages restored.";

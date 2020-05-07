@@ -38,6 +38,8 @@ class MountedApexDatabase {
     // Name of the loop device backing up hashtree or empty string in case
     // hashtree is embedded inside an APEX.
     std::string hashtree_loop_name;
+    // Whenever apex file specified in full_path was deleted.
+    bool deleted;
 
     MountedApexData() {}
     MountedApexData(const std::string& loop_name, const std::string& full_path,
