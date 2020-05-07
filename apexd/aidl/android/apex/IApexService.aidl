@@ -95,4 +95,24 @@ interface IApexService {
     * functional on user builds.
     */
    void resumeRevertIfNeeded();
+   /**
+    * Forces apexd to remount all active packages.
+    *
+    * This call is mostly useful for speeding up development of APEXes.
+    * Instead of going through a full APEX installation that requires a reboot,
+    * developers can incorporate this method in much faster `adb sync` based
+    * workflow:
+    *
+    * 1. adb shell stop
+    * 2. adb sync
+    * 3. adb shell cmd -w apexservice remountPackages
+    * 4. adb shell start
+    *
+    * Note, that for an APEX package will be successfully remounted only if
+    * there are no alive processes holding a reference to it.
+    *
+    * Not meant for use outside of testing. This call will not be functional
+    * on user builds. Only root is allowed to call this method.
+    */
+   void remountPackages();
 }

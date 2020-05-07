@@ -40,6 +40,7 @@
 #include <android-base/strings.h>
 #include <android/os/IVold.h>
 #include <binder/IServiceManager.h>
+#include <fs_mgr_overlayfs.h>
 #include <fstab/fstab.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -135,6 +136,21 @@ class ApexServiceTest : public ::testing::Test {
   static bool HaveSelinux() { return 1 == is_selinux_enabled(); }
 
   static bool IsSelinuxEnforced() { return 0 != security_getenforce(); }
+
+  Result<bool> IsActive(const std::string& name) {
+    std::vector<ApexInfo> list;
+    android::binder::Status status = service_->getActivePackages(&list);
+    if (!status.isOk()) {
+      return Error() << "Failed to check if " << name
+                     << " is active : " << status.exceptionMessage().c_str();
+    }
+    for (const ApexInfo& apex : list) {
+      if (apex.moduleName == name) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   Result<bool> IsActive(const std::string& name, int64_t version,
                         const std::string& path) {
@@ -550,6 +566,16 @@ std::vector<std::string> ListSlavesOfDmDevice(const std::string& name) {
     EXPECT_TRUE(IsOk(st));
   }
   return slaves;
+}
+
+Result<void> CopyFile(const std::string& from, const std::string& to,
+                      const fs::copy_options& options) {
+  std::error_code ec;
+  if (!fs::copy_file(from, to, options)) {
+    return Error() << "Failed to copy file " << from << " to " << to << " : "
+                   << ec.message();
+  }
+  return {};
 }
 
 }  // namespace
@@ -2677,6 +2703,80 @@ TEST_F(ApexServiceTest, StageCorruptApexFails_b146895998) {
   }
 
   ASSERT_FALSE(IsOk(service_->stagePackages({installer.test_file})));
+}
+
+TEST_F(ApexServiceTest, RemountPackagesPackageOnSystemChanged) {
+  static constexpr const char* kSystemPath =
+      "/system_ext/apex/apex.apexd_test.apex";
+  static constexpr const char* kPackageName = "com.android.apex.test_package";
+  if (!fs_mgr_overlayfs_is_setup()) {
+    GTEST_SKIP() << "/system_ext is not overlayed into read-write";
+  }
+  if (auto res = IsActive(kPackageName); !res.ok()) {
+    FAIL() << res.error();
+  } else {
+    ASSERT_FALSE(*res) << kPackageName << " is active";
+  }
+  ASSERT_EQ(0, access(kSystemPath, F_OK))
+      << "Failed to stat " << kSystemPath << " : " << strerror(errno);
+  ASSERT_TRUE(IsOk(service_->activatePackage(kSystemPath)));
+  std::string backup_path = GetTestFile("apex.apexd_test.apexd.bak");
+  // Copy original /system_ext apex file. We will need to restore it after test
+  // runs.
+  ASSERT_RESULT_OK(CopyFile(kSystemPath, backup_path, fs::copy_options::none));
+
+  // Make sure we cleanup after ourselves.
+  auto deleter = android::base::make_scope_guard([&]() {
+    if (auto ret = service_->deactivatePackage(kSystemPath); !ret.isOk()) {
+      LOG(ERROR) << ret.exceptionMessage();
+    }
+    auto ret = CopyFile(backup_path, kSystemPath,
+                        fs::copy_options::overwrite_existing);
+    if (!ret.ok()) {
+      LOG(ERROR) << ret.error();
+    }
+  });
+
+  // Copy v2 version to /system_ext/apex/ and then call remountPackages.
+  PrepareTestApexForInstall installer(GetTestFile("apex.apexd_test_v2.apex"));
+  if (!installer.Prepare()) {
+    FAIL() << GetDebugStr(&installer);
+  }
+  ASSERT_RESULT_OK(CopyFile(installer.test_file, kSystemPath,
+                            fs::copy_options::overwrite_existing));
+  // Don't check that remountPackages succeeded. Most likely it will fail, but
+  // it should still remount our test apex.
+  service_->remountPackages();
+
+  // Check that v2 is now active.
+  auto active_apex = GetActivePackage("com.android.apex.test_package");
+  ASSERT_RESULT_OK(active_apex);
+  ASSERT_EQ(2u, active_apex->versionCode);
+  // Sanity check that module path didn't change.
+  ASSERT_EQ(kSystemPath, active_apex->modulePath);
+}
+
+TEST_F(ApexServiceActivationSuccessTest, RemountPackagesPackageOnDataChanged) {
+  ASSERT_TRUE(IsOk(service_->activatePackage(installer_->test_installed_file)))
+      << GetDebugStr(installer_.get());
+  // Copy v2 version to /data/apex/active and then call remountPackages.
+  PrepareTestApexForInstall installer2(GetTestFile("apex.apexd_test_v2.apex"));
+  if (!installer2.Prepare()) {
+    FAIL() << GetDebugStr(&installer2);
+  }
+  ASSERT_RESULT_OK(CopyFile(installer2.test_file,
+                            installer_->test_installed_file,
+                            fs::copy_options::overwrite_existing));
+  // Don't check that remountPackages succeeded. Most likely it will fail, but
+  // it should still remount our test apex.
+  service_->remountPackages();
+
+  // Check that v2 is now active.
+  auto active_apex = GetActivePackage("com.android.apex.test_package");
+  ASSERT_RESULT_OK(active_apex);
+  ASSERT_EQ(2u, active_apex->versionCode);
+  // Sanity check that module path didn't change.
+  ASSERT_EQ(installer_->test_installed_file, active_apex->modulePath);
 }
 
 class LogTestToLogcat : public ::testing::EmptyTestEventListener {

@@ -114,6 +114,10 @@ int snapshotOrRestoreDeUserData();
 
 int unmountAll();
 
+// Optimistically tries to remount as many APEX packages as possible.
+// For more documentation see corresponding binder call in IApexService.aidl.
+android::base::Result<void> remountPackages();
+
 }  // namespace apex
 }  // namespace android
 
