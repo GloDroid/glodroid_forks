@@ -94,6 +94,37 @@ int __weak fastboot_set_reboot_flag(void)
 }
 
 /**
+ * fastboot_set_flag() - Set flag to indicate reboot-recovery
+ *
+ * Set flag which indicates that we should reboot into the recovery
+ * following the reboot that fastboot executes after this function.
+ */
+int fastboot_set_flag(const char *command)
+{
+#if CONFIG_IS_ENABLED(CMD_BCB)
+	char cmd[32];
+
+	snprintf(cmd, sizeof(cmd), "bcb load %d misc",
+		 CONFIG_FASTBOOT_FLASH_MMC_DEV);
+
+	if (run_command(cmd, 0))
+		return -ENODEV;
+
+	snprintf(cmd, sizeof(cmd), "bcb set command %s", command);
+
+	if (run_command(cmd, 0))
+		return -ENOEXEC;
+
+	if (run_command("bcb store", 0))
+		return -EIO;
+
+	return 0;
+#else
+	return -ENOSYS;
+#endif
+}
+
+/**
  * fastboot_get_progress_callback() - Return progress callback
  *
  * Return: Pointer to function called during long operations

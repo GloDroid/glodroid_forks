@@ -32,6 +32,8 @@ enum {
 	FASTBOOT_COMMAND_CONTINUE,
 	FASTBOOT_COMMAND_REBOOT,
 	FASTBOOT_COMMAND_REBOOT_BOOTLOADER,
+	FASTBOOT_COMMAND_REBOOT_FASTBOOTD,
+	FASTBOOT_COMMAND_REBOOT_RECOVERY,
 	FASTBOOT_COMMAND_SET_ACTIVE,
 #if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_FORMAT)
 	FASTBOOT_COMMAND_OEM_FORMAT,
@@ -78,6 +80,13 @@ void fastboot_okay(const char *reason, char *response);
  * requires in order to re-enter the bootloader.
  */
 int fastboot_set_reboot_flag(void);
+
+/**
+ * fastboot_set_flag() - Set flag to indicate reboot-fastboot
+ *
+ * Set flag which indicates that system should reboot into specified mode.
+ */
+int fastboot_set_flag(const char *command);
 
 /**
  * fastboot_set_progress_callback() - set progress callback
