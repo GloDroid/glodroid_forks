@@ -546,6 +546,7 @@ def CreateApex(args, work_dir):
       cmd.append('add_hashtree_footer')
       cmd.append('--do_not_generate_fec')
       cmd.extend(['--algorithm', 'SHA256_RSA4096'])
+      cmd.extend(['--hash_algorithm', 'sha256'])
       cmd.extend(['--key', args.key])
       cmd.extend(['--prop', 'apex.key:' + key_name])
       # Set up the salt based on manifest content which includes name
