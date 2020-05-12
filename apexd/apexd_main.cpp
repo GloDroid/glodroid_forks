@@ -69,6 +69,20 @@ int HandleSubcommand(char** argv) {
   return 1;
 }
 
+void InstallSigtermSignalHandler() {
+  struct sigaction action = {};
+  action.sa_handler = [](int /*signal*/) {
+    // Handle SIGTERM gracefully.
+    // By default, when SIGTERM is received a process will exit with non-zero
+    // exit code, which will trigger reboot_on_failure handler if one is
+    // defined. This doesn't play well with userspace reboot which might
+    // terminate apexd with SIGTERM if apexd was running at the moment of
+    // userspace reboot, hence this custom handler to exit gracefully.
+    _exit(0);
+  };
+  sigaction(SIGTERM, &action, nullptr);
+}
+
 }  // namespace
 
 int main(int /*argc*/, char** argv) {
@@ -76,13 +90,14 @@ int main(int /*argc*/, char** argv) {
   // TODO: add a -v flag or an external setting to change LogSeverity.
   android::base::SetMinimumLogSeverity(android::base::VERBOSE);
 
+  InstallSigtermSignalHandler();
+
   const bool has_subcommand = argv[1] != nullptr;
   if (!android::sysprop::ApexProperties::updatable().value_or(false)) {
     LOG(INFO) << "This device does not support updatable APEX. Exiting";
     if (!has_subcommand) {
       // mark apexd as activated so that init can proceed
       android::apex::onAllPackagesActivated();
-      android::base::SetProperty("ctl.stop", "apexd");
     } else if (strcmp("--snapshotde", argv[1]) == 0) {
       // mark apexd as ready
       android::apex::onAllPackagesReady();
