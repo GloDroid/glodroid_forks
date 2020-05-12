@@ -178,7 +178,6 @@ cc_defaults {
     "libbase",
     "libcrypto",
     "libcutils",
-    "libjsoncpp",
     "libprotobuf-cpp-full",
     "libziparchive",
   ],
