@@ -1,3 +1,5 @@
+#define DEBUG 1
+
 /*
  * Allwinner sun4i USB PHY driver
  *
