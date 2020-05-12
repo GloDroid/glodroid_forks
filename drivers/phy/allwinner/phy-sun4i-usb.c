@@ -1,3 +1,5 @@
+#define DEBUG 1
+
 /*
  * Allwinner sun4i USB PHY driver
  *
@@ -282,7 +284,8 @@ static int sun4i_usb_phy_init(struct phy *phy)
 		return ret;
 	}
 
-	if (data->cfg->type == sun8i_a83t_phy) {
+	if (data->cfg->type == sun8i_a83t_phy ||
+	    data->cfg->type == sun50i_h6_phy) {
 		if (phy->id == 0) {
 			val = readl(data->base + data->cfg->phyctl_offset);
 			val |= PHY_CTL_VBUSVLDEXT;
@@ -324,7 +327,8 @@ static int sun4i_usb_phy_exit(struct phy *phy)
 	int ret;
 
 	if (phy->id == 0) {
-		if (data->cfg->type == sun8i_a83t_phy) {
+		if (data->cfg->type == sun8i_a83t_phy ||
+		    data->cfg->type == sun50i_h6_phy) {
 			void __iomem *phyctl = data->base +
 				data->cfg->phyctl_offset;
 
