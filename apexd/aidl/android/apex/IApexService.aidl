@@ -42,7 +42,7 @@ interface IApexService {
 
    /**
     * Restores the snapshot of the CE apex data directory for the given user and
-    * apex.
+    * apex. Note the snapshot will be deleted after restoration succeeded.
     */
    void restoreCeData(int user_id, int rollback_id, in @utf8InCpp String apex_name);
 
