@@ -452,6 +452,8 @@ static int stk3310_init(struct iio_dev *indio_dev)
 	if (ret < 0)
 		return ret;
 
+	dev_err(&client->dev, "chip id: 0x%x\n", chipid);
+
 	if (chipid != STK3310_CHIP_ID_VAL &&
 	    chipid != STK3311_CHIP_ID_VAL &&
 	    chipid != STK3311X_CHIP_ID_VAL &&
