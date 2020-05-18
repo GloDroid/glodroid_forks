@@ -1021,4 +1021,11 @@ config FIXUP_BDADDR
 	  The used address is "bdaddr" if set, and "ethaddr" with the LSB
 	  flipped elsewise.
 
+config PINEPHONE_DT_SELECTION
+	bool "Enable PinePhone device tree selection code"
+	depends on MACH_SUN50I
+	help
+	  Enable this option to automatically select the device tree for the
+	  correct PinePhone hardware revision during boot.
+
 endif
