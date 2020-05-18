@@ -1176,8 +1176,7 @@ Result<void> ActivateApexPackages(const std::vector<ApexFile>& apexes) {
 }
 
 bool ShouldActivateApexOnData(const ApexFile& apex) {
-  return HasPreInstalledVersion(apex.GetManifest().name()) &&
-         !apex.HasOnlyJsonManifest();
+  return HasPreInstalledVersion(apex.GetManifest().name());
 }
 
 }  // namespace
