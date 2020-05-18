@@ -86,6 +86,7 @@ using ::testing::Contains;
 using ::testing::EndsWith;
 using ::testing::HasSubstr;
 using ::testing::Not;
+using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 using ::testing::UnorderedElementsAreArray;
 
@@ -1401,7 +1402,7 @@ TEST_F(ApexServiceTest, NoPackagesAreBothActiveAndInactive) {
       activePackagesStrings.begin(), activePackagesStrings.end(),
       inactivePackagesStrings.begin(), inactivePackagesStrings.end(),
       std::back_inserter(intersection));
-  ASSERT_EQ(intersection.size(), 0UL);
+  ASSERT_THAT(intersection, SizeIs(0));
 }
 
 TEST_F(ApexServiceTest, GetAllPackages) {
