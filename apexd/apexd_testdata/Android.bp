@@ -67,6 +67,33 @@ apex {
     installable: false,
 }
 
+apex {
+    name: "apex.apexd_test_v2_legacy",
+    manifest: "manifest_v2.json",
+    file_contexts: ":apex.test-file_contexts",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.key",
+    installable: false,
+    min_sdk_version: "29", // add apex_manifest.json as well
+}
+
+genrule {
+  name: "apex.apexd_test_v2_no_pb",
+  srcs: [":apex.apexd_test_v2_legacy"],
+  out: ["apex.apexd_test_v2_no_pb.apex"],
+  tools: ["zip2zip"],
+  cmd: "$(location zip2zip) -i $(in) -x apex_manifest.pb -o $(out)", // remove apex_manifest.pb
+}
+
+apex {
+    name: "apex.apexd_test_v3",
+    manifest: "manifest_v3.json",
+    file_contexts: ":apex.test-file_contexts",
+    prebuilts: ["sample_prebuilt_file"],
+    key: "com.android.apex.test_package.key",
+    installable: false,
+}
+
 apex_key {
     name: "com.android.apex.test_package.preinstall.key",
     public_key: "com.android.apex.test_package.preinstall.avbpubkey",
