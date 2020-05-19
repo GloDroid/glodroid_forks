@@ -36,6 +36,16 @@
       <option name="push" value="apex.apexd_test_postinstall.apex->/system_ext/apex/apex.apexd_test_postinstall.apex" />
       <option name="push" value="apex.apexd_test_preinstall.apex->/system_ext/apex/apex.apexd_test_preinstall.apex" />
     </target_preparer>
+
+    <!-- system_server might still hold a reference to apexservice. This means that apexd is still
+         running, and test apexes pushed in the PushFilePreparer above are not yet scanned.
+         One way to solve this is to reboot a device, but that would significantly increase
+         execution of this test module. Instead, force a GC in system_server by sending kill -10. -->
+    <target_preparer class="com.android.tradefed.targetprep.RunCommandTargetPreparer">
+      <option name="run-command" value="shell kill -10 $(pidof system_server)" />
+      <option name="teardown-command" value="shell kill -10 $(pidof system_server)" />
+    </target_preparer>
+
     <test class="com.android.tradefed.testtype.GTest" >
         <!-- Note: despite how these lines read, the test will run nicely separated out
                    of a subfolder. -->
