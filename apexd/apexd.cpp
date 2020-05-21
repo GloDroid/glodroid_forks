@@ -1827,7 +1827,7 @@ Result<void> remountApexFile(const std::string& path) {
   return activatePackage(path);
 }
 
-void initialize(CheckpointInterface* checkpoint_service) {
+void initializeVold(CheckpointInterface* checkpoint_service) {
   if (checkpoint_service != nullptr) {
     gVoldService = checkpoint_service;
     Result<bool> supports_fs_checkpoints =
@@ -1848,7 +1848,10 @@ void initialize(CheckpointInterface* checkpoint_service) {
       }
     }
   }
+}
 
+void initialize(CheckpointInterface* checkpoint_service) {
+  initializeVold(checkpoint_service);
   Result<void> status = collectPreinstalledData(kApexPackageBuiltinDirs);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to collect APEX keys : " << status.error();

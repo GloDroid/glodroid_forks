@@ -54,6 +54,17 @@ int HandleSubcommand(char** argv) {
 
   if (strcmp("--snapshotde", argv[1]) == 0) {
     LOG(INFO) << "Snapshot DE subcommand detected";
+    // Need to know if checkpointing is enabled so that a prerestore snapshot
+    // can be taken if it's not.
+    android::base::Result<android::apex::VoldCheckpointInterface>
+        vold_service_st = android::apex::VoldCheckpointInterface::Create();
+    if (!vold_service_st.ok()) {
+      LOG(ERROR) << "Could not retrieve vold service: "
+                 << vold_service_st.error();
+    } else {
+      android::apex::initializeVold(&*vold_service_st);
+    }
+
     int result = android::apex::snapshotOrRestoreDeUserData();
 
     if (result == 0) {
