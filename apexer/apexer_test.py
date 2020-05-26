@@ -287,6 +287,7 @@ class ApexerRebuildTest(unittest.TestCase):
         cmd.append('add_hashtree_footer')
         cmd.append('--do_not_generate_fec')
         cmd.extend(['--algorithm', 'SHA256_RSA4096'])
+        cmd.extend(['--hash_algorithm', 'sha256'])
         cmd.extend(['--key', os.path.join(get_current_dir(), TEST_PRIVATE_KEY)])
         manifest_apex = ValidateApexManifest(container_files["apex_manifest.pb"])
         cmd.extend(['--prop', 'apex.key:' + manifest_apex.name])
