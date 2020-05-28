@@ -26,7 +26,6 @@ import android.platform.test.annotations.RequiresDevice;
 import com.android.tests.util.ModuleTestUtils;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
-import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
@@ -37,8 +36,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -48,7 +47,7 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
 
     private static final String OPTION_APEX_FILE_NAME = "apex_file_name";
 
-    private static final Duration WAIT_FOR_BOOT_COMPLETE_TIMEOUT = Duration.ofMinutes(2);
+    private static final Duration BOOT_COMPLETE_TIMEOUT = Duration.ofMinutes(2);
 
     private static final String USERSPACE_REBOOT_SUPPORTED_PROP =
             "init.userspace_reboot.is_supported";
@@ -67,65 +66,79 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
     public void setUp() throws Exception {
         assumeTrue("Updating APEX is not supported", mUtils.isApexUpdateSupported());
         mUtils.abandonActiveStagedSession();
-        uninstallApex();
+        uninstallAllApexes();
     }
 
-    /**
-     * Check if Apex package can be staged, activated and uninstalled successfully.
-     */
+    @After
+    public void tearDown() throws Exception {
+        assumeTrue("Updating APEX is not supported", mUtils.isApexUpdateSupported());
+        mUtils.abandonActiveStagedSession();
+        uninstallAllApexes();
+    }
+
+    protected List<String> getAllApexFilenames() {
+        return List.of(mApexFileName);
+    }
+
     @Test
     public final void testStageActivateUninstallApexPackage()  throws Exception {
         stageActivateUninstallApexPackage(false/*userspaceReboot*/);
-        additionalCheck();
     }
 
-    /**
-     * Check if Apex package can be staged, activated and uninstalled successfully with
-     * userspace reboot.
-     */
     @Test
     @RequiresDevice // TODO(b/147726967): Remove when Userspace reboot works on cuttlefish
     public final void testStageActivateUninstallApexPackageWithUserspaceReboot()  throws Exception {
         assumeTrue("Userspace reboot not supported on the device",
                 getDevice().getBooleanProperty(USERSPACE_REBOOT_SUPPORTED_PROP, false));
         stageActivateUninstallApexPackage(true/*userspaceReboot*/);
+    }
+
+    private void stageActivateUninstallApexPackage(boolean userspaceReboot)  throws Exception {
+        ApexInfo apex = installApex(mApexFileName);
+
+        reboot(userspaceReboot); // for install to take affect
+        Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
+        assertWithMessage("Failed to activate %s", apex).that(activatedApexes).contains(apex);
+
         additionalCheck();
     }
 
+    private void uninstallAllApexes() throws Exception {
+        for (String filename : getAllApexFilenames()) {
+            ApexInfo apex = mUtils.getApexInfo(mUtils.getTestFile(filename));
+            uninstallApex(apex.name);
+        }
+    }
 
-    private void stageActivateUninstallApexPackage(boolean userspaceReboot)  throws Exception {
-        File testAppFile = mUtils.getTestFile(mApexFileName);
-        CLog.i("Found test apex file: " + testAppFile.getAbsoluteFile());
+    protected final ApexInfo installApex(String filename) throws Exception {
+        File testAppFile = mUtils.getTestFile(filename);
 
-        // Install apex package
         String installResult = getDevice().installPackage(testAppFile, false, "--wait");
-        Assert.assertNull(
-                String.format("failed to install test app %s. Reason: %s",
-                        mApexFileName, installResult),
-                installResult);
+        assertWithMessage("failed to install test app %s. Reason: %s", filename, installResult)
+                .that(installResult).isNull();
 
         ApexInfo testApexInfo = mUtils.getApexInfo(testAppFile);
         Assert.assertNotNull(testApexInfo);
+        return testApexInfo;
+    }
 
-        // for install to take affect
+    protected final void reboot(boolean userspaceReboot) throws Exception {
         if (userspaceReboot) {
-            rebootUserspace();
+            assertThat(getDevice().setProperty("test.userspace_reboot.requested", "1")).isTrue();
+            getDevice().rebootUserspace();
         } else {
             getDevice().reboot();
         }
-        assertWithMessage("Device didn't boot in %s", WAIT_FOR_BOOT_COMPLETE_TIMEOUT).that(
-                getDevice().waitForBootComplete(
-                        WAIT_FOR_BOOT_COMPLETE_TIMEOUT.toMillis())).isTrue();
+        boolean success = getDevice().waitForBootComplete(BOOT_COMPLETE_TIMEOUT.toMillis());
+        assertWithMessage("Device didn't boot in %s", BOOT_COMPLETE_TIMEOUT).that(success).isTrue();
         if (userspaceReboot) {
-            assertUserspaceRebootSucceed();
+            // If userspace reboot fails and fallback to hard reboot is triggered then
+            // test.userspace_reboot.requested won't be set.
+            boolean res = getDevice().getBooleanProperty("test.userspace_reboot.requested", false);
+            String message = "Userspace reboot failed, fallback to full reboot was triggered. ";
+            message += "Boot reason: " + getDevice().getProperty("sys.boot.reason.last");
+            assertWithMessage(message).that(res).isTrue();
         }
-        Set<ApexInfo> activatedApexes = getDevice().getActiveApexes();
-        Assert.assertTrue(
-                String.format("Failed to activate %s %s",
-                        testApexInfo.name, testApexInfo.versionCode),
-                activatedApexes.contains(testApexInfo));
-
-        additionalCheck();
     }
 
     /**
@@ -133,39 +146,15 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
      */
     public void additionalCheck() throws Exception {};
 
-    @After
-    public void tearDown() throws Exception {
-        assumeTrue("Updating APEX is not supported", mUtils.isApexUpdateSupported());
-        mUtils.abandonActiveStagedSession();
-        uninstallApex();
-    }
-
-    private void uninstallApex() throws DeviceNotAvailableException, IOException {
-        ApexInfo apex = mUtils.getApexInfo(mUtils.getTestFile(mApexFileName));
-        String uninstallResult = getDevice().uninstallPackage(apex.name);
-        if (uninstallResult != null) {
+    protected final void uninstallApex(String apexName) throws Exception {
+        String res = getDevice().uninstallPackage(apexName);
+        if (res != null) {
             // Uninstall failed. Most likely this means that there were no apex installed. No need
             // to reboot.
-            CLog.w("Failed to uninstall apex " + apex.name + " : " + uninstallResult);
+            CLog.i("Uninstall of %s failed: %s, likely already on factory version", apexName, res);
         } else {
             // Uninstall succeeded. Need to reboot.
             getDevice().reboot(); // for the uninstall to take affect
         }
-    }
-
-    private void rebootUserspace() throws Exception {
-        assertThat(getDevice().setProperty("test.userspace_reboot.requested", "1")).isTrue();
-        getDevice().rebootUserspace();
-    }
-
-    private void assertUserspaceRebootSucceed() throws Exception {
-        // If userspace reboot fails and fallback to hard reboot is triggered then
-        // test.userspace_reboot.requested won't be set.
-        final String bootReason = getDevice().getProperty("sys.boot.reason.last");
-        final boolean result = getDevice().getBooleanProperty("test.userspace_reboot.requested",
-                false);
-        assertWithMessage(
-                "Userspace reboot failed and fallback to full reboot was triggered. Boot reason: "
-                        + "%s", bootReason).that(result).isTrue();
     }
 }
