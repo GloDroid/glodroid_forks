@@ -381,6 +381,7 @@
 
 &cdn_dp {
 	status = "okay";
+	extcon = <&fusb0>;
 };
 
 &cpu_b0 {
@@ -715,6 +716,9 @@
 				<PDO_FIXED(5000, 1400, PDO_FIXED_USB_COMM)>;
 			try-power-role = "sink";
 
+			extcon-cables = <1 2 5 6 9 10 12 44>;
+			typec-altmodes = <0xff01 1 0x001c0000 1>;
+
 			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
@@ -982,6 +986,7 @@
 };
 
 &tcphy0 {
+	extcon = <&fusb0>;
 	status = "okay";
 };
 
