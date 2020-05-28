@@ -1217,6 +1217,7 @@ Result<void> snapshotDataDirectory(const std::string& base_dir,
 /**
  * Restores snapshot from base_dir/apexrollback/<rollback id>/<apex name>
  * to base_dir/apexdata/<apex name>.
+ * Note the snapshot will be deleted after restoration succeeded.
  */
 Result<void> restoreDataDirectory(const std::string& base_dir,
                                   const int rollback_id,
@@ -1227,11 +1228,19 @@ Result<void> restoreDataDirectory(const std::string& base_dir,
       pre_restore ? kPreRestoreSuffix : "", apex_name.c_str());
   auto to_path = StringPrintf("%s/%s/%s", base_dir.c_str(), kApexDataSubDir,
                               apex_name.c_str());
-  const Result<void> result = ReplaceFiles(from_path, to_path);
-  if (!result) {
+  Result<void> result = ReplaceFiles(from_path, to_path);
+  if (!result.ok()) {
     return result;
   }
-  return RestoreconPath(to_path);
+  result = RestoreconPath(to_path);
+  if (!result.ok()) {
+    return result;
+  }
+  result = DeleteDir(from_path);
+  if (!result.ok()) {
+    LOG(ERROR) << "Failed to delete the snapshot: " << result.error();
+  }
+  return {};
 }
 
 void snapshotOrRestoreDeIfNeeded(const std::string& base_dir,
@@ -1402,12 +1411,6 @@ void restorePreRestoreSnapshotsIfPresent(const std::string& base_dir,
         LOG(ERROR) << "Restore of pre-restore snapshot failed for " << apex_name
                    << ": " << result.error();
       }
-    }
-
-    Result<void> result = DeleteDir(pre_restore_snapshot_path);
-    if (!result) {
-      LOG(ERROR) << "Deletion of pre-restore snapshot failed: "
-                 << result.error();
     }
   }
 }
