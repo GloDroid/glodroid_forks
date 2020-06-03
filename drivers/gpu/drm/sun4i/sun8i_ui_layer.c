@@ -101,6 +101,11 @@ static void sun8i_ui_layer_enable(struct sun8i_mixer *mixer, int channel,
 
 		DRM_DEBUG_DRIVER("  enable pipe %d <- ch %d\n", zpos, channel);
 	}
+
+	unsigned  tmp;
+	regmap_read(mixer->engine.regs,
+			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR(ch_base, overlay), &tmp);
+	DRM_DEBUG_DRIVER("  post-en-dis %08x\n", tmp);
 }
 
 static int sun8i_ui_layer_update_coord(struct sun8i_mixer *mixer, int channel,
@@ -218,10 +223,19 @@ static int sun8i_ui_layer_update_formats(struct sun8i_mixer *mixer, int channel,
 		return -EINVAL;
 	}
 
+	unsigned tmp;
+	regmap_read(mixer->engine.regs,
+			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR(ch_base, overlay), &tmp);
+	DRM_DEBUG_DRIVER("  pre-format %08x\n", tmp);
+
 	val = hw_fmt << SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_OFFSET;
 	regmap_update_bits(mixer->engine.regs,
 			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR(ch_base, overlay),
 			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR_FBFMT_MASK, val);
+
+	regmap_read(mixer->engine.regs,
+			   SUN8I_MIXER_CHAN_UI_LAYER_ATTR(ch_base, overlay), &tmp);
+	DRM_DEBUG_DRIVER("  post-format %08x\n", tmp);
 
 	return 0;
 }
