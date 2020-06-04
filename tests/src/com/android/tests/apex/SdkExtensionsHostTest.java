@@ -34,7 +34,7 @@ import java.io.IOException;
  * Test to check if Apex can be staged, activated and uninstalled successfully.
  */
 @RunWith(DeviceJUnit4ClassRunner.class)
-public class ApiExtensionsHostTest extends ApexE2EBaseHostTest {
+public class SdkExtensionsHostTest extends ApexE2EBaseHostTest {
 
     @Test
     public void testDefault() throws Exception {

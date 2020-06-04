@@ -150,7 +150,7 @@ java_test_host {
 
 java_test_host {
     name: "sdkextensions_e2e_tests",
-    srcs:  ["src/**/ApiExtensionsHostTest.java"],
+    srcs:  ["src/**/SdkExtensionsHostTest.java"],
     libs: ["tradefed"],
     static_libs: ["apex_e2e_base_test"],
     data: [
