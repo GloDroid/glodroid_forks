@@ -149,18 +149,6 @@ java_test_host {
 }
 
 java_test_host {
-    name: "sdkextensions_e2e_tests",
-    srcs:  ["src/**/SdkExtensionsHostTest.java"],
-    libs: ["tradefed"],
-    static_libs: ["apex_e2e_base_test"],
-    data: [
-        ":test_com.android.sdkext",
-    ],
-    test_config: "sdkextensions-e2e-tests.xml",
-    test_suites: ["device-tests"],
-}
-
-java_test_host {
     name: "wifi_e2e_tests",
     srcs:  ["src/**/WifiHostTest.java"],
     defaults: ["apex_e2e_test_defaults"],
