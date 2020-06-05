@@ -122,6 +122,18 @@ public abstract class ApexE2EBaseHostTest extends BaseHostJUnit4Test {
         return testApexInfo;
     }
 
+    protected final void installApexes(String... filenames) throws Exception {
+        // We don't use the installApex method from the super class here, because that won't install
+        // the two apexes into the same session.
+        String[] args = new String[filenames.length + 1];
+        args[0] = "install-multi-package";
+        for (int i = 0; i < filenames.length; i++) {
+            args[i + 1] = mUtils.getTestFile(filenames[i]).getAbsolutePath();
+        }
+        String stdout = getDevice().executeAdbCommand(args);
+        assertThat(stdout).isNotNull();
+    }
+
     protected final void reboot(boolean userspaceReboot) throws Exception {
         if (userspaceReboot) {
             assertThat(getDevice().setProperty("test.userspace_reboot.requested", "1")).isTrue();
