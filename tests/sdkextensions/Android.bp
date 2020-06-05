@@ -18,8 +18,17 @@ java_test_host {
     libs: ["tradefed"],
     static_libs: ["apex_e2e_base_test"],
     data: [
+        ":sdkextensions_e2e_test_app",
+        ":test_com.android.media",
         ":test_com.android.sdkext",
     ],
     test_config: "sdkextensions-e2e-tests.xml",
     test_suites: ["device-tests"],
+}
+
+android_app {
+    name: "sdkextensions_e2e_test_app",
+    srcs: ["app-src/**/*.java"],
+    libs: ["test_framework-sdkextensions-stubs"],
+    sdk_version: "system_current",
 }
