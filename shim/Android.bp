@@ -17,7 +17,7 @@
 
 prebuilt_apex {
   name: "com.android.apex.cts.shim.v1_prebuilt",
-  overrides: ["com.android.apex.cts.shim.v1"],
+  overrides: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
   arch: {
     arm: {
       src: "prebuilts/arm/com.android.apex.cts.shim.v1.apex",
