@@ -327,6 +327,7 @@ static int part_test_efi(struct blk_desc *dev_desc)
 	return 0;
 }
 
+#ifndef CONFIG_EFI_PARTITION_PRESERVE_PROTECTIVE_MBR
 /**
  * set_protective_mbr(): Set the EFI protective MBR
  * @param dev_desc - block device descriptor
@@ -367,6 +368,7 @@ static int set_protective_mbr(struct blk_desc *dev_desc)
 
 	return 0;
 }
+#endif
 
 int write_gpt_table(struct blk_desc *dev_desc,
 		gpt_header *gpt_h, gpt_entry *gpt_e)
@@ -376,9 +378,11 @@ int write_gpt_table(struct blk_desc *dev_desc,
 	u32 calc_crc32;
 
 	debug("max lba: %x\n", (u32) dev_desc->lba);
+#ifndef CONFIG_EFI_PARTITION_PRESERVE_PROTECTIVE_MBR
 	/* Setup the Protective MBR */
 	if (set_protective_mbr(dev_desc) < 0)
 		goto err;
+#endif
 
 	/* Generate CRC for the Primary GPT Header */
 	calc_crc32 = efi_crc32((const unsigned char *)gpt_e,
