@@ -1,7 +1,7 @@
 #!/bin/bash
 
 usage () {
-  echo "Usage: $0 apex_whitelist_file apex_contents_file"
+  echo "Usage: $0 apex_allowed_list_file apex_contents_file"
 }
 
 if [[ $# -ne 2 ]]; then

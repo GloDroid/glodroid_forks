@@ -12,7 +12,7 @@ A cts shim apex has following restrictions:
 *   First version (i.e. `com.android.apex.cts.shim.apex`) should be
     pre-installed on the /system/partition.
 *   `apex_payload.img` of the pre-installed shim apexcontains a single text
-    file called `hash.txt` with a whitelist of SHA512 hashes of versions shim
+    file called `hash.txt` with a list of allowed SHA512 hashes of versions shim
     apex can be upgraded to.
 *   `apex_payload.img` of all other versions contains SHA512 hash of
     `/dev/null`.
