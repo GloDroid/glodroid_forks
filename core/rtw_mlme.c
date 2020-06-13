@@ -1354,9 +1354,9 @@ _func_enter_;
 			pnetwork_t =
 				rtw_find_same_network(&pmlmepriv->scanned_queue,
 						      pnetwork_s);
-			bssid_ex_t = &(pnetwork_t->network);
 
-			if (bssid_ex_s != NULL && bssid_ex_t != NULL) {
+			if (bssid_ex_s != NULL && pnetwork_t != NULL) {
+				bssid_ex_t = &(pnetwork_t->network);
 				cur_ch = bssid_ex_s->Configuration.DSConfig;
 				ch = bssid_ex_t->Configuration.DSConfig;
 				if (cur_ch != ch) {
