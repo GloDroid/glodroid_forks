@@ -1372,7 +1372,7 @@ dri2_from_fds(__DRIscreen *screen, int width, int height, int fourcc,
               void *loaderPrivate)
 {
    return dri2_create_image_from_fd(screen, width, height, fourcc,
-                                   DRM_FORMAT_MOD_INVALID, fds, num_fds,
+                                   DRM_FORMAT_MOD_LINEAR, fds, num_fds,
                                    strides, offsets, NULL, loaderPrivate);
 }
 
@@ -1444,7 +1444,7 @@ dri2_from_dma_bufs(__DRIscreen *screen,
    __DRIimage *img;
 
    img = dri2_create_image_from_fd(screen, width, height, fourcc,
-                                   DRM_FORMAT_MOD_INVALID, fds, num_fds,
+                                   DRM_FORMAT_MOD_LINEAR, fds, num_fds,
                                    strides, offsets, error, loaderPrivate);
    if (img == NULL)
       return NULL;
