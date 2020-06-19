@@ -133,3 +133,23 @@
 &usbphy {
 	usb3_vbus-supply = <&reg_usb3_vbus>;
 };
+
+&ehci0 {
+	status = "okay";
+};
+
+&reg_usb0_vbus {
+	gpio = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
+	status = "okay";
+};
+
+&usb_otg {
+	status = "okay";
+	dr_mode = "otg";
+};
+
+&usbphy {
+	usb0_id_det-gpios = <&pio 6 12 GPIO_ACTIVE_HIGH>; /* PG12 */
+	usb0_vbus-supply = <&reg_usb0_vbus>;
+	status = "okay";
+};
