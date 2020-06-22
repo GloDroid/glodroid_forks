@@ -4,7 +4,7 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= loopback_test.c
 LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE := gb_loopback_test
+LOCAL_MODULE := gb_loopback_test_gd_broadcom
 
 include $(BUILD_EXECUTABLE)
 
