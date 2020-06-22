@@ -33,6 +33,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of_irq.h>
+#include <linux/power_supply.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/pd.h>
 #include <linux/usb/role.h>
@@ -163,6 +164,8 @@ struct anx7688 {
         struct i2c_client *client;
         struct i2c_client *client_tcpc;
         struct regulator_bulk_data supplies[ANX7688_NUM_SUPPLIES];
+	struct power_supply *vbus_in_supply;
+	struct notifier_block vbus_in_nb;
         struct gpio_desc *gpio_enable;
         struct gpio_desc *gpio_reset;
         struct gpio_desc *gpio_cabledet;
@@ -186,6 +189,7 @@ struct anx7688 {
 	int last_status;
 	int last_cc_status;
 	int last_dp_state;
+	int last_bc_result;
 };
 
 static int anx7688_reg_read(struct anx7688 *anx7688, u8 reg_addr)
@@ -531,7 +535,11 @@ err_poweroff:
 
 static void anx7688_disconnect(struct anx7688 *anx7688)
 {
-        dev_dbg(anx7688->dev, "cable removed\n");
+	union power_supply_propval val = {0,};
+	struct device *dev = anx7688->dev;
+	int ret;
+
+        dev_dbg(dev, "cable removed\n");
 
 	if (anx7688->vconn_on) {
 		regulator_disable(anx7688->supplies[ANX7688_VCONN_INDEX].consumer);
@@ -554,6 +562,31 @@ static void anx7688_disconnect(struct anx7688 *anx7688)
         typec_set_data_role(anx7688->port, TYPEC_DEVICE);
 
 	usb_role_switch_set_role(anx7688->role_sw, USB_ROLE_NONE);
+
+	val.intval = 500 * 1000;
+	dev_dbg(dev, "setting vbus_in current limit to %d mA\n", val.intval);
+	ret = power_supply_set_property(anx7688->vbus_in_supply,
+					POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
+					&val);
+	if (ret)
+		dev_err(dev, "failed to set vbus_in current to %d mA\n",
+			val.intval / 1000);
+
+	val.intval = 0;
+	dev_dbg(dev, "disabling vbus_in power path\n");
+	ret = power_supply_set_property(anx7688->vbus_in_supply,
+					POWER_SUPPLY_PROP_ONLINE,
+					&val);
+	if (ret)
+		dev_err(dev, "failed to offline vbus_in\n");
+
+	val.intval = 1;
+	dev_dbg(dev, "enabling USB BC 1.2 detection\n");
+	ret = power_supply_set_property(anx7688->vbus_in_supply,
+					POWER_SUPPLY_PROP_USB_BC_ENABLED,
+					&val);
+	if (ret)
+		dev_err(dev, "failed to enabled USB BC1.2 detection\n");
 
 	clear_bit(ANX7688_F_CONNECTED, anx7688->flags);
 }
@@ -688,12 +721,95 @@ static int anx7688_cc_status(unsigned v)
 	}
 }
 
+static int anx7688_update_cc_status(struct anx7688 *anx7688, int cc_status)
+{
+        struct device *dev = anx7688->dev;
+	union power_supply_propval val = {0,};
+	int cc1, cc2, cc = -1, ret;
+	int current_limit = 0;
+
+	cc1 = anx7688_cc_status(cc_status & 0xf);
+	cc2 = anx7688_cc_status((cc_status >> 4) & 0xf);
+	if (cc1 >= 0) {
+		cc = cc1;
+	} else if (cc2 >= 0) {
+		cc = cc2;
+	}
+
+	if (cc < 0)
+		return 0;
+
+	if (cc == TYPEC_PWR_MODE_1_5A)
+		current_limit = 1500 * 1000;
+	else if (cc == TYPEC_PWR_MODE_3_0A)
+		current_limit = 3000 * 1000;
+
+	if (current_limit) {
+		/*
+		 * Disable BC1.2 detection, because we'll be setting
+		 * a current limit determined by USB-PD
+		 */
+		val.intval = 0;
+		dev_dbg(dev, "disabling USB BC 1.2 detection\n");
+		ret = power_supply_set_property(anx7688->vbus_in_supply,
+						POWER_SUPPLY_PROP_USB_BC_ENABLED,
+						&val);
+		if (ret)
+			dev_err(dev, "failed to disable USB BC1.2 detection\n");
+
+		val.intval = current_limit;
+		dev_dbg(dev, "setting vbus_in current limit to %d mA\n", val.intval);
+		ret = power_supply_set_property(anx7688->vbus_in_supply,
+						POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
+						&val);
+		if (ret)
+			dev_err(dev, "failed to set vbus_in current to %d mA\n",
+				val.intval / 1000);
+	} else {
+		/*
+		 * Use the result of BC1.2 detection performed by PMIC.
+		 */
+		ret = power_supply_get_property(anx7688->vbus_in_supply,
+						POWER_SUPPLY_PROP_USB_BC_ENABLED,
+						&val);
+		if (ret)
+			dev_err(dev, "failed to get USB BC1.2 detection status\n");
+
+		if (ret != 0 || val.intval == 0) {
+			/*
+			 * If BC is disabled or we can't get its status,
+			 * set conservative 500mA limit. Otherwise leave
+			 * the limit to BC1.2.
+			 */
+			val.intval = 500 * 1000;
+			dev_dbg(dev, "setting vbus_in current limit to %d mA\n", val.intval);
+			ret = power_supply_set_property(anx7688->vbus_in_supply,
+							POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
+							&val);
+			if (ret)
+				dev_err(dev, "failed to set vbus_in current to %d mA\n",
+					val.intval / 1000);
+		}
+	}
+
+	/* Turn on VBUS power path inside PMIC. */
+	val.intval = 1;
+	dev_dbg(dev, "enabling vbus_in power path\n");
+	ret = power_supply_set_property(anx7688->vbus_in_supply,
+					POWER_SUPPLY_PROP_ONLINE,
+					&val);
+	if (ret)
+		dev_err(anx7688->dev, "failed to offline vbus_in\n");
+
+	typec_set_pwr_opmode(anx7688->port, cc);
+	return 0;
+}
+
 static int anx7688_update_status(struct anx7688 *anx7688)
 {
         struct device *dev = anx7688->dev;
 	bool vbus_on, vconn_on, dr_dfp;
 	int status, cc_status, dp_state, ret;
-	int cc1, cc2;
 
 	status = anx7688_reg_read(anx7688, ANX7688_REG_STATUS);
 	if (status < 0)
@@ -717,6 +833,8 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 		dev_dbg(dev, "cc_status changed to CC1 = %s CC2 = %s\n",
 			anx7688_cc_status_string(cc_status & 0xf),
 			anx7688_cc_status_string((cc_status >> 4) & 0xf));
+
+		anx7688_update_cc_status(anx7688, cc_status);
 	}
 
 	if (anx7688->last_dp_state == -1 || anx7688->last_dp_state != dp_state) {
@@ -727,13 +845,6 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 	vbus_on = !!(status & ANX7688_VBUS_STATUS);
 	vconn_on = !!(status & ANX7688_VCONN_STATUS);
 	dr_dfp = !!(status & ANX7688_DATA_ROLE_STATUS);
-
-	cc1 = anx7688_cc_status(cc_status & 0xf);
-	cc2 = anx7688_cc_status((cc_status >> 4) & 0xf);
-	if (cc1 >= 0)
-		typec_set_pwr_opmode(anx7688->port, cc1);
-	else if (cc2 >= 0)
-		typec_set_pwr_opmode(anx7688->port, cc2);
 
 	if (anx7688->vbus_on != vbus_on) {
 		if (vbus_on) {
@@ -807,7 +918,7 @@ static irqreturn_t anx7688_irq_status_handler(int irq, void *data)
                 goto out_unlock;
         }
 
-        dev_dbg(dev, "status irq\n");
+        //dev_dbg(dev, "status irq\n");
 
         ext2_status = anx7688_reg_read(anx7688, ANX7688_REG_IRQ_EXT_SOURCE2);
 	dev_dbg(dev, "  ext2 = 0x%02x\n", ext2_status);
@@ -831,12 +942,12 @@ out_unlock:
                 goto out_unlock;
         }
 
-        dev_dbg(dev, "status irq\n");
+        //dev_dbg(dev, "status irq\n");
 
         // clear tcpc interrupt
         tcpc_status = anx7688_tcpc_reg_read(anx7688, ANX7688_TCPC_REG_ALERT0);
         if (tcpc_status > 0) {
-                dev_dbg(dev, "  tcpc = 0x%02x\n", tcpc_status);
+                //dev_dbg(dev, "  tcpc = 0x%02x\n", tcpc_status);
                 anx7688_tcpc_reg_write(anx7688, ANX7688_TCPC_REG_ALERT0, tcpc_status);
         }
 
@@ -845,7 +956,7 @@ out_unlock:
                 soft_status = anx7688_reg_read(anx7688, ANX7688_REG_STATUS_INT);
                 anx7688_reg_write(anx7688, ANX7688_REG_STATUS_INT, 0);
 
-                dev_dbg(dev, "  soft = 0x%02x\n", soft_status);
+                //dev_dbg(dev, "  soft = 0x%02x\n", soft_status);
 
 		if (soft_status > 0) {
 			soft_status &= ANX7688_SOFT_INT_MASK;
@@ -1330,12 +1441,52 @@ static void anx7688_cabledet_timer_fn(struct timer_list *t)
 	mod_timer(t, jiffies + msecs_to_jiffies(1000));
 }
 
+static int anx7688_vbus_in_notify(struct notifier_block *nb,
+				  unsigned long val, void *v)
+{
+	struct anx7688 *anx7688 = container_of(nb, struct anx7688, vbus_in_nb);
+	union power_supply_propval psy_val = {0,};
+	struct device *dev = anx7688->dev;
+	struct power_supply *psy = v;
+	int ret;
+
+	if (val == PSY_EVENT_PROP_CHANGED && psy == anx7688->vbus_in_supply) {
+		ret = power_supply_get_property(anx7688->vbus_in_supply,
+						POWER_SUPPLY_PROP_USB_TYPE,
+						&psy_val);
+		if (ret) {
+			dev_err(dev, "failed to get USB BC1.2 result\n");
+			goto out;
+		}
+
+		if (anx7688->last_bc_result == psy_val.intval)
+			goto out;
+
+		anx7688->last_bc_result = psy_val.intval;
+
+		switch (psy_val.intval) {
+		case POWER_SUPPLY_USB_TYPE_DCP:
+		case POWER_SUPPLY_USB_TYPE_CDP:
+			dev_dbg(dev, "BC 1.2 result: DCP or CDP\n");
+			break;
+		case POWER_SUPPLY_USB_TYPE_SDP:
+		default:
+			dev_dbg(dev, "BC 1.2 result: SDP\n");
+			break;
+		}
+	}
+
+out:
+	return NOTIFY_OK;
+}
+
 static int anx7688_i2c_probe(struct i2c_client *client,
                              const struct i2c_device_id *id)
 {
         struct anx7688 *anx7688;
         struct device *dev = &client->dev;
         struct typec_capability typec_cap = { };
+	union power_supply_propval psy_val;
         int i, vid_h, vid_l;
         int irq_cabledet;
         int ret = 0;
@@ -1356,6 +1507,16 @@ static int anx7688_i2c_probe(struct i2c_client *client,
                                       anx7688->supplies);
         if (ret)
                 return ret;
+
+	anx7688->vbus_in_supply =
+		devm_power_supply_get_by_phandle(dev, "vbus_in-supply");
+	if (IS_ERR(anx7688->vbus_in_supply)) {
+		dev_err(dev, "Couldn't get the VBUS power supply\n");
+		return PTR_ERR(anx7688->vbus_in_supply);
+	}
+
+	if (!anx7688->vbus_in_supply)
+		return -EPROBE_DEFER;
 
         anx7688->gpio_enable = devm_gpiod_get(dev, "enable", GPIOD_OUT_LOW);
         if (IS_ERR(anx7688->gpio_enable)) {
@@ -1461,6 +1622,36 @@ static int anx7688_i2c_probe(struct i2c_client *client,
                 goto err_cport;
         }
 
+	// enable BC1.2 detection in PMIC and set current limit to 500mA until
+	// proper limit is established via BC1.2 or USB-PD
+	psy_val.intval = 1;
+	dev_dbg(dev, "enabling USB BC 1.2 detection\n");
+	ret = power_supply_set_property(anx7688->vbus_in_supply,
+			POWER_SUPPLY_PROP_USB_BC_ENABLED,
+			&psy_val);
+	if (ret) {
+		dev_err(anx7688->dev, "failed to disable BC1.2 detection\n");
+		goto err_cport;
+	}
+
+	psy_val.intval = 500000;
+	dev_dbg(dev, "setting vbus_in current limit to %d mA\n", psy_val.intval);
+	ret = power_supply_set_property(anx7688->vbus_in_supply,
+			POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
+			&psy_val);
+	if (ret) {
+		dev_err(anx7688->dev, "failed to set vbus_in current to %d mA\n",
+			psy_val.intval / 1000);
+		goto err_cport;
+	}
+
+	anx7688->last_bc_result = -1;
+	anx7688->vbus_in_nb.notifier_call = anx7688_vbus_in_notify;
+	anx7688->vbus_in_nb.priority = 0;
+	ret = power_supply_reg_notifier(&anx7688->vbus_in_nb);
+	if (ret)
+		goto err_cport;
+
         anx7688->debug_root = debugfs_create_dir("anx7688", NULL);
         debugfs_create_file("firmware", 0444, anx7688->debug_root, anx7688,
                             &anx7688_firmware_fops);
@@ -1492,6 +1683,8 @@ static int anx7688_i2c_remove(struct i2c_client *client)
         struct anx7688 *anx7688 = i2c_get_clientdata(client);
 
 	mutex_lock(&anx7688->lock);
+
+	power_supply_unreg_notifier(&anx7688->vbus_in_nb);
 
 	del_timer_sync(&anx7688->work_timer);
         cancel_delayed_work_sync(&anx7688->work);
