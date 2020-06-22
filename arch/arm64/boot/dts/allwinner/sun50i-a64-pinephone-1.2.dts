@@ -70,6 +70,7 @@
 		 * so that the switch has power.
 		 */
 		vbus-supply = <&reg_usb_5v>;
+		vbus_in-supply = <&usb_power_supply>;
 
 		port {
 			typec0_dr_sw: endpoint {

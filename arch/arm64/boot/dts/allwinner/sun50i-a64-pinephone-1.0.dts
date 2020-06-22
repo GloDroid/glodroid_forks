@@ -58,6 +58,7 @@
 		 *   and reg_usb_5v)
 		 */
 		vbus-supply = <&reg_vbus>;
+		vbus_in-supply = <&usb_power_supply>;
 
 		port {
 			typec0_dr_sw: endpoint {
