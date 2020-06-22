@@ -238,6 +238,20 @@ apex {
   allowed_files: "default_shim_allowed_list.txt",
 }
 
+// This is to install the flattened version of com.android.apex.cts.shim.
+// Because com.android.apex.cts.shim is provided as prebuilt and the build system
+// doesn't support install "flattened" version from "prebult" yet, GSI, which should
+// have both "flatttened" and "unflattened" APEXes, is missing the flattened version
+// of com.android.apex.cts.shim.
+// TODO(b/159426728):  When the build system can install "flattened" from "prebuilts",
+// this can be removed.
+override_apex {
+  name: "com.android.apex.cts.shim.v1_with_prebuilts",
+  base: "com.android.apex.cts.shim.v1",
+  apps: ["CtsShimPrebuilt", "CtsShimPrivPrebuilt"],
+  allowed_files: "prebuilts_shim_allowed_list.txt",
+}
+
 genrule {
   name: "com.android.apex.cts.shim_not_pre_installed.pem",
   out: ["com.android.apex.cts.shim_not_pre_installed.pem"],
