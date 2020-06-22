@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 #include <linux/acpi.h>
 #include <linux/of.h>
+#include <linux/debugfs.h>
 #include <asm/unaligned.h>
 #include "goodix.h"
 
@@ -1028,6 +1029,16 @@ retry_get_irq_gpio:
 	return 0;
 }
 
+static int ts_config_bin_show(struct seq_file *s, void *data)
+{
+        struct goodix_ts_data *ts = s->private;
+
+        seq_write(s, ts->config, ts->chip->config_len);
+
+        return 0;
+}
+DEFINE_SHOW_ATTRIBUTE(ts_config_bin);
+
 /**
  * goodix_read_config - Read the embedded configuration of the panel
  *
@@ -1066,6 +1077,10 @@ static void goodix_read_config(struct goodix_ts_data *ts)
 	}
 
 	ts->chip->calc_config_checksum(ts);
+
+        ts->debug_root = debugfs_create_dir("goodix", NULL);
+        debugfs_create_file("config.bin", 0444, ts->debug_root, ts,
+                            &ts_config_bin_fops);
 }
 
 /**
@@ -1388,6 +1403,8 @@ static int goodix_ts_remove(struct i2c_client *client)
 
 	if (ts->load_cfg_from_disk)
 		wait_for_completion(&ts->firmware_loading_complete);
+
+        debugfs_remove(ts->debug_root);
 
 	return 0;
 }
