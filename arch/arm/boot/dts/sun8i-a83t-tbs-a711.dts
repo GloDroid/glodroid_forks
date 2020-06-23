@@ -593,7 +593,7 @@
 		device-wakeup-gpios = <&pio 7 5 GPIO_ACTIVE_HIGH>; /* PH5 */
 		host-wakeup-gpios = <&r_pio 0 5 GPIO_ACTIVE_HIGH>; /* PL5 */
 		shutdown-gpios = <&r_pio 0 4 GPIO_ACTIVE_HIGH>; /* PL4 */
-		max-speed = <1500000>;
+//		max-speed = <1500000>; stopped working in v5.6
 	};
 };
 
