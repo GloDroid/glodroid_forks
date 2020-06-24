@@ -48,12 +48,12 @@ static void sun6i_r_intc_irq_ack(struct irq_data *data)
 		sun6i_r_intc_nmi_ack();
 }
 
-static void sun6i_r_intc_irq_eoi(struct irq_data *data)
+static void sun6i_r_intc_irq_unmask(struct irq_data *data)
 {
 	if (data->hwirq == NMI_HWIRQ)
 		sun6i_r_intc_nmi_ack();
 
-	irq_chip_eoi_parent(data);
+	irq_chip_unmask_parent(data);
 }
 
 static int sun6i_r_intc_irq_set_type(struct irq_data *data, unsigned int type)
@@ -143,16 +143,15 @@ static struct irq_chip sun6i_r_intc_edge = {
 static struct irq_chip sun6i_r_intc_level = {
 	.name			= "sun6i-r-intc",
 	.irq_mask		= irq_chip_mask_parent,
-	.irq_unmask		= irq_chip_unmask_parent,
-	.irq_eoi		= sun6i_r_intc_irq_eoi,
+	.irq_unmask		= sun6i_r_intc_irq_unmask,
+	.irq_eoi		= irq_chip_eoi_parent,
 	.irq_set_affinity	= irq_chip_set_affinity_parent,
 	.irq_set_type		= sun6i_r_intc_irq_set_type,
 	.irq_get_irqchip_state	= irq_chip_get_parent_state,
 	.irq_set_irqchip_state	= irq_chip_set_parent_state,
 	.irq_set_wake		= sun6i_r_intc_irq_set_wake,
 	.irq_set_vcpu_affinity	= irq_chip_set_vcpu_affinity_parent,
-	.flags			= IRQCHIP_SET_TYPE_MASKED |
-				  IRQCHIP_EOI_THREADED,
+	.flags			= IRQCHIP_SET_TYPE_MASKED,
 };
 
 static int sun6i_r_intc_domain_alloc(struct irq_domain *domain,
