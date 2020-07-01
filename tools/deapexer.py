@@ -183,6 +183,7 @@ def RunExtract(args):
     if not os.path.exists(args.dest):
       os.makedirs(args.dest, mode=0o755)
     apex.extract(args.dest)
+    shutil.rmtree(os.path.join(args.dest, "lost+found"))
 
 
 def RunInfo(args):
