@@ -179,6 +179,9 @@ struct sun8i_mixer {
 
 	struct clk			*bus_clk;
 	struct clk			*mod_clk;
+
+	struct sun4i_drv		*drv;
+	bool				hw_preconfigured;
 };
 
 static inline struct sun8i_mixer *

@@ -952,7 +952,7 @@ static int sun50i_a64_ccu_probe(struct platform_device *pdev)
 	val &= ~GENMASK(19, 16);
 	writel(val | (0 << 16), reg + SUN50I_A64_PLL_AUDIO_REG);
 
-	writel(0x515, reg + SUN50I_A64_PLL_MIPI_REG);
+	//writel(0x515, reg + SUN50I_A64_PLL_MIPI_REG);
 
 	ret = sunxi_ccu_probe(pdev->dev.of_node, reg, &sun50i_a64_ccu_desc);
 	if (ret)
