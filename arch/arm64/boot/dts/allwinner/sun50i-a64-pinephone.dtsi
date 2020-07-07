@@ -71,6 +71,34 @@
 		};
 	};
 
+	reg_usb_5v: usb-5v {
+		compatible = "regulator-fixed";
+		regulator-name = "usb-5v";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&pio 3 8 GPIO_ACTIVE_HIGH>; /* PD8 */
+		enable-active-high;
+	};
+
+	reg_usb0_vbus: usb0-vbus {
+		compatible = "regulator-fixed";
+		regulator-name = "usb0-vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&pio 3 6 GPIO_ACTIVE_HIGH>; /* PD6 */
+		enable-active-high;
+		vin-supply = <&reg_usb_5v>;
+	};
+
+	reg_vbat_bb: vbat-bb {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat-bb";
+		regulator-min-microvolt = <3500000>;
+		regulator-max-microvolt = <3500000>;
+		gpio = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
+		enable-active-high;
+	};
+
 	reg_vbat_wifi: vbat-wifi {
 		compatible = "regulator-fixed";
 		regulator-min-microvolt = <3300000>;
