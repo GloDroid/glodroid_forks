@@ -453,14 +453,13 @@ fw_loaded:
 
 
         /* min/max power in 500 mW units */
-        ret = anx7688_reg_write(anx7688, ANX7688_REG_MAX_POWER, 5 * 2); /* 5 W */
+        ret = anx7688_reg_write(anx7688, ANX7688_REG_MAX_POWER, 15 * 2); /* 15 W */
 	if (ret)
 		goto err_vconoff;
 
-        ret = anx7688_reg_write(anx7688, ANX7688_REG_MIN_POWER, 1 * 2);  /* 1 W */
+        ret = anx7688_reg_write(anx7688, ANX7688_REG_MIN_POWER, 1);  /* 0.5 W */
 	if (ret)
 		goto err_vconoff;
-
 
         /* auto_pd, try.src, try.sink, goto safe 5V */
         ret = anx7688_reg_write(anx7688, ANX7688_REG_FEATURE_CTRL, 0x1e);
