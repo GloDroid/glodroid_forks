@@ -369,6 +369,15 @@ err_poweroff:
         int ret, i;
         u8 fw[2];
         u32 pdo;
+	const u8 dp_snk_identity[16] = {
+		0x00, 0x00, 0x00, 0xec,	/* snk_id_hdr */
+		0x00, 0x00, 0x00, 0x00,	/* snk_cert */
+		0x00, 0x00, 0x00, 0x00,	/* snk_prd */
+		0x39, 0x00, 0x00, 0x51	/* snk_ama */
+	};
+	const u8 svid[4] = {
+		0x00, 0x00, 0x01, 0xff,
+	};
 
         dev_dbg(anx7688->dev, "cable inserted\n");
 
@@ -486,22 +495,11 @@ fw_loaded:
 	if (ret)
 		goto err_vconoff;
 
-	const u8 dp_snk_identity[16] = {
-		0x00, 0x00, 0x00, 0xec,	/* snk_id_hdr */
-		0x00, 0x00, 0x00, 0x00,	/* snk_cert */
-		0x00, 0x00, 0x00, 0x00,	/* snk_prd */
-		0x39, 0x00, 0x00, 0x51	/* snk_ama */
-	};
-
 	/* Send DP SNK identity */
 	ret = anx7688_send_ocm_message(anx7688, ANX7688_OCM_MSG_DP_SNK_IDENTITY,
 				       dp_snk_identity, sizeof dp_snk_identity);
 	if (ret)
 		goto err_vconoff;
-
-	const u8 svid[4] = {
-		0x00, 0x00, 0x01, 0xff,
-	};
 
 	ret = anx7688_send_ocm_message(anx7688, ANX7688_OCM_MSG_SVID,
 				       svid, sizeof svid);
