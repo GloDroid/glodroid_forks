@@ -507,11 +507,11 @@ static void sun50i_a64_enable_micdet(struct snd_soc_component *component, bool e
 
 static struct snd_soc_jack_pin sun50i_a64_codec_pins[] = {
 	{
-		.pin = "Headphone",
+		.pin = "HP",
 		.mask = SND_JACK_HEADPHONE,
 	},
 	{
-		.pin = "Headset Microphone",
+		.pin = "MIC2",
 		.mask = SND_JACK_MICROPHONE,
 	},
 };
