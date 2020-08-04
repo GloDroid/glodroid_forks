@@ -18,6 +18,8 @@
 
 #include "apexd_loop.h"
 
+#include <mutex>
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <linux/fs.h>
@@ -40,6 +42,17 @@ using android::base::Result;
 using android::base::StartsWith;
 using android::base::StringPrintf;
 using android::base::unique_fd;
+
+#ifndef LOOP_CONFIGURE
+// These can be removed whenever we pull in the Linux v5.8 UAPI headers
+struct loop_config {
+  __u32 fd;
+  __u32 block_size;
+  struct loop_info64 info;
+  __u64 __reserved[8];
+};
+#define LOOP_CONFIGURE 0x4C0A
+#endif
 
 namespace android {
 namespace apex {
@@ -125,6 +138,99 @@ Result<void> preAllocateLoopDevices(size_t num) {
   return {};
 }
 
+Result<void> configureLoopDevice(const int device_fd, const std::string& target,
+                                 const int32_t imageOffset,
+                                 const size_t imageSize) {
+  static bool useLoopConfigure;
+  static std::once_flag onceFlag;
+  std::call_once(onceFlag, [&]() {
+    // LOOP_CONFIGURE is a new ioctl in Linux 5.8 (and backported in Android
+    // common) that allows atomically configuring a loop device. It is a lot
+    // faster than the traditional LOOP_SET_FD/LOOP_SET_STATUS64 combo, but
+    // it may not be available on updating devices, so try once before
+    // deciding.
+    struct loop_config config;
+    memset(&config, 0, sizeof(config));
+    config.fd = -1;
+    if (ioctl(device_fd, LOOP_CONFIGURE, &config) == -1 && errno == EBADF) {
+      // If the IOCTL exists, it will fail with EBADF for the -1 fd
+      useLoopConfigure = true;
+    }
+  });
+
+  /*
+   * Using O_DIRECT will tell the kernel that we want to use Direct I/O
+   * on the underlying file, which we want to do to avoid double caching.
+   * Note that Direct I/O won't be enabled immediately, because the block
+   * size of the underlying block device may not match the default loop
+   * device block size (512); when we call LOOP_SET_BLOCK_SIZE below, the
+   * kernel driver will automatically enable Direct I/O when it sees that
+   * condition is now met.
+   */
+  unique_fd target_fd(open(target.c_str(), O_RDONLY | O_CLOEXEC | O_DIRECT));
+  if (target_fd.get() == -1) {
+    return ErrnoError() << "Failed to open " << target;
+  }
+
+  struct loop_info64 li;
+  memset(&li, 0, sizeof(li));
+  strlcpy((char*)li.lo_crypt_name, kApexLoopIdPrefix, LO_NAME_SIZE);
+  li.lo_offset = imageOffset;
+  li.lo_sizelimit = imageSize;
+
+  if (useLoopConfigure) {
+    struct loop_config config;
+    memset(&config, 0, sizeof(config));
+    li.lo_flags |= LO_FLAGS_DIRECT_IO;
+    config.fd = target_fd.get();
+    config.info = li;
+    config.block_size = 4096;
+
+    if (ioctl(device_fd, LOOP_CONFIGURE, &config) == -1) {
+      return ErrnoError() << "Failed to LOOP_CONFIGURE";
+    }
+
+    return {};
+  } else {
+    if (ioctl(device_fd, LOOP_SET_FD, target_fd.get()) == -1) {
+      return ErrnoError() << "Failed to LOOP_SET_FD";
+    }
+
+    if (ioctl(device_fd, LOOP_SET_STATUS64, &li) == -1) {
+      return ErrnoError() << "Failed to LOOP_SET_STATUS64";
+    }
+
+    if (ioctl(device_fd, BLKFLSBUF, 0) == -1) {
+      // This works around a kernel bug where the following happens.
+      // 1) The device runs with a value of loop.max_part > 0
+      // 2) As part of LOOP_SET_FD above, we do a partition scan, which loads
+      //    the first 2 pages of the underlying file into the buffer cache
+      // 3) When we then change the offset with LOOP_SET_STATUS64, those pages
+      //    are not invalidated from the cache.
+      // 4) When we try to mount an ext4 filesystem on the loop device, the ext4
+      //    code will try to find a superblock by reading 4k at offset 0; but,
+      //    because we still have the old pages at offset 0 lying in the cache,
+      //    those pages will be returned directly. However, those pages contain
+      //    the data at offset 0 in the underlying file, not at the offset that
+      //    we configured
+      // 5) the ext4 driver fails to find a superblock in the (wrong) data, and
+      //    fails to mount the filesystem.
+      //
+      // To work around this, explicitly flush the block device, which will
+      // flush the buffer cache and make sure we actually read the data at the
+      // correct offset.
+      return ErrnoError() << "Failed to flush buffers on the loop device";
+    }
+
+    // Direct-IO requires the loop device to have the same block size as the
+    // underlying filesystem.
+    if (ioctl(device_fd, LOOP_SET_BLOCK_SIZE, 4096) == -1) {
+      PLOG(WARNING) << "Failed to LOOP_SET_BLOCK_SIZE";
+    }
+  }
+  return {};
+}
+
 Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
                                                 const int32_t imageOffset,
                                                 const size_t imageSize) {
@@ -140,19 +246,6 @@ Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
 
   std::string device = StringPrintf("/dev/block/loop%d", num);
 
-  /*
-   * Using O_DIRECT will tell the kernel that we want to use Direct I/O
-   * on the underlying file, which we want to do to avoid double caching.
-   * Note that Direct I/O won't be enabled immediately, because the block
-   * size of the underlying block device may not match the default loop
-   * device block size (512); when we call LOOP_SET_BLOCK_SIZE below, the
-   * kernel driver will automatically enable Direct I/O when it sees that
-   * condition is now met.
-   */
-  unique_fd target_fd(open(target.c_str(), O_RDONLY | O_CLOEXEC | O_DIRECT));
-  if (target_fd.get() == -1) {
-    return ErrnoError() << "Failed to open " << target;
-  }
   LoopbackDeviceUniqueFd device_fd;
   {
     // See comment on kLoopDeviceRetryAttempts.
@@ -173,45 +266,10 @@ Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
     CHECK_NE(device_fd.get(), -1);
   }
 
-  if (ioctl(device_fd.get(), LOOP_SET_FD, target_fd.get()) == -1) {
-    return ErrnoError() << "Failed to LOOP_SET_FD";
-  }
-
-  struct loop_info64 li;
-  memset(&li, 0, sizeof(li));
-  strlcpy((char*)li.lo_crypt_name, kApexLoopIdPrefix, LO_NAME_SIZE);
-  li.lo_offset = imageOffset;
-  li.lo_sizelimit = imageSize;
-  if (ioctl(device_fd.get(), LOOP_SET_STATUS64, &li) == -1) {
-    return ErrnoError() << "Failed to LOOP_SET_STATUS64";
-  }
-
-  if (ioctl(device_fd.get(), BLKFLSBUF, 0) == -1) {
-    // This works around a kernel bug where the following happens.
-    // 1) The device runs with a value of loop.max_part > 0
-    // 2) As part of LOOP_SET_FD above, we do a partition scan, which loads
-    //    the first 2 pages of the underlying file into the buffer cache
-    // 3) When we then change the offset with LOOP_SET_STATUS64, those pages
-    //    are not invalidated from the cache.
-    // 4) When we try to mount an ext4 filesystem on the loop device, the ext4
-    //    code will try to find a superblock by reading 4k at offset 0; but,
-    //    because we still have the old pages at offset 0 lying in the cache,
-    //    those pages will be returned directly. However, those pages contain
-    //    the data at offset 0 in the underlying file, not at the offset that
-    //    we configured
-    // 5) the ext4 driver fails to find a superblock in the (wrong) data, and
-    //    fails to mount the filesystem.
-    //
-    // To work around this, explicitly flush the block device, which will flush
-    // the buffer cache and make sure we actually read the data at the correct
-    // offset.
-    return ErrnoError() << "Failed to flush buffers on the loop device";
-  }
-
-  // Direct-IO requires the loop device to have the same block size as the
-  // underlying filesystem.
-  if (ioctl(device_fd.get(), LOOP_SET_BLOCK_SIZE, 4096) == -1) {
-    PLOG(WARNING) << "Failed to LOOP_SET_BLOCK_SIZE";
+  Result<void> configureStatus =
+      configureLoopDevice(device_fd.get(), target, imageOffset, imageSize);
+  if (!configureStatus.ok()) {
+    return configureStatus.error();
   }
 
   Result<void> readAheadStatus = configureReadAhead(device);
