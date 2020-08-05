@@ -581,6 +581,11 @@ static int mpwr_eg25_power_up(struct mpwr_dev* mpwr)
 		}
         }
 
+	/* setup URC port */
+	ret = mpwr_serdev_at_cmd(mpwr, "AT+QURCCFG=\"urcport\",\"usbat\"", 2000);
+        if (ret)
+		dev_err(mpwr->dev, "Modem may not report URCs to the right port!\n");
+
 	/* enable the modem to go to sleep when DTR is low */
 	ret = mpwr_serdev_at_cmd(mpwr, "AT+QSCLK=1", 2000);
         if (ret)
@@ -827,7 +832,7 @@ static int mpwr_eg25_resume(struct mpwr_dev *mpwr)
 	//gpiod_direction_output(mpwr->dtr_gpio, 0);
 
 	// delay disabling URC cache until the whole system is hopefully resumed...
-	schedule_delayed_work(&mpwr->host_ready_work, msecs_to_jiffies(300));
+	schedule_delayed_work(&mpwr->host_ready_work, msecs_to_jiffies(1000));
 
 	return 0;
 }
