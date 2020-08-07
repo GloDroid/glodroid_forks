@@ -67,11 +67,13 @@ static void sun8i_vi_layer_enable(struct sun8i_mixer *mixer, int channel,
 }
 
 static void sun8i_vi_layer_update_alpha(struct sun8i_mixer *mixer, int channel,
-					int overlay, struct drm_plane *plane)
+					int overlay, struct drm_plane *plane,
+					unsigned int zpos)
 {
-	u32 mask, val, ch_base;
+	u32 mask, val, ch_base, bld_base;
 
 	ch_base = sun8i_channel_base(mixer, channel);
+	bld_base = sun8i_blender_base(mixer);
 
 	if (mixer->cfg->is_de3) {
 		mask = SUN50I_MIXER_CHAN_VI_LAYER_ATTR_ALPHA_MASK |
@@ -94,6 +96,13 @@ static void sun8i_vi_layer_update_alpha(struct sun8i_mixer *mixer, int channel,
 				   SUN8I_MIXER_FCC_GLOBAL_ALPHA
 					(plane->state->alpha >> 8));
 	}
+
+	regmap_update_bits(mixer->engine.regs,
+			   SUN8I_MIXER_BLEND_PREMULTIPLY(bld_base),
+			   SUN8I_MIXER_BLEND_PREMULTIPLY_EN(zpos),
+			   (mixer->cfg->is_de3) ?
+				SUN8I_MIXER_BLEND_PREMULTIPLY_EN(zpos) : 0);
+
 }
 
 static int sun8i_vi_layer_update_coord(struct sun8i_mixer *mixer, int channel,
@@ -426,7 +435,7 @@ static void sun8i_vi_layer_atomic_update(struct drm_plane *plane,
 	sun8i_vi_layer_update_coord(mixer, layer->channel,
 				    layer->overlay, plane, zpos);
 	sun8i_vi_layer_update_alpha(mixer, layer->channel,
-				    layer->overlay, plane);
+				    layer->overlay, plane, zpos);
 	sun8i_vi_layer_update_formats(mixer, layer->channel,
 				      layer->overlay, plane);
 	sun8i_vi_layer_update_buffer(mixer, layer->channel,
@@ -587,6 +596,12 @@ struct sun8i_vi_layer *sun8i_vi_layer_init_one(struct drm_device *drm,
 			return ERR_PTR(ret);
 		}
 	}
+
+	if (mixer->cfg->is_de3)
+		drm_plane_create_blend_mode_property
+			(&layer->plane, BIT(DRM_MODE_BLEND_PREMULTI) |
+			 BIT(DRM_MODE_BLEND_COVERAGE) |
+			 BIT(DRM_MODE_BLEND_PIXEL_NONE));
 
 	ret = drm_plane_create_zpos_property(&layer->plane, index,
 					     0, plane_cnt - 1);
