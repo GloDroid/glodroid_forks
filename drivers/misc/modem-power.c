@@ -206,6 +206,8 @@ static struct class* mpwr_class;
 static int mpwr_serdev_at_cmd(struct mpwr_dev *mpwr, const char *msg, int timeout_ms);
 static int mpwr_serdev_at_cmd_with_retry(struct mpwr_dev *mpwr, const char *msg,
 					 int timeout_ms, int tries);
+static int mpwr_serdev_at_cmd_with_retry_ignore_timeout(struct mpwr_dev *mpwr, const char *msg,
+							int timeout_ms, int tries);
 
 // {{{ mg2723 variant
 
@@ -472,19 +474,10 @@ static int mpwr_eg25_power_up(struct mpwr_dev* mpwr)
 		goto err_shutdown;
 	}
 
-	// wait for RDY for up to 30s
-	ret = wait_event_timeout(mpwr->wait,
-				 test_bit(MPWR_F_GOT_RDY, mpwr->flags),
-				 msecs_to_jiffies(30000));
-	if (ret <= 0) {
-		dev_err(mpwr->dev, "The modem didn't send RDY in time\n");
-		goto err_shutdown;
-	}
-
 	clear_bit(MPWR_F_KILLSWITCHED, mpwr->flags);
 
 	// configure the link (disable echo)
-	ret = mpwr_serdev_at_cmd(mpwr, "AT&FE0", 1000);
+	ret = mpwr_serdev_at_cmd_with_retry_ignore_timeout(mpwr, "AT&FE0", 1000, 30);
 	if (ret)
 		goto err_shutdown;
 
@@ -1520,7 +1513,7 @@ static int mpwr_serdev_send_msg(struct mpwr_dev *mpwr, const char *msg)
 }
 
 static int __mpwr_serdev_at_cmd(struct mpwr_dev *mpwr, const char *msg,
-				int timeout_ms, bool report_error)
+				int timeout_ms, bool report_error, bool report_timeout)
 {
         int ret;
 
@@ -1543,7 +1536,8 @@ static int __mpwr_serdev_at_cmd(struct mpwr_dev *mpwr, const char *msg,
 					       msecs_to_jiffies(timeout_ms));
 	if (ret <= 0) {
 		clear_bit(MPWR_F_RECEIVING_MSG, mpwr->flags);
-		dev_err(mpwr->dev, "AT command '%s' timed out\n", msg);
+		if (report_timeout)
+			dev_err(mpwr->dev, "AT command '%s' timed out\n", msg);
                 return ret ? ret : -ETIMEDOUT;
 	}
 
@@ -1558,11 +1552,11 @@ static int __mpwr_serdev_at_cmd(struct mpwr_dev *mpwr, const char *msg,
 
 static int mpwr_serdev_at_cmd(struct mpwr_dev *mpwr, const char *msg, int timeout_ms)
 {
-	return __mpwr_serdev_at_cmd(mpwr, msg, timeout_ms, true);
+	return __mpwr_serdev_at_cmd(mpwr, msg, timeout_ms, true, true);
 }
 
-static int mpwr_serdev_at_cmd_with_retry(struct mpwr_dev *mpwr, const char *msg,
-					 int timeout_ms, int tries)
+static int __mpwr_serdev_at_cmd_with_retry(struct mpwr_dev *mpwr, const char *msg,
+					   int timeout_ms, int tries, bool ignore_timeout)
 {
 	int ret = 0;
 
@@ -1570,8 +1564,8 @@ static int mpwr_serdev_at_cmd_with_retry(struct mpwr_dev *mpwr, const char *msg,
 		tries = 1;
 
 	while (tries-- > 0) {
-		ret = __mpwr_serdev_at_cmd(mpwr, msg, timeout_ms, false);
-		if (ret != -EINVAL)
+		ret = __mpwr_serdev_at_cmd(mpwr, msg, timeout_ms, false, !ignore_timeout);
+		if (ret != -EINVAL && (!ignore_timeout || ret != -ETIMEDOUT))
 			return ret;
 
 		msleep(1000);
@@ -1579,6 +1573,18 @@ static int mpwr_serdev_at_cmd_with_retry(struct mpwr_dev *mpwr, const char *msg,
 
 	dev_err(mpwr->dev, "AT command '%s' returned ERROR\n", msg);
 	return ret;
+}
+
+static int mpwr_serdev_at_cmd_with_retry(struct mpwr_dev *mpwr, const char *msg,
+					 int timeout_ms, int tries)
+{
+	return __mpwr_serdev_at_cmd_with_retry(mpwr, msg, timeout_ms, tries, false);
+}
+
+static int mpwr_serdev_at_cmd_with_retry_ignore_timeout(struct mpwr_dev *mpwr, const char *msg,
+							int timeout_ms, int tries)
+{
+	return __mpwr_serdev_at_cmd_with_retry(mpwr, msg, timeout_ms, tries, true);
 }
 
 static void mpwr_serdev_receive_msg(struct mpwr_dev *mpwr, const char *msg)
