@@ -621,11 +621,11 @@ static int sun50i_codec_analog_probe(struct platform_device *pdev)
 	 */
 	codec_pdev = of_find_device_by_node(codec_node);
 	if (!codec_pdev)
-		return -EAGAIN;
+		return -EPROBE_DEFER;
 
 	codec_data = platform_get_drvdata(codec_pdev);
 	if (!codec_data)
-		return -EAGAIN;
+		return -EPROBE_DEFER;
 
 	scodec = devm_kzalloc(&pdev->dev, sizeof(*scodec), GFP_KERNEL);
 	if (!scodec)
