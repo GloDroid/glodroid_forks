@@ -878,6 +878,7 @@ config LEDS_IP30
 	  To compile this driver as a module, choose M here: the module
 	  will be called leds-ip30.
 
+
 config LEDS_SGM3140
 	tristate "LED support for the SGM3140"
 	depends on LEDS_CLASS_FLASH
@@ -885,6 +886,13 @@ config LEDS_SGM3140
 	help
 	  This option enables support for the SGM3140 500mA Buck/Boost Charge
 	  Pump LED Driver.
+
+config LEDS_AXP20X
+	tristate "Charger LED support for AXP20X-like PMICs (AXP813, ...)"
+	depends on LEDS_CLASS && MFD_AXP20X
+	help
+	  This option enables support for on-chip LED driver on
+	  AXP20X-like PMICs.
 
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
