@@ -209,6 +209,7 @@
 				regulator-min-microvolt = <810000>;
 				regulator-max-microvolt = <1080000>;
 				regulator-name = "vdd-gpu";
+				regulator-always-on;
 			};
 
 			reg_dcdcd: dcdcd {

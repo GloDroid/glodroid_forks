@@ -254,6 +254,7 @@
 				regulator-max-microvolt = <1080000>;
 				regulator-ramp-delay = <2500>;
 				regulator-name = "vdd-gpu";
+				regulator-always-on;
 			};
 
 			reg_dcdcd: dcdcd {
