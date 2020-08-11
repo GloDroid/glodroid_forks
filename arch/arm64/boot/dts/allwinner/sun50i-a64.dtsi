@@ -157,6 +157,7 @@
 	timer {
 		compatible = "arm,armv8-timer";
 		allwinner,erratum-unknown1;
+		arm,no-tick-in-suspend;
 		interrupts = <GIC_PPI 13
 			(GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>,
 			     <GIC_PPI 14
@@ -811,7 +812,7 @@
 
 		lradc: lradc@1c21800 {
 			compatible = "allwinner,sun50i-a64-lradc",
-				     "allwinner,sun8i-a83t-r-lradc";
+				     "allwinner,sun4i-a10-lradc-keys";
 			reg = <0x01c21800 0x400>;
 			interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
