@@ -8,6 +8,7 @@
 #include <linux/completion.h>
 #include <linux/debugfs.h>
 #include <linux/device.h>
+#include <linux/extcon-provider.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -322,6 +323,12 @@ struct tcpm_port {
 	/* port belongs to a self powered device */
 	bool self_powered;
 
+
+#ifdef CONFIG_EXTCON
+	struct extcon_dev *extcon;
+	unsigned int *extcon_cables;
+#endif
+
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *dentry;
 	struct mutex logbuffer_lock;	/* log buffer access lock */
@@ -607,6 +614,35 @@ static void tcpm_debugfs_exit(const struct tcpm_port *port) { }
 
 #endif
 
+static void tcpm_update_extcon_data(struct tcpm_port *port, bool attached) {
+#ifdef CONFIG_EXTCON
+	unsigned int *capability = port->extcon_cables;
+	if (port->data_role == TYPEC_HOST) {
+		extcon_set_state(port->extcon, EXTCON_USB, false);
+		extcon_set_state(port->extcon, EXTCON_USB_HOST, attached);
+	} else {
+		extcon_set_state(port->extcon, EXTCON_USB, true);
+		extcon_set_state(port->extcon, EXTCON_USB_HOST, attached);
+	}
+	while (*capability != EXTCON_NONE) {
+		if (attached) {
+			union extcon_property_value val;
+			val.intval = (port->polarity == TYPEC_POLARITY_CC2);
+			extcon_set_property(port->extcon, *capability,
+				EXTCON_PROP_USB_TYPEC_POLARITY, val);
+		} else {
+			extcon_set_state(port->extcon, *capability, false);
+		}
+		extcon_sync(port->extcon, *capability);
+		capability++;
+	}
+	tcpm_log(port, "Extcon update (%s): %s, %s",
+		attached ? "attached" : "detached",
+		port->data_role == TYPEC_HOST ? "host" : "device",
+		port->polarity == TYPEC_POLARITY_CC1 ? "normal" : "flipped");
+#endif
+}
+
 static int tcpm_pd_transmit(struct tcpm_port *port,
 			    enum tcpm_transmit_type type,
 			    const struct pd_message *msg)
@@ -834,6 +870,8 @@ static int tcpm_set_roles(struct tcpm_port *port, bool attached,
 	typec_set_data_role(port->typec_port, data);
 	typec_set_pwr_role(port->typec_port, role);
 
+	tcpm_update_extcon_data(port, attached);
+
 	return 0;
 }
 
@@ -1044,7 +1082,7 @@ static void svdm_consume_modes(struct tcpm_port *port, const __le32 *payload,
 		paltmode->mode = i;
 		paltmode->vdo = le32_to_cpu(payload[i]);
 
-		tcpm_log(port, " Alternate mode %d: SVID 0x%04x, VDO %d: 0x%08x",
+		tcpm_log(port, "Alternate mode %d: SVID 0x%04x, VDO %d: 0x%08x",
 			 pmdata->altmodes, paltmode->svid,
 			 paltmode->mode, paltmode->vdo);
 
@@ -1064,6 +1102,9 @@ static void tcpm_register_partner_altmodes(struct tcpm_port *port)
 		if (!altmode)
 			tcpm_log(port, "Failed to register partner SVID 0x%04x",
 				 modep->altmode_desc[i].svid);
+		else
+			tcpm_log(port, "Registered altmode 0x%04x", modep->altmode_desc[i].svid);
+
 		port->partner_altmode[i] = altmode;
 	}
 }
@@ -1167,9 +1208,11 @@ static int tcpm_pd_svdm(struct tcpm_port *port, const __le32 *payload, int cnt,
 			modep->svid_index++;
 			if (modep->svid_index < modep->nsvids) {
 				u16 svid = modep->svids[modep->svid_index];
+				tcpm_log(port, "More modes available, sending discover");
 				response[0] = VDO(svid, 1, CMD_DISCOVER_MODES);
 				rlen = 1;
 			} else {
+				tcpm_log(port, "Got all patner modes, registering");
 				tcpm_register_partner_altmodes(port);
 			}
 			break;
@@ -2693,6 +2736,7 @@ out_disable_mux:
 static void tcpm_typec_disconnect(struct tcpm_port *port)
 {
 	if (port->connected) {
+		tcpm_update_extcon_data(port, false);
 		typec_unregister_partner(port->partner);
 		port->partner = NULL;
 		port->connected = false;
@@ -2750,6 +2794,8 @@ static void tcpm_detach(struct tcpm_port *port)
 		port->hard_reset_count = 0;
 
 	tcpm_reset_port(port);
+
+	tcpm_update_extcon_data(port, false);
 }
 
 static void tcpm_src_detach(struct tcpm_port *port)
@@ -4424,6 +4470,64 @@ void tcpm_tcpc_reset(struct tcpm_port *port)
 }
 EXPORT_SYMBOL_GPL(tcpm_tcpc_reset);
 
+unsigned int default_supported_cables[] = {
+	EXTCON_NONE
+};
+
+static int tcpm_fw_get_caps_late(struct tcpm_port *port,
+			    struct fwnode_handle *fwnode)
+{
+	int ret, i;
+	ret = fwnode_property_count_u32(fwnode, "typec-altmodes");
+	if (ret > 0) {
+		u32 *props;
+		if (ret % 4) {
+			dev_err(port->dev, "Length of typec altmode array must be divisible by 4");
+			return -EINVAL;
+		}
+
+		props = devm_kzalloc(port->dev, sizeof(u32) * ret, GFP_KERNEL);
+		if (!props) {
+			dev_err(port->dev, "Failed to allocate memory for altmode properties");
+			return -ENOMEM;
+		}
+
+		if(fwnode_property_read_u32_array(fwnode, "typec-altmodes", props, ret) < 0) {
+			dev_err(port->dev, "Failed to read altmodes from port");
+			return -EINVAL;
+		}
+
+		i = 0;
+		while (ret > 0 && i < ARRAY_SIZE(port->port_altmode)) {
+			struct typec_altmode *alt;
+			struct typec_altmode_desc alt_desc = {
+				.svid = props[i * 4],
+				.mode = props[i * 4 + 1],
+				.vdo  = props[i * 4 + 2],
+				.roles = props[i * 4 + 3],
+			};
+
+
+			tcpm_log(port, "Adding altmode SVID: 0x%04x, mode: %d, vdo: %u, role: %d",
+				alt_desc.svid, alt_desc.mode, alt_desc.vdo, alt_desc.roles);
+			alt = typec_port_register_altmode(port->typec_port,
+							  &alt_desc);
+			if (IS_ERR(alt)) {
+				tcpm_log(port,
+					 "%s: failed to register port alternate mode 0x%x",
+					 dev_name(port->dev), alt_desc.svid);
+				break;
+			}
+			typec_altmode_set_drvdata(alt, port);
+			alt->ops = &tcpm_altmode_ops;
+			port->port_altmode[i] = alt;
+			i++;
+			ret -= 4;
+		}
+	}
+	return 0;
+}
+
 static int tcpm_fw_get_caps(struct tcpm_port *port,
 			    struct fwnode_handle *fwnode)
 {
@@ -4433,6 +4537,23 @@ static int tcpm_fw_get_caps(struct tcpm_port *port,
 
 	if (!fwnode)
 		return -EINVAL;
+
+#ifdef CONFIG_EXTCON
+	ret = fwnode_property_count_u32(fwnode, "extcon-cables");
+	if (ret > 0) {
+		port->extcon_cables = devm_kzalloc(port->dev, sizeof(u32) * ret, GFP_KERNEL);
+		if (!port->extcon_cables) {
+			dev_err(port->dev, "Failed to allocate memory for extcon cable types. "\
+				"Using default tyes");
+			goto extcon_default;
+		}
+		fwnode_property_read_u32_array(fwnode, "extcon-cables", port->extcon_cables, ret);
+	} else {
+extcon_default:
+		dev_info(port->dev, "No cable types defined, using default cables");
+		port->extcon_cables = default_supported_cables;
+	}
+#endif
 
 	/* USB data support is optional */
 	ret = fwnode_property_read_string(fwnode, "data-role", &cap_str);
@@ -4766,6 +4887,17 @@ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc)
 		goto out_destroy_wq;
 
 	port->try_role = port->typec_caps.prefer_role;
+#ifdef CONFIG_EXTCON
+	port->extcon = devm_extcon_dev_allocate(dev, port->extcon_cables);
+	if (IS_ERR(port->extcon)) {
+		dev_err(dev, "Failed to allocate extcon device: %ld", PTR_ERR(port->extcon));
+		goto out_destroy_wq;
+	}
+	if((err = devm_extcon_dev_register(dev, port->extcon))) {
+		dev_err(dev, "Failed to register extcon device: %d", err);
+		goto out_destroy_wq;
+	}
+#endif
 
 	port->typec_caps.fwnode = tcpc->fwnode;
 	port->typec_caps.revision = 0x0120;	/* Type-C spec release 1.2 */
@@ -4791,6 +4923,12 @@ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc)
 	if (IS_ERR(port->typec_port)) {
 		err = PTR_ERR(port->typec_port);
 		goto out_role_sw_put;
+	}
+
+	err = tcpm_fw_get_caps_late(port, tcpc->fwnode);
+	if (err < 0) {
+		dev_err(dev, "Failed to get altmodes from fwnode");
+		goto out_destroy_wq;
 	}
 
 	mutex_lock(&port->lock);
