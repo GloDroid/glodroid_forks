@@ -12,10 +12,12 @@ maintainers:
 
 properties:
   "#sound-dai-cells":
-    const: 0
+    const: 1
 
   compatible:
-    const: allwinner,sun8i-a33-codec
+    enum:
+      - allwinner,sun8i-a33-codec
+      - allwinner,sun50i-a64-codec
 
   reg:
     maxItems: 1
@@ -32,6 +34,12 @@ properties:
     items:
       - const: bus
       - const: mod
+
+  allwinner,inverted-jack-detection:
+    description:
+      Jack detection IRQ's are inverted on this platform ('in' IRQ is triggered
+      when unplugging, and vice versa)
+    type: boolean
 
 required:
   - "#sound-dai-cells"

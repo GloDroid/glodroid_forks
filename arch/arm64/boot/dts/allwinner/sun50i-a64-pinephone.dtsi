@@ -277,11 +277,15 @@
 };
 
 &codec {
+	pinctrl-names = "default";
+	pinctrl-0 = <&aif2_pins>, <&aif3_pins>;
+	allwinner,inverted-jack-detection;
 	status = "okay";
 };
 
 &codec_analog {
 	cpvdd-supply = <&reg_eldo1>;
+	allwinner,internal-bias-resistor;
 	status = "okay";
 };
 
@@ -732,6 +736,36 @@
 			"MIC1", "Internal Microphone",
 			"Headset Microphone", "HBIAS",
 			"MIC2", "Headset Microphone";
+
+	simple-audio-card,dai-link@1 {
+		format = "dsp_a";
+		frame-master = <&link1_cpu>;
+		bitclock-master = <&link1_cpu>;
+		bitclock-inversion;
+
+		link1_cpu: cpu {
+			sound-dai = <&ec25_codec>;
+		};
+
+		link1_codec: codec {
+			sound-dai = <&codec 1>;
+		};
+	};
+
+	simple-audio-card,dai-link@2 {
+		format = "dsp_a";
+		frame-master = <&link2_codec>;
+		bitclock-master = <&link2_codec>;
+		bitclock-inversion;
+
+		link2_cpu: cpu {
+			sound-dai = <&bt_sco_codec 0>;
+		};
+
+		link2_codec: codec {
+			sound-dai = <&codec 2>;
+		};
+	};
 };
 
 &uart0 {
