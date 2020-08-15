@@ -942,7 +942,10 @@ droid_query_buffer_age(_EGLDisplay *disp, _EGLSurface *surface)
 }
 
 static EGLBoolean
-droid_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
+droid_swap_buffers_with_damage(_EGLDisplay *disp,
+                               _EGLSurface *draw,
+                               const EGLint *rects,
+                               EGLint n_rects)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(draw);
@@ -972,6 +975,32 @@ droid_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
    if (dri2_surf->back)
       dri2_surf->back->age = 1;
 
+#if ANDROID_API_LEVEL >= 23
+   if (n_rects) {
+      android_native_rect_t* droid_rects = NULL;
+      droid_rects = malloc(n_rects * sizeof(android_native_rect_t));
+      if (droid_rects == NULL) {
+         _eglError(EGL_BAD_ALLOC, __FUNCTION__);
+         return EGL_FALSE;
+      }
+
+      /* top and bottom should be swapped, for explanation please refer to:
+       * https://cs.android.com/android/platform/superproject/+/master:frameworks/native/libs/gui/Surface.cpp;l=1730;drc=8a9d62f6d256defd925fc09ebfb4a0f264fb4759 */
+      for (EGLint num_drects = 0; num_drects < n_rects; num_drects++) {
+         EGLint i = num_drects * 4;
+         droid_rects[num_drects].left = rects[i];
+         droid_rects[num_drects].bottom = rects[i + 1];
+         droid_rects[num_drects].right = rects[i] + rects[i + 2];
+         droid_rects[num_drects].top = rects[i + 1] + rects[i + 3];
+      }
+
+      native_window_set_surface_damage(dri2_surf->window, droid_rects, n_rects);
+      free(droid_rects);
+   } else {
+      native_window_set_surface_damage(dri2_surf->window, NULL, 0);
+   }
+#endif
+
    dri2_flush_drawable_for_swapbuffers(disp, draw);
 
    /* dri2_surf->buffer can be null even when no error has occured. For
@@ -998,6 +1027,12 @@ droid_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
    }
 
    return EGL_TRUE;
+}
+
+static EGLBoolean
+droid_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
+{
+   return droid_swap_buffers_with_damage(disp, draw, NULL, 0);
 }
 
 #ifdef HAVE_DRM_GRALLOC
@@ -1325,6 +1360,7 @@ static const struct dri2_egl_display_vtbl droid_display_vtbl = {
    .destroy_surface = droid_destroy_surface,
    .create_image = droid_create_image_khr,
    .swap_buffers = droid_swap_buffers,
+   .swap_buffers_with_damage = droid_swap_buffers_with_damage,
    .swap_interval = droid_swap_interval,
    .query_buffer_age = droid_query_buffer_age,
    .query_surface = droid_query_surface,
@@ -1712,6 +1748,8 @@ dri2_initialize_android(_EGLDisplay *disp)
        */
       disp->Extensions.KHR_partial_update = EGL_FALSE;
    }
+
+   disp->Extensions.EXT_swap_buffers_with_damage = EGL_TRUE;
 
    disp->Extensions.KHR_image = EGL_TRUE;
 #if ANDROID_API_LEVEL >= 24
