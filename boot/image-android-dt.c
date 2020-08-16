@@ -73,6 +73,49 @@ bool android_dt_get_fdt_by_index(ulong hdr_addr, u32 index, ulong *addr,
 	return true;
 }
 
+bool android_dt_get_fdt_by_id(ulong hdr_addr, u32 id, ulong *addr,
+			      u32 *size, u32 *index)
+{
+	const struct dt_table_header *hdr;
+	const struct dt_table_entry *e;
+	u32 entry_count, entries_offset, entry_size;
+	ulong e_addr;
+	u32 dt_offset, dt_size, dt_index;
+	bool found = false;
+
+	hdr = map_sysmem(hdr_addr, sizeof(*hdr));
+	entry_count = fdt32_to_cpu(hdr->dt_entry_count);
+	entries_offset = fdt32_to_cpu(hdr->dt_entries_offset);
+	entry_size = fdt32_to_cpu(hdr->dt_entry_size);
+	unmap_sysmem(hdr);
+
+	for (int index = 0; index < entry_count; index++) {
+		e_addr = hdr_addr + entries_offset + index * entry_size;
+		e = map_sysmem(e_addr, sizeof(*e));
+		if (fdt32_to_cpu(e->id) == id) {
+			dt_index = index;
+			dt_offset = fdt32_to_cpu(e->dt_offset);
+			dt_size = fdt32_to_cpu(e->dt_size);
+			found = true;
+		}
+		unmap_sysmem(e);
+	}
+
+	if (!found) {
+		printf("Error: FDT with id==0x%x not found\n", id);
+		return false;
+	}
+
+	if (addr)
+		*addr = hdr_addr + dt_offset;
+	if (size)
+		*size = dt_size;
+	if (index)
+		*index = dt_index;
+
+	return true;
+}
+
 #if !defined(CONFIG_SPL_BUILD)
 static void android_dt_print_fdt_info(const struct fdt_header *fdt)
 {

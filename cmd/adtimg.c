@@ -11,6 +11,7 @@
 #include <common.h>
 
 #define OPT_INDEX	"--index"
+#define OPT_ID		"--id"
 
 /*
  * Current/working DTB/DTBO Android image address.
@@ -125,6 +126,33 @@ static int adtimg_getopt_index(int argc, char *const argv[], u32 *index,
 	return CMD_RET_SUCCESS;
 }
 
+static int adtimg_getopt_id(int argc, char *const argv[], u32 *id,
+			    char **avar, char **svar, char **ivar)
+{
+	int ret;
+
+	if (!argv || !avar || !svar || !ivar)
+		return CMD_RET_FAILURE;
+
+	if (argc > 4) {
+		printf("Error: Unexpected argument '%s'\n", argv[4]);
+		return CMD_RET_FAILURE;
+	}
+
+	ret = adtimg_getopt_u32(argv[0], OPT_ID, id);
+	if (ret != CMD_RET_SUCCESS)
+		return ret;
+
+	if (argc > 1)
+		*avar = argv[1];
+	if (argc > 2)
+		*svar = argv[2];
+	if (argc > 3)
+		*ivar = argv[3];
+
+	return CMD_RET_SUCCESS;
+}
+
 static int adtimg_get_dt_by_index(int argc, char *const argv[])
 {
 	ulong addr;
@@ -164,6 +192,61 @@ static int adtimg_get_dt_by_index(int argc, char *const argv[])
 	return CMD_RET_SUCCESS;
 }
 
+static int adtimg_get_dt_by_id(int argc, char *const argv[])
+{
+	ulong addr;
+	u32 id, index, size;
+	int ret;
+	char *avar = NULL, *svar = NULL, *ivar = NULL;
+
+	ret = adtimg_getopt_id(argc, argv, &id, &avar, &svar, &ivar);
+	if (ret != CMD_RET_SUCCESS)
+		return ret;
+
+	if (!android_dt_get_fdt_by_id(working_img, id, &addr, &size, &index))
+		return CMD_RET_FAILURE;
+
+	if (avar && svar && ivar) {
+		ret = env_set_hex(avar, addr);
+		if (ret) {
+			printf("Error: Can't set '%s' to 0x%lx\n", avar, addr);
+			return CMD_RET_FAILURE;
+		}
+		ret = env_set_hex(svar, size);
+		if (ret) {
+			printf("Error: Can't set '%s' to 0x%x\n", svar, size);
+			return CMD_RET_FAILURE;
+		}
+		ret = env_set_hex(ivar, index);
+		if (ret) {
+			printf("Error: Can't set '%s' to 0x%x\n", ivar, index);
+			return CMD_RET_FAILURE;
+		}
+	} else if (avar && svar) {
+		ret = env_set_hex(avar, addr);
+		if (ret) {
+			printf("Error: Can't set '%s' to 0x%lx\n", avar, addr);
+			return CMD_RET_FAILURE;
+		}
+		ret = env_set_hex(svar, size);
+		if (ret) {
+			printf("Error: Can't set '%s' to 0x%x\n", svar, size);
+			return CMD_RET_FAILURE;
+		}
+	} else if (avar) {
+		ret = env_set_hex(avar, addr);
+		if (ret) {
+			printf("Error: Can't set '%s' to 0x%lx\n", avar, addr);
+			return CMD_RET_FAILURE;
+		}
+		printf("0x%x (%d)\n", size, size);
+	} else {
+		printf("0x%lx, 0x%x (%d)\n", addr, size, size);
+	}
+
+	return CMD_RET_SUCCESS;
+}
+
 static int adtimg_get_dt(int argc, char *const argv[])
 {
 	if (argc < 2) {
@@ -177,6 +260,9 @@ static int adtimg_get_dt(int argc, char *const argv[])
 
 	if (!strncmp(argv[0], OPT_INDEX, sizeof(OPT_INDEX) - 1))
 		return adtimg_get_dt_by_index(argc, argv);
+
+	if (!strncmp(argv[0], OPT_ID, sizeof(OPT_ID) - 1))
+		return adtimg_get_dt_by_id(argc, argv);
 
 	printf("Error: Option '%s' not supported\n", argv[0]);
 	return CMD_RET_FAILURE;
