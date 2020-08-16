@@ -12,6 +12,8 @@
 bool android_dt_check_header(ulong hdr_addr);
 bool android_dt_get_fdt_by_index(ulong hdr_addr, u32 index, ulong *addr,
 				 u32 *size);
+bool android_dt_get_fdt_by_id(ulong hdr_addr, u32 id, ulong *addr,
+				 u32 *size, u32 *index);
 
 #if !defined(CONFIG_SPL_BUILD)
 void android_dt_print_contents(ulong hdr_addr);
