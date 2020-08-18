@@ -157,6 +157,7 @@ enum {
 	ANX7688_F_POWERED,
 	ANX7688_F_CONNECTED,
 	ANX7688_F_FW_FAILED,
+	ANX7688_F_PWRSUPPLY_CHANGE,
 };
 
 struct anx7688 {
@@ -1410,12 +1411,69 @@ static int anx7688_status_show(struct seq_file *s, void *data)
 }
 DEFINE_SHOW_ATTRIBUTE(anx7688_status);
 
+static void anx7688_cabledet_timer_fn(struct timer_list *t)
+{
+	struct anx7688 *anx7688 = from_timer(anx7688, t, work_timer);
+
+	schedule_delayed_work(&anx7688->work, 0);
+	mod_timer(t, jiffies + msecs_to_jiffies(1000));
+}
+
+static void anx7688_handle_vbus_in_notify(struct anx7688* anx7688)
+{
+	union power_supply_propval psy_val = {0,};
+	struct device *dev = anx7688->dev;
+	int ret;
+
+	ret = power_supply_get_property(anx7688->vbus_in_supply,
+					POWER_SUPPLY_PROP_USB_TYPE,
+					&psy_val);
+	if (ret) {
+		dev_err(dev, "failed to get USB BC1.2 result\n");
+		return;
+	}
+
+	if (anx7688->last_bc_result == psy_val.intval)
+		return;
+
+	anx7688->last_bc_result = psy_val.intval;
+
+	switch (psy_val.intval) {
+	case POWER_SUPPLY_USB_TYPE_DCP:
+	case POWER_SUPPLY_USB_TYPE_CDP:
+		dev_dbg(dev, "BC 1.2 result: DCP or CDP\n");
+		break;
+	case POWER_SUPPLY_USB_TYPE_SDP:
+	default:
+		dev_dbg(dev, "BC 1.2 result: SDP\n");
+		break;
+	}
+}
+
+static int anx7688_vbus_in_notify(struct notifier_block *nb,
+				  unsigned long val, void *v)
+{
+	struct anx7688 *anx7688 = container_of(nb, struct anx7688, vbus_in_nb);
+	struct power_supply *psy = v;
+
+	/* atomic context */
+	if (val == PSY_EVENT_PROP_CHANGED && psy == anx7688->vbus_in_supply) {
+		set_bit(ANX7688_F_PWRSUPPLY_CHANGE, anx7688->flags);
+		schedule_delayed_work(&anx7688->work, 0);
+	}
+
+	return NOTIFY_OK;
+}
+
 static void anx7688_work(struct work_struct *work)
 {
         struct anx7688 *anx7688 = container_of(work, struct anx7688, work.work);
 
 	if (test_bit(ANX7688_F_FW_FAILED, anx7688->flags))
 		return;
+
+	if (test_and_clear_bit(ANX7688_F_PWRSUPPLY_CHANGE, anx7688->flags))
+		anx7688_handle_vbus_in_notify(anx7688);
 
         anx7688_handle_cable_change(anx7688);
 
@@ -1428,53 +1486,6 @@ static void anx7688_work(struct work_struct *work)
 		anx7688_update_status(anx7688);
 		mutex_unlock(&anx7688->lock);
 	}
-}
-
-static void anx7688_cabledet_timer_fn(struct timer_list *t)
-{
-	struct anx7688 *anx7688 = from_timer(anx7688, t, work_timer);
-
-	schedule_delayed_work(&anx7688->work, 0);
-	mod_timer(t, jiffies + msecs_to_jiffies(1000));
-}
-
-static int anx7688_vbus_in_notify(struct notifier_block *nb,
-				  unsigned long val, void *v)
-{
-	struct anx7688 *anx7688 = container_of(nb, struct anx7688, vbus_in_nb);
-	union power_supply_propval psy_val = {0,};
-	struct device *dev = anx7688->dev;
-	struct power_supply *psy = v;
-	int ret;
-
-	if (val == PSY_EVENT_PROP_CHANGED && psy == anx7688->vbus_in_supply) {
-		ret = power_supply_get_property(anx7688->vbus_in_supply,
-						POWER_SUPPLY_PROP_USB_TYPE,
-						&psy_val);
-		if (ret) {
-			dev_err(dev, "failed to get USB BC1.2 result\n");
-			goto out;
-		}
-
-		if (anx7688->last_bc_result == psy_val.intval)
-			goto out;
-
-		anx7688->last_bc_result = psy_val.intval;
-
-		switch (psy_val.intval) {
-		case POWER_SUPPLY_USB_TYPE_DCP:
-		case POWER_SUPPLY_USB_TYPE_CDP:
-			dev_dbg(dev, "BC 1.2 result: DCP or CDP\n");
-			break;
-		case POWER_SUPPLY_USB_TYPE_SDP:
-		default:
-			dev_dbg(dev, "BC 1.2 result: SDP\n");
-			break;
-		}
-	}
-
-out:
-	return NOTIFY_OK;
 }
 
 static int anx7688_i2c_probe(struct i2c_client *client,
