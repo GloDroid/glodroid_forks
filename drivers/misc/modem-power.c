@@ -856,7 +856,7 @@ static int mpwr_eg25_resume(struct mpwr_dev *mpwr)
 
 static const struct mpwr_gpio mpwr_eg25_gpios[] = {
 	MPWR_GPIO_DEF(enable, GPIOD_OUT_HIGH, true),
-	MPWR_GPIO_DEF(reset, GPIOD_OUT_HIGH, true),
+	MPWR_GPIO_DEF(reset, GPIOD_OUT_LOW, true),
 	MPWR_GPIO_DEF(pwrkey, GPIOD_OUT_LOW, false),
 	MPWR_GPIO_DEF(dtr, GPIOD_OUT_LOW, true),
 	MPWR_GPIO_DEF(status, GPIOD_IN, false),
