@@ -404,6 +404,7 @@ static int mpwr_eg25_power_up(struct mpwr_dev* mpwr)
 	struct gpio_desc *pwrkey_gpio = mpwr_eg25_get_pwrkey_gpio(mpwr);
 	bool wakeup_ok, status_ok;
 	bool needs_restart = false;
+	u32 speed = 115200;
 	int ret, i, off;
 	ktime_t start;
 
@@ -439,6 +440,22 @@ static int mpwr_eg25_power_up(struct mpwr_dev* mpwr)
 
 	/* Switch status key to input, in case it's multiplexed with pwrkey. */
 	gpiod_direction_input(mpwr->status_gpio);
+
+	/* open serial console */
+	ret = serdev_device_open(mpwr->serdev);
+	if (ret) {
+		dev_err(mpwr->dev, "error opening serdev (%d)\n", ret);
+		goto err_shutdown_noclose;
+	}
+
+	of_property_read_u32(mpwr->dev->of_node, "current-speed", &speed);
+	serdev_device_set_baudrate(mpwr->serdev, speed);
+	serdev_device_set_flow_control(mpwr->serdev, false);
+	ret = serdev_device_set_parity(mpwr->serdev, SERDEV_PARITY_NONE);
+	if (ret) {
+		dev_err(mpwr->dev, "error setting serdev parity (%d)\n", ret);
+		goto err_shutdown;
+	}
 
 	/*
 	 * Wait for status/wakeup change, assume good values, if CTS/status
@@ -613,6 +630,8 @@ powered_up:
 	return 0;
 
 err_shutdown:
+	serdev_device_close(mpwr->serdev);
+err_shutdown_noclose:
 	dev_warn(mpwr->dev,
 		 "Forcibly cutting off power, data loss may occur.\n");
 	gpiod_direction_input(mpwr->enable_gpio);
@@ -632,6 +651,8 @@ static int mpwr_eg25_power_down_finish(struct mpwr_dev* mpwr)
 	ktime_t start = ktime_get();
 	unsigned safety_delay = 30000;
 	int ret;
+
+	serdev_device_close(mpwr->serdev);
 
 	/*
 	 * This function is called right after POWERED DOWN message is received.
@@ -1755,7 +1776,6 @@ static int mpwr_serdev_probe(struct serdev_device *serdev)
 {
 	struct device *dev = &serdev->dev;
         struct mpwr_dev* mpwr;
-	u32 speed = 115200;
         int ret;
 
 	ret = mpwr_probe_generic(dev, &mpwr);
@@ -1766,26 +1786,12 @@ static int mpwr_serdev_probe(struct serdev_device *serdev)
 	serdev_device_set_client_ops(serdev, &mpwr_serdev_ops);
 	mpwr->serdev = serdev;
 
-	ret = serdev_device_open(mpwr->serdev);
-	if (ret) {
-		dev_err(dev, "error opening serdev (%d)\n", ret);
-		mpwr_remove_generic(mpwr);
-		return ret;
-	}
-
-	of_property_read_u32(dev->of_node, "current-speed", &speed);
-
-	serdev_device_set_baudrate(serdev, speed);
-	serdev_device_set_flow_control(serdev, false);
-
         return 0;
 }
 
 static void mpwr_serdev_remove(struct serdev_device *serdev)
 {
 	struct mpwr_dev *mpwr = serdev_device_get_drvdata(serdev);
-
-	serdev_device_close(serdev);
 
 	mpwr_remove_generic(mpwr);
 }
