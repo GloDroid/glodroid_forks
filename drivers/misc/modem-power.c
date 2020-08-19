@@ -1568,7 +1568,8 @@ static int __mpwr_serdev_at_cmd_with_retry(struct mpwr_dev *mpwr, const char *ms
 		if (ret != -EINVAL && (!ignore_timeout || ret != -ETIMEDOUT))
 			return ret;
 
-		msleep(1000);
+		if (ret != -ETIMEDOUT)
+			msleep(1000);
 	}
 
 	dev_err(mpwr->dev, "AT command '%s' returned ERROR\n", msg);
