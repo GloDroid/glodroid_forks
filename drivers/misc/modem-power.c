@@ -1611,11 +1611,11 @@ static int mpwr_serdev_send_msg(struct mpwr_dev *mpwr, const char *msg)
 	if (len >= sizeof buf)
 		return -E2BIG;
 
-	ret = serdev_device_write(mpwr->serdev, buf, len, msecs_to_jiffies(10000));
+	ret = serdev_device_write(mpwr->serdev, buf, len, msecs_to_jiffies(3000));
 	if (ret < len)
 		return -EIO;
 
-	//serdev_device_wait_until_sent(serdev, msecs_to_jiffies(10000));
+	serdev_device_wait_until_sent(mpwr->serdev, msecs_to_jiffies(3000));
 
 	return 0;
 }
