@@ -1324,6 +1324,7 @@ static int mpwr_probe_generic(struct device *dev, struct mpwr_dev **mpwr_out)
 	INIT_WORK(&mpwr->power_work, &mpwr_work_handler);
 	INIT_WORK(&mpwr->finish_pdn_work, &mpwr_finish_pdn_work);
         INIT_DELAYED_WORK(&mpwr->host_ready_work, mpwr_host_ready_work);
+	set_bit(MPWR_F_WAIT_RDY, mpwr->flags);
 
 	ret = of_property_read_string(np, "char-device-name", &cdev_name);
 	if (ret) {
