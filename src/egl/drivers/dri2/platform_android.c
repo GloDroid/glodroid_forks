@@ -38,6 +38,9 @@
 #include <sync/sync.h>
 #include <sys/types.h>
 #include <drm-uapi/drm_fourcc.h>
+#ifdef HAVE_GRALLOC_HANDLE
+#include <android/gralloc_handle.h>
+#endif
 
 #include "util/os_file.h"
 
@@ -399,6 +402,70 @@ droid_create_image_from_cros_info(_EGLDisplay *disp,
    return NULL;
 }
 
+#ifdef HAVE_GRALLOC_HANDLE
+
+static const char gbm_gralloc_module_name[] = "GBM Memory Allocator";
+static const char drm_gralloc_module_name[] = "DRM Memory Allocator";
+
+#if GRALLOC_HANDLE_VERSION < 4
+#error libdrm >= v2.4.97 is required
+#endif
+
+static __DRIimage *
+droid_create_image_from_libdrm_gralloc_handle(_EGLDisplay *disp,
+                                              struct ANativeWindowBuffer *buf)
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   unsigned error;
+   int num_fds = 1;
+   int num_planes = 1;
+   int fds[3];
+   int offsets[3] = {0};
+   int pitches[3];
+   int drm_fourcc;
+
+   const bool is_drm_gralloc =
+      strcmp(dri2_dpy->gralloc->common.name, drm_gralloc_module_name) == 0;
+   const bool is_gbm_gralloc =
+      strcmp(dri2_dpy->gralloc->common.name, gbm_gralloc_module_name) == 0;
+
+   if ((is_gbm_gralloc || is_drm_gralloc) &&
+       dri2_dpy->image->base.version >= 15 &&
+       dri2_dpy->image->createImageFromDmaBufs2 != NULL) {
+      struct gralloc_handle_t *handle = (struct gralloc_handle_t *)buf->handle;
+
+      if (handle->magic != GRALLOC_HANDLE_MAGIC ||
+          handle->version != GRALLOC_HANDLE_VERSION)
+         return NULL;
+
+      fds[0] = handle->prime_fd;
+      if (is_yuv(buf->format)) {
+         if (!get_yuv_buffer_info(disp, buf, num_fds, fds, offsets, pitches,
+                                  &drm_fourcc, &num_planes))
+            return NULL;
+      } else {
+         drm_fourcc = get_fourcc(buf->format);
+         pitches[0] = handle->stride;
+      }
+
+      return dri2_dpy->image->createImageFromDmaBufs2(dri2_dpy->dri_screen,
+                                                      buf->width, buf->height,
+                                                      drm_fourcc, handle->modifier,
+                                                      fds, num_planes,
+                                                      pitches, offsets,
+                                                      EGL_ITU_REC601_EXT,
+                                                      EGL_YUV_FULL_RANGE_EXT,
+                                                      EGL_YUV_CHROMA_SITING_0_EXT,
+                                                      EGL_YUV_CHROMA_SITING_0_EXT,
+                                                      &error,
+                                                      NULL);
+   }
+
+   return NULL;
+}
+
+#endif
+
 static __DRIimage *
 droid_create_image_from_native_buffer(_EGLDisplay *disp,
                                       struct ANativeWindowBuffer *buf)
@@ -408,6 +475,12 @@ droid_create_image_from_native_buffer(_EGLDisplay *disp,
    dri_image = droid_create_image_from_cros_info(disp, buf);
    if (dri_image)
       return dri_image;
+
+#ifdef HAVE_GRALLOC_HANDLE
+   dri_image = droid_create_image_from_libdrm_gralloc_handle(disp, buf);
+   if (dri_image)
+      return dri_image;
+#endif
 
    return droid_create_image_from_prime_fds(disp, buf);
 }

@@ -73,6 +73,11 @@ ifeq ($(BOARD_USES_DRM_GRALLOC),true)
 	LOCAL_SHARED_LIBRARIES += libgralloc_drm
 endif
 
+# Require libdrm >= 2.4.97
+ifeq ($(BOARD_USES_GRALLOC_HANDLE),true)
+	LOCAL_CFLAGS += -DHAVE_GRALLOC_HANDLE
+endif
+
 ifeq ($(filter $(MESA_ANDROID_MAJOR_VERSION), 4 5 6 7),)
 LOCAL_SHARED_LIBRARIES += libnativewindow
 endif
