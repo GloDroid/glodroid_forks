@@ -199,6 +199,10 @@ enum {
         /* eg25 */
         MPWR_F_GOT_RDY,
         MPWR_F_GOT_PDN,
+
+	/* config options */
+        MPWR_F_DUMB_POWERUP,
+        MPWR_F_WAIT_RDY,
 };
 
 static struct class* mpwr_class;
@@ -476,10 +480,29 @@ static int mpwr_eg25_power_up(struct mpwr_dev* mpwr)
 
 	clear_bit(MPWR_F_KILLSWITCHED, mpwr->flags);
 
-	// configure the link (disable echo)
-	ret = mpwr_serdev_at_cmd_with_retry_ignore_timeout(mpwr, "AT&FE0", 1000, 30);
-	if (ret)
-		goto err_shutdown;
+	if (test_bit(MPWR_F_DUMB_POWERUP, mpwr->flags))
+		goto powered_up;
+
+	if (test_bit(MPWR_F_WAIT_RDY, mpwr->flags)) {
+		// wait for RDY for up to 30s
+		ret = wait_event_timeout(mpwr->wait,
+					 test_bit(MPWR_F_GOT_RDY, mpwr->flags),
+					 msecs_to_jiffies(30000));
+		if (ret <= 0) {
+			dev_err(mpwr->dev, "The modem didn't send RDY in time\n");
+			goto err_shutdown;
+		}
+
+		// configure the link (disable echo)
+		ret = mpwr_serdev_at_cmd(mpwr, "AT&FE0", 1000);
+		if (ret)
+			goto err_shutdown;
+	} else {
+		// configure the link (disable echo)
+		ret = mpwr_serdev_at_cmd_with_retry_ignore_timeout(mpwr, "AT&FE0", 1000, 30);
+		if (ret)
+			goto err_shutdown;
+	}
 
 	/* print firmware version */
         ret = mpwr_serdev_at_cmd_with_retry(mpwr, "AT+QVERSION;+QSUBSYSVER", 1000, 15);
@@ -584,6 +607,7 @@ static int mpwr_eg25_power_up(struct mpwr_dev* mpwr)
         if (ret)
 		dev_err(mpwr->dev, "Modem will probably not sleep!\n");
 
+powered_up:
 	gpiod_direction_output(mpwr->dtr_gpio, 1);
 
 	return 0;
@@ -1178,10 +1202,72 @@ static ssize_t powered_store(struct device *dev,
 	return len;
 }
 
+static ssize_t dumb_powerup_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct mpwr_dev *mpwr = platform_get_drvdata(to_platform_device(dev));
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n",
+			 !!test_bit(MPWR_F_DUMB_POWERUP, mpwr->flags));
+}
+
+static ssize_t dumb_powerup_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t len)
+{
+	struct mpwr_dev *mpwr = platform_get_drvdata(to_platform_device(dev));
+	bool val;
+	int ret;
+
+	ret = kstrtobool(buf, &val);
+	if (ret)
+		return ret;
+
+	if (val)
+		set_bit(MPWR_F_DUMB_POWERUP, mpwr->flags);
+	else
+		clear_bit(MPWR_F_DUMB_POWERUP, mpwr->flags);
+
+	return len;
+}
+
+static ssize_t wait_rdy_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct mpwr_dev *mpwr = platform_get_drvdata(to_platform_device(dev));
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n",
+			 !!test_bit(MPWR_F_WAIT_RDY, mpwr->flags));
+}
+
+static ssize_t wait_rdy_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t len)
+{
+	struct mpwr_dev *mpwr = platform_get_drvdata(to_platform_device(dev));
+	bool val;
+	int ret;
+
+	ret = kstrtobool(buf, &val);
+	if (ret)
+		return ret;
+
+	if (val)
+		set_bit(MPWR_F_WAIT_RDY, mpwr->flags);
+	else
+		clear_bit(MPWR_F_WAIT_RDY, mpwr->flags);
+
+	return len;
+}
+
 static DEVICE_ATTR_RW(powered);
+static DEVICE_ATTR_RW(dumb_powerup);
+static DEVICE_ATTR_RW(wait_rdy);
 
 static struct attribute *mpwr_attrs[] = {
 	&dev_attr_powered.attr,
+	&dev_attr_dumb_powerup.attr,
+	&dev_attr_wait_rdy.attr,
 	NULL,
 };
 
