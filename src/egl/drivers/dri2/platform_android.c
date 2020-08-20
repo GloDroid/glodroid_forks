@@ -188,16 +188,29 @@ get_native_buffer_name(struct ANativeWindowBuffer *buf)
 }
 #endif /* HAVE_DRM_GRALLOC */
 
+struct buffer_info {
+   uint32_t drm_fourcc;
+   int num_planes;
+   int fds[4];
+   uint64_t modifier;
+   int offsets[4];
+   int pitches[4];
+};
+
 static bool
 get_yuv_buffer_info(_EGLDisplay *disp,
                     struct ANativeWindowBuffer *buf,
-                    int num_fds, int *fds, int *offsets, int *pitches,
-                    int *fourcc, int *num_planes)
+                    struct buffer_info *buf_info)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct android_ycbcr ycbcr;
    enum chroma_order chroma_order;
+   int num_fds;
    int ret;
+
+   num_fds = get_native_buffer_fds(buf, buf_info->fds);
+   if (num_fds == 0)
+      return false;
 
    if (!dri2_dpy->gralloc->lock_ycbcr) {
       _eglLog(_EGL_WARNING, "Gralloc does not support lock_ycbcr");
@@ -221,29 +234,29 @@ get_yuv_buffer_info(_EGLDisplay *disp,
    /* When lock_ycbcr's usage argument contains no SW_READ/WRITE flags
     * it will return the .y/.cb/.cr pointers based on a NULL pointer,
     * so they can be interpreted as offsets. */
-   offsets[0] = (size_t)ycbcr.y;
+   buf_info->offsets[0] = (size_t)ycbcr.y;
    /* We assume here that all the planes are located in one DMA-buf. */
    if ((size_t)ycbcr.cr < (size_t)ycbcr.cb) {
       chroma_order = YCrCb;
-      offsets[1] = (size_t)ycbcr.cr;
-      offsets[2] = (size_t)ycbcr.cb;
+      buf_info->offsets[1] = (size_t)ycbcr.cr;
+      buf_info->offsets[2] = (size_t)ycbcr.cb;
    } else {
       chroma_order = YCbCr;
-      offsets[1] = (size_t)ycbcr.cb;
-      offsets[2] = (size_t)ycbcr.cr;
+      buf_info->offsets[1] = (size_t)ycbcr.cb;
+      buf_info->offsets[2] = (size_t)ycbcr.cr;
    }
 
    /* .ystride is the line length (in bytes) of the Y plane,
     * .cstride is the line length (in bytes) of any of the remaining
     * Cb/Cr/CbCr planes, assumed to be the same for Cb and Cr for fully
     * planar formats. */
-   pitches[0] = ycbcr.ystride;
-   pitches[1] = pitches[2] = ycbcr.cstride;
+   buf_info->pitches[0] = ycbcr.ystride;
+   buf_info->pitches[1] = buf_info->pitches[2] = ycbcr.cstride;
 
    /* .chroma_step is the byte distance between the same chroma channel
     * values of subsequent pixels, assumed to be the same for Cb and Cr. */
-   *fourcc = get_fourcc_yuv(buf->format, chroma_order, ycbcr.chroma_step);
-   if (*fourcc == -1) {
+   buf_info->drm_fourcc = get_fourcc_yuv(buf->format, chroma_order, ycbcr.chroma_step);
+   if (buf_info->drm_fourcc == -1) {
       _eglLog(_EGL_WARNING, "unsupported YUV format, native = %x, chroma_order = %s, chroma_step = %d",
               buf->format, chroma_order == YCbCr ? "YCbCr" : "YCrCb", ycbcr.chroma_step);
       return false;
@@ -254,100 +267,53 @@ get_yuv_buffer_info(_EGLDisplay *disp,
     * the single-fd case cannot happen.  So handle eithe single
     * fd or fd-per-plane case:
     */
-   *num_planes = (ycbcr.chroma_step == 2) ? 2 : 3;
+   buf_info->num_planes = (ycbcr.chroma_step == 2) ? 2 : 3;
    if (num_fds == 1) {
-      fds[2] = fds[1] = fds[0];
+      buf_info->fds[2] = buf_info->fds[1] = buf_info->fds[0];
    } else {
-      assert(num_fds == *num_planes);
+      assert(num_fds == buf_info->num_planes);
    }
 
    return true;
 }
 
-static __DRIimage *
-droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp,
+
+static bool
+native_window_buffer_get_buffer_info(_EGLDisplay *disp,
                                      struct ANativeWindowBuffer *buf,
-                                     int num_fds, int fds[3])
+                                     struct buffer_info *buf_info)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   unsigned error;
-   int offsets[3];
-   int pitches[3];
-   int fourcc;
-   int num_planes;
 
-   if (!get_yuv_buffer_info(disp, buf, num_fds, fds, offsets, pitches,
-       &fourcc, &num_planes))
-      return NULL;
+   buf_info->modifier = DRM_FORMAT_MOD_INVALID;
 
-   return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
-      buf->width, buf->height, fourcc,
-      fds, num_planes, pitches, offsets,
-      EGL_ITU_REC601_EXT,
-      EGL_YUV_NARROW_RANGE_EXT,
-      EGL_YUV_CHROMA_SITING_0_EXT,
-      EGL_YUV_CHROMA_SITING_0_EXT,
-      &error,
-      NULL);
-}
-
-static __DRIimage *
-droid_create_image_from_prime_fds(_EGLDisplay *disp,
-                                  struct ANativeWindowBuffer *buf)
-{
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   int pitches[4] = { 0 }, offsets[4] = { 0 };
-   unsigned error;
-   int num_fds;
-   int fds[3];
-
-   num_fds = get_native_buffer_fds(buf, fds);
-   if (num_fds == 0)
-      return NULL;
-
-   if (is_yuv(buf->format)) {
-      __DRIimage *image;
-
-      image = droid_create_image_from_prime_fds_yuv(disp, buf, num_fds, fds);
-      /*
-       * HACK: https://issuetracker.google.com/32077885
-       * There is no API available to properly query the IMPLEMENTATION_DEFINED
-       * format. As a workaround we rely here on gralloc allocating either
-       * an arbitrary YCbCr 4:2:0 or RGBX_8888, with the latter being recognized
-       * by lock_ycbcr failing.
-       */
-      if (image || buf->format != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
-         return image;
-   }
+   if (is_yuv(buf->format))
+      return get_yuv_buffer_info(disp, buf, buf_info);
 
    /*
     * Non-YUV formats could *also* have multiple planes, such as ancillary
     * color compression state buffer, but the rest of the code isn't ready
     * yet to deal with modifiers:
     */
-   assert(num_fds == 1);
+   buf_info->num_planes = get_native_buffer_fds(buf, buf_info->fds);
+   if (buf_info->num_planes == 0)
+      return false;
 
-   const int fourcc = get_fourcc(buf->format);
-   if (fourcc == -1) {
+   assert(buf_info->num_planes == 1);
+
+   buf_info->drm_fourcc = get_fourcc(buf->format);
+   if (buf_info->drm_fourcc == -1) {
       _eglError(EGL_BAD_PARAMETER, "eglCreateEGLImageKHR");
-      return NULL;
+      return false;
    }
 
-   pitches[0] = buf->stride * get_format_bpp(buf->format);
-   if (pitches[0] == 0) {
+   buf_info->pitches[0] = buf->stride * get_format_bpp(buf->format);
+   if (buf_info->pitches[0] == 0) {
       _eglError(EGL_BAD_PARAMETER, "eglCreateEGLImageKHR");
-      return NULL;
+      return false;
    }
 
-   return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
-      buf->width, buf->height, fourcc,
-      fds, num_fds, pitches, offsets,
-      EGL_ITU_REC601_EXT,
-      EGL_YUV_NARROW_RANGE_EXT,
-      EGL_YUV_CHROMA_SITING_0_EXT,
-      EGL_YUV_CHROMA_SITING_0_EXT,
-      &error,
-      NULL);
+   return true;
 }
 
 /* More recent CrOS gralloc has a perform op that fills out the struct below
@@ -371,9 +337,10 @@ struct cros_gralloc0_buffer_info {
    int stride[4];
 };
 
-static __DRIimage *
-droid_create_image_from_cros_info(_EGLDisplay *disp,
-                                  struct ANativeWindowBuffer *buf)
+static bool
+cros_get_buffer_info(_EGLDisplay *disp,
+                     struct ANativeWindowBuffer *buf,
+                     struct buffer_info *buf_info)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct cros_gralloc0_buffer_info info;
@@ -381,25 +348,22 @@ droid_create_image_from_cros_info(_EGLDisplay *disp,
 
    if (strcmp(dri2_dpy->gralloc->common.name, cros_gralloc_module_name) == 0 &&
        dri2_dpy->gralloc->perform &&
-       dri2_dpy->image->base.version >= 15 &&
-       dri2_dpy->image->createImageFromDmaBufs2 != NULL &&
        dri2_dpy->gralloc->perform(dri2_dpy->gralloc,
                                   CROS_GRALLOC_DRM_GET_BUFFER_INFO,
                                   buf->handle, &info) == 0) {
-      return dri2_dpy->image->createImageFromDmaBufs2(dri2_dpy->dri_screen,
-                                                      buf->width, buf->height,
-                                                      info.drm_fourcc, info.modifier,
-                                                      info.fds, info.num_fds,
-                                                      info.stride, info.offset,
-                                                      EGL_ITU_REC601_EXT,
-                                                      EGL_YUV_FULL_RANGE_EXT,
-                                                      EGL_YUV_CHROMA_SITING_0_EXT,
-                                                      EGL_YUV_CHROMA_SITING_0_EXT,
-                                                      &error,
-                                                      NULL);
+      buf_info->drm_fourcc = info.drm_fourcc;
+      buf_info->modifier = info.modifier;
+      buf_info->num_planes = info.num_fds;
+      for (int i = 0; i < 4; i++) {
+         buf_info->fds[i] = info.fds[i];
+         buf_info->offsets[i] = info.offset[i];
+         buf_info->pitches[i] = info.stride[i];
+      }
+
+      return true;
    }
 
-   return NULL;
+   return false;
 }
 
 #ifdef HAVE_GRALLOC_HANDLE
@@ -411,57 +375,42 @@ static const char drm_gralloc_module_name[] = "DRM Memory Allocator";
 #error libdrm >= v2.4.97 is required
 #endif
 
-static __DRIimage *
-droid_create_image_from_libdrm_gralloc_handle(_EGLDisplay *disp,
-                                              struct ANativeWindowBuffer *buf)
+static bool
+libdrm_gralloc_handle_get_buffer_info(_EGLDisplay *disp,
+                                      struct ANativeWindowBuffer *buf,
+                                      struct buffer_info *buf_info)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   unsigned error;
-   int num_fds = 1;
-   int num_planes = 1;
-   int fds[3];
-   int offsets[3] = {0};
-   int pitches[3];
-   int drm_fourcc;
 
    const bool is_drm_gralloc =
       strcmp(dri2_dpy->gralloc->common.name, drm_gralloc_module_name) == 0;
    const bool is_gbm_gralloc =
       strcmp(dri2_dpy->gralloc->common.name, gbm_gralloc_module_name) == 0;
 
-   if ((is_gbm_gralloc || is_drm_gralloc) &&
-       dri2_dpy->image->base.version >= 15 &&
-       dri2_dpy->image->createImageFromDmaBufs2 != NULL) {
+   if (is_gbm_gralloc || is_drm_gralloc) {
       struct gralloc_handle_t *handle = (struct gralloc_handle_t *)buf->handle;
 
       if (handle->magic != GRALLOC_HANDLE_MAGIC ||
           handle->version != GRALLOC_HANDLE_VERSION)
-         return NULL;
+         return false;
 
-      fds[0] = handle->prime_fd;
       if (is_yuv(buf->format)) {
-         if (!get_yuv_buffer_info(disp, buf, num_fds, fds, offsets, pitches,
-                                  &drm_fourcc, &num_planes))
-            return NULL;
+         if (!get_yuv_buffer_info(disp, buf, buf_info))
+            return false;
       } else {
-         drm_fourcc = get_fourcc(buf->format);
-         pitches[0] = handle->stride;
+         buf_info->num_planes = get_native_buffer_fds(buf, buf_info->fds);
+         if (buf_info->num_planes != 1)
+             return false;
+
+         buf_info->drm_fourcc = get_fourcc(buf->format);
+         buf_info->pitches[0] = handle->stride;
       }
 
-      return dri2_dpy->image->createImageFromDmaBufs2(dri2_dpy->dri_screen,
-                                                      buf->width, buf->height,
-                                                      drm_fourcc, handle->modifier,
-                                                      fds, num_planes,
-                                                      pitches, offsets,
-                                                      EGL_ITU_REC601_EXT,
-                                                      EGL_YUV_FULL_RANGE_EXT,
-                                                      EGL_YUV_CHROMA_SITING_0_EXT,
-                                                      EGL_YUV_CHROMA_SITING_0_EXT,
-                                                      &error,
-                                                      NULL);
+      buf_info->modifier = handle->modifier;
+      return true;
    }
 
-   return NULL;
+   return false;
 }
 
 #endif
@@ -470,19 +419,41 @@ static __DRIimage *
 droid_create_image_from_native_buffer(_EGLDisplay *disp,
                                       struct ANativeWindowBuffer *buf)
 {
-   __DRIimage *dri_image;
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   struct buffer_info buf_info = {0};
+   unsigned error;
 
-   dri_image = droid_create_image_from_cros_info(disp, buf);
-   if (dri_image)
-      return dri_image;
-
+   if (!cros_get_buffer_info(disp, buf, &buf_info))
 #ifdef HAVE_GRALLOC_HANDLE
-   dri_image = droid_create_image_from_libdrm_gralloc_handle(disp, buf);
-   if (dri_image)
-      return dri_image;
+      if (!libdrm_gralloc_handle_get_buffer_info(disp, buf, &buf_info))
 #endif
+         if (!native_window_buffer_get_buffer_info(disp, buf, &buf_info))
+            return NULL;
 
-   return droid_create_image_from_prime_fds(disp, buf);
+   if (dri2_dpy->image->base.version >= 15 &&
+       dri2_dpy->image->createImageFromDmaBufs2 != NULL) {
+      return dri2_dpy->image->createImageFromDmaBufs2(dri2_dpy->dri_screen,
+         buf->width, buf->height, buf_info.drm_fourcc,
+         buf_info.modifier, buf_info.fds, buf_info.num_planes,
+         buf_info.pitches, buf_info.offsets,
+         EGL_ITU_REC601_EXT,
+         EGL_YUV_FULL_RANGE_EXT,
+         EGL_YUV_CHROMA_SITING_0_EXT,
+         EGL_YUV_CHROMA_SITING_0_EXT,
+         &error,
+         NULL);
+   } else {
+      return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
+         buf->width, buf->height, buf_info.drm_fourcc,
+         buf_info.fds, buf_info.num_planes,
+         buf_info.pitches, buf_info.offsets,
+         EGL_ITU_REC601_EXT,
+         EGL_YUV_NARROW_RANGE_EXT,
+         EGL_YUV_CHROMA_SITING_0_EXT,
+         EGL_YUV_CHROMA_SITING_0_EXT,
+         &error,
+         NULL);
+   }
 }
 
 static EGLBoolean
