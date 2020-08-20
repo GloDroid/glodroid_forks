@@ -185,23 +185,20 @@ get_native_buffer_name(struct ANativeWindowBuffer *buf)
 }
 #endif /* HAVE_DRM_GRALLOC */
 
-static __DRIimage *
-droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp,
-                                     struct ANativeWindowBuffer *buf,
-                                     int num_fds, int fds[3])
+static bool
+get_yuv_buffer_info(_EGLDisplay *disp,
+                    struct ANativeWindowBuffer *buf,
+                    int num_fds, int *fds, int *offsets, int *pitches,
+                    int *fourcc, int *num_planes)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct android_ycbcr ycbcr;
-   int offsets[3];
-   int pitches[3];
    enum chroma_order chroma_order;
-   int fourcc;
    int ret;
-   unsigned error;
 
    if (!dri2_dpy->gralloc->lock_ycbcr) {
       _eglLog(_EGL_WARNING, "Gralloc does not support lock_ycbcr");
-      return NULL;
+      return false;
    }
 
    memset(&ycbcr, 0, sizeof(ycbcr));
@@ -211,10 +208,10 @@ droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp,
       /* HACK: See droid_create_image_from_prime_fds() and
        * https://issuetracker.google.com/32077885.*/
       if (buf->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
-         return NULL;
+         return false;
 
       _eglLog(_EGL_WARNING, "gralloc->lock_ycbcr failed: %d", ret);
-      return NULL;
+      return false;
    }
    dri2_dpy->gralloc->unlock(dri2_dpy->gralloc, buf->handle);
 
@@ -242,11 +239,11 @@ droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp,
 
    /* .chroma_step is the byte distance between the same chroma channel
     * values of subsequent pixels, assumed to be the same for Cb and Cr. */
-   fourcc = get_fourcc_yuv(buf->format, chroma_order, ycbcr.chroma_step);
-   if (fourcc == -1) {
+   *fourcc = get_fourcc_yuv(buf->format, chroma_order, ycbcr.chroma_step);
+   if (*fourcc == -1) {
       _eglLog(_EGL_WARNING, "unsupported YUV format, native = %x, chroma_order = %s, chroma_step = %d",
               buf->format, chroma_order == YCbCr ? "YCbCr" : "YCrCb", ycbcr.chroma_step);
-      return NULL;
+      return false;
    }
 
    /*
@@ -254,12 +251,31 @@ droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp,
     * the single-fd case cannot happen.  So handle eithe single
     * fd or fd-per-plane case:
     */
-   int num_planes = (ycbcr.chroma_step == 2) ? 2 : 3;
+   *num_planes = (ycbcr.chroma_step == 2) ? 2 : 3;
    if (num_fds == 1) {
       fds[2] = fds[1] = fds[0];
    } else {
-      assert(num_fds == num_planes);
+      assert(num_fds == *num_planes);
    }
+
+   return true;
+}
+
+static __DRIimage *
+droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp,
+                                     struct ANativeWindowBuffer *buf,
+                                     int num_fds, int fds[3])
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   unsigned error;
+   int offsets[3];
+   int pitches[3];
+   int fourcc;
+   int num_planes;
+
+   if (!get_yuv_buffer_info(disp, buf, num_fds, fds, offsets, pitches,
+       &fourcc, &num_planes))
+      return NULL;
 
    return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
       buf->width, buf->height, fourcc,
