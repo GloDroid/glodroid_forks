@@ -28,7 +28,8 @@ class Backend {
                                       uint32_t *num_requests);
   virtual std::tuple<int, size_t> GetClientLayers(
       HwcDisplay *display, const std::vector<HwcLayer *> &layers);
-  virtual bool IsClientLayer(HwcDisplay *display, HwcLayer *layer);
+  virtual bool IsClientLayer(HwcDisplay *display, HwcLayer *layer,
+                             bool most_bottom);
 
  protected:
   static bool HardwareSupportsLayerType(HWC2::Composition comp_type);
