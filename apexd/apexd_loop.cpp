@@ -37,6 +37,7 @@
 #include "apexd_utils.h"
 #include "string_log.h"
 
+using android::base::Basename;
 using android::base::Error;
 using android::base::Result;
 using android::base::StartsWith;
@@ -80,12 +81,8 @@ void LoopbackDeviceUniqueFd::MaybeCloseBad() {
 }
 
 Result<void> configureReadAhead(const std::string& device_path) {
-  auto pos = device_path.find("/dev/block/");
-  if (pos != 0) {
-    return Error() << "Device path does not start with /dev/block.";
-  }
-  pos = device_path.find_last_of('/');
-  std::string device_name = device_path.substr(pos + 1, std::string::npos);
+  CHECK(StartsWith(device_path, "/dev/"));
+  std::string device_name = Basename(device_path);
 
   std::string sysfs_device =
       StringPrintf("/sys/block/%s/queue/read_ahead_kb", device_name.c_str());
@@ -244,25 +241,35 @@ Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
     return ErrnoError() << "Failed LOOP_CTL_GET_FREE";
   }
 
-  std::string device = StringPrintf("/dev/block/loop%d", num);
+  std::string opened_device;
+  const std::vector<std::string> candidate_devices = {
+      StringPrintf("/dev/block/loop%d", num),
+      StringPrintf("/dev/loop%d", num),
+  };
 
   LoopbackDeviceUniqueFd device_fd;
   {
     // See comment on kLoopDeviceRetryAttempts.
     unique_fd sysfs_fd;
     for (size_t i = 0; i != kLoopDeviceRetryAttempts; ++i) {
-      sysfs_fd.reset(open(device.c_str(), O_RDWR | O_CLOEXEC));
-      if (sysfs_fd.get() != -1) {
+      for (auto& device : candidate_devices) {
+        sysfs_fd.reset(open(device.c_str(), O_RDWR | O_CLOEXEC));
+        if (sysfs_fd.get() != -1) {
+          opened_device = device;
+          break;
+        }
+      }
+      if (!opened_device.empty()) {
         break;
       }
-      PLOG(WARNING) << "Loopback device " << device
+      PLOG(WARNING) << "Loopback device " << num
                     << " not ready. Waiting 50ms...";
       usleep(50000);
     }
     if (sysfs_fd.get() == -1) {
-      return ErrnoError() << "Failed to open " << device;
+      return ErrnoError() << "Failed to open loopback device " << num;
     }
-    device_fd = LoopbackDeviceUniqueFd(std::move(sysfs_fd), device);
+    device_fd = LoopbackDeviceUniqueFd(std::move(sysfs_fd), opened_device);
     CHECK_NE(device_fd.get(), -1);
   }
 
@@ -272,7 +279,7 @@ Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
     return configureStatus.error();
   }
 
-  Result<void> readAheadStatus = configureReadAhead(device);
+  Result<void> readAheadStatus = configureReadAhead(opened_device);
   if (!readAheadStatus.ok()) {
     return readAheadStatus.error();
   }
