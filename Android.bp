@@ -109,6 +109,7 @@ filegroup {
         "backend/BackendClient.cpp",
         "backend/BackendManager.cpp",
         "backend/BackendRCarDu.cpp",
+        "backend/BackendSunxi.cpp",
     ],
 }
 
