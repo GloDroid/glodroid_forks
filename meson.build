@@ -22,6 +22,7 @@ srcs = [
     'backend/BackendManager.cpp',
     'backend/Backend.cpp',
     'backend/BackendClient.cpp',
+    'backend/BackendSunxi.cpp',
     'drm/DrmCrtc.cpp',
     'drm/DrmDisplayPipeline.cpp',
     'drm/VSyncWorker.cpp',
