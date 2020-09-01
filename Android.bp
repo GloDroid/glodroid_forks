@@ -110,6 +110,7 @@ cc_library_static {
         "backend/BackendClient.cpp",
         "backend/BackendManager.cpp",
         "backend/BackendRCarDu.cpp",
+        "backend/BackendSunxi.cpp",
     ],
 }
 
