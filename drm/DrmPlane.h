@@ -44,6 +44,7 @@ class DrmPlane {
   uint32_t type() const;
 
   bool IsFormatSupported(uint32_t format) const;
+  bool HasNonRgbFormat() const;
 
   const DrmProperty &crtc_property() const;
   const DrmProperty &fb_property() const;
@@ -60,6 +61,8 @@ class DrmPlane {
   const DrmProperty &alpha_property() const;
   const DrmProperty &blend_property() const;
   const DrmProperty &in_fence_fd_property() const;
+  const DrmProperty &color_encoding_propery() const;
+  const DrmProperty &color_range_property() const;
 
  private:
   DrmDevice *drm_;
@@ -86,6 +89,8 @@ class DrmPlane {
   DrmProperty alpha_property_;
   DrmProperty blend_property_;
   DrmProperty in_fence_fd_property_;
+  DrmProperty color_encoding_propery_;
+  DrmProperty color_range_property_;
 };
 }  // namespace android
 

@@ -136,6 +136,7 @@ struct DrmHwcLayer {
   uint16_t alpha = 0xffff;
   hwc_frect_t source_crop;
   hwc_rect_t display_frame;
+  android_dataspace_t dataspace;
 
   UniqueFd acquire_fence;
   OutputFd release_fence;

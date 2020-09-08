@@ -17,6 +17,7 @@
 #define LOG_TAG "hwc-drm-plane"
 
 #include "DrmPlane.h"
+#include "bufferinfo/BufferInfoGetter.h"
 
 #include <errno.h>
 #include <log/log.h>
@@ -141,6 +142,17 @@ int DrmPlane::Init() {
   if (ret)
     ALOGI("Could not get IN_FENCE_FD property");
 
+  if (HasNonRgbFormat()) {
+    ret = drm_->GetPlaneProperty(*this, "COLOR_ENCODING",
+                                 &color_encoding_propery_);
+    if (ret)
+      ALOGI("Could not get COLOR_ENCODING property");
+
+    ret = drm_->GetPlaneProperty(*this, "COLOR_RANGE", &color_range_property_);
+    if (ret)
+      ALOGI("Could not get COLOR_RANGE property");
+  }
+
   return 0;
 }
 
@@ -159,6 +171,13 @@ uint32_t DrmPlane::type() const {
 bool DrmPlane::IsFormatSupported(uint32_t format) const {
   return std::find(std::begin(formats_), std::end(formats_), format) !=
          std::end(formats_);
+}
+
+bool DrmPlane::HasNonRgbFormat() const {
+  return std::find_if_not(std::begin(formats_), std::end(formats_),
+                          [](uint32_t format) {
+                            return BufferInfoGetter::IsDrmFormatRgb(format);
+                          }) != std::end(formats_);
 }
 
 const DrmProperty &DrmPlane::crtc_property() const {
@@ -219,5 +238,13 @@ const DrmProperty &DrmPlane::blend_property() const {
 
 const DrmProperty &DrmPlane::in_fence_fd_property() const {
   return in_fence_fd_property_;
+}
+
+const DrmProperty &DrmPlane::color_encoding_propery() const {
+  return color_encoding_propery_;
+}
+
+const DrmProperty &DrmPlane::color_range_property() const {
+  return color_range_property_;
 }
 }  // namespace android
