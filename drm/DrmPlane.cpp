@@ -141,6 +141,15 @@ int DrmPlane::Init() {
   if (ret)
     ALOGI("Could not get IN_FENCE_FD property");
 
+  ret = drm_->GetPlaneProperty(*this, "COLOR_ENCODING",
+                               &color_encoding_propery_);
+  if (ret)
+    ALOGI("Could not get COLOR_ENCODING property");
+
+  ret = drm_->GetPlaneProperty(*this, "COLOR_RANGE", &color_range_property_);
+  if (ret)
+    ALOGI("Could not get COLOR_RANGE property");
+
   return 0;
 }
 
@@ -219,5 +228,13 @@ const DrmProperty &DrmPlane::blend_property() const {
 
 const DrmProperty &DrmPlane::in_fence_fd_property() const {
   return in_fence_fd_property_;
+}
+
+const DrmProperty &DrmPlane::color_encoding_propery() const {
+  return color_encoding_propery_;
+}
+
+const DrmProperty &DrmPlane::color_range_property() const {
+  return color_range_property_;
 }
 }  // namespace android

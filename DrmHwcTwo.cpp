@@ -1107,6 +1107,7 @@ void DrmHwcTwo::HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
   layer->alpha = static_cast<uint16_t>(65535.0f * alpha_ + 0.5f);
   layer->SetSourceCrop(source_crop_);
   layer->SetTransform(static_cast<int32_t>(transform_));
+  layer->dataspace = dataspace_;
 }
 
 void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {

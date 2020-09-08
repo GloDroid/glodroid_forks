@@ -342,6 +342,8 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     uint64_t rotation = 0;
     uint64_t alpha = 0xFFFF;
     uint64_t blend;
+    uint64_t color_encoding = UINT64_MAX;
+    uint64_t color_range = UINT64_MAX;
 
     if (comp_plane.type() != DrmCompositionPlane::Type::kDisable) {
       if (source_layers.size() > 1) {
@@ -427,6 +429,45 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
           break;
         }
       }
+
+      if (plane->color_encoding_propery().id()) {
+        switch (layer.dataspace & HAL_DATASPACE_STANDARD_MASK) {
+          case HAL_DATASPACE_STANDARD_BT709:
+            std::tie(color_encoding,
+                     ret) = plane->color_encoding_propery()
+                                .GetEnumValueWithName("ITU-R BT.709 YCbCr");
+            break;
+          case HAL_DATASPACE_STANDARD_BT601_625:
+          case HAL_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
+          case HAL_DATASPACE_STANDARD_BT601_525:
+          case HAL_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
+            std::tie(color_encoding,
+                     ret) = plane->color_encoding_propery()
+                                .GetEnumValueWithName("ITU-R BT.601 YCbCr");
+            break;
+          case HAL_DATASPACE_STANDARD_BT2020:
+          case HAL_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
+            std::tie(color_encoding,
+                     ret) = plane->color_encoding_propery()
+                                .GetEnumValueWithName("ITU-R BT.2020 YCbCr");
+            break;
+        }
+      }
+
+      if (plane->color_range_property().id()) {
+        switch (layer.dataspace & HAL_DATASPACE_RANGE_MASK) {
+          case HAL_DATASPACE_RANGE_FULL:
+            std::tie(color_range,
+                     ret) = plane->color_range_property()
+                                .GetEnumValueWithName("YCbCr full range");
+            break;
+          case HAL_DATASPACE_RANGE_LIMITED:
+            std::tie(color_range,
+                     ret) = plane->color_range_property()
+                                .GetEnumValueWithName("YCbCr limited range");
+            break;
+        }
+      }
     }
 
     // Disable the plane if there's no framebuffer
@@ -506,6 +547,28 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
       if (ret) {
         ALOGE("Failed to add pixel blend mode property %d to plane %d",
               plane->blend_property().id(), plane->id());
+        break;
+      }
+    }
+
+    if (plane->color_encoding_propery().id() && color_encoding != UINT64_MAX) {
+      ret = drmModeAtomicAddProperty(pset, plane->id(),
+                                     plane->color_encoding_propery().id(),
+                                     color_encoding) < 0;
+      if (ret) {
+        ALOGE("Failed to add COLOR_ENCODING property %d to plane %d",
+              plane->color_encoding_propery().id(), plane->id());
+        break;
+      }
+    }
+
+    if (plane->color_range_property().id() && color_range != UINT64_MAX) {
+      ret = drmModeAtomicAddProperty(pset, plane->id(),
+                                     plane->color_range_property().id(),
+                                     color_range) < 0;
+      if (ret) {
+        ALOGE("Failed to add COLOR_RANGE property %d to plane %d",
+              plane->color_range_property().id(), plane->id());
         break;
       }
     }
