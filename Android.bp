@@ -42,11 +42,6 @@ cc_defaults {
                 "-UWIN32_LEAN_AND_MEAN",
             ],
         },
-        windows_x86: {
-            cflags: [
-                "-fsjlj-exceptions",
-            ],
-        },
     },
 }
 
