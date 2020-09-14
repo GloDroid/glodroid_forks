@@ -1030,21 +1030,21 @@ int DrmDisplayCompositor::FlattenConcurrent(DrmConnector *writeback_conn) {
 }
 
 int DrmDisplayCompositor::FlattenActiveComposition() {
-  DrmConnector *writeback_conn = resource_manager_->AvailableWritebackConnector(
-      display_);
-  if (!active_composition_ || !writeback_conn) {
+//  DrmConnector *writeback_conn = resource_manager_->AvailableWritebackConnector(
+//      display_);
+//  if (!active_composition_ || !writeback_conn) {
     // Try to fallback to GPU composition on client, since it is more
     // power-efficient than composition on device side
     return FlattenOnClient();
-  }
+//  }
 
-  if (writeback_conn->display() != display_) {
-    SetFlattening(FlatteningState::kConcurrent);
-    return FlattenConcurrent(writeback_conn);
-  } else {
-    SetFlattening(FlatteningState::kSerial);
-    return FlattenSerial(writeback_conn);
-  }
+//  if (writeback_conn->display() != display_) {
+//    SetFlattening(FlatteningState::kConcurrent);
+//    return FlattenConcurrent(writeback_conn);
+//  } else {
+//    SetFlattening(FlatteningState::kSerial);
+//    return FlattenSerial(writeback_conn);
+//  }
 
   return 0;
 }
