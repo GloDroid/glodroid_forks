@@ -430,6 +430,11 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
       // Dots per 1000 inches
       *value = mm_height ? (mode->v_display() * kUmPerInch) / mm_height : -1;
       break;
+#if PLATFORM_SDK_VERSION > 29
+    case HWC2::Attribute::ConfigGroup:
+      *value = 0; /* TODO: Add support for config groups */
+      break;
+#endif
     default:
       *value = -1;
       return HWC2::Error::BadConfig;
@@ -892,6 +897,68 @@ HWC2::Error DrmHwcTwo::HwcDisplay::ValidateDisplay(uint32_t *num_types,
   return backend_->ValidateDisplay(this, num_types, num_requests);
 }
 
+#if PLATFORM_SDK_VERSION > 29
+HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
+  if (connector_->internal())
+    *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
+  else if (connector_->external())
+    *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::External);
+  else
+    return HWC2::Error::BadConfig;
+
+  return HWC2::Error::None;
+}
+
+HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayVsyncPeriod(
+    hwc2_vsync_period_t *outVsyncPeriod /* ns */) {
+  supported(__func__);
+  DrmMode const &mode = connector_->active_mode();
+  if (mode.id() == 0)
+    return HWC2::Error::BadConfig;
+
+  *outVsyncPeriod = 1E9 / mode.v_refresh();
+  return HWC2::Error::None;
+}
+
+HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfigWithConstraints(
+    hwc2_config_t /*config*/,
+    hwc_vsync_period_change_constraints_t *vsyncPeriodChangeConstraints,
+    hwc_vsync_period_change_timeline_t *outTimeline) {
+  supported(__func__);
+
+  if (vsyncPeriodChangeConstraints == nullptr || outTimeline == nullptr) {
+    return HWC2::Error::BadParameter;
+  }
+
+  return HWC2::Error::BadConfig;
+}
+
+HWC2::Error DrmHwcTwo::HwcDisplay::SetAutoLowLatencyMode(bool /*on*/) {
+  return HWC2::Error::Unsupported;
+}
+
+HWC2::Error DrmHwcTwo::HwcDisplay::GetSupportedContentTypes(
+    uint32_t *outNumSupportedContentTypes, uint32_t *outSupportedContentTypes) {
+  if (outSupportedContentTypes == nullptr)
+    *outNumSupportedContentTypes = 0;
+
+  return HWC2::Error::None;
+}
+
+HWC2::Error DrmHwcTwo::HwcDisplay::SetContentType(int32_t contentType) {
+  supported(__func__);
+
+  if (contentType != HWC2_CONTENT_TYPE_NONE)
+    return HWC2::Error::Unsupported;
+
+  /* TODO: Map to the DRM Connector property:
+   * https://elixir.bootlin.com/linux/v5.4-rc5/source/drivers/gpu/drm/drm_connector.c#L809
+   */
+
+  return HWC2::Error::None;
+}
+#endif
+
 #if PLATFORM_SDK_VERSION > 28
 HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayIdentificationData(
     uint8_t *outPort, uint32_t *outDataSize, uint8_t *outData) {
@@ -1327,6 +1394,36 @@ hwc2_function_pointer_t DrmHwcTwo::HookDevGetFunction(
           DisplayHook<decltype(&HwcDisplay::SetDisplayBrightness),
                       &HwcDisplay::SetDisplayBrightness, float>);
 #endif /* PLATFORM_SDK_VERSION > 28 */
+#if PLATFORM_SDK_VERSION > 29
+    case HWC2::FunctionDescriptor::GetDisplayConnectionType:
+      return ToHook<HWC2_PFN_GET_DISPLAY_CONNECTION_TYPE>(
+          DisplayHook<decltype(&HwcDisplay::GetDisplayConnectionType),
+                      &HwcDisplay::GetDisplayConnectionType, uint32_t *>);
+    case HWC2::FunctionDescriptor::GetDisplayVsyncPeriod:
+      return ToHook<HWC2_PFN_GET_DISPLAY_VSYNC_PERIOD>(
+          DisplayHook<decltype(&HwcDisplay::GetDisplayVsyncPeriod),
+                      &HwcDisplay::GetDisplayVsyncPeriod,
+                      hwc2_vsync_period_t *>);
+    case HWC2::FunctionDescriptor::SetActiveConfigWithConstraints:
+      return ToHook<HWC2_PFN_SET_ACTIVE_CONFIG_WITH_CONSTRAINTS>(
+          DisplayHook<decltype(&HwcDisplay::SetActiveConfigWithConstraints),
+                      &HwcDisplay::SetActiveConfigWithConstraints,
+                      hwc2_config_t, hwc_vsync_period_change_constraints_t *,
+                      hwc_vsync_period_change_timeline_t *>);
+    case HWC2::FunctionDescriptor::SetAutoLowLatencyMode:
+      return ToHook<HWC2_PFN_SET_AUTO_LOW_LATENCY_MODE>(
+          DisplayHook<decltype(&HwcDisplay::SetAutoLowLatencyMode),
+                      &HwcDisplay::SetAutoLowLatencyMode, bool>);
+    case HWC2::FunctionDescriptor::GetSupportedContentTypes:
+      return ToHook<HWC2_PFN_GET_SUPPORTED_CONTENT_TYPES>(
+          DisplayHook<decltype(&HwcDisplay::GetSupportedContentTypes),
+                      &HwcDisplay::GetSupportedContentTypes, uint32_t *,
+                      uint32_t *>);
+    case HWC2::FunctionDescriptor::SetContentType:
+      return ToHook<HWC2_PFN_SET_CONTENT_TYPE>(
+          DisplayHook<decltype(&HwcDisplay::SetContentType),
+                      &HwcDisplay::SetContentType, int32_t>);
+#endif
     // Layer functions
     case HWC2::FunctionDescriptor::SetCursorPosition:
       return ToHook<HWC2_PFN_SET_CURSOR_POSITION>(

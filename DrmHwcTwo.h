@@ -218,6 +218,21 @@ class DrmHwcTwo : public hwc2_device_t {
     HWC2::Error GetDisplayBrightnessSupport(bool *supported);
     HWC2::Error SetDisplayBrightness(float);
 #endif
+#if PLATFORM_SDK_VERSION > 29
+    HWC2::Error GetDisplayConnectionType(uint32_t *outType);
+    HWC2::Error GetDisplayVsyncPeriod(hwc2_vsync_period_t *outVsyncPeriod);
+
+    HWC2::Error SetActiveConfigWithConstraints(
+        hwc2_config_t config,
+        hwc_vsync_period_change_constraints_t *vsyncPeriodChangeConstraints,
+        hwc_vsync_period_change_timeline_t *outTimeline);
+    HWC2::Error SetAutoLowLatencyMode(bool on);
+    HWC2::Error GetSupportedContentTypes(uint32_t *outNumSupportedContentTypes,
+                                         uint32_t *outSupportedContentTypes);
+
+    HWC2::Error SetContentType(int32_t contentType);
+#endif
+
     HWC2::Error GetDozeSupport(int32_t *support);
     HWC2::Error GetHdrCapabilities(uint32_t *num_types, int32_t *types,
                                    float *max_luminance,
