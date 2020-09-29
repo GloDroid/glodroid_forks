@@ -31,6 +31,7 @@
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
+#include <android-base/properties.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
 
@@ -39,6 +40,7 @@
 
 using android::base::Basename;
 using android::base::Error;
+using android::base::GetBoolProperty;
 using android::base::Result;
 using android::base::StartsWith;
 using android::base::StringPrintf;
@@ -228,6 +230,41 @@ Result<void> configureLoopDevice(const int device_fd, const std::string& target,
   return {};
 }
 
+Result<LoopbackDeviceUniqueFd> WaitForDevice(int num) {
+  std::string opened_device;
+  const std::vector<std::string> candidate_devices = {
+      StringPrintf("/dev/block/loop%d", num),
+      StringPrintf("/dev/loop%d", num),
+  };
+
+  // apexd-bootstrap runs in parallel with ueventd to optimize boot time. In
+  // rare cases apexd would try attempt to mount an apex before ueventd created
+  // a loop device for it. To work around this we keep polling for loop device
+  // to be created until ueventd's cold boot sequence is done.
+  // See comment on kLoopDeviceRetryAttempts.
+  unique_fd sysfs_fd;
+  bool cold_boot_done = GetBoolProperty("ro.cold_boot_done", false);
+  for (size_t i = 0; i != kLoopDeviceRetryAttempts; ++i) {
+    if (!cold_boot_done) {
+      cold_boot_done = GetBoolProperty("ro.cold_boot_done", false);
+    }
+    for (const auto& device : candidate_devices) {
+      sysfs_fd.reset(open(device.c_str(), O_RDWR | O_CLOEXEC));
+      if (sysfs_fd.get() != -1) {
+        return LoopbackDeviceUniqueFd(std::move(sysfs_fd), device);
+      }
+    }
+    PLOG(WARNING) << "Loopback device " << num << " not ready. Waiting 50ms...";
+    usleep(50000);
+    if (!cold_boot_done) {
+      // ueventd hasn't finished cold boot yet, keep trying.
+      i = 0;
+    }
+  }
+
+  return Error() << "Faled to open loopback device " << num;
+}
+
 Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
                                                 const int32_t imageOffset,
                                                 const size_t imageSize) {
@@ -241,49 +278,24 @@ Result<LoopbackDeviceUniqueFd> createLoopDevice(const std::string& target,
     return ErrnoError() << "Failed LOOP_CTL_GET_FREE";
   }
 
-  std::string opened_device;
-  const std::vector<std::string> candidate_devices = {
-      StringPrintf("/dev/block/loop%d", num),
-      StringPrintf("/dev/loop%d", num),
-  };
-
-  LoopbackDeviceUniqueFd device_fd;
-  {
-    // See comment on kLoopDeviceRetryAttempts.
-    unique_fd sysfs_fd;
-    for (size_t i = 0; i != kLoopDeviceRetryAttempts; ++i) {
-      for (auto& device : candidate_devices) {
-        sysfs_fd.reset(open(device.c_str(), O_RDWR | O_CLOEXEC));
-        if (sysfs_fd.get() != -1) {
-          opened_device = device;
-          break;
-        }
-      }
-      if (!opened_device.empty()) {
-        break;
-      }
-      PLOG(WARNING) << "Loopback device " << num
-                    << " not ready. Waiting 50ms...";
-      usleep(50000);
-    }
-    if (sysfs_fd.get() == -1) {
-      return ErrnoError() << "Failed to open loopback device " << num;
-    }
-    device_fd = LoopbackDeviceUniqueFd(std::move(sysfs_fd), opened_device);
-    CHECK_NE(device_fd.get(), -1);
+  Result<LoopbackDeviceUniqueFd> loop_device = WaitForDevice(num);
+  if (!loop_device.ok()) {
+    return loop_device.error();
   }
+  CHECK_NE(loop_device->device_fd.get(), -1);
 
-  Result<void> configureStatus =
-      configureLoopDevice(device_fd.get(), target, imageOffset, imageSize);
+  Result<void> configureStatus = configureLoopDevice(
+      loop_device->device_fd.get(), target, imageOffset, imageSize);
   if (!configureStatus.ok()) {
     return configureStatus.error();
   }
 
-  Result<void> readAheadStatus = configureReadAhead(opened_device);
+  Result<void> readAheadStatus = configureReadAhead(loop_device->name);
   if (!readAheadStatus.ok()) {
     return readAheadStatus.error();
   }
-  return device_fd;
+
+  return loop_device;
 }
 
 void DestroyLoopDevice(const std::string& path, const DestroyLoopFn& extra) {
