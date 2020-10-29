@@ -51,6 +51,7 @@ cc_library_static {
     defaults: ["libc++ defaults"],
     vendor_available: true,
     ramdisk_available: true,
+    vendor_ramdisk_available: true,
     recovery_available: true,
     apex_available: [
         "//apex_available:platform",
@@ -114,6 +115,7 @@ cc_library_shared {
         support_system_process: true,
     },
     ramdisk_available: true,
+    vendor_ramdisk_available: true,
     recovery_available: true,
     apex_available: [
         "//apex_available:platform",
