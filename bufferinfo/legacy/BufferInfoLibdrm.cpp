@@ -184,7 +184,18 @@ int BufferInfoLibdrm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
   } else {
     bo->pitches[0] = gr_handle->stride;
     bo->offsets[0] = 0;
-    bo->format = ConvertHalFormatToDrm(gr_handle->format);
+
+    /* FOSS graphic components (gbm_gralloc, mesa3d) are translating
+     * HAL_PIXEL_FORMAT_RGB_565 to DRM_FORMAT_RGB565 without swapping
+     * the R and B components. Same must be done here. */
+    switch (bo->hal_format) {
+      case HAL_PIXEL_FORMAT_RGB_565:
+        bo->format = DRM_FORMAT_RGB565;
+        break;
+      default:
+        bo->format = ConvertHalFormatToDrm(gr_handle->format);
+    }
+
     if (bo->format == DRM_FORMAT_INVALID)
       return -EINVAL;
   }
