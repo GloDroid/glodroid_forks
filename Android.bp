@@ -50,6 +50,7 @@ cc_library_static {
     name: "libc++_static",
     defaults: ["libc++ defaults"],
     vendor_available: true,
+    product_available: true,
     ramdisk_available: true,
     vendor_ramdisk_available: true,
     recovery_available: true,
@@ -109,6 +110,7 @@ cc_library_shared {
     name: "libc++",
     host_supported: true,
     vendor_available: true,
+    product_available: true,
     native_bridge_supported: true,
     vndk: {
         enabled: true,
