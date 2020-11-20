@@ -107,7 +107,6 @@ int BufferInfoMapperMetadata::ConvertBoInfo(buffer_handle_t handle,
     ALOGE("Failed to get DRM Modifier err=%d", err);
     return err;
   }
-  bo->with_modifiers = true;
 
   uint64_t width = 0;
   err = mapper.getWidth(handle, &width);

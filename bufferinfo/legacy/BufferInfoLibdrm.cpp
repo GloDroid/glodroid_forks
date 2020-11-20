@@ -171,8 +171,6 @@ int BufferInfoLibdrm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
 #endif
 #if GRALLOC_HANDLE_VERSION == 4
   bo->modifiers[0] = gr_handle->modifier;
-  bo->with_modifiers = gr_handle->modifier != DRM_FORMAT_MOD_NONE &&
-                       gr_handle->modifier != DRM_FORMAT_MOD_INVALID;
 #endif
 
   bo->usage = gr_handle->usage;

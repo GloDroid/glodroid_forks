@@ -59,13 +59,16 @@ int DrmGenericImporter::ImportBuffer(hwc_drm_bo_t *bo) {
     }
   }
 
-  if (!has_modifier_support_ && bo->modifiers[0]) {
+  bool has_modifiers = bo->modifiers[0] != DRM_FORMAT_MOD_NONE &&
+                       bo->modifiers[0] != DRM_FORMAT_MOD_INVALID;
+
+  if (!has_modifier_support_ && has_modifiers) {
     ALOGE("No ADDFB2 with modifier support. Can't import modifier %" PRIu64,
           bo->modifiers[0]);
     return -EINVAL;
   }
 
-  if (!bo->with_modifiers)
+  if (!has_modifiers)
     ret = drmModeAddFB2(drm_->fd(), bo->width, bo->height, bo->format,
                         bo->gem_handles, bo->pitches, bo->offsets, &bo->fb_id,
                         0);
@@ -73,8 +76,7 @@ int DrmGenericImporter::ImportBuffer(hwc_drm_bo_t *bo) {
     ret = drmModeAddFB2WithModifiers(drm_->fd(), bo->width, bo->height,
                                      bo->format, bo->gem_handles, bo->pitches,
                                      bo->offsets, bo->modifiers, &bo->fb_id,
-                                     bo->modifiers[0] ? DRM_MODE_FB_MODIFIERS
-                                                      : 0);
+                                     DRM_MODE_FB_MODIFIERS);
 
   if (ret) {
     ALOGE("could not create drm fb %d", ret);

@@ -87,8 +87,6 @@ int BufferInfoMaliMeson::ConvertBoInfo(buffer_handle_t handle,
   bo->pitches[0] = hnd->byte_stride;
   bo->offsets[0] = 0;
 
-  bo->with_modifiers = true;
-
   return 0;
 }
 

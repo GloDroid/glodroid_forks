@@ -120,8 +120,6 @@ int BufferInfoMaliHisi::ConvertBoInfo(buffer_handle_t handle,
       break;
   }
 
-  bo->with_modifiers = true;
-
   return 0;
 }
 
