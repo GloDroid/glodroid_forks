@@ -69,6 +69,14 @@
 		vconn-supply = <&reg_vconn5v0>;
 		hdmi_vt-supply = <&reg_dldo1>;
 
+		source-caps = <
+			PDO_FIXED(5000, 500, PDO_FIXED_DATA_SWAP | PDO_FIXED_USB_COMM | PDO_FIXED_DUAL_ROLE)
+		>;
+
+		sink-caps = <
+			PDO_FIXED(5000, 3000, PDO_FIXED_DATA_SWAP | PDO_FIXED_USB_COMM | PDO_FIXED_DUAL_ROLE)
+		>;
+
 		/*
 		 * ANX7688 can't enable/disable USB-5V <-> DCIN switch by
 		 * itself, and PMIC's N_VBUSEN is not connected anywhere either,
