@@ -43,6 +43,7 @@
 
 #include "loader.h"
 #include "egl_dri2.h"
+#include "platform_android.h"
 
 #ifdef HAVE_DRM_GRALLOC
 #include <gralloc_drm_handle.h>
@@ -184,19 +185,6 @@ get_native_buffer_name(struct ANativeWindowBuffer *buf)
    return gralloc_drm_get_gem_handle(buf->handle);
 }
 #endif /* HAVE_DRM_GRALLOC */
-
-struct buffer_info {
-   uint32_t drm_fourcc;
-   int num_planes;
-   int fds[4];
-   uint64_t modifier;
-   int offsets[4];
-   int pitches[4];
-   enum __DRIYUVColorSpace yuv_color_space;
-   enum __DRISampleRange sample_range;
-   enum __DRIChromaSiting horizontal_siting;
-   enum __DRIChromaSiting vertical_siting;
-};
 
 static bool
 get_yuv_buffer_info(_EGLDisplay *disp,
@@ -373,9 +361,12 @@ droid_create_image_from_native_buffer(_EGLDisplay *disp,
    struct buffer_info buf_info = {.modifier = DRM_FORMAT_MOD_INVALID};
    unsigned error;
 
-   if (!cros_get_buffer_info(disp, buf, &buf_info))
-      if (!native_window_buffer_get_buffer_info(disp, buf, &buf_info))
-         return NULL;
+#if ANDROID_API_LEVEL >= 30 && defined(USE_IMAPPER4_METADATA_API)
+   if (!mapper_metadata_get_buffer_info(buf, &buf_info))
+#endif
+      if (!cros_get_buffer_info(disp, buf, &buf_info))
+         if (!native_window_buffer_get_buffer_info(disp, buf, &buf_info))
+            return NULL;
 
    if (dri2_dpy->image->base.version >= 15 &&
        dri2_dpy->image->createImageFromDmaBufs2 != NULL) {
