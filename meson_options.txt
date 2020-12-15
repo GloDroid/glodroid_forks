@@ -33,6 +33,12 @@ option(
   value : false,
   description : 'Build against android-stub',
 )
+option(
+  'android-use-mapper4-metadata',
+  type : 'boolean',
+  value : false,
+  description : 'Enable IMapper@4 metadata API',
+)
 
 option(
   'dri3',

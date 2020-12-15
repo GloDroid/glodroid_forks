@@ -69,7 +69,8 @@ MESON_GEN_NINJA := \
 	-Dvulkan-drivers=$(subst $(space),$(comma),$(BOARD_MESA3D_VULKAN_DRIVERS))   \
 	-Dgbm=enabled                                                                \
 	-Degl=enabled                                                                \
-	-Dfreedreno-kgsl=true
+	-Dfreedreno-kgsl=true                                                        \
+	$(MESON_DEFINITIONS)
 
 MESON_BUILD := PATH=/usr/bin:/bin:/sbin:$$PATH ninja -C $(MESON_OUT_DIR)/build
 

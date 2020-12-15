@@ -869,6 +869,11 @@ if with_android_stub and not with_platform_android
   error('`-D android-stub=true` makes no sense without `-D platforms=android`')
 endif
 
+with_android_mapper_metadata = get_option('android-use-mapper4-metadata')
+if with_android_stub and not with_platform_android
+  error('`-D android-use-mapper4-metadata=true` makes no sense without `-D platforms=android`')
+endif
+
 if with_platform_android
   if not with_android_stub
     dep_android = [

@@ -38,6 +38,16 @@ LOCAL_SHARED_LIBRARIES += libdrm_nouveau
 MESON_GEN_PKGCONFIGS += libdrm_nouveau:2.4.105
 endif
 
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 30; echo $$?), 0)
+LOCAL_SHARED_LIBRARIES += \
+    android.hardware.graphics.mapper@4.0 \
+    libgralloctypes \
+    libhidlbase \
+    libutils
+
+MESON_DEFINITIONS := -Dandroid-use-mapper4-metadata=true
+endif
+
 ifeq ($(TARGET_IS_64_BIT),true)
 LOCAL_MULTILIB := 64
 else
