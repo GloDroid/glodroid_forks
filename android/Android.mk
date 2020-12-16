@@ -48,6 +48,11 @@ LOCAL_SHARED_LIBRARIES += \
 MESON_DEFINITIONS := -Dandroid-use-mapper4-metadata=true
 endif
 
+# Require libdrm >= 2.4.97
+ifeq ($(BOARD_USES_GRALLOC_HANDLE),true)
+LOCAL_CFLAGS += -DHAVE_GRALLOC_HANDLE
+endif
+
 ifeq ($(TARGET_IS_64_BIT),true)
 LOCAL_MULTILIB := 64
 else
