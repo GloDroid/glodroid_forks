@@ -866,4 +866,12 @@ config CHARGER_SURFACE
 	  Microsoft Surface devices, i.e. Surface Pro 7, Surface Laptop 3,
 	  Surface Book 3, and Surface Laptop Go.
 
+config BATTERY_RK818
+	bool "RK818 Battery driver"
+	depends on MFD_RK808
+	default n
+	help
+	  If you say yes here you will get support for the battery of RK818 PMIC.
+	  This driver can give support for Rk818 Battery Charge Interface.
+
 endif # POWER_SUPPLY
