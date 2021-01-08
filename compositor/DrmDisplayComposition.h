@@ -107,12 +107,9 @@ class DrmCompositionPlane {
 
 class DrmDisplayComposition {
  public:
-  DrmDisplayComposition() = default;
   DrmDisplayComposition(const DrmDisplayComposition &) = delete;
+  DrmDisplayComposition(DrmCrtc *crtc, Planner *planner);
   ~DrmDisplayComposition() = default;
-
-  int Init(DrmDevice *drm, DrmCrtc *crtc, Importer *importer, Planner *planner,
-           uint64_t frame_no);
 
   int SetLayers(DrmHwcLayer *layers, size_t num_layers, bool geometry_changed);
   int AddPlaneComposition(DrmCompositionPlane plane);
@@ -135,10 +132,6 @@ class DrmDisplayComposition {
     return geometry_changed_;
   }
 
-  uint64_t frame_no() const {
-    return frame_no_;
-  }
-
   DrmCompositionType type() const {
     return type_;
   }
@@ -153,10 +146,6 @@ class DrmDisplayComposition {
 
   DrmCrtc *crtc() const {
     return crtc_;
-  }
-
-  Importer *importer() const {
-    return importer_;
   }
 
   Planner *planner() const {
@@ -176,9 +165,7 @@ class DrmDisplayComposition {
  private:
   bool validate_composition_type(DrmCompositionType desired);
 
-  DrmDevice *drm_ = NULL;
   DrmCrtc *crtc_ = NULL;
-  Importer *importer_ = NULL;
   Planner *planner_ = NULL;
 
   DrmCompositionType type_ = DRM_COMPOSITION_TYPE_EMPTY;
@@ -187,11 +174,9 @@ class DrmDisplayComposition {
 
   UniqueFd out_fence_ = -1;
 
-  bool geometry_changed_;
+  bool geometry_changed_ = true;
   std::vector<DrmHwcLayer> layers_;
   std::vector<DrmCompositionPlane> composition_planes_;
-
-  uint64_t frame_no_ = 0;
 };
 }  // namespace android
 

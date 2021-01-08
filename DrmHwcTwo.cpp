@@ -669,9 +669,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
     map.layers.emplace_back(std::move(layer));
   }
 
-  std::unique_ptr<DrmDisplayComposition> composition = compositor_
-                                                           .CreateComposition();
-  composition->Init(drm_, crtc_, importer_.get(), planner_.get(), frame_no_);
+  auto composition = std::make_unique<DrmDisplayComposition>(crtc_,
+                                                             planner_.get());
 
   // TODO(nobody): Don't always assume geometry changed
   int ret = composition->SetLayers(map.layers.data(), map.layers.size(), true);
@@ -748,9 +747,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfig(hwc2_config_t config) {
     return HWC2::Error::BadConfig;
   }
 
-  std::unique_ptr<DrmDisplayComposition> composition = compositor_
-                                                           .CreateComposition();
-  composition->Init(drm_, crtc_, importer_.get(), planner_.get(), frame_no_);
+  auto composition = std::make_unique<DrmDisplayComposition>(crtc_,
+                                                             planner_.get());
   int ret = composition->SetDisplayMode(*mode);
   if (ret) {
     return HWC2::Error::BadConfig;
@@ -854,9 +852,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetPowerMode(int32_t mode_in) {
       return HWC2::Error::BadParameter;
   };
 
-  std::unique_ptr<DrmDisplayComposition> composition = compositor_
-                                                           .CreateComposition();
-  composition->Init(drm_, crtc_, importer_.get(), planner_.get(), frame_no_);
+  auto composition = std::make_unique<DrmDisplayComposition>(crtc_,
+                                                             planner_.get());
   composition->SetDpmsMode(dpms_value);
   int ret = compositor_.ApplyComposition(std::move(composition));
   if (ret) {

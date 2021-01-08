@@ -125,11 +125,6 @@ int DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display) {
   return 0;
 }
 
-std::unique_ptr<DrmDisplayComposition> DrmDisplayCompositor::CreateComposition()
-    const {
-  return std::make_unique<DrmDisplayComposition>();
-}
-
 std::unique_ptr<DrmDisplayComposition>
 DrmDisplayCompositor::CreateInitializedComposition() const {
   DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
@@ -138,18 +133,8 @@ DrmDisplayCompositor::CreateInitializedComposition() const {
     ALOGE("Failed to find crtc for display = %d", display_);
     return std::unique_ptr<DrmDisplayComposition>();
   }
-  std::unique_ptr<DrmDisplayComposition> comp = CreateComposition();
-  std::shared_ptr<Importer> importer = resource_manager_->GetImporter(display_);
-  if (!importer) {
-    ALOGE("Failed to find resources for display = %d", display_);
-    return std::unique_ptr<DrmDisplayComposition>();
-  }
-  int ret = comp->Init(drm, crtc, importer.get(), planner_.get(), 0);
-  if (ret) {
-    ALOGE("Failed to init composition for display = %d", display_);
-    return std::unique_ptr<DrmDisplayComposition>();
-  }
-  return comp;
+
+  return std::make_unique<DrmDisplayComposition>(crtc, planner_.get());
 }
 
 FlatteningState DrmDisplayCompositor::GetFlatteningState() const {

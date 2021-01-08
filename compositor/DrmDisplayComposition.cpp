@@ -32,16 +32,9 @@
 
 namespace android {
 
-int DrmDisplayComposition::Init(DrmDevice *drm, DrmCrtc *crtc,
-                                Importer *importer, Planner *planner,
-                                uint64_t frame_no) {
-  drm_ = drm;
-  crtc_ = crtc;  // Can be NULL if we haven't modeset yet
-  importer_ = importer;
-  planner_ = planner;
-  frame_no_ = frame_no;
-
-  return 0;
+DrmDisplayComposition::DrmDisplayComposition(DrmCrtc *crtc, Planner *planner)
+    : crtc_(crtc),  // Can be NULL if we haven't modeset yet
+      planner_(planner) {
 }
 
 bool DrmDisplayComposition::validate_composition_type(DrmCompositionType des) {
