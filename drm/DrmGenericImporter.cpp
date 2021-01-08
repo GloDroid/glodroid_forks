@@ -41,21 +41,20 @@ DrmGenericImporter::~DrmGenericImporter() {
 }
 
 int DrmGenericImporter::ImportBuffer(hwc_drm_bo_t *bo) {
-  int ret = drmPrimeFDToHandle(drm_->fd(), bo->prime_fds[0],
-                               &bo->gem_handles[0]);
-  if (ret) {
-    ALOGE("failed to import prime fd %d ret=%d", bo->prime_fds[0], ret);
-    return ret;
-  }
+  int ret = 0;
 
-  for (int i = 1; i < HWC_DRM_BO_MAX_PLANES; i++) {
-    int fd = bo->prime_fds[i];
-    if (fd != 0) {
-      if (fd != bo->prime_fds[0]) {
-        ALOGE("Multiplanar FBs are not supported by this version of composer");
-        return -ENOTSUP;
+  for (int i = 0; i < HWC_DRM_BO_MAX_PLANES; i++) {
+    if (bo->prime_fds[i] > 0) {
+      if (i == 0 || bo->prime_fds[i] != bo->prime_fds[0]) {
+        ret = drmPrimeFDToHandle(drm_->fd(), bo->prime_fds[i],
+                                 &bo->gem_handles[i]);
+        if (ret) {
+          ALOGE("failed to import prime fd %d ret=%d", bo->prime_fds[i], ret);
+          return ret;
+        }
+      } else {
+        bo->gem_handles[i] = bo->gem_handles[0];
       }
-      bo->gem_handles[i] = bo->gem_handles[0];
     }
   }
 
@@ -83,7 +82,12 @@ int DrmGenericImporter::ImportBuffer(hwc_drm_bo_t *bo) {
     return ret;
   }
 
-  ImportHandle(bo->gem_handles[0]);
+  for (int i = 0; i < HWC_DRM_BO_MAX_PLANES; i++) {
+    if (!bo->gem_handles[i])
+      continue;
+
+    ImportHandle(bo->gem_handles[i]);
+  }
 
   return ret;
 }
@@ -97,14 +101,10 @@ int DrmGenericImporter::ReleaseBuffer(hwc_drm_bo_t *bo) {
     if (!bo->gem_handles[i])
       continue;
 
-    if (ReleaseHandle(bo->gem_handles[i])) {
+    if (ReleaseHandle(bo->gem_handles[i]))
       ALOGE("Failed to release gem handle %d", bo->gem_handles[i]);
-    } else {
-      for (int j = i + 1; j < HWC_DRM_BO_MAX_PLANES; j++)
-        if (bo->gem_handles[j] == bo->gem_handles[i])
-          bo->gem_handles[j] = 0;
+    else
       bo->gem_handles[i] = 0;
-    }
   }
   return 0;
 }
