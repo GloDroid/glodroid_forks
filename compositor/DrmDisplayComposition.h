@@ -40,16 +40,6 @@ enum DrmCompositionType {
   DRM_COMPOSITION_TYPE_MODESET,
 };
 
-struct DrmCompositionDisplayLayersMap {
-  int display;
-  bool geometry_changed = true;
-  std::vector<DrmHwcLayer> layers;
-
-  DrmCompositionDisplayLayersMap() = default;
-  DrmCompositionDisplayLayersMap(DrmCompositionDisplayLayersMap &&rhs) =
-      default;
-};
-
 class DrmCompositionPlane {
  public:
   enum class Type : int32_t {

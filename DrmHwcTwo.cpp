@@ -626,13 +626,6 @@ bool DrmHwcTwo::HwcDisplay::HardwareSupportsLayerType(
 }
 
 HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
-  std::vector<DrmCompositionDisplayLayersMap> layers_map;
-  layers_map.emplace_back();
-  DrmCompositionDisplayLayersMap &map = layers_map.back();
-
-  map.display = static_cast<int>(handle_);
-  map.geometry_changed = true;  // TODO(nobody): Fix this
-
   // order the layers by z-order
   bool use_client_layer = false;
   uint32_t client_z_order = UINT32_MAX;
@@ -657,6 +650,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
   if (z_map.empty())
     return HWC2::Error::BadLayer;
 
+  std::vector<DrmHwcLayer> composition_layers;
+
   // now that they're ordered by z, add them to the composition
   for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map) {
     DrmHwcLayer layer;
@@ -666,14 +661,15 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
       ALOGE("Failed to import layer, ret=%d", ret);
       return HWC2::Error::NoResources;
     }
-    map.layers.emplace_back(std::move(layer));
+    composition_layers.emplace_back(std::move(layer));
   }
 
   auto composition = std::make_unique<DrmDisplayComposition>(crtc_,
                                                              planner_.get());
 
   // TODO(nobody): Don't always assume geometry changed
-  int ret = composition->SetLayers(map.layers.data(), map.layers.size(), true);
+  int ret = composition->SetLayers(composition_layers.data(),
+                                   composition_layers.size(), true);
   if (ret) {
     ALOGE("Failed to set layers in the composition ret=%d", ret);
     return HWC2::Error::BadLayer;
