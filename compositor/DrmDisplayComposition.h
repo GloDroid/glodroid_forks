@@ -50,10 +50,6 @@ struct DrmCompositionDisplayLayersMap {
       default;
 };
 
-struct DrmCompositionRegion {
-  std::vector<size_t> source_layers;
-};
-
 class DrmCompositionPlane {
  public:
   enum class Type : int32_t {
