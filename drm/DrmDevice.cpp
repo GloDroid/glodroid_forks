@@ -145,6 +145,12 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   }
 #endif
 
+  ret = drmSetMaster(fd());
+  if (ret) {
+    ALOGE("drmSetMaster() failed with errno: %d", errno);
+    return std::make_tuple(ret, 0);
+  }
+
   drmModeResPtr res = drmModeGetResources(fd());
   if (!res) {
     ALOGE("Failed to get DrmDevice resources");
