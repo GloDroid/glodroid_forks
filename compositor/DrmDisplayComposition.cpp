@@ -76,8 +76,7 @@ int DrmDisplayComposition::SetDisplayMode(const DrmMode &display_mode) {
 }
 
 int DrmDisplayComposition::AddPlaneDisable(DrmPlane *plane) {
-  composition_planes_.emplace_back(DrmCompositionPlane::Type::kDisable, plane,
-                                   crtc_);
+  composition_planes_.emplace_back(DrmCompositionPlane::Type::kDisable, plane);
   return 0;
 }
 

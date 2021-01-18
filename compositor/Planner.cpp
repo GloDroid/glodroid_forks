@@ -109,7 +109,7 @@ std::tuple<int, std::vector<DrmCompositionPlane>> Planner::ProvisionPlanes(
 
   // Go through the provisioning stages and provision planes
   for (auto &i : stages_) {
-    int ret = i->ProvisionPlanes(&composition, layers, crtc, &planes);
+    int ret = i->ProvisionPlanes(&composition, layers, &planes);
     if (ret) {
       ALOGE("Failed provision stage with ret %d", ret);
       return std::make_tuple(ret, std::vector<DrmCompositionPlane>());
@@ -121,7 +121,7 @@ std::tuple<int, std::vector<DrmCompositionPlane>> Planner::ProvisionPlanes(
 
 int PlanStageProtected::ProvisionPlanes(
     std::vector<DrmCompositionPlane> *composition,
-    std::map<size_t, DrmHwcLayer *> &layers, DrmCrtc *crtc,
+    std::map<size_t, DrmHwcLayer *> &layers,
     std::vector<DrmPlane *> *planes) {
   int ret = 0;
   for (auto i = layers.begin(); i != layers.end();) {
@@ -130,7 +130,7 @@ int PlanStageProtected::ProvisionPlanes(
       continue;
     }
 
-    ret = Emplace(composition, planes, DrmCompositionPlane::Type::kLayer, crtc,
+    ret = Emplace(composition, planes, DrmCompositionPlane::Type::kLayer,
                   std::make_pair(i->first, i->second));
     if (ret) {
       ALOGE("Failed to dedicate protected layer! Dropping it.");
@@ -145,12 +145,12 @@ int PlanStageProtected::ProvisionPlanes(
 
 int PlanStageGreedy::ProvisionPlanes(
     std::vector<DrmCompositionPlane> *composition,
-    std::map<size_t, DrmHwcLayer *> &layers, DrmCrtc *crtc,
+    std::map<size_t, DrmHwcLayer *> &layers,
     std::vector<DrmPlane *> *planes) {
   // Fill up the remaining planes
   for (auto i = layers.begin(); i != layers.end(); i = layers.erase(i)) {
     int ret = Emplace(composition, planes, DrmCompositionPlane::Type::kLayer,
-                      crtc, std::make_pair(i->first, i->second));
+                      std::make_pair(i->first, i->second));
     // We don't have any planes left
     if (ret == -ENOENT)
       break;

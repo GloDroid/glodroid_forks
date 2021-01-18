@@ -40,7 +40,6 @@ class Planner {
 
     virtual int ProvisionPlanes(std::vector<DrmCompositionPlane> *composition,
                                 std::map<size_t, DrmHwcLayer *> &layers,
-                                DrmCrtc *crtc,
                                 std::vector<DrmPlane *> *planes) = 0;
 
    protected:
@@ -58,7 +57,7 @@ class Planner {
     // Inserts the given layer:plane in the composition at the back
     static int Emplace(std::vector<DrmCompositionPlane> *composition,
                        std::vector<DrmPlane *> *planes,
-                       DrmCompositionPlane::Type type, DrmCrtc *crtc,
+                       DrmCompositionPlane::Type type,
                        std::pair<size_t, DrmHwcLayer *> layer) {
       DrmPlane *plane = PopPlane(planes);
       std::vector<DrmPlane *> unused_planes;
@@ -73,7 +72,7 @@ class Planner {
       }
 
       if (!ret) {
-        composition->emplace_back(type, plane, crtc, layer.first);
+        composition->emplace_back(type, plane, layer.first);
         planes->insert(planes->begin(), unused_planes.begin(),
                        unused_planes.end());
       }
@@ -118,7 +117,7 @@ class Planner {
 class PlanStageProtected : public Planner::PlanStage {
  public:
   int ProvisionPlanes(std::vector<DrmCompositionPlane> *composition,
-                      std::map<size_t, DrmHwcLayer *> &layers, DrmCrtc *crtc,
+                      std::map<size_t, DrmHwcLayer *> &layers,
                       std::vector<DrmPlane *> *planes);
 };
 
@@ -128,7 +127,7 @@ class PlanStageProtected : public Planner::PlanStage {
 class PlanStageGreedy : public Planner::PlanStage {
  public:
   int ProvisionPlanes(std::vector<DrmCompositionPlane> *composition,
-                      std::map<size_t, DrmHwcLayer *> &layers, DrmCrtc *crtc,
+                      std::map<size_t, DrmHwcLayer *> &layers,
                       std::vector<DrmPlane *> *planes);
 };
 }  // namespace android

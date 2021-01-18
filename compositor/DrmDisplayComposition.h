@@ -49,15 +49,10 @@ class DrmCompositionPlane {
   DrmCompositionPlane() = default;
   DrmCompositionPlane(DrmCompositionPlane &&rhs) = default;
   DrmCompositionPlane &operator=(DrmCompositionPlane &&other) = default;
-  DrmCompositionPlane(Type type, DrmPlane *plane, DrmCrtc *crtc)
-      : type_(type), plane_(plane), crtc_(crtc) {
+  DrmCompositionPlane(Type type, DrmPlane *plane) : type_(type), plane_(plane) {
   }
-  DrmCompositionPlane(Type type, DrmPlane *plane, DrmCrtc *crtc,
-                      size_t source_layer)
-      : type_(type),
-        plane_(plane),
-        crtc_(crtc),
-        source_layers_(1, source_layer) {
+  DrmCompositionPlane(Type type, DrmPlane *plane, size_t source_layer)
+      : type_(type), plane_(plane), source_layers_(1, source_layer) {
   }
 
   Type type() const {
@@ -71,10 +66,6 @@ class DrmCompositionPlane {
     plane_ = plane;
   }
 
-  DrmCrtc *crtc() const {
-    return crtc_;
-  }
-
   std::vector<size_t> &source_layers() {
     return source_layers_;
   }
@@ -86,7 +77,6 @@ class DrmCompositionPlane {
  private:
   Type type_ = Type::kDisable;
   DrmPlane *plane_ = NULL;
-  DrmCrtc *crtc_ = NULL;
   std::vector<size_t> source_layers_;
 };
 

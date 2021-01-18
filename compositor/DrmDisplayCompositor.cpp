@@ -261,7 +261,6 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
 
   for (DrmCompositionPlane &comp_plane : comp_planes) {
     DrmPlane *plane = comp_plane.plane();
-    DrmCrtc *crtc = comp_plane.crtc();
     std::vector<size_t> &source_layers = comp_plane.source_layers();
 
     int fb_id = -1;
