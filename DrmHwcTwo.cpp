@@ -1149,9 +1149,9 @@ void DrmHwcTwo::HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
   layer->sf_handle = buffer_;
   layer->acquire_fence = acquire_fence_.Release();
   layer->release_fence = std::move(release_fence);
-  layer->SetDisplayFrame(display_frame_);
+  layer->display_frame = display_frame_;
   layer->alpha = lround(65535.0F * alpha_);
-  layer->SetSourceCrop(source_crop_);
+  layer->source_crop = source_crop_;
   layer->SetTransform(static_cast<int32_t>(transform_));
   layer->dataspace = dataspace_;
 }

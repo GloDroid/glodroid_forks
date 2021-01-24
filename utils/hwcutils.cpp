@@ -134,14 +134,6 @@ int DrmHwcLayer::InitFromDrmHwcLayer(DrmHwcLayer *src_layer,
   return ImportBuffer(importer);
 }
 
-void DrmHwcLayer::SetSourceCrop(hwc_frect_t const &crop) {
-  source_crop = crop;
-}
-
-void DrmHwcLayer::SetDisplayFrame(hwc_rect_t const &frame) {
-  display_frame = frame;
-}
-
 void DrmHwcLayer::SetTransform(int32_t sf_transform) {
   transform = 0;
   // 270* and 180* cannot be combined with flips. More specifically, they
