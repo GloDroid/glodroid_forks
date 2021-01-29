@@ -865,17 +865,6 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetVsyncEnabled(int32_t enabled) {
   return HWC2::Error::None;
 }
 
-void DrmHwcTwo::HwcDisplay::MarkValidated(
-    std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map, size_t client_first_z,
-    size_t client_size) {
-  for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map) {
-    if (l.first >= client_first_z && l.first < client_first_z + client_size)
-      l.second->set_validated_type(HWC2::Composition::Client);
-    else
-      l.second->set_validated_type(HWC2::Composition::Device);
-  }
-}
-
 HWC2::Error DrmHwcTwo::HwcDisplay::ValidateDisplay(uint32_t *num_types,
                                                    uint32_t *num_requests) {
   supported(__func__);

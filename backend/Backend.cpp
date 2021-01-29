@@ -46,11 +46,11 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
   if (display->compositor().ShouldFlattenOnClient()) {
     client_start = 0;
     client_size = z_map.size();
-    display->MarkValidated(z_map, client_start, client_size);
+    MarkValidated(z_map, client_start, client_size);
   } else {
     std::tie(client_start, client_size) = GetClientLayers(display, z_map);
 
-    display->MarkValidated(z_map, client_start, client_size);
+    MarkValidated(z_map, client_start, client_size);
 
     bool testing_needed = !(client_start == 0 && client_size == z_map.size());
 
@@ -59,7 +59,7 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
       ++display->total_stats().failed_kms_validate_;
       client_start = 0;
       client_size = z_map.size();
-      display->MarkValidated(z_map, 0, client_size);
+      MarkValidated(z_map, 0, client_size);
     }
   }
 
@@ -110,6 +110,16 @@ uint32_t Backend::CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
     }
   }
   return pixops;
+}
+
+void Backend::MarkValidated(std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map,
+                            size_t client_first_z, size_t client_size) {
+  for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map) {
+    if (l.first >= client_first_z && l.first < client_first_z + client_size)
+      l.second->set_validated_type(HWC2::Composition::Client);
+    else
+      l.second->set_validated_type(HWC2::Composition::Device);
+  }
 }
 
 std::tuple<int, int> Backend::GetExtraClientRange(
