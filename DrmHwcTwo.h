@@ -174,7 +174,6 @@ class DrmHwcTwo : public hwc2_device_t {
     void RegisterRefreshCallback(hwc2_callback_data_t data,
                                  hwc2_function_pointer_t func);
     HWC2::Error CreateComposition(bool test);
-    bool HardwareSupportsLayerType(HWC2::Composition comp_type);
 
     void ClearDisplay();
 

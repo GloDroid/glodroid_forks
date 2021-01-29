@@ -34,6 +34,7 @@ class Backend {
                              DrmHwcTwo::HwcLayer *layer);
 
  protected:
+  bool HardwareSupportsLayerType(HWC2::Composition comp_type);
   uint32_t CalcPixOps(const std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map,
                       size_t first_z, size_t size);
   void MarkValidated(std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map,

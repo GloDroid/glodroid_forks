@@ -93,11 +93,16 @@ std::tuple<int, size_t> Backend::GetClientLayers(
 
 bool Backend::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
                             DrmHwcTwo::HwcLayer *layer) {
-  return !display->HardwareSupportsLayerType(layer->sf_type()) ||
+  return !HardwareSupportsLayerType(layer->sf_type()) ||
          !BufferInfoGetter::GetInstance()->IsHandleUsable(layer->buffer()) ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->RequireScalingOrPhasing() &&
           display->resource_manager()->ForcedScalingWithGpu());
+}
+
+bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
+  return comp_type == HWC2::Composition::Device ||
+         comp_type == HWC2::Composition::Cursor;
 }
 
 uint32_t Backend::CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,

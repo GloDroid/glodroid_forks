@@ -619,12 +619,6 @@ void DrmHwcTwo::HwcDisplay::AddFenceToPresentFence(int fd) {
   }
 }
 
-bool DrmHwcTwo::HwcDisplay::HardwareSupportsLayerType(
-    HWC2::Composition comp_type) {
-  return comp_type == HWC2::Composition::Device ||
-         comp_type == HWC2::Composition::Cursor;
-}
-
 HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
   // order the layers by z-order
   bool use_client_layer = false;
