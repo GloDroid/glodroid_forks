@@ -28,15 +28,6 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
                                      uint32_t *num_requests) {
   *num_types = 0;
   *num_requests = 0;
-  size_t avail_planes = display->primary_planes().size() +
-                        display->overlay_planes().size();
-
-  /*
-   * If more layers then planes, save one plane
-   * for client composited layers
-   */
-  if (avail_planes < display->layers().size())
-    avail_planes--;
 
   std::map<uint32_t, DrmHwcTwo::HwcLayer *> z_map;
   std::map<uint32_t, DrmHwcTwo::HwcLayer *> z_map_tmp;
@@ -49,9 +40,6 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
   for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map_tmp)
     z_map.emplace(std::make_pair(z_index++, l.second));
 
-  uint32_t total_pixops = CalcPixOps(z_map, 0, z_map.size());
-  uint32_t gpu_pixops = 0;
-
   int client_start = -1;
   size_t client_size = 0;
 
@@ -62,34 +50,6 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
   } else {
     std::tie(client_start, client_size) = GetClientLayers(display, z_map);
 
-    int extra_client = int(z_map.size() - client_size) - int(avail_planes);
-    if (extra_client > 0) {
-      int start = 0;
-      size_t steps = 0;
-      if (client_size != 0) {
-        int prepend = std::min(client_start, extra_client);
-        int append = std::min(int(z_map.size()) -
-                                  int(client_start + client_size),
-                              extra_client);
-        start = client_start - (int)prepend;
-        client_size += extra_client;
-        steps = 1 + std::min(std::min(append, prepend),
-                             int(z_map.size()) - int(start + client_size));
-      } else {
-        client_size = extra_client;
-        steps = 1 + z_map.size() - extra_client;
-      }
-
-      gpu_pixops = INT_MAX;
-      for (int i = 0; i < steps; i++) {
-        uint32_t po = CalcPixOps(z_map, start + i, client_size);
-        if (po < gpu_pixops) {
-          gpu_pixops = po;
-          client_start = start + i;
-        }
-      }
-    }
-
     display->MarkValidated(z_map, client_start, client_size);
 
     bool testing_needed = !(client_start == 0 && client_size == z_map.size());
@@ -97,7 +57,7 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
     if (testing_needed &&
         display->CreateComposition(true) != HWC2::Error::None) {
       ++display->total_stats().failed_kms_validate_;
-      gpu_pixops = total_pixops;
+      client_start = 0;
       client_size = z_map.size();
       display->MarkValidated(z_map, 0, client_size);
     }
@@ -107,15 +67,16 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
 
   display->total_stats().frames_flattened_ = display->compositor()
                                                  .GetFlattenedFramesCount();
-  display->total_stats().gpu_pixops_ += gpu_pixops;
-  display->total_stats().total_pixops_ += total_pixops;
+  display->total_stats().gpu_pixops_ += CalcPixOps(z_map, client_start,
+                                                   client_size);
+  display->total_stats().total_pixops_ += CalcPixOps(z_map, 0, z_map.size());
 
   return *num_types ? HWC2::Error::HasChanges : HWC2::Error::None;
 }
 
 std::tuple<int, size_t> Backend::GetClientLayers(
     DrmHwcTwo::HwcDisplay *display,
-    const std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map) {
+    const std::vector<DrmHwcTwo::HwcLayer *> &layers) {
   int client_start = -1;
   size_t client_size = 0;
 
@@ -127,7 +88,7 @@ std::tuple<int, size_t> Backend::GetClientLayers(
     }
   }
 
-  return std::make_tuple(client_start, client_size);
+  return GetExtraClientRange(display, z_map, client_start, client_size);
 }
 
 bool Backend::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
@@ -149,6 +110,51 @@ uint32_t Backend::CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
     }
   }
   return pixops;
+}
+
+std::tuple<int, int> Backend::GetExtraClientRange(
+    DrmHwcTwo::HwcDisplay *display,
+    const std::vector<DrmHwcTwo::HwcLayer *> &layers, int client_start,
+    size_t client_size) {
+  size_t avail_planes = display->primary_planes().size() +
+                        display->overlay_planes().size();
+
+  /*
+   * If more layers then planes, save one plane
+   * for client composited layers
+   */
+  if (avail_planes < display->layers().size())
+    avail_planes--;
+
+  size_t extra_client = (layers.size() - client_size) - avail_planes;
+
+  if (extra_client > 0) {
+    int start = 0;
+    size_t steps = 0;
+    if (client_size != 0) {
+      size_t prepend = std::min((size_t)client_start, extra_client);
+      size_t append = std::min(layers.size() - (client_start + client_size),
+                               extra_client);
+      start = client_start - (int)prepend;
+      client_size += extra_client;
+      steps = 1 + std::min(std::min(append, prepend),
+                           int(z_map.size()) - (start + client_size));
+    } else {
+      client_size = extra_client;
+      steps = 1 + z_map.size() - extra_client;
+    }
+
+    uint32_t gpu_pixops = INT_MAX;
+    for (int i = 0; i < steps; i++) {
+      uint32_t po = CalcPixOps(z_map, start + i, client_size);
+      if (po < gpu_pixops) {
+        gpu_pixops = po;
+        client_start = start + i;
+      }
+    }
+  }
+
+  return std::make_tuple(client_start, client_size);
 }
 
 // clang-format off

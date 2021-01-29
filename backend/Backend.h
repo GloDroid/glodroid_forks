@@ -36,6 +36,10 @@ class Backend {
  protected:
   uint32_t CalcPixOps(const std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map,
                       size_t first_z, size_t size);
+  std::tuple<int, int> GetExtraClientRange(
+      DrmHwcTwo::HwcDisplay *display,
+      const std::vector<DrmHwcTwo::HwcLayer *> &layers, int client_start,
+      size_t client_size);
 };
 }  // namespace android
 
