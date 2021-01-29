@@ -32,6 +32,10 @@ class Backend {
       const std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map);
   virtual bool IsClientLayer(DrmHwcTwo::HwcDisplay *display,
                              DrmHwcTwo::HwcLayer *layer);
+
+ protected:
+  uint32_t CalcPixOps(const std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map,
+                      size_t first_z, size_t size);
 };
 }  // namespace android
 

@@ -175,8 +175,6 @@ class DrmHwcTwo : public hwc2_device_t {
                                  hwc2_function_pointer_t func);
     HWC2::Error CreateComposition(bool test);
     bool HardwareSupportsLayerType(HWC2::Composition comp_type);
-    uint32_t CalcPixOps(std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map,
-                        size_t first_z, size_t size);
     void MarkValidated(std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map,
                        size_t client_first_z, size_t client_size);
 

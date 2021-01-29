@@ -865,19 +865,6 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetVsyncEnabled(int32_t enabled) {
   return HWC2::Error::None;
 }
 
-uint32_t DrmHwcTwo::HwcDisplay::CalcPixOps(
-    std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map, size_t first_z,
-    size_t size) {
-  uint32_t pixops = 0;
-  for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map) {
-    if (l.first >= first_z && l.first < first_z + size) {
-      hwc_rect_t df = l.second->display_frame();
-      pixops += (df.right - df.left) * (df.bottom - df.top);
-    }
-  }
-  return pixops;
-}
-
 void DrmHwcTwo::HwcDisplay::MarkValidated(
     std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map, size_t client_first_z,
     size_t client_size) {

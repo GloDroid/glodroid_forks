@@ -49,7 +49,7 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
   for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map_tmp)
     z_map.emplace(std::make_pair(z_index++, l.second));
 
-  uint32_t total_pixops = display->CalcPixOps(z_map, 0, z_map.size());
+  uint32_t total_pixops = CalcPixOps(z_map, 0, z_map.size());
   uint32_t gpu_pixops = 0;
 
   int client_start = -1;
@@ -82,7 +82,7 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
 
       gpu_pixops = INT_MAX;
       for (int i = 0; i < steps; i++) {
-        uint32_t po = display->CalcPixOps(z_map, start + i, client_size);
+        uint32_t po = CalcPixOps(z_map, start + i, client_size);
         if (po < gpu_pixops) {
           gpu_pixops = po;
           client_start = start + i;
@@ -137,6 +137,18 @@ bool Backend::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->RequireScalingOrPhasing() &&
           display->resource_manager()->ForcedScalingWithGpu());
+}
+
+uint32_t Backend::CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
+                             size_t first_z, size_t size) {
+  uint32_t pixops = 0;
+  for (auto & [ z_order, layer ] : z_map) {
+    if (z_order >= first_z && z_order < first_z + size) {
+      hwc_rect_t df = layer->display_frame();
+      pixops += (df.right - df.left) * (df.bottom - df.top);
+    }
+  }
+  return pixops;
 }
 
 // clang-format off
