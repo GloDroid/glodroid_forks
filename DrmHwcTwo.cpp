@@ -866,6 +866,23 @@ HWC2::Error DrmHwcTwo::HwcDisplay::ValidateDisplay(uint32_t *num_types,
   return backend_->ValidateDisplay(this, num_types, num_requests);
 }
 
+std::vector<DrmHwcTwo::HwcLayer *>
+DrmHwcTwo::HwcDisplay::GetOrderLayersByZPos() {
+  std::vector<DrmHwcTwo::HwcLayer *> ordered_layers;
+  ordered_layers.reserve(layers_.size());
+
+  for (auto &[handle, layer] : layers_) {
+    ordered_layers.emplace_back(&layer);
+  }
+
+  std::sort(std::begin(ordered_layers), std::end(ordered_layers),
+            [](const DrmHwcTwo::HwcLayer *lhs, const DrmHwcTwo::HwcLayer *rhs) {
+              return lhs->z_order() < rhs->z_order();
+            });
+
+  return ordered_layers;
+}
+
 #if PLATFORM_SDK_VERSION > 29
 HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
   if (connector_->internal())

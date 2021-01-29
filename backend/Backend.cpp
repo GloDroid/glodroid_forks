@@ -29,37 +29,28 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
   *num_types = 0;
   *num_requests = 0;
 
-  std::map<uint32_t, DrmHwcTwo::HwcLayer *> z_map;
-  std::map<uint32_t, DrmHwcTwo::HwcLayer *> z_map_tmp;
-  uint32_t z_index = 0;
-  // First create a map of layers and z_order values
-  for (std::pair<const hwc2_layer_t, DrmHwcTwo::HwcLayer> &l :
-       display->layers())
-    z_map_tmp.emplace(std::make_pair(l.second.z_order(), &l.second));
-  // normalise the map so that the lowest z_order layer has key 0
-  for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map_tmp)
-    z_map.emplace(std::make_pair(z_index++, l.second));
+  auto layers = display->GetOrderLayersByZPos();
 
   int client_start = -1;
   size_t client_size = 0;
 
   if (display->compositor().ShouldFlattenOnClient()) {
     client_start = 0;
-    client_size = z_map.size();
-    MarkValidated(z_map, client_start, client_size);
+    client_size = layers.size();
+    MarkValidated(layers, client_start, client_size);
   } else {
-    std::tie(client_start, client_size) = GetClientLayers(display, z_map);
+    std::tie(client_start, client_size) = GetClientLayers(display, layers);
 
-    MarkValidated(z_map, client_start, client_size);
+    MarkValidated(layers, client_start, client_size);
 
-    bool testing_needed = !(client_start == 0 && client_size == z_map.size());
+    bool testing_needed = !(client_start == 0 && client_size == layers.size());
 
     if (testing_needed &&
         display->CreateComposition(true) != HWC2::Error::None) {
       ++display->total_stats().failed_kms_validate_;
       client_start = 0;
-      client_size = z_map.size();
-      MarkValidated(z_map, 0, client_size);
+      client_size = layers.size();
+      MarkValidated(layers, 0, client_size);
     }
   }
 
@@ -67,9 +58,9 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
 
   display->total_stats().frames_flattened_ = display->compositor()
                                                  .GetFlattenedFramesCount();
-  display->total_stats().gpu_pixops_ += CalcPixOps(z_map, client_start,
+  display->total_stats().gpu_pixops_ += CalcPixOps(layers, client_start,
                                                    client_size);
-  display->total_stats().total_pixops_ += CalcPixOps(z_map, 0, z_map.size());
+  display->total_stats().total_pixops_ += CalcPixOps(layers, 0, layers.size());
 
   return *num_types ? HWC2::Error::HasChanges : HWC2::Error::None;
 }
@@ -80,15 +71,15 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   int client_start = -1;
   size_t client_size = 0;
 
-  for (const auto &[z_order, layer] : z_map) {
-    if (IsClientLayer(display, layer)) {
+  for (int z_order = 0; z_order < layers.size(); ++z_order) {
+    if (IsClientLayer(display, layers[z_order])) {
       if (client_start < 0)
         client_start = (int)z_order;
       client_size = (z_order - client_start) + 1;
     }
   }
 
-  return GetExtraClientRange(display, z_map, client_start, client_size);
+  return GetExtraClientRange(display, layers, client_start, client_size);
 }
 
 bool Backend::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
@@ -108,22 +99,22 @@ bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
 uint32_t Backend::CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
                              size_t first_z, size_t size) {
   uint32_t pixops = 0;
-  for (auto & [ z_order, layer ] : z_map) {
+  for (int z_order = 0; z_order < layers.size(); ++z_order) {
     if (z_order >= first_z && z_order < first_z + size) {
-      hwc_rect_t df = layer->display_frame();
+      hwc_rect_t df = layers[z_order]->display_frame();
       pixops += (df.right - df.left) * (df.bottom - df.top);
     }
   }
   return pixops;
 }
 
-void Backend::MarkValidated(std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map,
+void Backend::MarkValidated(std::vector<DrmHwcTwo::HwcLayer *> &layers,
                             size_t client_first_z, size_t client_size) {
-  for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map) {
-    if (l.first >= client_first_z && l.first < client_first_z + client_size)
-      l.second->set_validated_type(HWC2::Composition::Client);
+  for (int z_order = 0; z_order < layers.size(); ++z_order) {
+    if (z_order >= client_first_z && z_order < client_first_z + client_size)
+      layers[z_order]->set_validated_type(HWC2::Composition::Client);
     else
-      l.second->set_validated_type(HWC2::Composition::Device);
+      layers[z_order]->set_validated_type(HWC2::Composition::Device);
   }
 }
 
@@ -153,15 +144,15 @@ std::tuple<int, int> Backend::GetExtraClientRange(
       start = client_start - (int)prepend;
       client_size += extra_client;
       steps = 1 + std::min(std::min(append, prepend),
-                           int(z_map.size()) - (start + client_size));
+                           int(layers.size()) - (start + client_size));
     } else {
       client_size = extra_client;
-      steps = 1 + z_map.size() - extra_client;
+      steps = 1 + layers.size() - extra_client;
     }
 
     uint32_t gpu_pixops = INT_MAX;
     for (int i = 0; i < steps; i++) {
-      uint32_t po = CalcPixOps(z_map, start + i, client_size);
+      uint32_t po = CalcPixOps(layers, start + i, client_size);
       if (po < gpu_pixops) {
         gpu_pixops = po;
         client_start = start + i;
