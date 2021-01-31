@@ -44,57 +44,6 @@ std::vector<DrmPlane *> Planner::GetUsablePlanes(
   return usable_planes;
 }
 
-int Planner::PlanStage::ValidatePlane(DrmPlane *plane, DrmHwcLayer *layer) {
-  int ret = 0;
-  uint64_t blend = UINT64_MAX;
-
-  if ((plane->rotation_property().id() == 0) &&
-      layer->transform != DrmHwcTransform::kIdentity) {
-    ALOGE("Rotation is not supported on plane %d", plane->id());
-    return -EINVAL;
-  }
-
-  if (plane->alpha_property().id() == 0 && layer->alpha != 0xffff) {
-    ALOGE("Alpha is not supported on plane %d", plane->id());
-    return -EINVAL;
-  }
-
-  if (plane->blend_property().id() == 0) {
-    if ((layer->blending != DrmHwcBlending::kNone) &&
-        (layer->blending != DrmHwcBlending::kPreMult)) {
-      ALOGE("Blending is not supported on plane %d", plane->id());
-      return -EINVAL;
-    }
-  } else {
-    switch (layer->blending) {
-      case DrmHwcBlending::kPreMult:
-        std::tie(blend, ret) = plane->blend_property().GetEnumValueWithName(
-            "Pre-multiplied");
-        break;
-      case DrmHwcBlending::kCoverage:
-        std::tie(blend, ret) = plane->blend_property().GetEnumValueWithName(
-            "Coverage");
-        break;
-      case DrmHwcBlending::kNone:
-      default:
-        std::tie(blend,
-                 ret) = plane->blend_property().GetEnumValueWithName("None");
-        break;
-    }
-    if (ret)
-      ALOGE("Expected a valid blend mode on plane %d", plane->id());
-  }
-
-  uint32_t format = layer->buffer->format;
-  if (!plane->IsFormatSupported(format)) {
-    ALOGE("Plane %d does not supports %c%c%c%c format", plane->id(), format,
-          format >> 8, format >> 16, format >> 24);
-    return -EINVAL;
-  }
-
-  return ret;
-}
-
 std::tuple<int, std::vector<DrmCompositionPlane>> Planner::ProvisionPlanes(
     std::map<size_t, DrmHwcLayer *> &layers, DrmCrtc *crtc,
     std::vector<DrmPlane *> *primary_planes,

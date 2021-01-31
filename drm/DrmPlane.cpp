@@ -164,6 +164,57 @@ bool DrmPlane::GetCrtcSupported(const DrmCrtc &crtc) const {
   return ((1 << crtc.pipe()) & possible_crtc_mask_) != 0;
 }
 
+bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
+  if ((rotation_property_.id() == 0) &&
+      layer->transform != DrmHwcTransform::kIdentity) {
+    ALOGV("Rotation is not supported on plane %d", id_);
+    return false;
+  }
+
+  if (alpha_property_.id() == 0 && layer->alpha != 0xffff) {
+    ALOGV("Alpha is not supported on plane %d", id_);
+    return false;
+  }
+
+  if (blend_property_.id() == 0) {
+    if ((layer->blending != DrmHwcBlending::kNone) &&
+        (layer->blending != DrmHwcBlending::kPreMult)) {
+      ALOGV("Blending is not supported on plane %d", id_);
+      return false;
+    }
+  } else {
+    int ret = 0;
+    uint64_t blend = 0;
+
+    switch (layer->blending) {
+      case DrmHwcBlending::kPreMult:
+        std::tie(blend,
+                 ret) = blend_property_.GetEnumValueWithName("Pre-multiplied");
+        break;
+      case DrmHwcBlending::kCoverage:
+        std::tie(blend, ret) = blend_property_.GetEnumValueWithName("Coverage");
+        break;
+      case DrmHwcBlending::kNone:
+      default:
+        std::tie(blend, ret) = blend_property_.GetEnumValueWithName("None");
+        break;
+    }
+    if (ret) {
+      ALOGV("Expected a valid blend mode on plane %d", id_);
+      return false;
+    }
+  }
+
+  uint32_t format = layer->buffer->format;
+  if (!IsFormatSupported(format)) {
+    ALOGV("Plane %d does not supports %c%c%c%c format", id_, format,
+          format >> 8, format >> 16, format >> 24);
+    return false;
+  }
+
+  return true;
+}
+
 uint32_t DrmPlane::type() const {
   return type_;
 }

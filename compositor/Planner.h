@@ -52,8 +52,6 @@ class Planner {
       return plane;
     }
 
-    static int ValidatePlane(DrmPlane *plane, DrmHwcLayer *layer);
-
     // Inserts the given layer:plane in the composition at the back
     static int Emplace(std::vector<DrmCompositionPlane> *composition,
                        std::vector<DrmPlane *> *planes,
@@ -63,7 +61,7 @@ class Planner {
       std::vector<DrmPlane *> unused_planes;
       int ret = -ENOENT;
       while (plane) {
-        ret = ValidatePlane(plane, layer.second);
+        ret = plane->IsValidForLayer(layer.second) ? 0 : -EINVAL;
         if (!ret)
           break;
         if (!plane->zpos_property().is_immutable())
