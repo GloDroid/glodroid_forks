@@ -38,7 +38,8 @@ enum {
   HAL_PIXEL_FORMAT_BGRA_8888 = 5,   // NOLINT(readability-identifier-naming)
   HAL_PIXEL_FORMAT_RGBA_FP16 = 22,  // NOLINT(readability-identifier-naming)
   HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED = 34,  // NOLINT(readability-identifier-naming)
-  HAL_PIXEL_FORMAT_YV12 = 842094169,  // NOLINT(readability-identifier-naming)
+  HAL_PIXEL_FORMAT_RGBA_1010102 = 43,  // NOLINT(readability-identifier-naming)
+  HAL_PIXEL_FORMAT_YV12 = 842094169,   // NOLINT(readability-identifier-naming)
 };
 
 // NOLINTNEXTLINE(readability-identifier-naming)

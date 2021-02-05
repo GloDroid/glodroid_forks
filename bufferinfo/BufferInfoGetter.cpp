@@ -89,6 +89,8 @@ uint32_t LegacyBufferInfoGetter::ConvertHalFormatToDrm(uint32_t hal_format) {
       return DRM_FORMAT_BGR565;
     case HAL_PIXEL_FORMAT_YV12:
       return DRM_FORMAT_YVU420;
+    case HAL_PIXEL_FORMAT_RGBA_1010102:
+      return DRM_FORMAT_ABGR2101010;
     default:
       ALOGE("Cannot convert hal format to drm format %u", hal_format);
       return DRM_FORMAT_INVALID;
@@ -102,6 +104,7 @@ bool BufferInfoGetter::IsDrmFormatRgb(uint32_t drm_format) {
     case DRM_FORMAT_ABGR8888:
     case DRM_FORMAT_BGR888:
     case DRM_FORMAT_BGR565:
+    case DRM_FORMAT_ABGR2101010:
       return true;
     default:
       return false;
