@@ -26,15 +26,10 @@
 #include <tuple>
 
 #include "DrmDisplayComposition.h"
-#include "DrmFramebuffer.h"
 #include "Planner.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "drmhwcomposer.h"
-
-// One for the front, one for the back, and one for cases where we need to
-// squash a frame that the hw can't display with hw overlays.
-#define DRM_DISPLAY_BUFFERS 3
 
 // If a scene is still for this number of vblanks flatten it to reduce power
 // consumption.
@@ -47,8 +42,6 @@ enum class FlatteningState {
   kNotNeeded,
   kClientRequested,
   kClientDone,
-  kSerial,
-  kConcurrent
 };
 
 std::ostream &operator<<(std::ostream &str, FlatteningState state);
@@ -106,27 +99,17 @@ class DrmDisplayCompositor {
   static const int kAcquireWaitTries = 5;
   static const int kAcquireWaitTimeoutMs = 100;
 
-  int CommitFrame(DrmDisplayComposition *display_comp, bool test_only,
-                  DrmConnector *writeback_conn = NULL,
-                  DrmHwcBuffer *writeback_buffer = NULL);
-  int SetupWritebackCommit(drmModeAtomicReqPtr pset, uint32_t crtc_id,
-                           DrmConnector *writeback_conn,
-                           DrmHwcBuffer *writeback_buffer);
+  int CommitFrame(DrmDisplayComposition *display_comp, bool test_only);
   int ApplyDpms(DrmDisplayComposition *display_comp);
   int DisablePlanes(DrmDisplayComposition *display_comp);
 
   void ApplyFrame(std::unique_ptr<DrmDisplayComposition> composition,
-                  int status, bool writeback = false);
+                  int status);
 
   void SetFlattening(FlatteningState new_state);
   bool IsFlatteningNeeded() const;
   int FlattenActiveComposition();
   int FlattenOnClient();
-  int FlattenSerial(DrmConnector *writeback_conn);
-  int FlattenConcurrent(DrmConnector *writeback_conn);
-  int FlattenOnDisplay(std::unique_ptr<DrmDisplayComposition> &src,
-                       DrmConnector *writeback_conn, DrmMode &src_mode,
-                       DrmHwcLayer *writeback_layer);
 
   bool CountdownExpired() const;
 
@@ -143,9 +126,6 @@ class DrmDisplayCompositor {
 
   ModeState mode_;
 
-  int framebuffer_index_{};
-  DrmFramebuffer framebuffers_[DRM_DISPLAY_BUFFERS];
-
   // mutable since we need to acquire in Dump()
   mutable pthread_mutex_t lock_{};
 
@@ -156,7 +136,6 @@ class DrmDisplayCompositor {
   VSyncWorker vsync_worker_;
   int64_t flatten_countdown_;
   std::unique_ptr<Planner> planner_;
-  int writeback_fence_;
 
   FlatteningState flattening_state_;
   uint32_t frames_flattened_;

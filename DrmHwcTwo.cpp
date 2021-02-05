@@ -23,6 +23,7 @@
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer2.h>
 #include <log/log.h>
+#include <sync/sync.h>
 
 #include <cinttypes>
 #include <string>
