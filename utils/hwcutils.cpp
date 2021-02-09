@@ -22,7 +22,7 @@
 #include <ui/GraphicBufferMapper.h>
 
 #include "bufferinfo/BufferInfoGetter.h"
-#include "drm/DrmGenericImporter.h"
+#include "drm/DrmFbImporter.h"
 #include "drmhwcomposer.h"
 
 #define UNUSED(x) (void)(x)
@@ -30,7 +30,7 @@
 namespace android {
 
 const hwc_drm_bo *DrmHwcBuffer::operator->() const {
-  if (importer_ == nullptr) {
+  if (mDrmDevice == nullptr) {
     ALOGE("Access of non-existent BO");
     exit(1);
     return nullptr;
@@ -39,13 +39,11 @@ const hwc_drm_bo *DrmHwcBuffer::operator->() const {
 }
 
 void DrmHwcBuffer::Clear() {
-  if (importer_ != nullptr) {
-    importer_->ReleaseBuffer(&bo_);
-    importer_ = nullptr;
-  }
+  FbIdHandle.reset();
+  mDrmDevice = nullptr;
 }
 
-int DrmHwcBuffer::ImportBuffer(buffer_handle_t handle, Importer *importer) {
+int DrmHwcBuffer::ImportBuffer(buffer_handle_t handle, DrmDevice *drmDevice) {
   hwc_drm_bo tmp_bo{};
 
   int ret = BufferInfoGetter::GetInstance()->ConvertBoInfo(handle, &tmp_bo);
@@ -54,18 +52,13 @@ int DrmHwcBuffer::ImportBuffer(buffer_handle_t handle, Importer *importer) {
     return ret;
   }
 
-  ret = importer->ImportBuffer(&tmp_bo);
-  if (ret) {
-    ALOGE("Failed to import buffer %d", ret);
-    return ret;
+  FbIdHandle = drmDevice->GetDrmFbImporter().GetOrCreateFbId(&tmp_bo);
+  if (!FbIdHandle) {
+    ALOGE("Failed to import buffer");
+    return -EINVAL;
   }
 
-  if (importer_ != nullptr) {
-    importer_->ReleaseBuffer(&bo_);
-  }
-
-  importer_ = importer;
-
+  mDrmDevice = drmDevice;
   bo_ = tmp_bo;
 
   return 0;
@@ -106,8 +99,8 @@ void DrmHwcNativeHandle::Clear() {
   }
 }
 
-int DrmHwcLayer::ImportBuffer(Importer *importer) {
-  int ret = buffer.ImportBuffer(sf_handle, importer);
+int DrmHwcLayer::ImportBuffer(DrmDevice *drmDevice) {
+  int ret = buffer.ImportBuffer(sf_handle, drmDevice);
   if (ret)
     return ret;
 
@@ -123,7 +116,7 @@ int DrmHwcLayer::ImportBuffer(Importer *importer) {
 }
 
 int DrmHwcLayer::InitFromDrmHwcLayer(DrmHwcLayer *src_layer,
-                                     Importer *importer) {
+                                     DrmDevice *drmDevice) {
   blending = src_layer->blending;
   sf_handle = src_layer->sf_handle;
   acquire_fence = -1;
@@ -131,7 +124,7 @@ int DrmHwcLayer::InitFromDrmHwcLayer(DrmHwcLayer *src_layer,
   alpha = src_layer->alpha;
   source_crop = src_layer->source_crop;
   transform = src_layer->transform;
-  return ImportBuffer(importer);
+  return ImportBuffer(drmDevice);
 }
 
 void DrmHwcLayer::SetTransform(int32_t sf_transform) {

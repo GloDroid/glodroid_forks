@@ -74,20 +74,11 @@ int ResourceManager::Init() {
                        (const hw_module_t **)&gralloc_);
 }
 
-int ResourceManager::AddDrmDevice(std::string const &path) {
-  std::unique_ptr<DrmDevice> drm = std::make_unique<DrmDevice>();
+int ResourceManager::AddDrmDevice(const std::string &path) {
+  auto drm = std::make_unique<DrmDevice>();
   int displays_added = 0;
   int ret = 0;
   std::tie(ret, displays_added) = drm->Init(path.c_str(), num_displays_);
-  if (ret)
-    return ret;
-  std::shared_ptr<Importer> importer;
-  importer = std::make_shared<DrmGenericImporter>(drm.get());
-  if (!importer) {
-    ALOGE("Failed to create importer instance");
-    return -ENODEV;
-  }
-  importers_.push_back(importer);
   drms_.push_back(std::move(drm));
   num_displays_ += displays_added;
   return ret;
@@ -135,14 +126,6 @@ DrmDevice *ResourceManager::GetDrmDevice(int display) {
   for (auto &drm : drms_) {
     if (drm->HandlesDisplay(display))
       return drm.get();
-  }
-  return nullptr;
-}
-
-std::shared_ptr<Importer> ResourceManager::GetImporter(int display) {
-  for (unsigned int i = 0; i < drms_.size(); i++) {
-    if (drms_[i]->HandlesDisplay(display))
-      return importers_[i];
   }
   return nullptr;
 }

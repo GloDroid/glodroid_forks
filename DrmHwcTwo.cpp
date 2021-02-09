@@ -47,14 +47,13 @@ DrmHwcTwo::DrmHwcTwo() : hwc2_device() {
 HWC2::Error DrmHwcTwo::CreateDisplay(hwc2_display_t displ,
                                      HWC2::DisplayType type) {
   DrmDevice *drm = resource_manager_.GetDrmDevice(displ);
-  std::shared_ptr<Importer> importer = resource_manager_.GetImporter(displ);
-  if (!drm || !importer) {
-    ALOGE("Failed to get a valid drmresource and importer");
+  if (!drm) {
+    ALOGE("Failed to get a valid drmresource");
     return HWC2::Error::NoResources;
   }
   displays_.emplace(std::piecewise_construct, std::forward_as_tuple(displ),
-                    std::forward_as_tuple(&resource_manager_, drm, importer,
-                                          displ, type));
+                    std::forward_as_tuple(&resource_manager_, drm, displ,
+                                          type));
 
   DrmCrtc *crtc = drm->GetCrtcForDisplay(static_cast<int>(displ));
   if (!crtc) {
@@ -209,12 +208,10 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
 }
 
 DrmHwcTwo::HwcDisplay::HwcDisplay(ResourceManager *resource_manager,
-                                  DrmDevice *drm,
-                                  std::shared_ptr<Importer> importer,
-                                  hwc2_display_t handle, HWC2::DisplayType type)
+                                  DrmDevice *drm, hwc2_display_t handle,
+                                  HWC2::DisplayType type)
     : resource_manager_(resource_manager),
       drm_(drm),
-      importer_(std::move(importer)),
       handle_(handle),
       type_(type),
       color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
@@ -650,7 +647,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
   for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map) {
     DrmHwcLayer layer;
     l.second->PopulateDrmLayer(&layer);
-    int ret = layer.ImportBuffer(importer_.get());
+    int ret = layer.ImportBuffer(drm_);
     if (ret) {
       ALOGE("Failed to import layer, ret=%d", ret);
       return HWC2::Error::NoResources;

@@ -17,16 +17,18 @@
 #ifndef ANDROID_DRM_HWCOMPOSER_H_
 #define ANDROID_DRM_HWCOMPOSER_H_
 
+#include <hardware/hardware.h>
+#include <hardware/hwcomposer.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 #include <vector>
 
-#include <hardware/hardware.h>
-#include <hardware/hwcomposer.h>
 #include "autofd.h"
+#include "drm/DrmFbImporter.h"
 #include "drmhwcgralloc.h"
 
+class DrmFbIdHandle;
 struct hwc_import_context;
 
 int hwc_import_init(struct hwc_import_context **ctx);
@@ -39,43 +41,43 @@ bool hwc_import_bo_release(int fd, struct hwc_import_context *ctx,
 
 namespace android {
 
-class Importer;
-
 class DrmHwcBuffer {
  public:
   DrmHwcBuffer() = default;
-  DrmHwcBuffer(const hwc_drm_bo &bo, Importer *importer)
-      : bo_(bo), importer_(importer) {
+  DrmHwcBuffer(const hwc_drm_bo &bo, DrmDevice *drmDevice)
+      : bo_(bo), mDrmDevice(drmDevice) {
   }
-  DrmHwcBuffer(DrmHwcBuffer &&rhs) : bo_(rhs.bo_), importer_(rhs.importer_) {
-    rhs.importer_ = NULL;
+  DrmHwcBuffer(DrmHwcBuffer &&rhs) : bo_(rhs.bo_), mDrmDevice(rhs.mDrmDevice) {
+    rhs.mDrmDevice = nullptr;
+    FbIdHandle.swap(rhs.FbIdHandle);
   }
 
   ~DrmHwcBuffer() {
-    Clear();
   }
 
   DrmHwcBuffer &operator=(DrmHwcBuffer &&rhs) {
-    Clear();
-    importer_ = rhs.importer_;
-    rhs.importer_ = NULL;
+    FbIdHandle.swap(rhs.FbIdHandle);
+    mDrmDevice = rhs.mDrmDevice;
+    rhs.mDrmDevice = nullptr;
     bo_ = rhs.bo_;
     return *this;
   }
 
   operator bool() const {
-    return importer_ != NULL;
+    return mDrmDevice != NULL;
   }
 
   const hwc_drm_bo *operator->() const;
 
   void Clear();
 
-  int ImportBuffer(buffer_handle_t handle, Importer *importer);
+  std::shared_ptr<DrmFbIdHandle> FbIdHandle;
+
+  int ImportBuffer(buffer_handle_t handle, DrmDevice *drmDevice);
 
  private:
   hwc_drm_bo bo_;
-  Importer *importer_ = NULL;
+  DrmDevice *mDrmDevice;
 };
 
 class DrmHwcNativeHandle {
@@ -141,8 +143,8 @@ struct DrmHwcLayer {
   UniqueFd acquire_fence;
   OutputFd release_fence;
 
-  int ImportBuffer(Importer *importer);
-  int InitFromDrmHwcLayer(DrmHwcLayer *layer, Importer *importer);
+  int ImportBuffer(DrmDevice *drmDevice);
+  int InitFromDrmHwcLayer(DrmHwcLayer *layer, DrmDevice *drmDevice);
 
   void SetTransform(int32_t sf_transform);
 

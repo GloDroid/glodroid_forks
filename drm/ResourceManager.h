@@ -20,7 +20,7 @@
 #include <string.h>
 
 #include "DrmDevice.h"
-#include "DrmGenericImporter.h"
+#include "DrmFbImporter.h"
 
 namespace android {
 
@@ -31,7 +31,6 @@ class ResourceManager {
   ResourceManager &operator=(const ResourceManager &) = delete;
   int Init();
   DrmDevice *GetDrmDevice(int display);
-  std::shared_ptr<Importer> GetImporter(int display);
   const gralloc_module_t *gralloc();
   DrmConnector *AvailableWritebackConnector(int display);
   const std::vector<std::unique_ptr<DrmDevice>> &getDrmDevices() const {
@@ -50,7 +49,6 @@ class ResourceManager {
 
   int num_displays_;
   std::vector<std::unique_ptr<DrmDevice>> drms_;
-  std::vector<std::shared_ptr<Importer>> importers_;
   const gralloc_module_t *gralloc_;
 
   bool scale_with_gpu_{};
