@@ -25,7 +25,6 @@
 
 #include "compositor/DrmDisplayCompositor.h"
 #include "compositor/Planner.h"
-#include "drm/DrmGenericImporter.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "drmhwcomposer.h"
@@ -164,8 +163,7 @@ class DrmHwcTwo : public hwc2_device_t {
   class HwcDisplay {
    public:
     HwcDisplay(ResourceManager *resource_manager, DrmDevice *drm,
-               std::shared_ptr<Importer> importer, hwc2_display_t handle,
-               HWC2::DisplayType type);
+               hwc2_display_t handle, HWC2::DisplayType type);
     HwcDisplay(const HwcDisplay &) = delete;
     HWC2::Error Init(std::vector<DrmPlane *> *planes);
 
@@ -305,10 +303,6 @@ class DrmHwcTwo : public hwc2_device_t {
       return connector_;
     }
 
-    const std::shared_ptr<Importer> &importer() const {
-      return importer_;
-    }
-
     ResourceManager *resource_manager() const {
       return resource_manager_;
     }
@@ -329,7 +323,6 @@ class DrmHwcTwo : public hwc2_device_t {
     ResourceManager *resource_manager_;
     DrmDevice *drm_;
     DrmDisplayCompositor compositor_;
-    std::shared_ptr<Importer> importer_;
     std::unique_ptr<Planner> planner_;
 
     std::vector<DrmPlane *> primary_planes_;

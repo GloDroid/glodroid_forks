@@ -96,7 +96,7 @@ cc_library_static {
         "drm/DrmDevice.cpp",
         "drm/DrmEncoder.cpp",
         "drm/DrmEventListener.cpp",
-        "drm/DrmGenericImporter.cpp",
+        "drm/DrmFbImporter.cpp",
         "drm/DrmMode.cpp",
         "drm/DrmPlane.cpp",
         "drm/DrmProperty.cpp",

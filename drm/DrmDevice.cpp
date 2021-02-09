@@ -112,6 +112,8 @@ static std::vector<DrmConnector *> make_primary_display_candidates(
 }
 
 DrmDevice::DrmDevice() : event_listener_(this) {
+  self.reset(this);
+  mDrmFbImporter = std::make_unique<DrmFbImporter>(self);
 }
 
 DrmDevice::~DrmDevice() {
@@ -145,6 +147,13 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
     ret = 0;
   }
 #endif
+
+  uint64_t cap_value = 0;
+  if (drmGetCap(fd(), DRM_CAP_ADDFB2_MODIFIERS, &cap_value)) {
+    ALOGW("drmGetCap failed. Fallback to no modifier support.");
+    cap_value = 0;
+  }
+  HasAddFb2ModifiersSupport_ = cap_value != 0;
 
   drmSetMaster(fd());
   if (!drmIsMaster(fd())) {

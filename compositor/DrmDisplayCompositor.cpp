@@ -290,7 +290,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
         ALOGE("Expected a valid framebuffer for pset");
         break;
       }
-      fb_id = layer.buffer->fb_id;
+      fb_id = layer.buffer.FbIdHandle->GetFbId();
       fence_fd = layer.acquire_fence.get();
       display_frame = layer.display_frame;
       source_crop = layer.source_crop;
