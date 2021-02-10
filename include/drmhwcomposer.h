@@ -80,39 +80,6 @@ class DrmHwcBuffer {
   DrmDevice *mDrmDevice;
 };
 
-class DrmHwcNativeHandle {
- public:
-  DrmHwcNativeHandle() = default;
-
-  DrmHwcNativeHandle(native_handle_t *handle) : handle_(handle) {
-  }
-
-  DrmHwcNativeHandle(DrmHwcNativeHandle &&rhs) {
-    handle_ = rhs.handle_;
-    rhs.handle_ = NULL;
-  }
-
-  ~DrmHwcNativeHandle();
-
-  DrmHwcNativeHandle &operator=(DrmHwcNativeHandle &&rhs) {
-    Clear();
-    handle_ = rhs.handle_;
-    rhs.handle_ = NULL;
-    return *this;
-  }
-
-  int CopyBufferHandle(buffer_handle_t handle);
-
-  void Clear();
-
-  buffer_handle_t get() const {
-    return handle_;
-  }
-
- private:
-  native_handle_t *handle_ = NULL;
-};
-
 enum DrmHwcTransform {
   kIdentity = 0,
   kFlipH = 1 << 0,
@@ -132,7 +99,6 @@ struct DrmHwcLayer {
   buffer_handle_t sf_handle = NULL;
   int gralloc_buffer_usage = 0;
   DrmHwcBuffer buffer;
-  DrmHwcNativeHandle handle;
   uint32_t transform;
   DrmHwcBlending blending = DrmHwcBlending::kNone;
   uint16_t alpha = 0xffff;
@@ -147,10 +113,6 @@ struct DrmHwcLayer {
   int InitFromDrmHwcLayer(DrmHwcLayer *layer, DrmDevice *drmDevice);
 
   void SetTransform(int32_t sf_transform);
-
-  buffer_handle_t get_usable_handle() const {
-    return handle.get() != NULL ? handle.get() : sf_handle;
-  }
 
   bool protected_usage() const {
     return (gralloc_buffer_usage & GRALLOC_USAGE_PROTECTED) ==
