@@ -18,7 +18,6 @@
 
 #include "DrmFbImporter.h"
 
-#include <gralloc_handle.h>
 #include <hardware/gralloc.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>

@@ -3,6 +3,7 @@
 . ./.ci/.common.sh
 
 TIDY_FILES=(
+drm/DrmFbImporter.h
 utils/log.h
 utils/properties.h
 )
