@@ -28,57 +28,9 @@
 #include "drm/DrmFbImporter.h"
 #include "drmhwcgralloc.h"
 
-class DrmFbIdHandle;
-struct hwc_import_context;
-
-int hwc_import_init(struct hwc_import_context **ctx);
-int hwc_import_destroy(struct hwc_import_context *ctx);
-
-int hwc_import_bo_create(int fd, struct hwc_import_context *ctx,
-                         buffer_handle_t buf, struct hwc_drm_bo *bo);
-bool hwc_import_bo_release(int fd, struct hwc_import_context *ctx,
-                           struct hwc_drm_bo *bo);
-
 namespace android {
 
-class DrmHwcBuffer {
- public:
-  DrmHwcBuffer() = default;
-  DrmHwcBuffer(const hwc_drm_bo &bo, DrmDevice *drmDevice)
-      : bo_(bo), mDrmDevice(drmDevice) {
-  }
-  DrmHwcBuffer(DrmHwcBuffer &&rhs) : bo_(rhs.bo_), mDrmDevice(rhs.mDrmDevice) {
-    rhs.mDrmDevice = nullptr;
-    FbIdHandle.swap(rhs.FbIdHandle);
-  }
-
-  ~DrmHwcBuffer() {
-  }
-
-  DrmHwcBuffer &operator=(DrmHwcBuffer &&rhs) {
-    FbIdHandle.swap(rhs.FbIdHandle);
-    mDrmDevice = rhs.mDrmDevice;
-    rhs.mDrmDevice = nullptr;
-    bo_ = rhs.bo_;
-    return *this;
-  }
-
-  operator bool() const {
-    return mDrmDevice != NULL;
-  }
-
-  const hwc_drm_bo *operator->() const;
-
-  void Clear();
-
-  std::shared_ptr<DrmFbIdHandle> FbIdHandle;
-
-  int ImportBuffer(buffer_handle_t handle, DrmDevice *drmDevice);
-
- private:
-  hwc_drm_bo bo_;
-  DrmDevice *mDrmDevice;
-};
+class DrmFbIdHandle;
 
 enum DrmHwcTransform {
   kIdentity = 0,
@@ -97,8 +49,10 @@ enum class DrmHwcBlending : int32_t {
 
 struct DrmHwcLayer {
   buffer_handle_t sf_handle = NULL;
+  hwc_drm_bo_t buffer_info{};
+  std::shared_ptr<DrmFbIdHandle> FbIdHandle;
+
   int gralloc_buffer_usage = 0;
-  DrmHwcBuffer buffer;
   uint32_t transform;
   DrmHwcBlending blending = DrmHwcBlending::kNone;
   uint16_t alpha = 0xffff;
@@ -110,7 +64,6 @@ struct DrmHwcLayer {
   OutputFd release_fence;
 
   int ImportBuffer(DrmDevice *drmDevice);
-  int InitFromDrmHwcLayer(DrmHwcLayer *layer, DrmDevice *drmDevice);
 
   void SetTransform(int32_t sf_transform);
 

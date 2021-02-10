@@ -29,63 +29,23 @@
 
 namespace android {
 
-const hwc_drm_bo *DrmHwcBuffer::operator->() const {
-  if (mDrmDevice == nullptr) {
-    ALOGE("Access of non-existent BO");
-    exit(1);
-    return nullptr;
-  }
-  return &bo_;
-}
+int DrmHwcLayer::ImportBuffer(DrmDevice *drmDevice) {
+  buffer_info = hwc_drm_bo_t{};
 
-void DrmHwcBuffer::Clear() {
-  FbIdHandle.reset();
-  mDrmDevice = nullptr;
-}
-
-int DrmHwcBuffer::ImportBuffer(buffer_handle_t handle, DrmDevice *drmDevice) {
-  hwc_drm_bo tmp_bo{};
-
-  int ret = BufferInfoGetter::GetInstance()->ConvertBoInfo(handle, &tmp_bo);
+  int ret = BufferInfoGetter::GetInstance()->ConvertBoInfo(sf_handle,
+                                                           &buffer_info);
   if (ret) {
     ALOGE("Failed to convert buffer info %d", ret);
     return ret;
   }
 
-  FbIdHandle = drmDevice->GetDrmFbImporter().GetOrCreateFbId(&tmp_bo);
+  FbIdHandle = drmDevice->GetDrmFbImporter().GetOrCreateFbId(&buffer_info);
   if (!FbIdHandle) {
     ALOGE("Failed to import buffer");
     return -EINVAL;
   }
 
-  mDrmDevice = drmDevice;
-  bo_ = tmp_bo;
-
   return 0;
-}
-
-int DrmHwcLayer::ImportBuffer(DrmDevice *drmDevice) {
-  int ret = buffer.ImportBuffer(sf_handle, drmDevice);
-  if (ret)
-    return ret;
-
-  const hwc_drm_bo *bo = buffer.operator->();
-
-  gralloc_buffer_usage = bo->usage;
-
-  return 0;
-}
-
-int DrmHwcLayer::InitFromDrmHwcLayer(DrmHwcLayer *src_layer,
-                                     DrmDevice *drmDevice) {
-  blending = src_layer->blending;
-  sf_handle = src_layer->sf_handle;
-  acquire_fence = -1;
-  display_frame = src_layer->display_frame;
-  alpha = src_layer->alpha;
-  source_crop = src_layer->source_crop;
-  transform = src_layer->transform;
-  return ImportBuffer(drmDevice);
 }
 
 void DrmHwcLayer::SetTransform(int32_t sf_transform) {

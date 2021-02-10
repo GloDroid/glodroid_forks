@@ -231,7 +231,7 @@ bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
     }
   }
 
-  uint32_t format = layer->buffer->format;
+  uint32_t format = layer->buffer_info.format;
   if (!IsFormatSupported(format)) {
     ALOGV("Plane %d does not supports %c%c%c%c format", id_, format,
           format >> 8, format >> 16, format >> 24);

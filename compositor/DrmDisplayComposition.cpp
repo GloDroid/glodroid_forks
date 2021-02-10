@@ -156,14 +156,10 @@ static const char *DPMSModeToString(int dpms_mode) {
   }
 }
 
-static void DumpBuffer(const DrmHwcBuffer &buffer, std::ostringstream *out) {
-  if (!buffer) {
-    *out << "buffer=<invalid>";
-    return;
-  }
-
+static void DumpBuffer(const DrmHwcLayer &layer, std::ostringstream *out) {
   *out << "buffer[w/h/format]=";
-  *out << buffer->width << "/" << buffer->height << "/" << buffer->format;
+  *out << layer.buffer_info.width << "/" << layer.buffer_info.height << "/"
+       << layer.buffer_info.format;
 }
 
 static void DumpTransform(uint32_t transform, std::ostringstream *out) {
@@ -249,7 +245,7 @@ void DrmDisplayComposition::Dump(std::ostringstream *out) const {
     const DrmHwcLayer &layer = layers_[i];
     *out << "      [" << i << "] ";
 
-    DumpBuffer(layer.buffer, out);
+    DumpBuffer(layer, out);
 
     if (layer.protected_usage())
       *out << " protected";
