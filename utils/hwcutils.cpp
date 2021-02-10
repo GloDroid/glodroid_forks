@@ -64,51 +64,12 @@ int DrmHwcBuffer::ImportBuffer(buffer_handle_t handle, DrmDevice *drmDevice) {
   return 0;
 }
 
-int DrmHwcNativeHandle::CopyBufferHandle(buffer_handle_t handle) {
-  native_handle_t *handle_copy = nullptr;
-  GraphicBufferMapper &gm(GraphicBufferMapper::get());
-  int ret = 0;
-
-  ret = gm.getGrallocMapper().importBuffer(handle,
-                                           (buffer_handle_t *)&handle_copy);
-
-  if (ret) {
-    ALOGE("Failed to import buffer handle %d", ret);
-    return ret;
-  }
-
-  Clear();
-
-  handle_ = handle_copy;
-
-  return 0;
-}
-
-DrmHwcNativeHandle::~DrmHwcNativeHandle() {
-  Clear();
-}
-
-void DrmHwcNativeHandle::Clear() {
-  if (handle_ != nullptr) {
-    GraphicBufferMapper &gm(GraphicBufferMapper::get());
-    int ret = gm.freeBuffer(handle_);
-    if (ret) {
-      ALOGE("Failed to free buffer handle %d", ret);
-    }
-    handle_ = nullptr;
-  }
-}
-
 int DrmHwcLayer::ImportBuffer(DrmDevice *drmDevice) {
   int ret = buffer.ImportBuffer(sf_handle, drmDevice);
   if (ret)
     return ret;
 
   const hwc_drm_bo *bo = buffer.operator->();
-
-  ret = handle.CopyBufferHandle(sf_handle);
-  if (ret)
-    return ret;
 
   gralloc_buffer_usage = bo->usage;
 
