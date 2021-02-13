@@ -70,8 +70,7 @@ int BufferInfoMaliHisi::ConvertBoInfo(buffer_handle_t handle,
                                       hwc_drm_bo_t *bo) {
   bool is_rgb;
 
-  private_handle_t const *hnd = reinterpret_cast<private_handle_t const *>(
-      handle);
+  auto const *hnd = reinterpret_cast<private_handle_t const *>(handle);
   if (!hnd)
     return -EINVAL;
 

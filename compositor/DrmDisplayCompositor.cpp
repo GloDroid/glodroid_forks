@@ -23,12 +23,12 @@
 #include <log/log.h>
 #include <pthread.h>
 #include <sched.h>
-#include <stdlib.h>
 #include <sync/sync.h>
-#include <time.h>
 #include <utils/Trace.h>
 
 #include <array>
+#include <cstdlib>
+#include <ctime>
 #include <sstream>
 #include <vector>
 
@@ -52,11 +52,11 @@ std::ostream &operator<<(std::ostream &str, FlatteningState state) {
 
 class CompositorVsyncCallback : public VsyncCallback {
  public:
-  CompositorVsyncCallback(DrmDisplayCompositor *compositor)
+  explicit CompositorVsyncCallback(DrmDisplayCompositor *compositor)
       : compositor_(compositor) {
   }
 
-  void Callback(int display, int64_t timestamp) {
+  void Callback(int display, int64_t timestamp) override {
     compositor_->Vsync(display, timestamp);
   }
 
@@ -65,7 +65,7 @@ class CompositorVsyncCallback : public VsyncCallback {
 };
 
 DrmDisplayCompositor::DrmDisplayCompositor()
-    : resource_manager_(NULL),
+    : resource_manager_(nullptr),
       display_(-1),
       initialized_(false),
       active_(false),
@@ -113,7 +113,7 @@ int DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display) {
     ALOGE("Could not find drmdevice for display");
     return -EINVAL;
   }
-  int ret = pthread_mutex_init(&lock_, NULL);
+  int ret = pthread_mutex_init(&lock_, nullptr);
   if (ret) {
     ALOGE("Failed to initialize drm compositor lock %d\n", ret);
     return ret;
@@ -130,7 +130,7 @@ int DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display) {
 
 std::unique_ptr<DrmDisplayComposition> DrmDisplayCompositor::CreateComposition()
     const {
-  return std::unique_ptr<DrmDisplayComposition>(new DrmDisplayComposition());
+  return std::make_unique<DrmDisplayComposition>();
 }
 
 std::unique_ptr<DrmDisplayComposition>
@@ -172,7 +172,7 @@ std::tuple<uint32_t, uint32_t, int>
 DrmDisplayCompositor::GetActiveModeResolution() {
   DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
   DrmConnector *connector = drm->GetConnectorForDisplay(display_);
-  if (connector == NULL) {
+  if (connector == nullptr) {
     ALOGE("Failed to determine display mode: no connector for display %d",
           display_);
     return std::make_tuple(0, 0, -ENODEV);
@@ -286,8 +286,8 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     return -ENOMEM;
   }
 
-  if (writeback_buffer != NULL) {
-    if (writeback_conn == NULL) {
+  if (writeback_buffer != nullptr) {
+    if (writeback_conn == nullptr) {
       ALOGE("Invalid arguments requested writeback without writeback conn");
       return -EINVAL;
     }
@@ -661,7 +661,7 @@ void DrmDisplayCompositor::ClearDisplay() {
   if (DisablePlanes(active_composition_.get()))
     return;
 
-  active_composition_.reset(NULL);
+  active_composition_.reset(nullptr);
   vsync_worker_.VSyncControl(false);
 }
 
@@ -785,8 +785,8 @@ int DrmDisplayCompositor::FlattenOnDisplay(
     ALOGE("Failed to find crtc for display %d", display_);
     return -EINVAL;
   }
-  // TODO what happens if planes could go to both CRTCs, I don't think it's
-  // handled anywhere
+  // TODO(nobody) what happens if planes could go to both CRTCs, I don't think
+  // it's handled anywhere
   std::vector<DrmPlane *> primary_planes;
   std::vector<DrmPlane *> overlay_planes;
   for (auto &plane : drm->planes()) {
@@ -896,10 +896,10 @@ int DrmDisplayCompositor::FlattenOnClient() {
     SetFlattening(FlatteningState::kClientRequested);
     refresh_callback_hook_(refresh_callback_data_, display_);
     return 0;
-  } else {
-    ALOGV("No writeback connector available");
-    return -EINVAL;
   }
+
+  ALOGV("No writeback connector available");
+  return -EINVAL;
 }
 
 // Flatten a scene by enabling the writeback connector attached
@@ -976,7 +976,7 @@ int DrmDisplayCompositor::FlattenSerial(DrmConnector *writeback_conn) {
     return ret;
   }
 
-  DrmCompositionPlane squashed_comp(DrmCompositionPlane::Type::kLayer, NULL,
+  DrmCompositionPlane squashed_comp(DrmCompositionPlane::Type::kLayer, nullptr,
                                     crtc);
   for (auto &drmplane : drm->planes()) {
     if (!drmplane->GetCrtcSupported(*crtc))
@@ -1061,7 +1061,7 @@ int DrmDisplayCompositor::FlattenConcurrent(DrmConnector *writeback_conn) {
     return ret;
   }
 
-  DrmCompositionPlane squashed_comp(DrmCompositionPlane::Type::kLayer, NULL,
+  DrmCompositionPlane squashed_comp(DrmCompositionPlane::Type::kLayer, nullptr,
                                     crtc);
   for (auto &drmplane : resource_manager_->GetDrmDevice(display_)->planes()) {
     if (!drmplane->GetCrtcSupported(*crtc))
@@ -1106,12 +1106,10 @@ int DrmDisplayCompositor::FlattenActiveComposition() {
   if (writeback_conn->display() != display_) {
     SetFlattening(FlatteningState::kConcurrent);
     return FlattenConcurrent(writeback_conn);
-  } else {
-    SetFlattening(FlatteningState::kSerial);
-    return FlattenSerial(writeback_conn);
   }
 
-  return 0;
+  SetFlattening(FlatteningState::kSerial);
+  return FlattenSerial(writeback_conn);
 }
 
 bool DrmDisplayCompositor::CountdownExpired() const {
@@ -1149,7 +1147,7 @@ void DrmDisplayCompositor::Dump(std::ostringstream *out) const {
 
   uint64_t cur_ts = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
   uint64_t num_ms = (cur_ts - dump_last_timestamp_ns_) / (1000 * 1000);
-  float fps = num_ms ? (num_frames * 1000.0f) / (num_ms) : 0.0f;
+  float fps = num_ms ? (num_frames * 1000.0F) / (num_ms) : 0.0F;
 
   *out << "--DrmDisplayCompositor[" << display_
        << "]: num_frames=" << num_frames << " num_ms=" << num_ms

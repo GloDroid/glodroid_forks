@@ -33,8 +33,7 @@ namespace android {
 
 class Importer {
  public:
-  virtual ~Importer() {
-  }
+  virtual ~Importer() = default;
 
   // Imports the buffer referred to by handle into bo.
   //
@@ -52,7 +51,7 @@ class Importer {
 class DrmGenericImporter : public Importer {
  public:
   DrmGenericImporter(DrmDevice *drm);
-  ~DrmGenericImporter() override;
+  ~DrmGenericImporter() override = default;
 
   int ImportBuffer(hwc_drm_bo_t *bo) override;
   int ReleaseBuffer(hwc_drm_bo_t *bo) override;

@@ -2,17 +2,6 @@
 
 . ./.ci/.common.sh
 
-BUILD_FILES=(
-drm/DrmConnector.cpp
-drm/DrmCrtc.cpp
-drm/DrmDevice.cpp
-drm/DrmEncoder.cpp
-drm/DrmEventListener.cpp
-drm/DrmMode.cpp
-drm/DrmProperty.cpp
-utils/Worker.cpp
-)
-
 set -xe
 
 for source in "${BUILD_FILES[@]}"

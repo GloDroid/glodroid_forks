@@ -24,7 +24,7 @@
 
 namespace android {
 
-std::unique_ptr<Planner> Planner::CreateInstance(DrmDevice *) {
+std::unique_ptr<Planner> Planner::CreateInstance(DrmDevice * /*device*/) {
   std::unique_ptr<Planner> planner(new Planner);
   planner->AddStage<PlanStageGreedy>();
   return planner;
@@ -123,7 +123,6 @@ int PlanStageProtected::ProvisionPlanes(
     std::map<size_t, DrmHwcLayer *> &layers, DrmCrtc *crtc,
     std::vector<DrmPlane *> *planes) {
   int ret;
-  int protected_zorder = -1;
   for (auto i = layers.begin(); i != layers.end();) {
     if (!i->second->protected_usage()) {
       ++i;
@@ -137,7 +136,6 @@ int PlanStageProtected::ProvisionPlanes(
       return ret;
     }
 
-    protected_zorder = i->first;
     i = layers.erase(i);
   }
 
@@ -155,7 +153,8 @@ int PlanStageGreedy::ProvisionPlanes(
     // We don't have any planes left
     if (ret == -ENOENT)
       break;
-    else if (ret) {
+
+    if (ret) {
       ALOGE("Failed to emplace layer %zu, dropping it", i->first);
       return ret;
     }

@@ -2,12 +2,28 @@
 
 . ./.ci/.common.sh
 
-TIDY_FILES=(
-)
+TIDY_COARSE_CHECKS="-*,android-*,bugprone-*,cert-*,"
+TIDY_COARSE_CHECKS+="google-*,"
+TIDY_COARSE_CHECKS+="-google-readability-braces-around-statements,"
+TIDY_COARSE_CHECKS+="-google-readability-casting,"
+TIDY_COARSE_CHECKS+="misc-*,"
+TIDY_COARSE_CHECKS+="modernize-*,"
+TIDY_COARSE_CHECKS+="-modernize-avoid-c-arrays,"
+TIDY_COARSE_CHECKS+="-modernize-use-trailing-return-type,"
+TIDY_COARSE_CHECKS+="performance-*,"
+TIDY_COARSE_CHECKS+="portability-*,"
+TIDY_COARSE_CHECKS+="readability-*,"
+TIDY_COARSE_CHECKS+="-readability-braces-around-statements,"
+TIDY_COARSE_CHECKS+="-readability-convert-member-functions-to-static,"
+TIDY_COARSE_CHECKS+="-readability-implicit-bool-conversion,"
+TIDY_COARSE_CHECKS+="-readability-magic-numbers,"
+TIDY_COARSE_CHECKS+="-readability-use-anyofallof"
+
+TIDY_FILES=( "${BUILD_FILES[@]}" )
 
 set -xe
 
 for source in "${TIDY_FILES[@]}"
 do
-    $CLANG_TIDY $source -- -x c++ $INCLUDE_DIRS
+    $CLANG_TIDY $source --checks=$TIDY_COARSE_CHECKS -- -x c++ $INCLUDE_DIRS
 done

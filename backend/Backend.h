@@ -27,7 +27,7 @@ class Backend {
   virtual HWC2::Error ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
                                       uint32_t *num_types,
                                       uint32_t *num_requests);
-  virtual std::tuple<int, int> GetClientLayers(
+  virtual std::tuple<int, size_t> GetClientLayers(
       DrmHwcTwo::HwcDisplay *display,
       const std::map<uint32_t, DrmHwcTwo::HwcLayer *> &z_map);
   virtual bool IsClientLayer(DrmHwcTwo::HwcDisplay *display,

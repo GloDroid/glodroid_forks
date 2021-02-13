@@ -21,13 +21,12 @@
 #include "BufferInfoMapperMetadata.h"
 
 #include <drm/drm_fourcc.h>
-#include <inttypes.h>
 #include <log/log.h>
 #include <ui/GraphicBufferMapper.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
-using android::hardware::graphics::common::V1_1::BufferUsage;
+#include <cinttypes>
 
 namespace android {
 

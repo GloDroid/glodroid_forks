@@ -45,7 +45,7 @@ class ResourceManager {
   }
 
  private:
-  int AddDrmDevice(std::string path);
+  int AddDrmDevice(std::string const &path);
   static bool IsKMSDev(const char *path);
 
   int num_displays_;

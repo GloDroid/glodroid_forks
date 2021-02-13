@@ -31,15 +31,14 @@ namespace android {
 
 class VsyncCallback {
  public:
-  virtual ~VsyncCallback() {
-  }
+  virtual ~VsyncCallback() = default;
   virtual void Callback(int display, int64_t timestamp) = 0;
 };
 
 class VSyncWorker : public Worker {
  public:
   VSyncWorker();
-  ~VSyncWorker() override;
+  ~VSyncWorker() override = default;
 
   int Init(DrmDevice *drm, int display);
   void RegisterCallback(std::shared_ptr<VsyncCallback> callback);
@@ -52,7 +51,7 @@ class VSyncWorker : public Worker {
   void Routine() override;
 
  private:
-  int64_t GetPhasedVSync(int64_t frame_ns, int64_t current);
+  int64_t GetPhasedVSync(int64_t frame_ns, int64_t current) const;
   int SyntheticWaitVBlank(int64_t *timestamp);
 
   DrmDevice *drm_;

@@ -51,7 +51,7 @@ class LegacyBufferInfoGetter : public BufferInfoGetter {
 
   int ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) override = 0;
 
-  static LegacyBufferInfoGetter *CreateInstance();
+  static std::unique_ptr<LegacyBufferInfoGetter> CreateInstance();
 
   static uint32_t ConvertHalFormatToDrm(uint32_t hal_format);
   const gralloc_module_t *gralloc_;
@@ -60,19 +60,18 @@ class LegacyBufferInfoGetter : public BufferInfoGetter {
 #ifdef DISABLE_LEGACY_GETTERS
 #define LEGACY_BUFFER_INFO_GETTER(getter_)
 #else
-#define LEGACY_BUFFER_INFO_GETTER(getter_)                           \
-  LegacyBufferInfoGetter *LegacyBufferInfoGetter::CreateInstance() { \
-    auto *instance = new getter_();                                  \
-    if (!instance)                                                   \
-      return NULL;                                                   \
-                                                                     \
-    int ret = instance->Init();                                      \
-    if (ret) {                                                       \
-      ALOGE("Failed to initialize the " #getter_ " getter %d", ret); \
-      delete instance;                                               \
-      return NULL;                                                   \
-    }                                                                \
-    return instance;                                                 \
+#define LEGACY_BUFFER_INFO_GETTER(getter_)                             \
+  std::unique_ptr<LegacyBufferInfoGetter>                              \
+  LegacyBufferInfoGetter::CreateInstance() {                           \
+    auto instance = std::make_unique<getter_>();                       \
+    if (instance) {                                                    \
+      int ret = instance->Init();                                      \
+      if (ret) {                                                       \
+        ALOGE("Failed to initialize the " #getter_ " getter %d", ret); \
+        instance.reset();                                              \
+      }                                                                \
+    }                                                                  \
+    return std::move(instance);                                        \
   }
 #endif
 

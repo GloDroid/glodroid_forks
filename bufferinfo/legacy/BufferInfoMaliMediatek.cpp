@@ -34,8 +34,7 @@ LEGACY_BUFFER_INFO_GETTER(BufferInfoMaliMediatek);
 
 int BufferInfoMaliMediatek::ConvertBoInfo(buffer_handle_t handle,
                                           hwc_drm_bo_t *bo) {
-  private_handle_t const *hnd = reinterpret_cast<private_handle_t const *>(
-      handle);
+  auto const *hnd = reinterpret_cast<private_handle_t const *>(handle);
   if (!hnd)
     return -EINVAL;
 

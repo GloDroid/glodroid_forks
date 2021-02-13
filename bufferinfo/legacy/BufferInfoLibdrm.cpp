@@ -30,11 +30,11 @@ namespace android {
 LEGACY_BUFFER_INFO_GETTER(BufferInfoLibdrm);
 
 enum chroma_order {
-  YCbCr,
-  YCrCb,
+  kYCbCr,
+  kYCrCb,
 };
 
-struct droid_yuv_format {
+struct DroidYuvFormat {
   /* Lookup keys */
   int native;                     /* HAL_PIXEL_FORMAT_ */
   enum chroma_order chroma_order; /* chroma order is {Cb, Cr} or {Cr, Cb} */
@@ -46,37 +46,37 @@ struct droid_yuv_format {
 
 /* The following table is used to look up a DRI image FourCC based
  * on native format and information contained in android_ycbcr struct. */
-static const struct droid_yuv_format droid_yuv_formats[] = {
+static const struct DroidYuvFormat kDroidYuvFormats[] = {
     /* Native format, YCrCb, Chroma step, DRI image FourCC */
-    {HAL_PIXEL_FORMAT_YCbCr_420_888, YCbCr, 2, DRM_FORMAT_NV12},
-    {HAL_PIXEL_FORMAT_YCbCr_420_888, YCbCr, 1, DRM_FORMAT_YUV420},
-    {HAL_PIXEL_FORMAT_YCbCr_420_888, YCrCb, 1, DRM_FORMAT_YVU420},
-    {HAL_PIXEL_FORMAT_YV12, YCrCb, 1, DRM_FORMAT_YVU420},
+    {HAL_PIXEL_FORMAT_YCbCr_420_888, kYCbCr, 2, DRM_FORMAT_NV12},
+    {HAL_PIXEL_FORMAT_YCbCr_420_888, kYCbCr, 1, DRM_FORMAT_YUV420},
+    {HAL_PIXEL_FORMAT_YCbCr_420_888, kYCrCb, 1, DRM_FORMAT_YVU420},
+    {HAL_PIXEL_FORMAT_YV12, kYCrCb, 1, DRM_FORMAT_YVU420},
     /* HACK: See droid_create_image_from_prime_fds() and
      * https://issuetracker.google.com/32077885. */
-    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCbCr, 2, DRM_FORMAT_NV12},
-    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCbCr, 1, DRM_FORMAT_YUV420},
-    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCrCb, 1, DRM_FORMAT_YVU420},
-    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCrCb, 1, DRM_FORMAT_AYUV},
-    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCrCb, 1, DRM_FORMAT_XYUV8888},
+    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, kYCbCr, 2, DRM_FORMAT_NV12},
+    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, kYCbCr, 1, DRM_FORMAT_YUV420},
+    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, kYCrCb, 1, DRM_FORMAT_YVU420},
+    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, kYCrCb, 1, DRM_FORMAT_AYUV},
+    {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, kYCrCb, 1, DRM_FORMAT_XYUV8888},
 };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 static int get_fourcc_yuv(int native, enum chroma_order chroma_order,
                           int chroma_step) {
-  for (int i = 0; i < ARRAY_SIZE(droid_yuv_formats); ++i)
-    if (droid_yuv_formats[i].native == native &&
-        droid_yuv_formats[i].chroma_order == chroma_order &&
-        droid_yuv_formats[i].chroma_step == chroma_step)
-      return droid_yuv_formats[i].fourcc;
+  for (auto droid_yuv_format : kDroidYuvFormats)
+    if (droid_yuv_format.native == native &&
+        droid_yuv_format.chroma_order == chroma_order &&
+        droid_yuv_format.chroma_step == chroma_step)
+      return droid_yuv_format.fourcc;
 
   return -1;
 }
 
 static bool is_yuv(int native) {
-  for (int i = 0; i < ARRAY_SIZE(droid_yuv_formats); ++i)
-    if (droid_yuv_formats[i].native == native)
+  for (auto droid_yuv_format : kDroidYuvFormats)
+    if (droid_yuv_format.native == native)
       return true;
 
   return false;
@@ -109,11 +109,11 @@ bool BufferInfoLibdrm::GetYuvPlaneInfo(int num_fds, buffer_handle_t handle,
   bo->offsets[0] = (size_t)ycbcr.y;
   /* We assume here that all the planes are located in one DMA-buf. */
   if ((size_t)ycbcr.cr < (size_t)ycbcr.cb) {
-    chroma_order = YCrCb;
+    chroma_order = kYCrCb;
     bo->offsets[1] = (size_t)ycbcr.cr;
     bo->offsets[2] = (size_t)ycbcr.cb;
   } else {
-    chroma_order = YCbCr;
+    chroma_order = kYCbCr;
     bo->offsets[1] = (size_t)ycbcr.cb;
     bo->offsets[2] = (size_t)ycbcr.cr;
   }
@@ -132,7 +132,7 @@ bool BufferInfoLibdrm::GetYuvPlaneInfo(int num_fds, buffer_handle_t handle,
     ALOGW(
         "unsupported YUV format, native = %x, chroma_order = %s, chroma_step = "
         "%d",
-        bo->hal_format, chroma_order == YCbCr ? "YCbCr" : "YCrCb",
+        bo->hal_format, chroma_order == kYCbCr ? "YCbCr" : "YCrCb",
         (int)ycbcr.chroma_step);
     return false;
   }

@@ -21,10 +21,11 @@
 #include <cutils/properties.h>
 #include <gralloc_handle.h>
 #include <hardware/gralloc.h>
-#include <inttypes.h>
 #include <log/log.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
+
+#include <cinttypes>
 
 namespace android {
 
@@ -34,10 +35,7 @@ DrmGenericImporter::DrmGenericImporter(DrmDevice *drm) : drm_(drm) {
     ALOGE("drmGetCap failed. Fallback to no modifier support.");
     cap_value = 0;
   }
-  has_modifier_support_ = cap_value;
-}
-
-DrmGenericImporter::~DrmGenericImporter() {
+  has_modifier_support_ = cap_value != 0;
 }
 
 int DrmGenericImporter::ImportBuffer(hwc_drm_bo_t *bo) {
@@ -82,11 +80,11 @@ int DrmGenericImporter::ImportBuffer(hwc_drm_bo_t *bo) {
     return ret;
   }
 
-  for (int i = 0; i < HWC_DRM_BO_MAX_PLANES; i++) {
-    if (!bo->gem_handles[i])
+  for (unsigned int gem_handle : bo->gem_handles) {
+    if (!gem_handle)
       continue;
 
-    ImportHandle(bo->gem_handles[i]);
+    ImportHandle(gem_handle);
   }
 
   return ret;
@@ -97,14 +95,14 @@ int DrmGenericImporter::ReleaseBuffer(hwc_drm_bo_t *bo) {
     if (drmModeRmFB(drm_->fd(), bo->fb_id))
       ALOGE("Failed to rm fb");
 
-  for (int i = 0; i < HWC_DRM_BO_MAX_PLANES; i++) {
-    if (!bo->gem_handles[i])
+  for (unsigned int &gem_handle : bo->gem_handles) {
+    if (!gem_handle)
       continue;
 
-    if (ReleaseHandle(bo->gem_handles[i]))
-      ALOGE("Failed to release gem handle %d", bo->gem_handles[i]);
+    if (ReleaseHandle(gem_handle))
+      ALOGE("Failed to release gem handle %d", gem_handle);
     else
-      bo->gem_handles[i] = 0;
+      gem_handle = 0;
   }
   return 0;
 }

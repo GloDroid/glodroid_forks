@@ -23,7 +23,7 @@
 
 namespace android {
 
-const std::vector<std::string> BackendManager::client_devices_ = {
+const std::vector<std::string> BackendManager::kClientDevices = {
     "kirin",
     "mediatek-drm",
 };
@@ -45,7 +45,7 @@ int BackendManager::SetBackendForDisplay(DrmHwcTwo::HwcDisplay *display) {
   char backend_override[PROPERTY_VALUE_MAX];
   property_get("vendor.hwc.backend_override", backend_override,
                driver_name.c_str());
-  std::string backend_name(std::move(backend_override));
+  std::string backend_name(backend_override);
 
   display->set_backend(GetBackendByName(backend_name));
   if (!display->backend()) {
@@ -63,15 +63,15 @@ int BackendManager::SetBackendForDisplay(DrmHwcTwo::HwcDisplay *display) {
 }
 
 std::unique_ptr<Backend> BackendManager::GetBackendByName(std::string &name) {
-  if (!available_backends_.size()) {
+  if (available_backends_.empty()) {
     ALOGE("No backends are specified");
     return nullptr;
   }
 
   auto it = available_backends_.find(name);
   if (it == available_backends_.end()) {
-    auto it = std::find(client_devices_.begin(), client_devices_.end(), name);
-    name = it == client_devices_.end() ? "generic" : "client";
+    auto it = std::find(kClientDevices.begin(), kClientDevices.end(), name);
+    name = it == kClientDevices.end() ? "generic" : "client";
   }
 
   return available_backends_[name]();

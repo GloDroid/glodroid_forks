@@ -21,7 +21,9 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <cerrno>
 #include <cinttypes>
+#include <cstdint>
 
 #include "DrmDevice.h"
 #include "bufferinfo/BufferInfoGetter.h"
@@ -161,7 +163,7 @@ uint32_t DrmPlane::id() const {
 }
 
 bool DrmPlane::GetCrtcSupported(const DrmCrtc &crtc) const {
-  return !!((1 << crtc.pipe()) & possible_crtc_mask_);
+  return ((1 << crtc.pipe()) & possible_crtc_mask_) != 0;
 }
 
 uint32_t DrmPlane::type() const {

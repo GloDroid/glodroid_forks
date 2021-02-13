@@ -109,7 +109,7 @@ class DrmDisplayComposition {
  public:
   DrmDisplayComposition() = default;
   DrmDisplayComposition(const DrmDisplayComposition &) = delete;
-  ~DrmDisplayComposition();
+  ~DrmDisplayComposition() = default;
 
   int Init(DrmDevice *drm, DrmCrtc *crtc, Importer *importer, Planner *planner,
            uint64_t frame_no);

@@ -28,7 +28,7 @@
 
 namespace android {
 
-ResourceManager::ResourceManager() : num_displays_(0), gralloc_(NULL) {
+ResourceManager::ResourceManager() : num_displays_(0), gralloc_(nullptr) {
 }
 
 int ResourceManager::Init() {
@@ -47,11 +47,11 @@ int ResourceManager::Init() {
       path << path_pattern << idx;
 
       struct stat buf;
-      if (stat(path.str().c_str(), &buf)) {
+      if (stat(path.str().c_str(), &buf))
         break;
-      } else if (IsKMSDev(path.str().c_str())) {
+
+      if (IsKMSDev(path.str().c_str()))
         ret = AddDrmDevice(path.str());
-      }
     }
   }
 
@@ -73,14 +73,15 @@ int ResourceManager::Init() {
                        (const hw_module_t **)&gralloc_);
 }
 
-int ResourceManager::AddDrmDevice(std::string path) {
+int ResourceManager::AddDrmDevice(std::string const &path) {
   std::unique_ptr<DrmDevice> drm = std::make_unique<DrmDevice>();
-  int displays_added, ret;
+  int displays_added;
+  int ret;
   std::tie(ret, displays_added) = drm->Init(path.c_str(), num_displays_);
   if (ret)
     return ret;
   std::shared_ptr<Importer> importer;
-  importer.reset(new DrmGenericImporter(drm.get()));
+  importer = std::make_shared<DrmGenericImporter>(drm.get());
   if (!importer) {
     ALOGE("Failed to create importer instance");
     return -ENODEV;
@@ -93,7 +94,7 @@ int ResourceManager::AddDrmDevice(std::string path) {
 
 DrmConnector *ResourceManager::AvailableWritebackConnector(int display) {
   DrmDevice *drm_device = GetDrmDevice(display);
-  DrmConnector *writeback_conn = NULL;
+  DrmConnector *writeback_conn = nullptr;
   if (drm_device) {
     writeback_conn = drm_device->AvailableWritebackConnector(display);
     if (writeback_conn)
@@ -134,7 +135,7 @@ DrmDevice *ResourceManager::GetDrmDevice(int display) {
     if (drm->HandlesDisplay(display))
       return drm.get();
   }
-  return NULL;
+  return nullptr;
 }
 
 std::shared_ptr<Importer> ResourceManager::GetImporter(int display) {
@@ -142,7 +143,7 @@ std::shared_ptr<Importer> ResourceManager::GetImporter(int display) {
     if (drms_[i]->HandlesDisplay(display))
       return importers_[i];
   }
-  return NULL;
+  return nullptr;
 }
 
 const gralloc_module_t *ResourceManager::gralloc() {

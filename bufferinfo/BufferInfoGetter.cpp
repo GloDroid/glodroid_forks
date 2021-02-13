@@ -40,7 +40,7 @@ BufferInfoGetter *BufferInfoGetter::GetInstance() {
       ALOGW(
           "Generic buffer getter is not available. Falling back to legacy...");
 #endif
-      inst.reset(LegacyBufferInfoGetter::CreateInstance());
+      inst = LegacyBufferInfoGetter::CreateInstance();
 #if PLATFORM_SDK_VERSION >= 30
     }
 #endif
@@ -109,7 +109,7 @@ bool BufferInfoGetter::IsDrmFormatRgb(uint32_t drm_format) {
   }
 }
 
-__attribute__((weak)) LegacyBufferInfoGetter *
+__attribute__((weak)) std::unique_ptr<LegacyBufferInfoGetter>
 LegacyBufferInfoGetter::CreateInstance() {
   ALOGE("No legacy buffer info getters available");
   return nullptr;

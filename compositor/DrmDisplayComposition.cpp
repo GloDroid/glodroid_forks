@@ -19,11 +19,11 @@
 #include "DrmDisplayComposition.h"
 
 #include <log/log.h>
-#include <stdlib.h>
 #include <sync/sync.h>
 #include <xf86drmMode.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <unordered_set>
 
 #include "DrmDisplayCompositor.h"
@@ -31,9 +31,6 @@
 #include "drm/DrmDevice.h"
 
 namespace android {
-
-DrmDisplayComposition::~DrmDisplayComposition() {
-}
 
 int DrmDisplayComposition::Init(DrmDevice *drm, DrmCrtc *crtc,
                                 Importer *importer, Planner *planner,
@@ -211,7 +208,7 @@ static void DumpTransform(uint32_t transform, std::ostringstream *out) {
     separator = true;
   }
 
-  uint32_t valid_bits = DrmHwcTransform::kFlipH | DrmHwcTransform::kFlipH |
+  uint32_t valid_bits = DrmHwcTransform::kFlipH | DrmHwcTransform::kFlipV |
                         DrmHwcTransform::kRotate90 |
                         DrmHwcTransform::kRotate180 |
                         DrmHwcTransform::kRotate270;

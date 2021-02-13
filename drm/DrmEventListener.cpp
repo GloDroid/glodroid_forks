@@ -18,12 +18,12 @@
 
 #include "DrmEventListener.h"
 
-#include <assert.h>
-#include <errno.h>
 #include <linux/netlink.h>
 #include <sys/socket.h>
 #include <xf86drm.h>
 
+#include <cassert>
+#include <cerrno>
 #include <cstring>
 
 #include "DrmDevice.h"
@@ -39,7 +39,8 @@ DrmEventListener::DrmEventListener(DrmDevice *drm)
 }
 
 int DrmEventListener::Init() {
-  uevent_fd_.Set(socket(PF_NETLINK, SOCK_DGRAM, NETLINK_KOBJECT_UEVENT));
+  uevent_fd_.Set(
+      socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_KOBJECT_UEVENT));
   if (uevent_fd_.get() < 0) {
     ALOGE("Failed to open uevent socket: %s", strerror(errno));
     return uevent_fd_.get();
@@ -57,6 +58,7 @@ int DrmEventListener::Init() {
     return -errno;
   }
 
+  // NOLINTNEXTLINE(readability-isolate-declaration)
   FD_ZERO(&fds_);
   FD_SET(drm_->fd(), &fds_);
   FD_SET(uevent_fd_.get(), &fds_);
@@ -73,7 +75,7 @@ void DrmEventListener::RegisterHotplugHandler(DrmEventHandler *handler) {
 void DrmEventListener::FlipHandler(int /* fd */, unsigned int /* sequence */,
                                    unsigned int tv_sec, unsigned int tv_usec,
                                    void *user_data) {
-  DrmEventHandler *handler = (DrmEventHandler *)user_data;
+  auto *handler = (DrmEventHandler *)user_data;
   if (!handler)
     return;
 
@@ -86,6 +88,7 @@ void DrmEventListener::UEventHandler() {
   int ret;
 
   struct timespec ts;
+
   uint64_t timestamp = 0;
   ret = clock_gettime(CLOCK_MONOTONIC, &ts);
   if (!ret)
@@ -95,9 +98,10 @@ void DrmEventListener::UEventHandler() {
 
   while (true) {
     ret = read(uevent_fd_.get(), &buffer, sizeof(buffer));
-    if (ret == 0) {
+    if (ret == 0)
       return;
-    } else if (ret < 0) {
+
+    if (ret < 0) {
       ALOGE("Got error reading uevent %d", ret);
       return;
     }
@@ -105,12 +109,13 @@ void DrmEventListener::UEventHandler() {
     if (!hotplug_handler_)
       continue;
 
-    bool drm_event = false, hotplug_event = false;
-    for (int i = 0; i < ret;) {
+    bool drm_event = false;
+    bool hotplug_event = false;
+    for (uint32_t i = 0; i < ret;) {
       char *event = buffer + i;
-      if (strcmp(event, "DEVTYPE=drm_minor"))
+      if (strcmp(event, "DEVTYPE=drm_minor") != 0)
         drm_event = true;
-      else if (strcmp(event, "HOTPLUG=1"))
+      else if (strcmp(event, "HOTPLUG=1") != 0)
         hotplug_event = true;
 
       i += strlen(event) + 1;
@@ -124,13 +129,13 @@ void DrmEventListener::UEventHandler() {
 void DrmEventListener::Routine() {
   int ret;
   do {
-    ret = select(max_fd_ + 1, &fds_, NULL, NULL, NULL);
+    ret = select(max_fd_ + 1, &fds_, nullptr, nullptr, nullptr);
   } while (ret == -1 && errno == EINTR);
 
   if (FD_ISSET(drm_->fd(), &fds_)) {
     drmEventContext event_context =
         {.version = 2,
-         .vblank_handler = NULL,
+         .vblank_handler = nullptr,
          .page_flip_handler = DrmEventListener::FlipHandler};
     drmHandleEvent(drm_->fd(), &event_context);
   }

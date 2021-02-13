@@ -16,11 +16,10 @@
 
 #include "DrmProperty.h"
 
-#include <errno.h>
 #include <xf86drmMode.h>
 
+#include <cerrno>
 #include <cstdint>
-#include <cstring>
 #include <string>
 
 #include "DrmDevice.h"
@@ -31,11 +30,7 @@ DrmProperty::DrmPropertyEnum::DrmPropertyEnum(drm_mode_property_enum *e)
     : value_(e->value), name_(e->name) {
 }
 
-DrmProperty::DrmPropertyEnum::~DrmPropertyEnum() {
-}
-
-DrmProperty::DrmProperty(drmModePropertyPtr p, uint64_t value)
-    : id_(0), type_(DRM_PROPERTY_TYPE_INVALID), flags_(0), name_("") {
+DrmProperty::DrmProperty(drmModePropertyPtr p, uint64_t value) {
   Init(p, value);
 }
 
@@ -46,13 +41,13 @@ void DrmProperty::Init(drmModePropertyPtr p, uint64_t value) {
   value_ = value;
 
   for (int i = 0; i < p->count_values; ++i)
-    values_.push_back(p->values[i]);
+    values_.emplace_back(p->values[i]);
 
   for (int i = 0; i < p->count_enums; ++i)
-    enums_.push_back(DrmPropertyEnum(&p->enums[i]));
+    enums_.emplace_back(DrmPropertyEnum(&p->enums[i]));
 
   for (int i = 0; i < p->count_blobs; ++i)
-    blob_ids_.push_back(p->blob_ids[i]);
+    blob_ids_.emplace_back(p->blob_ids[i]);
 
   if (flags_ & DRM_MODE_PROP_RANGE)
     type_ = DRM_PROPERTY_TYPE_INT;
@@ -76,7 +71,7 @@ std::tuple<int, uint64_t> DrmProperty::value() const {
   if (type_ == DRM_PROPERTY_TYPE_BLOB)
     return std::make_tuple(0, value_);
 
-  if (values_.size() == 0)
+  if (values_.empty())
     return std::make_tuple(-ENOENT, 0);
 
   switch (type_) {
@@ -108,7 +103,7 @@ bool DrmProperty::is_range() const {
 std::tuple<int, uint64_t> DrmProperty::range_min() const {
   if (!is_range())
     return std::make_tuple(-EINVAL, 0);
-  if (values_.size() < 1)
+  if (values_.empty())
     return std::make_tuple(-ENOENT, 0);
 
   return std::make_tuple(0, values_[0]);
@@ -124,9 +119,9 @@ std::tuple<int, uint64_t> DrmProperty::range_max() const {
 }
 
 std::tuple<uint64_t, int> DrmProperty::GetEnumValueWithName(
-    std::string name) const {
-  for (auto it : enums_) {
-    if (it.name_.compare(name) == 0) {
+    const std::string &name) const {
+  for (const auto &it : enums_) {
+    if (it.name_ == name) {
       return std::make_tuple(it.value_, 0);
     }
   }

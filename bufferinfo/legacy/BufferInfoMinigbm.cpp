@@ -31,7 +31,7 @@ namespace android {
 LEGACY_BUFFER_INFO_GETTER(BufferInfoMinigbm);
 
 int BufferInfoMinigbm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
-  cros_gralloc_handle *gr_handle = (cros_gralloc_handle *)handle;
+  auto *gr_handle = (cros_gralloc_handle *)handle;
   if (!gr_handle)
     return -EINVAL;
 
