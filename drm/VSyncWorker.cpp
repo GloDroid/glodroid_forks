@@ -53,7 +53,7 @@ void VSyncWorker::RegisterClientCallback(hwc2_callback_data_t data,
                                          hwc2_function_pointer_t hook) {
   Lock();
   vsync_callback_data_ = data;
-  vsync_callback_hook_ = reinterpret_cast<HWC2_PFN_VSYNC>(hook);
+  vsync_callback_hook_ = (HWC2_PFN_VSYNC)hook;
   Unlock();
 }
 
@@ -90,7 +90,7 @@ int64_t VSyncWorker::GetPhasedVSync(int64_t frame_ns, int64_t current) const {
 static const int64_t kOneSecondNs = 1 * 1000 * 1000 * 1000;
 
 int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
-  struct timespec vsync;
+  struct timespec vsync {};
   int ret = clock_gettime(CLOCK_MONOTONIC, &vsync);
   if (ret)
     return ret;
@@ -119,7 +119,7 @@ int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
 }
 
 void VSyncWorker::Routine() {
-  int ret;
+  int ret = 0;
 
   Lock();
   if (!enabled_) {
@@ -147,7 +147,7 @@ void VSyncWorker::Routine() {
       DRM_VBLANK_RELATIVE | (high_crtc & DRM_VBLANK_HIGH_CRTC_MASK));
   vblank.request.sequence = 1;
 
-  int64_t timestamp;
+  int64_t timestamp = 0;
   ret = drmWaitVBlank(drm_->fd(), &vblank);
   if (ret == -EINTR)
     return;

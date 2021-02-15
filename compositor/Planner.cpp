@@ -45,7 +45,7 @@ std::vector<DrmPlane *> Planner::GetUsablePlanes(
 
 int Planner::PlanStage::ValidatePlane(DrmPlane *plane, DrmHwcLayer *layer) {
   int ret = 0;
-  uint64_t blend;
+  uint64_t blend = UINT64_MAX;
 
   if ((plane->rotation_property().id() == 0) &&
       layer->transform != DrmHwcTransform::kIdentity) {
@@ -122,7 +122,7 @@ int PlanStageProtected::ProvisionPlanes(
     std::vector<DrmCompositionPlane> *composition,
     std::map<size_t, DrmHwcLayer *> &layers, DrmCrtc *crtc,
     std::vector<DrmPlane *> *planes) {
-  int ret;
+  int ret = 0;
   for (auto i = layers.begin(); i != layers.end();) {
     if (!i->second->protected_usage()) {
       ++i;

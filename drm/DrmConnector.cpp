@@ -91,7 +91,7 @@ int DrmConnector::UpdateEdidProperty() {
 }
 
 int DrmConnector::GetEdidBlob(drmModePropertyBlobPtr &blob) {
-  uint64_t blob_id;
+  uint64_t blob_id = 0;
   int ret = UpdateEdidProperty();
   if (ret) {
     return ret;

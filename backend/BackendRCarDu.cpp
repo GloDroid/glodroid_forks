@@ -40,6 +40,7 @@ bool BackendRCarDu::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
   return Backend::IsClientLayer(display, layer);
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 REGISTER_BACKEND("rcar-du", BackendRCarDu);
 
 }  // namespace android

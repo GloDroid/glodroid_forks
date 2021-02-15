@@ -123,10 +123,7 @@ int DrmGenericImporter::ReleaseHandle(uint32_t gem_handle) {
 }
 
 int DrmGenericImporter::CloseHandle(uint32_t gem_handle) {
-  struct drm_gem_close gem_close;
-
-  memset(&gem_close, 0, sizeof(gem_close));
-
+  struct drm_gem_close gem_close {};
   gem_close.handle = gem_handle;
   int ret = drmIoctl(drm_->fd(), DRM_IOCTL_GEM_CLOSE, &gem_close);
   if (ret)

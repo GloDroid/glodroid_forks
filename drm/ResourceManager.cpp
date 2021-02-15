@@ -46,7 +46,7 @@ int ResourceManager::Init() {
       std::ostringstream path;
       path << path_pattern << idx;
 
-      struct stat buf;
+      struct stat buf {};
       if (stat(path.str().c_str(), &buf))
         break;
 
@@ -75,8 +75,8 @@ int ResourceManager::Init() {
 
 int ResourceManager::AddDrmDevice(std::string const &path) {
   std::unique_ptr<DrmDevice> drm = std::make_unique<DrmDevice>();
-  int displays_added;
-  int ret;
+  int displays_added = 0;
+  int ret = 0;
   std::tie(ret, displays_added) = drm->Init(path.c_str(), num_displays_);
   if (ret)
     return ret;

@@ -53,12 +53,12 @@ bool BufferInfoGetter::IsHandleUsable(buffer_handle_t handle) {
   hwc_drm_bo_t bo;
   memset(&bo, 0, sizeof(hwc_drm_bo_t));
 
-  if (ConvertBoInfo(handle, &bo) != 0)
+  if (ConvertBoInfo(handle, &bo) != 0) {
     return false;
-
-  if (bo.prime_fds[0] == 0)
+  }
+  if (bo.prime_fds[0] == 0) {
     return false;
-
+  }
   return true;
 }
 

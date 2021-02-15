@@ -53,7 +53,7 @@ class DrmEventListener : public Worker {
  private:
   void UEventHandler();
 
-  fd_set fds_;
+  fd_set fds_{};
   UniqueFd uevent_fd_;
   int max_fd_ = -1;
 

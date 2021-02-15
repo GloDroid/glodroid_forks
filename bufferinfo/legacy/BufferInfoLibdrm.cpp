@@ -84,9 +84,9 @@ static bool is_yuv(int native) {
 
 bool BufferInfoLibdrm::GetYuvPlaneInfo(int num_fds, buffer_handle_t handle,
                                        hwc_drm_bo_t *bo) {
-  struct android_ycbcr ycbcr;
-  enum chroma_order chroma_order;
-  int ret;
+  struct android_ycbcr ycbcr {};
+  enum chroma_order chroma_order {};
+  int ret = 0;
 
   if (!gralloc_->lock_ycbcr) {
     static std::once_flag once;

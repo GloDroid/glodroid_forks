@@ -54,7 +54,7 @@ static void trim(std::string *str) {
 namespace android {
 
 static std::vector<std::string> read_primary_display_order_prop() {
-  std::array<char, PROPERTY_VALUE_MAX> display_order_buf;
+  std::array<char, PROPERTY_VALUE_MAX> display_order_buf{};
   property_get("vendor.hwc.drm.primary_display_order", display_order_buf.data(),
                "...");
 
@@ -503,8 +503,7 @@ int DrmDevice::AttachWriteback(DrmConnector *display_conn) {
 
 int DrmDevice::CreatePropertyBlob(void *data, size_t length,
                                   uint32_t *blob_id) const {
-  struct drm_mode_create_blob create_blob;
-  memset(&create_blob, 0, sizeof(create_blob));
+  struct drm_mode_create_blob create_blob {};
   create_blob.length = length;
   create_blob.data = (__u64)data;
 
@@ -521,8 +520,7 @@ int DrmDevice::DestroyPropertyBlob(uint32_t blob_id) const {
   if (!blob_id)
     return 0;
 
-  struct drm_mode_destroy_blob destroy_blob;
-  memset(&destroy_blob, 0, sizeof(destroy_blob));
+  struct drm_mode_destroy_blob destroy_blob {};
   destroy_blob.blob_id = (__u32)blob_id;
   int ret = drmIoctl(fd(), DRM_IOCTL_MODE_DESTROYPROPBLOB, &destroy_blob);
   if (ret) {
@@ -538,7 +536,7 @@ DrmEventListener *DrmDevice::event_listener() {
 
 int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
                            const char *prop_name, DrmProperty *property) const {
-  drmModeObjectPropertiesPtr props;
+  drmModeObjectPropertiesPtr props = nullptr;
 
   props = drmModeObjectGetProperties(fd(), obj_id, obj_type);
   if (!props) {

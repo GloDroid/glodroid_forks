@@ -143,11 +143,11 @@ class DrmDisplayCompositor {
 
   ModeState mode_;
 
-  int framebuffer_index_;
+  int framebuffer_index_{};
   DrmFramebuffer framebuffers_[DRM_DISPLAY_BUFFERS];
 
   // mutable since we need to acquire in Dump()
-  mutable pthread_mutex_t lock_;
+  mutable pthread_mutex_t lock_{};
 
   // State tracking progress since our last Dump(). These are mutable since
   // we need to reset them on every Dump() call.

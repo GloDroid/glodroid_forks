@@ -33,7 +33,7 @@
 
 namespace android {
 
-DrmHwcTwo::DrmHwcTwo() {
+DrmHwcTwo::DrmHwcTwo() : hwc2_device() {
   common.tag = HARDWARE_DEVICE_TAG;
   common.version = HWC_DEVICE_API_VERSION_2_0;
   common.close = HookDevClose;
@@ -85,6 +85,7 @@ HWC2::Error DrmHwcTwo::Init() {
 
   auto &drm_devices = resource_manager_.getDrmDevices();
   for (auto &device : drm_devices) {
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
     device->RegisterHotplugHandler(new DrmHotplugHandler(this, device.get()));
   }
   return ret;
@@ -287,7 +288,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
 
 HWC2::Error DrmHwcTwo::HwcDisplay::ChosePreferredConfig() {
   // Fetch the number of modes from the display
-  uint32_t num_configs;
+  uint32_t num_configs = 0;
   HWC2::Error err = GetDisplayConfigs(&num_configs, nullptr);
   if (err != HWC2::Error::None || !num_configs)
     return err;
@@ -969,7 +970,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayIdentificationData(
     uint8_t *outPort, uint32_t *outDataSize, uint8_t *outData) {
   supported(__func__);
 
-  drmModePropertyBlobPtr blob;
+  drmModePropertyBlobPtr blob = nullptr;
 
   if (connector_->GetEdidBlob(blob)) {
     ALOGE("Failed to get edid property value.");
@@ -1514,17 +1515,19 @@ int DrmHwcTwo::HookDevOpen(const struct hw_module_t *module, const char *name,
     return -EINVAL;
   }
 
-  ctx->common.module = const_cast<hw_module_t *>(module);
+  ctx->common.module = (hw_module_t *)module;
   *dev = &ctx->common;
   ctx.release();  // NOLINT(bugprone-unused-return-value)
   return 0;
 }
 }  // namespace android
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static struct hw_module_methods_t hwc2_module_methods = {
     .open = android::DrmHwcTwo::HookDevOpen,
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 hw_module_t HAL_MODULE_INFO_SYM = {
     .tag = HARDWARE_MODULE_TAG,
     .module_api_version = HARDWARE_MODULE_API_VERSION(2, 0),

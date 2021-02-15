@@ -53,7 +53,7 @@ class ResourceManager {
   std::vector<std::shared_ptr<Importer>> importers_;
   const gralloc_module_t *gralloc_;
 
-  bool scale_with_gpu_;
+  bool scale_with_gpu_{};
 };
 }  // namespace android
 

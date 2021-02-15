@@ -30,6 +30,7 @@ HWC2::Error BackendClient::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
   return HWC2::Error::HasChanges;
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 REGISTER_BACKEND("client", BackendClient);
 
 }  // namespace android

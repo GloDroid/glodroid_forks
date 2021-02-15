@@ -76,7 +76,7 @@ DrmDisplayCompositor::DrmDisplayCompositor()
       writeback_fence_(-1),
       flattening_state_(FlatteningState::kNone),
       frames_flattened_(0) {
-  struct timespec ts;
+  struct timespec ts {};
   if (clock_gettime(CLOCK_MONOTONIC, &ts))
     return;
   dump_last_timestamp_ns_ = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
@@ -189,7 +189,7 @@ int DrmDisplayCompositor::DisablePlanes(DrmDisplayComposition *display_comp) {
     return -ENOMEM;
   }
 
-  int ret;
+  int ret = 0;
   std::vector<DrmCompositionPlane> &comp_planes = display_comp
                                                       ->composition_planes();
   for (DrmCompositionPlane &comp_plane : comp_planes) {
@@ -638,8 +638,7 @@ int DrmDisplayCompositor::ApplyDpms(DrmDisplayComposition *display_comp) {
 
 std::tuple<int, uint32_t> DrmDisplayCompositor::CreateModeBlob(
     const DrmMode &mode) {
-  struct drm_mode_modeinfo drm_mode;
-  memset(&drm_mode, 0, sizeof(drm_mode));
+  struct drm_mode_modeinfo drm_mode {};
   mode.ToDrmModeModeInfo(&drm_mode);
 
   uint32_t id = 0;
@@ -1138,7 +1137,7 @@ void DrmDisplayCompositor::Dump(std::ostringstream *out) const {
   uint64_t num_frames = dump_frames_composited_;
   dump_frames_composited_ = 0;
 
-  struct timespec ts;
+  struct timespec ts {};
   ret = clock_gettime(CLOCK_MONOTONIC, &ts);
   if (ret) {
     pthread_mutex_unlock(&lock_);

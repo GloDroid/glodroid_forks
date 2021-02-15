@@ -46,8 +46,7 @@ int DrmEventListener::Init() {
     return uevent_fd_.get();
   }
 
-  struct sockaddr_nl addr;
-  memset(&addr, 0, sizeof(addr));
+  struct sockaddr_nl addr {};
   addr.nl_family = AF_NETLINK;
   addr.nl_pid = 0;
   addr.nl_groups = 0xFFFFFFFF;
@@ -80,14 +79,14 @@ void DrmEventListener::FlipHandler(int /* fd */, unsigned int /* sequence */,
     return;
 
   handler->HandleEvent((uint64_t)tv_sec * 1000 * 1000 + tv_usec);
-  delete handler;
+  delete handler;  // NOLINT(cppcoreguidelines-owning-memory)
 }
 
 void DrmEventListener::UEventHandler() {
   char buffer[1024];
-  int ret;
+  int ret = 0;
 
-  struct timespec ts;
+  struct timespec ts {};
 
   uint64_t timestamp = 0;
   ret = clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -127,7 +126,7 @@ void DrmEventListener::UEventHandler() {
 }
 
 void DrmEventListener::Routine() {
-  int ret;
+  int ret = 0;
   do {
     ret = select(max_fd_ + 1, &fds_, nullptr, nullptr, nullptr);
   } while (ret == -1 && errno == EINTR);

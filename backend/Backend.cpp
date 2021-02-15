@@ -63,7 +63,7 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
     size_t extra_client = (z_map.size() - client_size) - avail_planes;
     if (extra_client > 0) {
       int start = 0;
-      size_t steps;
+      size_t steps = 0;
       if (client_size != 0) {
         size_t prepend = std::min((size_t)client_start, extra_client);
         size_t append = std::min(z_map.size() - (client_start + client_size),
@@ -136,6 +136,7 @@ bool Backend::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
           display->resource_manager()->ForcedScalingWithGpu());
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 REGISTER_BACKEND("generic", Backend);
 
 }  // namespace android

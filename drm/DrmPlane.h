@@ -70,7 +70,7 @@ class DrmPlane {
 
   uint32_t possible_crtc_mask_;
 
-  uint32_t type_;
+  uint32_t type_{};
 
   std::vector<uint32_t> formats_;
 

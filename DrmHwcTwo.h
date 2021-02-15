@@ -350,8 +350,8 @@ class DrmHwcTwo : public hwc2_device_t {
     std::map<hwc2_layer_t, HwcLayer> layers_;
     HwcLayer client_layer_;
     UniqueFd present_fence_;
-    int32_t color_mode_;
-    std::array<float, MATRIX_SIZE> color_transform_matrix_;
+    int32_t color_mode_{};
+    std::array<float, MATRIX_SIZE> color_transform_matrix_{};
     android_color_transform_t color_transform_hint_;
 
     uint32_t frame_no_ = 0;

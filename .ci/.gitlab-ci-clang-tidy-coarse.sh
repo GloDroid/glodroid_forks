@@ -3,6 +3,16 @@
 . ./.ci/.common.sh
 
 TIDY_COARSE_CHECKS="-*,android-*,bugprone-*,cert-*,clang-analyzer-*,"
+TIDY_COARSE_CHECKS+="cppcoreguidelines-*,"
+TIDY_COARSE_CHECKS+="-cppcoreguidelines-pro-bounds-array-to-pointer-decay,"
+TIDY_COARSE_CHECKS+="-cppcoreguidelines-pro-bounds-constant-array-index,"
+TIDY_COARSE_CHECKS+="-cppcoreguidelines-pro-bounds-pointer-arithmetic,"
+TIDY_COARSE_CHECKS+="-cppcoreguidelines-pro-type-cstyle-cast,"
+TIDY_COARSE_CHECKS+="-cppcoreguidelines-pro-type-union-access,"
+TIDY_COARSE_CHECKS+="-cppcoreguidelines-pro-type-vararg,"
+TIDY_COARSE_CHECKS+="-cppcoreguidelines-avoid-magic-numbers,"
+TIDY_COARSE_CHECKS+="-cppcoreguidelines-macro-usage,"
+TIDY_COARSE_CHECKS+="-cppcoreguidelines-avoid-c-arrays,"
 TIDY_COARSE_CHECKS+="google-*,"
 TIDY_COARSE_CHECKS+="-google-readability-braces-around-statements,"
 TIDY_COARSE_CHECKS+="-google-readability-casting,"
