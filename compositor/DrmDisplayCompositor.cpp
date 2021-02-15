@@ -341,7 +341,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     hwc_frect_t source_crop;
     uint64_t rotation = 0;
     uint64_t alpha = 0xFFFF;
-    uint64_t blend;
+    uint64_t blend = UINT64_MAX;
     uint64_t color_encoding = UINT64_MAX;
     uint64_t color_range = UINT64_MAX;
 
@@ -541,7 +541,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
       }
     }
 
-    if (plane->blend_property().id()) {
+    if (plane->blend_property().id() && blend != UINT64_MAX) {
       ret = drmModeAtomicAddProperty(pset, plane->id(),
                                      plane->blend_property().id(), blend) < 0;
       if (ret) {

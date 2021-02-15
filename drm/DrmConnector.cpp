@@ -58,7 +58,7 @@ int DrmConnector::Init() {
     ALOGE("Could not get CRTC_ID property\n");
     return ret;
   }
-  ret = UpdateEdidProperty();
+  UpdateEdidProperty();
   if (writeback()) {
     ret = drm_->GetConnectorProperty(*this, "WRITEBACK_PIXEL_FORMATS",
                                      &writeback_pixel_formats_);

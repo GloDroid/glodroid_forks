@@ -92,6 +92,8 @@ static const int64_t kOneSecondNs = 1 * 1000 * 1000 * 1000;
 int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
   struct timespec vsync;
   int ret = clock_gettime(CLOCK_MONOTONIC, &vsync);
+  if (ret)
+    return ret;
 
   float refresh = 60.0F;  // Default to 60Hz refresh rate
   DrmConnector *conn = drm_->GetConnectorForDisplay(display_);

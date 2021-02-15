@@ -72,8 +72,10 @@ int DrmDisplayComposition::SetDpmsMode(uint32_t dpms_mode) {
 }
 
 int DrmDisplayComposition::SetDisplayMode(const DrmMode &display_mode) {
-  if (!validate_composition_type(DRM_COMPOSITION_TYPE_MODESET))
+  if (!validate_composition_type(DRM_COMPOSITION_TYPE_MODESET)) {
+    ALOGE("SetDisplayMode() Failed to validate composition type");
     return -EINVAL;
+  }
   display_mode_ = display_mode;
   dpms_mode_ = DRM_MODE_DPMS_ON;
   type_ = DRM_COMPOSITION_TYPE_MODESET;

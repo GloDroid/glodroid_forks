@@ -2,7 +2,7 @@
 
 . ./.ci/.common.sh
 
-TIDY_COARSE_CHECKS="-*,android-*,bugprone-*,cert-*,"
+TIDY_COARSE_CHECKS="-*,android-*,bugprone-*,cert-*,clang-analyzer-*,"
 TIDY_COARSE_CHECKS+="google-*,"
 TIDY_COARSE_CHECKS+="-google-readability-braces-around-statements,"
 TIDY_COARSE_CHECKS+="-google-readability-casting,"

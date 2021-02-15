@@ -750,6 +750,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfig(hwc2_config_t config) {
                                                            .CreateComposition();
   composition->Init(drm_, crtc_, importer_.get(), planner_.get(), frame_no_);
   int ret = composition->SetDisplayMode(*mode);
+  if (ret) {
+    return HWC2::Error::BadConfig;
+  }
   ret = compositor_.ApplyComposition(std::move(composition));
   if (ret) {
     ALOGE("Failed to queue dpms composition on %d", ret);
