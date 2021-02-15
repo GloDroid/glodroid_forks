@@ -1,4 +1,23 @@
+cc_library_shared {
+    name: "hwcomposer.filegroups_build_test",
+    defaults: ["hwcomposer.drm_defaults"],
+    whole_static_libs: ["drm_hwcomposer"],
 
+    srcs: [
+        ":drm_hwcomposer_platformhisi",
+        ":drm_hwcomposer_platformimagination",
+        ":drm_hwcomposer_platformmediatek",
+        ":drm_hwcomposer_platformmeson",
+    ],
+
+    local_include_dirs: [
+        "test_include",
+    ],
+
+    cppflags: [
+        "-DDISABLE_LEGACY_GETTERS",
+    ],
+}
 
 cc_test {
     name: "hwc-drm-tests",

@@ -57,6 +57,9 @@ class LegacyBufferInfoGetter : public BufferInfoGetter {
   const gralloc_module_t *gralloc_;
 };
 
+#ifdef DISABLE_LEGACY_GETTERS
+#define LEGACY_BUFFER_INFO_GETTER(getter_)
+#else
 #define LEGACY_BUFFER_INFO_GETTER(getter_)                           \
   LegacyBufferInfoGetter *LegacyBufferInfoGetter::CreateInstance() { \
     auto *instance = new getter_();                                  \
@@ -71,6 +74,7 @@ class LegacyBufferInfoGetter : public BufferInfoGetter {
     }                                                                \
     return instance;                                                 \
   }
+#endif
 
 }  // namespace android
 #endif
