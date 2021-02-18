@@ -822,35 +822,6 @@ done:
 	return ret;
 }
 
-static void xhci_handle_halted_endpoint(struct xhci_hcd *xhci,
-				struct xhci_virt_ep *ep, unsigned int stream_id,
-				struct xhci_td *td,
-				enum xhci_ep_reset_type reset_type)
-{
-	unsigned int slot_id = ep->vdev->slot_id;
-	int err;
-
-	/*
-	 * Avoid resetting endpoint if link is inactive. Can cause host hang.
-	 * Device will be reset soon to recover the link so don't do anything
-	 */
-	if (ep->vdev->flags & VDEV_PORT_ERROR)
-		return;
-
-	ep->ep_state |= EP_HALTED;
-
-	err = xhci_reset_halted_ep(xhci, slot_id, ep->ep_index, reset_type);
-	if (err)
-		return;
-
-	if (reset_type == EP_HARD_RESET) {
-		ep->ep_state |= EP_HARD_CLEAR_TOGGLE;
-		xhci_cleanup_stalled_ring(xhci, slot_id, ep->ep_index, stream_id,
-					  td);
-	}
-	xhci_ring_cmd_db(xhci);
-}
-
 /*
  * Fix up the ep ring first, so HW stops executing cancelled TDs.
  * We have the xHCI lock, so nothing can modify this list until we drop it.
@@ -1998,6 +1969,35 @@ static void xhci_clear_hub_tt_buffer(struct xhci_hcd *xhci, struct xhci_td *td,
 	}
 }
 
+static void xhci_cleanup_halted_endpoint(struct xhci_hcd *xhci,
+				struct xhci_virt_ep *ep, unsigned int stream_id,
+				struct xhci_td *td,
+				enum xhci_ep_reset_type reset_type)
+{
+	unsigned int slot_id = ep->vdev->slot_id;
+	int err;
+
+	/*
+	 * Avoid resetting endpoint if link is inactive. Can cause host hang.
+	 * Device will be reset soon to recover the link so don't do anything
+	 */
+	if (ep->vdev->flags & VDEV_PORT_ERROR)
+		return;
+
+	ep->ep_state |= EP_HALTED;
+
+	err = xhci_reset_halted_ep(xhci, slot_id, ep->ep_index, reset_type);
+	if (err)
+		return;
+
+	if (reset_type == EP_HARD_RESET) {
+		ep->ep_state |= EP_HARD_CLEAR_TOGGLE;
+		xhci_cleanup_stalled_ring(xhci, slot_id, ep->ep_index, stream_id,
+					  td);
+	}
+	xhci_ring_cmd_db(xhci);
+}
+
 /* Check if an error has halted the endpoint ring.  The class driver will
  * cleanup the halt for a non-default control endpoint if we indicate a stall.
  * However, a babble and other errors also halt the endpoint ring, and the class
@@ -2073,8 +2073,7 @@ static int finish_td(struct xhci_hcd *xhci, struct xhci_td *td,
 		 */
 		if ((ep->ep_index != 0) || (trb_comp_code != COMP_STALL_ERROR))
 			xhci_clear_hub_tt_buffer(xhci, td, ep);
-
-		xhci_handle_halted_endpoint(xhci, ep, ep_ring->stream_id, td,
+		xhci_cleanup_halted_endpoint(xhci, ep, ep_ring->stream_id, td,
 					     EP_HARD_RESET);
 	} else {
 		/* Update ring dequeue pointer */
@@ -2360,9 +2359,8 @@ static int process_bulk_intr_td(struct xhci_hcd *xhci, struct xhci_td *td,
 			break;
 
 		td->status = 0;
-
-		xhci_handle_halted_endpoint(xhci, ep, ep_ring->stream_id, td,
-					    EP_SOFT_RESET);
+		xhci_cleanup_halted_endpoint(xhci, ep, ep_ring->stream_id, td,
+					     EP_SOFT_RESET);
 		return 0;
 	default:
 		/* do nothing */
@@ -2435,8 +2433,8 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 		case COMP_USB_TRANSACTION_ERROR:
 		case COMP_INVALID_STREAM_TYPE_ERROR:
 		case COMP_INVALID_STREAM_ID_ERROR:
-			xhci_handle_halted_endpoint(xhci, ep, 0, NULL,
-						    EP_SOFT_RESET);
+			xhci_cleanup_halted_endpoint(xhci, ep, 0, NULL,
+						     EP_SOFT_RESET);
 			goto cleanup;
 		case COMP_RING_UNDERRUN:
 		case COMP_RING_OVERRUN:
@@ -2619,10 +2617,10 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 			if (trb_comp_code == COMP_STALL_ERROR ||
 			    xhci_requires_manual_halt_cleanup(xhci, ep_ctx,
 							      trb_comp_code)) {
-				xhci_handle_halted_endpoint(xhci, ep,
-							    ep_ring->stream_id,
-							    NULL,
-							    EP_HARD_RESET);
+				xhci_cleanup_halted_endpoint(xhci, ep,
+							     ep_ring->stream_id,
+							     NULL,
+							     EP_HARD_RESET);
 			}
 			goto cleanup;
 		}
@@ -2714,9 +2712,9 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 			if (trb_comp_code == COMP_STALL_ERROR ||
 			    xhci_requires_manual_halt_cleanup(xhci, ep_ctx,
 							      trb_comp_code))
-				xhci_handle_halted_endpoint(xhci, ep,
-							    ep_ring->stream_id,
-							    td, EP_HARD_RESET);
+				xhci_cleanup_halted_endpoint(xhci, ep,
+							     ep_ring->stream_id,
+							     td, EP_HARD_RESET);
 			goto cleanup;
 		}
 
