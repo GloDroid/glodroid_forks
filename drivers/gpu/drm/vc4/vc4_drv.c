@@ -246,6 +246,16 @@ static void vc4_match_add_drivers(struct device *dev,
 	}
 }
 
+const struct of_device_id vc4_dma_range_matches[] = {
+	{ .compatible = "brcm,bcm2835-hvs" },
+	{ .compatible = "brcm,bcm2711-hvs" },
+	{ .compatible = "raspberrypi,rpi-firmware-kms" },
+	{ .compatible = "brcm,bcm2835-v3d" },
+	{ .compatible = "brcm,cygnus-v3d" },
+	{ .compatible = "brcm,vc4-v3d" },
+	{}
+};
+
 static int vc4_drm_bind(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -262,6 +272,16 @@ static int vc4_drm_bind(struct device *dev)
 	if (!node || !of_device_is_available(node))
 		vc4_drm_driver.driver_features &= ~DRIVER_RENDER;
 	of_node_put(node);
+
+	node = of_find_matching_node_and_match(NULL, vc4_dma_range_matches,
+					       NULL);
+	if (node) {
+		ret = of_dma_configure(dev, node, true);
+		of_node_put(node);
+
+		if (ret)
+			return ret;
+	}
 
 	vc4 = devm_drm_dev_alloc(dev, &vc4_drm_driver, struct vc4_dev, base);
 	if (IS_ERR(vc4))
@@ -289,9 +309,11 @@ static int vc4_drm_bind(struct device *dev)
 	if (ret)
 		return ret;
 
-	ret = vc4_plane_create_additional_planes(drm);
-	if (ret)
-		goto unbind_all;
+	if (!vc4->firmware_kms) {
+		ret = vc4_plane_create_additional_planes(drm);
+		if (ret)
+			goto unbind_all;
+	}
 
 	drm_fb_helper_remove_conflicting_framebuffers(NULL, "vc4drmfb", false);
 
@@ -299,8 +321,10 @@ static int vc4_drm_bind(struct device *dev)
 	if (ret < 0)
 		goto unbind_all;
 
-	drm_for_each_crtc(crtc, drm)
-		vc4_crtc_disable_at_boot(crtc);
+	if (!vc4->firmware_kms) {
+		drm_for_each_crtc(crtc, drm)
+			vc4_crtc_disable_at_boot(crtc);
+	}
 
 	ret = drm_dev_register(drm, 0);
 	if (ret < 0)
@@ -338,6 +362,7 @@ static struct platform_driver *const component_drivers[] = {
 	&vc4_hvs_driver,
 	&vc4_txp_driver,
 	&vc4_crtc_driver,
+	&vc4_firmware_kms_driver,
 	&vc4_v3d_driver,
 };
 

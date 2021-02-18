@@ -372,7 +372,7 @@ static void qxl_crtc_update_monitors_config(struct drm_crtc *crtc,
 }
 
 static void qxl_crtc_atomic_flush(struct drm_crtc *crtc,
-				  struct drm_crtc_state *old_crtc_state)
+				  struct drm_atomic_state *state)
 {
 	qxl_crtc_update_monitors_config(crtc, "flush");
 }
@@ -444,13 +444,13 @@ static const struct drm_framebuffer_funcs qxl_fb_funcs = {
 };
 
 static void qxl_crtc_atomic_enable(struct drm_crtc *crtc,
-				   struct drm_crtc_state *old_state)
+				   struct drm_atomic_state *state)
 {
 	qxl_crtc_update_monitors_config(crtc, "enable");
 }
 
 static void qxl_crtc_atomic_disable(struct drm_crtc *crtc,
-				    struct drm_crtc_state *old_state)
+				    struct drm_atomic_state *state)
 {
 	qxl_crtc_update_monitors_config(crtc, "disable");
 }

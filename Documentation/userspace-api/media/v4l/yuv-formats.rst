@@ -28,7 +28,9 @@ to brightness information.
     pixfmt-grey
     pixfmt-y10
     pixfmt-y12
+    pixfmt-y12p
     pixfmt-y14
+    pixfmt-y14p
     pixfmt-y10b
     pixfmt-y10p
     pixfmt-y16
@@ -51,6 +53,7 @@ to brightness information.
     pixfmt-nv12
     pixfmt-nv12m
     pixfmt-nv12mt
+    pixfmt-nv12-col128
     pixfmt-nv16
     pixfmt-nv16m
     pixfmt-nv24

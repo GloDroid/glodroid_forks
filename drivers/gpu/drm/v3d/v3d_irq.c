@@ -177,11 +177,9 @@ v3d_hub_irq(int irq, void *arg)
 			"GMP",
 		};
 		const char *client = "?";
+		static int logged_error;
 
-		V3D_WRITE(V3D_MMU_CTL,
-			  V3D_READ(V3D_MMU_CTL) & (V3D_MMU_CTL_CAP_EXCEEDED |
-						   V3D_MMU_CTL_PT_INVALID |
-						   V3D_MMU_CTL_WRITE_VIOLATION));
+		V3D_WRITE(V3D_MMU_CTL, V3D_READ(V3D_MMU_CTL));
 
 		if (v3d->ver >= 41) {
 			axi_id = axi_id >> 5;
@@ -189,6 +187,7 @@ v3d_hub_irq(int irq, void *arg)
 				client = v3d41_axi_ids[axi_id];
 		}
 
+		if (!logged_error)
 		dev_err(v3d->drm.dev, "MMU error from client %s (%d) at 0x%llx%s%s%s\n",
 			client, axi_id, (long long)vio_addr,
 			((intsts & V3D_HUB_INT_MMU_WRV) ?
@@ -197,6 +196,7 @@ v3d_hub_irq(int irq, void *arg)
 			 ", pte invalid" : ""),
 			((intsts & V3D_HUB_INT_MMU_CAP) ?
 			 ", cap exceeded" : ""));
+		logged_error = 1;
 		status = IRQ_HANDLED;
 	}
 
@@ -217,7 +217,7 @@ v3d_irq_init(struct v3d_dev *v3d)
 		V3D_CORE_WRITE(core, V3D_CTL_INT_CLR, V3D_CORE_IRQS);
 	V3D_WRITE(V3D_HUB_INT_CLR, V3D_HUB_IRQS);
 
-	irq1 = platform_get_irq(v3d_to_pdev(v3d), 1);
+	irq1 = platform_get_irq_optional(v3d_to_pdev(v3d), 1);
 	if (irq1 == -EPROBE_DEFER)
 		return irq1;
 	if (irq1 > 0) {

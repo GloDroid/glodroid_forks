@@ -9,6 +9,7 @@
 #include <linux/etherdevice.h>
 #include <linux/module.h>
 #include <linux/vmalloc.h>
+#include <linux/ctype.h>
 #include <net/cfg80211.h>
 #include <net/netlink.h>
 #include <uapi/linux/if_arp.h>
@@ -2937,7 +2938,7 @@ brcmf_cfg80211_set_power_mgmt(struct wiphy *wiphy, struct net_device *ndev,
 		brcmf_dbg(INFO, "Do not enable power save for P2P clients\n");
 		pm = PM_OFF;
 	}
-	brcmf_dbg(INFO, "power save %s\n", (pm ? "enabled" : "disabled"));
+	brcmf_info("power save %s\n", (pm ? "enabled" : "disabled"));
 
 	err = brcmf_fil_cmd_int_set(ifp, BRCMF_C_SET_PM, pm);
 	if (err) {
@@ -2947,6 +2948,7 @@ brcmf_cfg80211_set_power_mgmt(struct wiphy *wiphy, struct net_device *ndev,
 			bphy_err(drvr, "error (%d)\n", err);
 	}
 
+	timeout = 2000; /* 2000ms - the maximum */
 	err = brcmf_fil_iovar_int_set(ifp, "pm2_sleep_ret",
 				min_t(u32, timeout, BRCMF_PS_MAX_TIMEOUT_MS));
 	if (err)
@@ -7350,12 +7352,18 @@ static s32 brcmf_translate_country_code(struct brcmf_pub *drvr, char alpha2[2],
 	struct brcmfmac_pd_cc *country_codes;
 	struct brcmfmac_pd_cc_entry *cc;
 	s32 found_index;
+	char ccode[BRCMF_COUNTRY_BUF_SZ];
+	int rev;
 	int i;
+
+	memcpy(ccode, alpha2, sizeof(ccode));
+	rev = -1;
 
 	country_codes = drvr->settings->country_codes;
 	if (!country_codes) {
-		brcmf_dbg(TRACE, "No country codes configured for device\n");
-		return -EINVAL;
+		brcmf_dbg(TRACE, "No country codes configured for device"
+				 " - use requested value\n");
+		goto use_input_value;
 	}
 
 	if ((alpha2[0] == ccreq->country_abbrev[0]) &&
@@ -7379,10 +7387,14 @@ static s32 brcmf_translate_country_code(struct brcmf_pub *drvr, char alpha2[2],
 		brcmf_dbg(TRACE, "No country code match found\n");
 		return -EINVAL;
 	}
-	memset(ccreq, 0, sizeof(*ccreq));
-	ccreq->rev = cpu_to_le32(country_codes->table[found_index].rev);
-	memcpy(ccreq->ccode, country_codes->table[found_index].cc,
+	rev = country_codes->table[found_index].rev;
+	memcpy(ccode, country_codes->table[found_index].cc,
 	       BRCMF_COUNTRY_BUF_SZ);
+
+use_input_value:
+	memset(ccreq, 0, sizeof(*ccreq));
+	ccreq->rev = cpu_to_le32(rev);
+	memcpy(ccreq->ccode, ccode, sizeof(ccode));
 	ccreq->country_abbrev[0] = alpha2[0];
 	ccreq->country_abbrev[1] = alpha2[1];
 	ccreq->country_abbrev[2] = 0;
@@ -7397,23 +7409,9 @@ static void brcmf_cfg80211_reg_notifier(struct wiphy *wiphy,
 	struct brcmf_if *ifp = brcmf_get_ifp(cfg->pub, 0);
 	struct brcmf_pub *drvr = cfg->pub;
 	struct brcmf_fil_country_le ccreq;
+	char *alpha2;
 	s32 err;
 	int i;
-
-	/* The country code gets set to "00" by default at boot, ignore */
-	if (req->alpha2[0] == '0' && req->alpha2[1] == '0')
-		return;
-
-	/* ignore non-ISO3166 country codes */
-	for (i = 0; i < 2; i++)
-		if (req->alpha2[i] < 'A' || req->alpha2[i] > 'Z') {
-			bphy_err(drvr, "not an ISO3166 code (0x%02x 0x%02x)\n",
-				 req->alpha2[0], req->alpha2[1]);
-			return;
-		}
-
-	brcmf_dbg(TRACE, "Enter: initiator=%d, alpha=%c%c\n", req->initiator,
-		  req->alpha2[0], req->alpha2[1]);
 
 	err = brcmf_fil_iovar_data_get(ifp, "country", &ccreq, sizeof(ccreq));
 	if (err) {
@@ -7421,7 +7419,35 @@ static void brcmf_cfg80211_reg_notifier(struct wiphy *wiphy,
 		return;
 	}
 
-	err = brcmf_translate_country_code(ifp->drvr, req->alpha2, &ccreq);
+	/* The country code gets set to "00" by default at boot - substitute
+	 * any saved ccode from the nvram file unless there is a valid code
+	 * already set.
+	 */
+	alpha2 = req->alpha2;
+	if (alpha2[0] == '0' && alpha2[1] == '0') {
+		extern char saved_ccode[2];
+
+		if ((isupper(ccreq.country_abbrev[0]) &&
+		     isupper(ccreq.country_abbrev[1])) ||
+		    !saved_ccode[0])
+			return;
+		alpha2 = saved_ccode;
+		pr_debug("brcmfmac: substituting saved ccode %c%c\n",
+			 alpha2[0], alpha2[1]);
+	}
+
+	/* ignore non-ISO3166 country codes */
+	for (i = 0; i < 2; i++)
+		if (alpha2[i] < 'A' || alpha2[i] > 'Z') {
+			bphy_err(drvr, "not an ISO3166 code (0x%02x 0x%02x)\n",
+				 alpha2[0], alpha2[1]);
+			return;
+		}
+
+	brcmf_dbg(TRACE, "Enter: initiator=%d, alpha=%c%c\n", req->initiator,
+		  alpha2[0], alpha2[1]);
+
+	err = brcmf_translate_country_code(ifp->drvr, alpha2, &ccreq);
 	if (err)
 		return;
 

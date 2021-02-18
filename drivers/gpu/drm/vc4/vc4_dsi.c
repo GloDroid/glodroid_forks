@@ -306,11 +306,11 @@
 # define DSI0_PHY_AFEC0_RESET			BIT(11)
 # define DSI1_PHY_AFEC0_PD_BG			BIT(11)
 # define DSI0_PHY_AFEC0_PD			BIT(10)
-# define DSI1_PHY_AFEC0_PD_DLANE3		BIT(10)
+# define DSI1_PHY_AFEC0_PD_DLANE1		BIT(10)
 # define DSI0_PHY_AFEC0_PD_BG			BIT(9)
 # define DSI1_PHY_AFEC0_PD_DLANE2		BIT(9)
 # define DSI0_PHY_AFEC0_PD_DLANE1		BIT(8)
-# define DSI1_PHY_AFEC0_PD_DLANE1		BIT(8)
+# define DSI1_PHY_AFEC0_PD_DLANE3		BIT(8)
 # define DSI_PHY_AFEC0_PTATADJ_MASK		VC4_MASK(7, 4)
 # define DSI_PHY_AFEC0_PTATADJ_SHIFT		4
 # define DSI_PHY_AFEC0_CTATADJ_MASK		VC4_MASK(3, 0)
@@ -1306,7 +1306,13 @@ static const struct drm_encoder_helper_funcs vc4_dsi_encoder_helper_funcs = {
 };
 
 static const struct of_device_id vc4_dsi_dt_match[] = {
+	{ .compatible = "brcm,bcm2835-dsi0", (void *)(uintptr_t)0 },
 	{ .compatible = "brcm,bcm2835-dsi1", (void *)(uintptr_t)1 },
+	/*
+	 * Use 2 so that it uses the DSI1 register layout, but not DMA
+	 * workaround
+	 */
+	{ .compatible = "brcm,bcm2711-dsi1", (void *)(uintptr_t)2 },
 	{}
 };
 
@@ -1429,10 +1435,10 @@ vc4_dsi_init_phy_clocks(struct vc4_dsi *dsi)
 		memset(&init, 0, sizeof(init));
 		init.parent_names = &parent_name;
 		init.num_parents = 1;
-		if (dsi->port == 1)
-			init.name = phy_clocks[i].dsi1_name;
-		else
+		if (dsi->port == 0)
 			init.name = phy_clocks[i].dsi0_name;
+		else
+			init.name = phy_clocks[i].dsi1_name;
 		init.ops = &clk_fixed_factor_ops;
 
 		ret = devm_clk_hw_register(dev, &fix->hw);
@@ -1494,8 +1500,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
 		return -ENODEV;
 	}
 
-	/* DSI1 has a broken AXI slave that doesn't respond to writes
-	 * from the ARM.  It does handle writes from the DMA engine,
+	/* DSI1 on BCM2835/6/7 has a broken AXI slave that doesn't respond to
+	 * writes from the ARM.  It does handle writes from the DMA engine,
 	 * so set up a channel for talking to it.
 	 */
 	if (dsi->port == 1) {
@@ -1604,7 +1610,9 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
 	if (ret)
 		return ret;
 
-	if (dsi->port == 1)
+	if (dsi->port == 0)
+		vc4->dsi0 = dsi;
+	else
 		vc4->dsi1 = dsi;
 
 	drm_simple_encoder_init(drm, dsi->encoder, DRM_MODE_ENCODER_DSI);
@@ -1649,7 +1657,9 @@ static void vc4_dsi_unbind(struct device *dev, struct device *master,
 	list_splice_init(&dsi->bridge_chain, &dsi->encoder->bridge_chain);
 	drm_encoder_cleanup(dsi->encoder);
 
-	if (dsi->port == 1)
+	if (dsi->port == 0)
+		vc4->dsi0 = NULL;
+	else
 		vc4->dsi1 = NULL;
 }
 

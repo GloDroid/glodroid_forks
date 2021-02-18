@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/reboot.h>
 #include <linux/slab.h>
 #include <soc/bcm2835/raspberrypi-firmware.h>
 
@@ -27,7 +28,10 @@ struct rpi_firmware {
 	struct mbox_chan *chan; /* The property channel. */
 	struct completion c;
 	u32 enabled;
+	u32 get_throttled;
 };
+
+static struct platform_device *g_pdev;
 
 static DEFINE_MUTEX(transaction_lock);
 
@@ -41,7 +45,7 @@ static void response_callback(struct mbox_client *cl, void *msg)
  * Sends a request to the firmware through the BCM2835 mailbox driver,
  * and synchronously waits for the reply.
  */
-static int
+int
 rpi_firmware_transaction(struct rpi_firmware *fw, u32 chan, u32 data)
 {
 	u32 message = MBOX_MSG(chan, data);
@@ -66,6 +70,7 @@ rpi_firmware_transaction(struct rpi_firmware *fw, u32 chan, u32 data)
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(rpi_firmware_transaction);
 
 /**
  * rpi_firmware_property_list - Submit firmware property list
@@ -170,15 +175,92 @@ int rpi_firmware_property(struct rpi_firmware *fw,
 
 	kfree(data);
 
+	if ((tag == RPI_FIRMWARE_GET_THROTTLED) &&
+	     memcmp(&fw->get_throttled, tag_data, sizeof(fw->get_throttled))) {
+		memcpy(&fw->get_throttled, tag_data, sizeof(fw->get_throttled));
+		sysfs_notify(&fw->cl.dev->kobj, NULL, "get_throttled");
+	}
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(rpi_firmware_property);
+
+static int rpi_firmware_notify_reboot(struct notifier_block *nb,
+				      unsigned long action,
+				      void *data)
+{
+	struct rpi_firmware *fw;
+	struct platform_device *pdev = g_pdev;
+	u32 reboot_flags = 0;
+
+	if (!pdev)
+		return 0;
+
+	fw = platform_get_drvdata(pdev);
+	if (!fw)
+		return 0;
+
+	// The partition id is the first parameter followed by zero or
+	// more flags separated by spaces indicating the reason for the reboot.
+	//
+	// 'tryboot': Sets a one-shot flag which is cleared upon reboot and
+	//            causes the tryboot.txt to be loaded instead of config.txt
+	//            by the bootloader and the start.elf firmware.
+	//
+	//            This is intended to allow automatic fallback to a known
+	//            good image if an OS/FW upgrade fails.
+	//
+	// N.B. The firmware mechanism for storing reboot flags may vary
+	// on different Raspberry Pi models.
+	if (data && strstr(data, " tryboot"))
+		reboot_flags |= 0x1;
+
+	// The mailbox might have been called earlier, directly via vcmailbox
+	// so only overwrite if reboot flags are passed to the reboot command.
+	if (reboot_flags)
+		(void)rpi_firmware_property(fw, RPI_FIRMWARE_SET_REBOOT_FLAGS,
+				&reboot_flags, sizeof(reboot_flags));
+
+	(void)rpi_firmware_property(fw, RPI_FIRMWARE_NOTIFY_REBOOT, NULL, 0);
+
+	return 0;
+}
+
+static ssize_t get_throttled_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct rpi_firmware *fw = dev_get_drvdata(dev);
+
+	WARN_ONCE(1, "deprecated, use hwmon sysfs instead\n");
+
+	return sprintf(buf, "%x\n", fw->get_throttled);
+}
+
+static DEVICE_ATTR_RO(get_throttled);
+
+static struct attribute *rpi_firmware_dev_attrs[] = {
+	&dev_attr_get_throttled.attr,
+	NULL,
+};
+
+static const struct attribute_group rpi_firmware_dev_group = {
+	.attrs = rpi_firmware_dev_attrs,
+};
 
 static void
 rpi_firmware_print_firmware_revision(struct rpi_firmware *fw)
 {
 	time64_t date_and_time;
 	u32 packet;
+	static const char * const variant_strs[] = {
+		"unknown",
+		"start",
+		"start_x",
+		"start_db",
+		"start_cd",
+	};
+	const char *variant_str = "cmd unsupported";
+	u32 variant;
 	int ret = rpi_firmware_property(fw,
 					RPI_FIRMWARE_GET_FIRMWARE_REVISION,
 					&packet, sizeof(packet));
@@ -188,7 +270,35 @@ rpi_firmware_print_firmware_revision(struct rpi_firmware *fw)
 
 	/* This is not compatible with y2038 */
 	date_and_time = packet;
-	dev_info(fw->cl.dev, "Attached to firmware from %ptT\n", &date_and_time);
+
+	ret = rpi_firmware_property(fw, RPI_FIRMWARE_GET_FIRMWARE_VARIANT,
+				    &variant, sizeof(variant));
+
+	if (!ret) {
+		if (variant >= ARRAY_SIZE(variant_strs))
+			variant = 0;
+		variant_str = variant_strs[variant];
+	}
+
+	dev_info(fw->cl.dev,
+		 "Attached to firmware from %ptT, variant %s\n",
+		 &date_and_time, variant_str);
+}
+
+static void
+rpi_firmware_print_firmware_hash(struct rpi_firmware *fw)
+{
+	u32 hash[5];
+	int ret = rpi_firmware_property(fw,
+					RPI_FIRMWARE_GET_FIRMWARE_HASH,
+					hash, sizeof(hash));
+
+	if (ret)
+		return;
+
+	dev_info(fw->cl.dev,
+		 "Firmware hash is %08x%08x%08x%08x%08x\n",
+		 hash[0], hash[1], hash[2], hash[3], hash[4]);
 }
 
 static void
@@ -203,6 +313,11 @@ rpi_register_hwmon_driver(struct device *dev, struct rpi_firmware *fw)
 
 	rpi_hwmon = platform_device_register_data(dev, "raspberrypi-hwmon",
 						  -1, NULL, 0);
+
+	if (!IS_ERR_OR_NULL(rpi_hwmon)) {
+		if (devm_device_add_group(dev, &rpi_firmware_dev_group))
+			dev_err(dev, "Failed to create get_trottled attr\n");
+	}
 }
 
 static void rpi_register_clk_driver(struct device *dev)
@@ -249,8 +364,10 @@ static int rpi_firmware_probe(struct platform_device *pdev)
 	init_completion(&fw->c);
 
 	platform_set_drvdata(pdev, fw);
+	g_pdev = pdev;
 
 	rpi_firmware_print_firmware_revision(fw);
+	rpi_firmware_print_firmware_hash(fw);
 	rpi_register_hwmon_driver(dev, fw);
 	rpi_register_clk_driver(dev);
 
@@ -276,6 +393,7 @@ static int rpi_firmware_remove(struct platform_device *pdev)
 	platform_device_unregister(rpi_clk);
 	rpi_clk = NULL;
 	mbox_free_channel(fw->chan);
+	g_pdev = NULL;
 
 	return 0;
 }
@@ -288,7 +406,7 @@ static int rpi_firmware_remove(struct platform_device *pdev)
  */
 struct rpi_firmware *rpi_firmware_get(struct device_node *firmware_node)
 {
-	struct platform_device *pdev = of_find_device_by_node(firmware_node);
+	struct platform_device *pdev = g_pdev;
 
 	if (!pdev)
 		return NULL;
@@ -312,7 +430,35 @@ static struct platform_driver rpi_firmware_driver = {
 	.shutdown	= rpi_firmware_shutdown,
 	.remove		= rpi_firmware_remove,
 };
-module_platform_driver(rpi_firmware_driver);
+
+static struct notifier_block rpi_firmware_reboot_notifier = {
+	.notifier_call = rpi_firmware_notify_reboot,
+};
+
+static int __init rpi_firmware_init(void)
+{
+	int ret = register_reboot_notifier(&rpi_firmware_reboot_notifier);
+	if (ret)
+		goto out1;
+	ret = platform_driver_register(&rpi_firmware_driver);
+	if (ret)
+		goto out2;
+
+	return 0;
+
+out2:
+	unregister_reboot_notifier(&rpi_firmware_reboot_notifier);
+out1:
+	return ret;
+}
+core_initcall(rpi_firmware_init);
+
+static void __init rpi_firmware_exit(void)
+{
+	platform_driver_unregister(&rpi_firmware_driver);
+	unregister_reboot_notifier(&rpi_firmware_reboot_notifier);
+}
+module_exit(rpi_firmware_exit);
 
 MODULE_AUTHOR("Eric Anholt <eric@anholt.net>");
 MODULE_DESCRIPTION("Raspberry Pi firmware driver");

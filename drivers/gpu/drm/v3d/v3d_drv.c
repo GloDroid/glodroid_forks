@@ -70,7 +70,7 @@ static int v3d_runtime_resume(struct device *dev)
 }
 #endif
 
-static const struct dev_pm_ops v3d_v3d_pm_ops = {
+static const struct dev_pm_ops v3d_pm_ops = {
 	SET_RUNTIME_PM_OPS(v3d_runtime_suspend, v3d_runtime_resume, NULL)
 };
 
@@ -79,7 +79,6 @@ static int v3d_get_param_ioctl(struct drm_device *dev, void *data,
 {
 	struct v3d_dev *v3d = to_v3d_dev(dev);
 	struct drm_v3d_get_param *args = data;
-	int ret;
 	static const u32 reg_map[] = {
 		[DRM_V3D_PARAM_V3D_UIFCFG] = V3D_HUB_UIFCFG,
 		[DRM_V3D_PARAM_V3D_HUB_IDENT1] = V3D_HUB_IDENT1,
@@ -105,17 +104,12 @@ static int v3d_get_param_ioctl(struct drm_device *dev, void *data,
 		if (args->value != 0)
 			return -EINVAL;
 
-		ret = pm_runtime_get_sync(v3d->drm.dev);
-		if (ret < 0)
-			return ret;
 		if (args->param >= DRM_V3D_PARAM_V3D_CORE0_IDENT0 &&
 		    args->param <= DRM_V3D_PARAM_V3D_CORE0_IDENT2) {
 			args->value = V3D_CORE_READ(0, offset);
 		} else {
 			args->value = V3D_READ(offset);
 		}
-		pm_runtime_mark_last_busy(v3d->drm.dev);
-		pm_runtime_put_autosuspend(v3d->drm.dev);
 		return 0;
 	}
 
@@ -227,6 +221,7 @@ static struct drm_driver v3d_drm_driver = {
 static const struct of_device_id v3d_of_match[] = {
 	{ .compatible = "brcm,7268-v3d" },
 	{ .compatible = "brcm,7278-v3d" },
+	{ .compatible = "brcm,2711-v3d" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, v3d_of_match);
@@ -268,8 +263,8 @@ static int v3d_platform_drm_probe(struct platform_device *pdev)
 		return ret;
 
 	mmu_debug = V3D_READ(V3D_MMU_DEBUG_INFO);
-	dev->coherent_dma_mask =
-		DMA_BIT_MASK(30 + V3D_GET_FIELD(mmu_debug, V3D_MMU_PA_WIDTH));
+	dma_set_mask_and_coherent(dev,
+		DMA_BIT_MASK(30 + V3D_GET_FIELD(mmu_debug, V3D_MMU_PA_WIDTH)));
 	v3d->va_width = 30 + V3D_GET_FIELD(mmu_debug, V3D_MMU_VA_WIDTH);
 
 	ident1 = V3D_READ(V3D_HUB_IDENT1);
@@ -294,6 +289,21 @@ static int v3d_platform_drm_probe(struct platform_device *pdev)
 		}
 	}
 
+	v3d->clk = devm_clk_get(dev, NULL);
+	if (IS_ERR_OR_NULL(v3d->clk)) {
+		if (PTR_ERR(v3d->clk) != -EPROBE_DEFER)
+			dev_err(dev, "Failed to get clock (%ld)\n", PTR_ERR(v3d->clk));
+		return PTR_ERR(v3d->clk);
+	}
+	v3d->clk_up_rate = clk_get_rate(v3d->clk);
+	/* For downclocking, drop it to the minimum frequency we can get from
+	 * the CPRMAN clock generator dividing off our parent.  The divider is
+	 * 4 bits, but ask for just higher than that so that rounding doesn't
+	 * make cprman reject our rate.
+	 */
+	v3d->clk_down_rate =
+		(clk_get_rate(clk_get_parent(v3d->clk)) / (1 << 4)) + 10000;
+
 	if (v3d->ver < 41) {
 		ret = map_regs(v3d, &v3d->gca_regs, "gca");
 		if (ret)
@@ -307,9 +317,6 @@ static int v3d_platform_drm_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	pm_runtime_use_autosuspend(dev);
-	pm_runtime_set_autosuspend_delay(dev, 50);
-	pm_runtime_enable(dev);
 
 	ret = v3d_gem_init(drm);
 	if (ret)
@@ -322,6 +329,9 @@ static int v3d_platform_drm_probe(struct platform_device *pdev)
 	ret = drm_dev_register(drm, 0);
 	if (ret)
 		goto irq_disable;
+
+	ret = clk_set_rate(v3d->clk, v3d->clk_down_rate);
+	WARN_ON_ONCE(ret != 0);
 
 	return 0;
 
@@ -355,6 +365,7 @@ static struct platform_driver v3d_platform_driver = {
 	.driver		= {
 		.name	= "v3d",
 		.of_match_table = v3d_of_match,
+		.pm = &v3d_pm_ops,
 	},
 };
 

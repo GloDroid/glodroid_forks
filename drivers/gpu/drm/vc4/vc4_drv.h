@@ -74,12 +74,18 @@ struct vc4_perfmon {
 struct vc4_dev {
 	struct drm_device base;
 
+	bool firmware_kms;
+	struct rpi_firmware *firmware;
+
+	struct vc4_hdmi *hdmi;
 	struct vc4_hvs *hvs;
 	struct vc4_v3d *v3d;
 	struct vc4_dpi *dpi;
+	struct vc4_dsi *dsi0;
 	struct vc4_dsi *dsi1;
 	struct vc4_vec *vec;
 	struct vc4_txp *txp;
+	struct vc4_fkms *fkms;
 
 	struct vc4_hang_state *hang_state;
 
@@ -444,12 +450,12 @@ struct vc4_encoder {
 	enum vc4_encoder_type type;
 	u32 clock_select;
 
-	void (*pre_crtc_configure)(struct drm_encoder *encoder);
-	void (*pre_crtc_enable)(struct drm_encoder *encoder);
-	void (*post_crtc_enable)(struct drm_encoder *encoder);
+	void (*pre_crtc_configure)(struct drm_encoder *encoder, struct drm_atomic_state *state);
+	void (*pre_crtc_enable)(struct drm_encoder *encoder, struct drm_atomic_state *state);
+	void (*post_crtc_enable)(struct drm_encoder *encoder, struct drm_atomic_state *state);
 
-	void (*post_crtc_disable)(struct drm_encoder *encoder);
-	void (*post_crtc_powerdown)(struct drm_encoder *encoder);
+	void (*post_crtc_disable)(struct drm_encoder *encoder, struct drm_atomic_state *state);
+	void (*post_crtc_powerdown)(struct drm_encoder *encoder, struct drm_atomic_state *state);
 };
 
 static inline struct vc4_encoder *
@@ -877,6 +883,9 @@ extern struct platform_driver vc4_dsi_driver;
 /* vc4_fence.c */
 extern const struct dma_fence_ops vc4_fence_ops;
 
+/* vc4_firmware_kms.c */
+extern struct platform_driver vc4_firmware_kms_driver;
+
 /* vc4_gem.c */
 int vc4_gem_init(struct drm_device *dev);
 int vc4_submit_cl_ioctl(struct drm_device *dev, void *data,
@@ -918,9 +927,10 @@ extern struct platform_driver vc4_hvs_driver;
 void vc4_hvs_stop_channel(struct drm_device *dev, unsigned int output);
 int vc4_hvs_get_fifo_from_output(struct drm_device *dev, unsigned int output);
 int vc4_hvs_atomic_check(struct drm_crtc *crtc, struct drm_crtc_state *state);
-void vc4_hvs_atomic_enable(struct drm_crtc *crtc, struct drm_crtc_state *old_state);
-void vc4_hvs_atomic_disable(struct drm_crtc *crtc, struct drm_crtc_state *old_state);
-void vc4_hvs_atomic_flush(struct drm_crtc *crtc, struct drm_crtc_state *state);
+void vc4_hvs_atomic_enable(struct drm_crtc *crtc, struct drm_atomic_state *state);
+void vc4_hvs_atomic_disable(struct drm_crtc *crtc, struct drm_atomic_state *state);
+void vc4_hvs_atomic_flush(struct drm_crtc *crtc,
+			  struct drm_atomic_state *state);
 void vc4_hvs_dump_state(struct drm_device *dev);
 void vc4_hvs_unmask_underrun(struct drm_device *dev, int channel);
 void vc4_hvs_mask_underrun(struct drm_device *dev, int channel);
