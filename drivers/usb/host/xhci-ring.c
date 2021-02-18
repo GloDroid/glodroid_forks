@@ -878,6 +878,8 @@ static void xhci_handle_halted_endpoint(struct xhci_hcd *xhci,
 	if (ep->vdev->flags & VDEV_PORT_ERROR)
 		return;
 
+	ep->ep_state |= EP_HALTED;
+
 	/* add td to cancelled list and let reset ep handler take care of it */
 	if (reset_type == EP_HARD_RESET) {
 		ep->ep_state |= EP_HARD_CLEAR_TOGGLE;
@@ -887,16 +889,9 @@ static void xhci_handle_halted_endpoint(struct xhci_hcd *xhci,
 		}
 	}
 
-	if (ep->ep_state & EP_HALTED) {
-		xhci_dbg(xhci, "Reset ep command already pending\n");
-		return;
-	}
-
 	err = xhci_reset_halted_ep(xhci, slot_id, ep->ep_index, reset_type);
 	if (err)
 		return;
-
-	ep->ep_state |= EP_HALTED;
 
 	xhci_ring_cmd_db(xhci);
 }
@@ -2584,6 +2579,7 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 	case COMP_STALL_ERROR:
 		xhci_dbg(xhci, "Stalled endpoint for slot %u ep %u\n", slot_id,
 			 ep_index);
+		ep->ep_state |= EP_HALTED;
 		status = -EPIPE;
 		break;
 	case COMP_SPLIT_TRANSACTION_ERROR:
