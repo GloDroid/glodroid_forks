@@ -24,9 +24,9 @@
 
 #include <vector>
 
-#include "autofd.h"
 #include "drm/DrmFbImporter.h"
 #include "drmhwcgralloc.h"
+#include "utils/UniqueFd.h"
 
 namespace android {
 
@@ -61,7 +61,6 @@ struct DrmHwcLayer {
   android_dataspace_t dataspace;
 
   UniqueFd acquire_fence;
-  OutputFd release_fence;
 
   int ImportBuffer(DrmDevice *drmDevice);
 

@@ -19,9 +19,11 @@
 
 #include "DrmHwcTwo.h"
 
+#include <fcntl.h>
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer2.h>
 #include <sync/sync.h>
+#include <unistd.h>
 
 #include <cinttypes>
 #include <iostream>
@@ -597,22 +599,22 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetReleaseFences(uint32_t *num_elements,
     }
 
     layers[num_layers - 1] = l.first;
-    fences[num_layers - 1] = l.second.take_release_fence();
+    fences[num_layers - 1] = l.second.release_fence_.Release();
   }
   *num_elements = num_layers;
   return HWC2::Error::None;
 }
 
-void DrmHwcTwo::HwcDisplay::AddFenceToPresentFence(int fd) {
-  if (fd < 0)
+void DrmHwcTwo::HwcDisplay::AddFenceToPresentFence(UniqueFd fd) {
+  if (!fd) {
     return;
+  }
 
-  if (present_fence_.get() >= 0) {
-    int old_fence = present_fence_.get();
-    present_fence_.Set(sync_merge("dc_present", old_fence, fd));
-    close(fd);
+  if (present_fence_) {
+    present_fence_ = UniqueFd(
+        sync_merge("dc_present", present_fence_.Get(), fd.Get()));
   } else {
-    present_fence_.Set(fd);
+    present_fence_ = std::move(fd);
   }
 }
 
@@ -763,10 +765,10 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetClientTarget(buffer_handle_t target,
                                                    int32_t dataspace,
                                                    hwc_region_t /*damage*/) {
   supported(__func__);
-  UniqueFd uf(acquire_fence);
 
   client_layer_.set_buffer(target);
-  client_layer_.set_acquire_fence(uf.get());
+  client_layer_.acquire_fence_ = UniqueFd(
+      fcntl(acquire_fence, F_DUPFD_CLOEXEC));
   client_layer_.SetLayerDataspace(dataspace);
 
   /* TODO: Do not update source_crop every call.
@@ -1047,10 +1049,9 @@ HWC2::Error DrmHwcTwo::HwcLayer::SetLayerBlendMode(int32_t mode) {
 HWC2::Error DrmHwcTwo::HwcLayer::SetLayerBuffer(buffer_handle_t buffer,
                                                 int32_t acquire_fence) {
   supported(__func__);
-  UniqueFd uf(acquire_fence);
 
   set_buffer(buffer);
-  set_acquire_fence(uf.get());
+  acquire_fence_ = UniqueFd(fcntl(acquire_fence, F_DUPFD_CLOEXEC));
   return HWC2::Error::None;
 }
 
@@ -1141,11 +1142,9 @@ void DrmHwcTwo::HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
       break;
   }
 
-  OutputFd release_fence = release_fence_output();
-
   layer->sf_handle = buffer_;
-  layer->acquire_fence = acquire_fence_.Release();
-  layer->release_fence = std::move(release_fence);
+  // TODO(rsglobal): Avoid extra fd duplication
+  layer->acquire_fence = UniqueFd(fcntl(acquire_fence_.Get(), F_DUPFD_CLOEXEC));
   layer->display_frame = display_frame_;
   layer->alpha = lround(65535.0F * alpha_);
   layer->source_crop = source_crop_;

@@ -17,7 +17,7 @@
 #ifndef ANDROID_DRM_EVENT_LISTENER_H_
 #define ANDROID_DRM_EVENT_LISTENER_H_
 
-#include "autofd.h"
+#include "utils/UniqueFd.h"
 #include "utils/Worker.h"
 
 namespace android {

@@ -72,10 +72,11 @@ class DrmDisplayCompositor {
   void Dump(std::ostringstream *out) const;
   void Vsync(int display, int64_t timestamp);
   void ClearDisplay();
-  int TakeOutFence() {
-    if (!active_composition_)
-      return -1;
-    return active_composition_->take_out_fence();
+  UniqueFd TakeOutFence() {
+    if (!active_composition_) {
+      return UniqueFd();
+    }
+    return std::move(active_composition_->out_fence_);
   }
 
   FlatteningState GetFlatteningState() const;

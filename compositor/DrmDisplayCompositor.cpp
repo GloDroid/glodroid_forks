@@ -291,7 +291,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
         break;
       }
       fb_id = layer.FbIdHandle->GetFbId();
-      fence_fd = layer.acquire_fence.get();
+      fence_fd = layer.acquire_fence.Get();
       display_frame = layer.display_frame;
       source_crop = layer.source_crop;
       alpha = layer.alpha;
@@ -540,7 +540,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
   }
 
   if (crtc->out_fence_ptr_property().id()) {
-    display_comp->set_out_fence((int)out_fences[crtc->pipe()]);
+    display_comp->out_fence_ = UniqueFd((int)out_fences[crtc->pipe()]);
   }
 
   return ret;

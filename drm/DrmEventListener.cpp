@@ -39,11 +39,11 @@ DrmEventListener::DrmEventListener(DrmDevice *drm)
 }
 
 int DrmEventListener::Init() {
-  uevent_fd_.Set(
+  uevent_fd_ = UniqueFd(
       socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_KOBJECT_UEVENT));
-  if (uevent_fd_.get() < 0) {
+  if (!uevent_fd_) {
     ALOGE("Failed to open uevent socket: %s", strerror(errno));
-    return uevent_fd_.get();
+    return -errno;
   }
 
   struct sockaddr_nl addr {};
@@ -51,7 +51,7 @@ int DrmEventListener::Init() {
   addr.nl_pid = 0;
   addr.nl_groups = 0xFFFFFFFF;
 
-  int ret = bind(uevent_fd_.get(), (struct sockaddr *)&addr, sizeof(addr));
+  int ret = bind(uevent_fd_.Get(), (struct sockaddr *)&addr, sizeof(addr));
   if (ret) {
     ALOGE("Failed to bind uevent socket: %s", strerror(errno));
     return -errno;
@@ -60,8 +60,8 @@ int DrmEventListener::Init() {
   // NOLINTNEXTLINE(readability-isolate-declaration)
   FD_ZERO(&fds_);
   FD_SET(drm_->fd(), &fds_);
-  FD_SET(uevent_fd_.get(), &fds_);
-  max_fd_ = std::max(drm_->fd(), uevent_fd_.get());
+  FD_SET(uevent_fd_.Get(), &fds_);
+  max_fd_ = std::max(drm_->fd(), uevent_fd_.Get());
 
   return InitWorker();
 }
@@ -96,7 +96,7 @@ void DrmEventListener::UEventHandler() {
     ALOGE("Failed to get monotonic clock on hotplug %d", ret);
 
   while (true) {
-    ret = read(uevent_fd_.get(), &buffer, sizeof(buffer));
+    ret = read(uevent_fd_.Get(), &buffer, sizeof(buffer));
     if (ret == 0)
       return;
 
@@ -139,7 +139,7 @@ void DrmEventListener::Routine() {
     drmHandleEvent(drm_->fd(), &event_context);
   }
 
-  if (FD_ISSET(uevent_fd_.get(), &fds_))
+  if (FD_ISSET(uevent_fd_.Get(), &fds_))
     UEventHandler();
 }
 }  // namespace android

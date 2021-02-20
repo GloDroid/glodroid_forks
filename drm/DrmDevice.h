@@ -28,6 +28,7 @@
 #include "DrmEventListener.h"
 #include "DrmFbImporter.h"
 #include "DrmPlane.h"
+#include "utils/UniqueFd.h"
 
 namespace android {
 
@@ -42,7 +43,7 @@ class DrmDevice {
   std::tuple<int, int> Init(const char *path, int num_displays);
 
   int fd() const {
-    return fd_.get();
+    return fd_.Get();
   }
 
   const std::vector<std::unique_ptr<DrmConnector>> &connectors() const {

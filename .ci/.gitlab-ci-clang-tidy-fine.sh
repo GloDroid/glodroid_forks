@@ -4,6 +4,7 @@
 
 TIDY_FILES=(
 drm/DrmFbImporter.h
+utils/UniqueFd.h
 utils/log.h
 utils/properties.h
 )

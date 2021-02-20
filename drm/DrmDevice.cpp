@@ -122,7 +122,7 @@ DrmDevice::~DrmDevice() {
 
 std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   /* TODO: Use drmOpenControl here instead */
-  fd_.Set(open(path, O_RDWR | O_CLOEXEC));
+  fd_ = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
   if (fd() < 0) {
     ALOGE("Failed to open dri %s: %s", path, strerror(errno));
     return std::make_tuple(-ENODEV, 0);
@@ -585,9 +585,9 @@ int DrmDevice::GetConnectorProperty(const DrmConnector &connector,
 }
 
 std::string DrmDevice::GetName() const {
-  auto *ver = drmGetVersion(fd_.get());
+  auto *ver = drmGetVersion(fd());
   if (!ver) {
-    ALOGW("Failed to get drm version for fd=%d", fd_.get());
+    ALOGW("Failed to get drm version for fd=%d", fd());
     return "generic";
   }
 

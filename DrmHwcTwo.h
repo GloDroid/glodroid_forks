@@ -82,27 +82,6 @@ class DrmHwcTwo : public hwc2_device_t {
       buffer_ = buffer;
     }
 
-    int take_acquire_fence() {
-      return acquire_fence_.Release();
-    }
-    void set_acquire_fence(int acquire_fence) {
-      acquire_fence_.Set(dup(acquire_fence));
-    }
-
-    int release_fence() {
-      return release_fence_.get();
-    }
-    int take_release_fence() {
-      return release_fence_.Release();
-    }
-    void manage_release_fence() {
-      release_fence_.Set(release_fence_raw_);
-      release_fence_raw_ = -1;
-    }
-    OutputFd release_fence_output() {
-      return OutputFd(&release_fence_raw_);
-    }
-
     hwc_rect_t display_frame() {
       return display_frame_;
     }
@@ -138,6 +117,10 @@ class DrmHwcTwo : public hwc2_device_t {
     HWC2::Error SetLayerVisibleRegion(hwc_region_t visible);
     HWC2::Error SetLayerZOrder(uint32_t order);
 
+    UniqueFd acquire_fence_;
+
+    UniqueFd release_fence_;
+
    private:
     // sf_type_ stores the initial type given to us by surfaceflinger,
     // validated_type_ stores the type after running ValidateDisplay
@@ -146,9 +129,6 @@ class DrmHwcTwo : public hwc2_device_t {
 
     HWC2::BlendMode blending_ = HWC2::BlendMode::None;
     buffer_handle_t buffer_ = NULL;
-    UniqueFd acquire_fence_;
-    int release_fence_raw_ = -1;
-    UniqueFd release_fence_;
     hwc_rect_t display_frame_;
     float alpha_ = 1.0f;
     hwc_frect_t source_crop_;
@@ -316,7 +296,7 @@ class DrmHwcTwo : public hwc2_device_t {
     }
 
    private:
-    void AddFenceToPresentFence(int fd);
+    void AddFenceToPresentFence(UniqueFd fd);
 
     constexpr static size_t MATRIX_SIZE = 16;
 

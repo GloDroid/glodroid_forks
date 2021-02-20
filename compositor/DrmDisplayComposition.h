@@ -127,15 +127,9 @@ class DrmDisplayComposition {
     return planner_;
   }
 
-  int take_out_fence() {
-    return out_fence_.Release();
-  }
-
-  void set_out_fence(int out_fence) {
-    out_fence_.Set(out_fence);
-  }
-
   void Dump(std::ostringstream *out) const;
+
+  UniqueFd out_fence_;
 
  private:
   bool validate_composition_type(DrmCompositionType desired);
@@ -146,8 +140,6 @@ class DrmDisplayComposition {
   DrmCompositionType type_ = DRM_COMPOSITION_TYPE_EMPTY;
   uint32_t dpms_mode_ = DRM_MODE_DPMS_ON;
   DrmMode display_mode_;
-
-  UniqueFd out_fence_ = -1;
 
   bool geometry_changed_ = true;
   std::vector<DrmHwcLayer> layers_;
