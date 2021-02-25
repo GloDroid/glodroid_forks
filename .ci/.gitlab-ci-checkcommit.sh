@@ -50,9 +50,9 @@ git log --pretty='%h' FETCH_HEAD..HEAD | while read h; do
 		exit 1
 	fi
 
-	git show "$h" -- | clang-format-diff-11 -p 1 -style=file > format-fixup.patch
-	if [ -s  format-fixup.patch ]; then
-		cat format-fixup.patch >&2
+	git show "$h" -- | clang-format-diff-11 -p 1 -style=file > /tmp/format-fixup.patch
+	if [ -s  /tmp/format-fixup.patch ]; then
+		cat /tmp/format-fixup.patch >&2
 		exit 1
 	fi
 done

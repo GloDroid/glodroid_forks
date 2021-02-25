@@ -19,7 +19,6 @@
 #include "DrmConnector.h"
 
 #include <errno.h>
-#include <log/log.h>
 #include <stdint.h>
 #include <xf86drmMode.h>
 
@@ -27,6 +26,7 @@
 #include <sstream>
 
 #include "DrmDevice.h"
+#include "utils/log.h"
 
 namespace android {
 

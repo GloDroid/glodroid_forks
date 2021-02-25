@@ -19,12 +19,12 @@
 #include "ResourceManager.h"
 
 #include <cutils/properties.h>
-#include <log/log.h>
 #include <sys/stat.h>
 
 #include <sstream>
 
 #include "bufferinfo/BufferInfoGetter.h"
+#include "utils/log.h"
 
 namespace android {
 

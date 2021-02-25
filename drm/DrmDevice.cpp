@@ -18,10 +18,8 @@
 
 #include "DrmDevice.h"
 
-#include <cutils/properties.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <log/log.h>
 #include <stdint.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -31,6 +29,9 @@
 #include <cinttypes>
 #include <sstream>
 #include <string>
+
+#include "utils/log.h"
+#include "utils/properties.h"
 
 static void trim_left(std::string &str) {
   str.erase(std::begin(str),

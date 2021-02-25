@@ -16,6 +16,8 @@
 
 #include "DrmMode.h"
 
+#include <cstring>
+
 #include "DrmDevice.h"
 
 namespace android {

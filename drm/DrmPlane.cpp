@@ -17,15 +17,15 @@
 #define LOG_TAG "hwc-drm-plane"
 
 #include "DrmPlane.h"
-#include "bufferinfo/BufferInfoGetter.h"
 
 #include <errno.h>
-#include <log/log.h>
 #include <stdint.h>
 
 #include <cinttypes>
 
 #include "DrmDevice.h"
+#include "bufferinfo/BufferInfoGetter.h"
+#include "utils/log.h"
 
 namespace android {
 

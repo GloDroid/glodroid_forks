@@ -17,9 +17,10 @@
 #include "DrmProperty.h"
 
 #include <errno.h>
-#include <stdint.h>
 #include <xf86drmMode.h>
 
+#include <cstdint>
+#include <cstring>
 #include <string>
 
 #include "DrmDevice.h"

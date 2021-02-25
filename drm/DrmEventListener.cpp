@@ -20,14 +20,17 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <hardware/hardware.h>
-#include <hardware/hwcomposer.h>
 #include <linux/netlink.h>
-#include <log/log.h>
 #include <sys/socket.h>
 #include <xf86drm.h>
 
+#include <cstring>
+
 #include "DrmDevice.h"
+#include "utils/log.h"
+
+/* Originally defined in system/core/libsystem/include/system/graphics.h */
+#define HAL_PRIORITY_URGENT_DISPLAY (-8)
 
 namespace android {
 

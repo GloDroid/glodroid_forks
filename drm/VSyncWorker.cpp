@@ -18,11 +18,12 @@
 
 #include "VSyncWorker.h"
 
-#include <log/log.h>
 #include <stdlib.h>
 #include <time.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
+
+#include "utils/log.h"
 
 namespace android {
 
