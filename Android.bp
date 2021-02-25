@@ -160,7 +160,16 @@ cc_library_shared {
     whole_static_libs: ["libc++_static"],
     stl: "none",
 
+    pgo: {
+        sampling: true,
+    },
+
     target: {
+        android: {
+            pgo: {
+                profile_file: "libc++/libc++.profdata",
+            },
+        },
         darwin: {
             unexported_symbols_list: "lib/libc++unexp.exp",
             force_symbols_not_weak_list: "lib/notweak.exp",
