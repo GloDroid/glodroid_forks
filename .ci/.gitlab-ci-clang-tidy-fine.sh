@@ -3,6 +3,7 @@
 . ./.ci/.common.sh
 
 TIDY_FILES=(
+utils/gralloc.h
 utils/log.h
 utils/properties.h
 )

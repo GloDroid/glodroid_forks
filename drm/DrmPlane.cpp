@@ -18,9 +18,7 @@
 
 #include "DrmPlane.h"
 
-#include <errno.h>
-#include <stdint.h>
-
+#include <algorithm>
 #include <cerrno>
 #include <cinttypes>
 #include <cstdint>
