@@ -3608,19 +3608,15 @@ void rtw_cfg80211_indicate_sta_assoc(_adapter *padapter, u8 *pmgmt_frame, uint f
 
 #if defined(RTW_USE_CFG80211_STA_EVENT) || defined(COMPAT_KERNEL_RELEASE)
 	{
-		struct station_info sinfo;
+		struct station_info sinfo = {
+			.filled = STATION_INFO_ASSOC_REQ_IES,
+		};
 		u8 ie_offset;
 		if (GetFrameSubType(pmgmt_frame) == WIFI_ASSOCREQ)
 			ie_offset = _ASOCREQ_IE_OFFSET_;
 		else // WIFI_REASSOCREQ
 			ie_offset = _REASOCREQ_IE_OFFSET_;
-	
-		sinfo.filled = 0;
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0))
-		sinfo.pertid = 0;
-		#endif
-// cf commit 319090bf6c75e3ad42a8c
-//		sinfo.filled = STATION_INFO_ASSOC_REQ_IES;
+
 		sinfo.assoc_req_ies = pmgmt_frame + WLAN_HDR_A3_LEN + ie_offset;
 		sinfo.assoc_req_ies_len = frame_len - WLAN_HDR_A3_LEN - ie_offset;
 		cfg80211_new_sta(ndev, GetAddr2Ptr(pmgmt_frame), &sinfo, GFP_ATOMIC);
