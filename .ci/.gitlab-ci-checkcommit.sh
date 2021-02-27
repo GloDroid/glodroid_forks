@@ -55,4 +55,10 @@ git log --pretty='%h' FETCH_HEAD..HEAD | while read h; do
 		cat /tmp/format-fixup.patch >&2
 		exit 1
 	fi
+
+	find -name "*.bp" -exec bpfmt -d -s {} \; > /tmp/bpfmt.patch
+	if [ -s  /tmp/bpfmt.patch ]; then
+		cat /tmp/bpfmt.patch >&2
+		exit 1
+	fi
 done
