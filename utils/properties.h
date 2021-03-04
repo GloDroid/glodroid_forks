@@ -14,6 +14,7 @@
 // NOLINTNEXTLINE(readability-identifier-naming)
 constexpr int PROPERTY_VALUE_MAX = 92;
 
+// NOLINTNEXTLINE(readability-identifier-naming)
 auto inline property_get(const char *name, char *value,
                          const char *default_value) -> int {
   char *prop = std::getenv(name);

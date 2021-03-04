@@ -28,6 +28,7 @@ TIDY_COARSE_CHECKS+="-readability-braces-around-statements,"
 TIDY_COARSE_CHECKS+="-readability-function-cognitive-complexity,"
 TIDY_COARSE_CHECKS+="-readability-convert-member-functions-to-static,"
 TIDY_COARSE_CHECKS+="-readability-implicit-bool-conversion,"
+TIDY_COARSE_CHECKS+="-readability-identifier-naming,"
 TIDY_COARSE_CHECKS+="-readability-magic-numbers,"
 TIDY_COARSE_CHECKS+="-readability-use-anyofallof"
 
