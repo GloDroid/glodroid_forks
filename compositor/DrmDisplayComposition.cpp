@@ -18,7 +18,6 @@
 
 #include "DrmDisplayComposition.h"
 
-#include <log/log.h>
 #include <sync/sync.h>
 #include <xf86drmMode.h>
 
@@ -29,6 +28,7 @@
 #include "DrmDisplayCompositor.h"
 #include "Planner.h"
 #include "drm/DrmDevice.h"
+#include "utils/log.h"
 
 namespace android {
 

@@ -35,5 +35,5 @@ set -xe
 
 for source in "${TIDY_FILES[@]}"
 do
-    $CLANG_TIDY $source --checks=$TIDY_COARSE_CHECKS -- -x c++ $INCLUDE_DIRS
+    $CLANG_TIDY $source --checks=$TIDY_COARSE_CHECKS -- -x c++ $INCLUDE_DIRS $CXXARGS
 done

@@ -18,10 +18,10 @@
 
 #include "BufferInfoImagination.h"
 
-#include <log/log.h>
 #include <xf86drm.h>
 
 #include "img_gralloc1_public.h"
+#include "utils/log.h"
 
 namespace android {
 

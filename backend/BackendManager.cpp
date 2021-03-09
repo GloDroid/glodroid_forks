@@ -18,11 +18,12 @@
 
 #include "BackendManager.h"
 
-#include <cutils/properties.h>
-#include <log/log.h>
+#include "utils/log.h"
+#include "utils/properties.h"
 
 namespace android {
 
+// NOLINTNEXTLINE(cert-err58-cpp)
 const std::vector<std::string> BackendManager::kClientDevices = {
     "kirin",
     "mediatek-drm",

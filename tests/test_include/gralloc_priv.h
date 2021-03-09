@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <cutils/native_handle.h>
-#include <utils/Log.h>
+#include "utils/log.h"
 
 #if GRALLOC_USE_GRALLOC1_API
 #include <hardware/gralloc1.h>

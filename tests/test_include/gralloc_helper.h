@@ -21,7 +21,8 @@
 #define GRALLOC_HELPER_H_
 
 #include <sys/mman.h>
-#include <android/log.h>
+#include <sys/user.h>
+#include "utils/log.h"
 
 #ifndef AWAR
 #define AWAR(fmt, args...) \

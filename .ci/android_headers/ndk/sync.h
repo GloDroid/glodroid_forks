@@ -67,7 +67,7 @@ __BEGIN_DECLS
  *
  * Available since API level 26.
  */
-int32_t sync_merge(const char* name, int32_t fd1, int32_t fd2) __INTRODUCED_IN(26);
+int32_t sync_merge(const char* name, int32_t fd1, int32_t fd2) /* __INTRODUCED_IN(26) */;
 
 /**
  * Retrieve detailed information about a sync file and its fences.
@@ -76,7 +76,7 @@ int32_t sync_merge(const char* name, int32_t fd1, int32_t fd2) __INTRODUCED_IN(2
  *
  * Available since API level 26.
  */
-struct sync_file_info* sync_file_info(int32_t fd) __INTRODUCED_IN(26);
+struct sync_file_info* sync_file_info(int32_t fd) /* __INTRODUCED_IN(26) */;
 
 /**
  * Get the array of fence infos from the sync file's info.
@@ -100,7 +100,7 @@ static inline struct sync_fence_info* sync_get_fence_info(const struct sync_file
  *
  * Available since API level 26.
  */
-void sync_file_info_free(struct sync_file_info* info) __INTRODUCED_IN(26);
+void sync_file_info_free(struct sync_file_info* info) /* __INTRODUCED_IN(26) */;
 
 #endif /* __ANDROID_API__ >= 26 */
 

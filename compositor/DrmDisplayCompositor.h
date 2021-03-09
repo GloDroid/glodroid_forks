@@ -21,6 +21,7 @@
 #include <hardware/hwcomposer.h>
 #include <pthread.h>
 
+#include <functional>
 #include <memory>
 #include <sstream>
 #include <tuple>

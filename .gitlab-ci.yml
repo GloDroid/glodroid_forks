@@ -2,7 +2,7 @@ image: ubuntu:20.10
 
 before_script:
   - apt-get --quiet update --yes >/dev/null
-  - apt-get --quiet install --yes clang-11 clang-tidy-11 clang-format-11 git libdrm-dev blueprint-tools >/dev/null
+  - apt-get --quiet install --yes clang-11 clang-tidy-11 clang-format-11 git libdrm-dev blueprint-tools libgtest-dev >/dev/null
 
 stages:
   - build

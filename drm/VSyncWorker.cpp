@@ -22,6 +22,7 @@
 #include <xf86drmMode.h>
 
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 
 #include "utils/log.h"

@@ -18,14 +18,15 @@
 
 #include "DrmGenericImporter.h"
 
-#include <cutils/properties.h>
 #include <gralloc_handle.h>
 #include <hardware/gralloc.h>
-#include <log/log.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
 #include <cinttypes>
+
+#include "utils/log.h"
+#include "utils/properties.h"
 
 namespace android {
 

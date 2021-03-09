@@ -18,9 +18,10 @@
 
 #include "Planner.h"
 
-#include <log/log.h>
+#include <algorithm>
 
 #include "drm/DrmDevice.h"
+#include "utils/log.h"
 
 namespace android {
 

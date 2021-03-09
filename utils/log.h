@@ -7,6 +7,9 @@
 
 #else
 
+#include <cinttypes>
+#include <cstdio>
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ALOGE(args...) printf("ERR: " args)
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

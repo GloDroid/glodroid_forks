@@ -29,7 +29,9 @@
 #include <cutils/native_handle.h>
 
 #include <hardware/hardware.h>
+#if 0 /* Header below is not used by drm_hwcomposer */
 #include <hardware/fb.h>
+#endif
 
 __BEGIN_DECLS
 

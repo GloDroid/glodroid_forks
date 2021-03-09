@@ -22,6 +22,7 @@
 #include <hardware/hwcomposer2.h>
 #include <stdint.h>
 
+#include <atomic>
 #include <map>
 
 #include "DrmDevice.h"

@@ -20,7 +20,6 @@
 #include "DrmDisplayCompositor.h"
 
 #include <drm/drm_mode.h>
-#include <log/log.h>
 #include <pthread.h>
 #include <sched.h>
 #include <sync/sync.h>
@@ -36,6 +35,7 @@
 #include "drm/DrmDevice.h"
 #include "drm/DrmPlane.h"
 #include "utils/autolock.h"
+#include "utils/log.h"
 
 namespace android {
 

@@ -16,6 +16,8 @@
 
 #include "Backend.h"
 
+#include <climits>
+
 #include "BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
 
@@ -117,7 +119,7 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   int client_start = -1;
   size_t client_size = 0;
 
-  for (auto &[z_order, layer] : z_map) {
+  for (const auto &[z_order, layer] : z_map) {
     if (IsClientLayer(display, layer)) {
       if (client_start < 0)
         client_start = (int)z_order;
@@ -137,7 +139,9 @@ bool Backend::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
           display->resource_manager()->ForcedScalingWithGpu());
 }
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+// clang-format off
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables, cert-err58-cpp)
 REGISTER_BACKEND("generic", Backend);
+// clang-format on
 
 }  // namespace android

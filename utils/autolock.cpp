@@ -19,10 +19,11 @@
 
 #include "autolock.h"
 
-#include <log/log.h>
 #include <pthread.h>
 
 #include <cerrno>
+
+#include "utils/log.h"
 
 namespace android {
 

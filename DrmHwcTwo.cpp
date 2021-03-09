@@ -19,18 +19,20 @@
 
 #include "DrmHwcTwo.h"
 
-#include <cutils/properties.h>
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer2.h>
-#include <log/log.h>
 #include <sync/sync.h>
 
 #include <cinttypes>
+#include <iostream>
+#include <sstream>
 #include <string>
 
 #include "backend/BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "compositor/DrmDisplayComposition.h"
+#include "utils/log.h"
+#include "utils/properties.h"
 
 namespace android {
 
@@ -59,8 +61,8 @@ HWC2::Error DrmHwcTwo::CreateDisplay(hwc2_display_t displ,
     ALOGE("Failed to get crtc for display %d", static_cast<int>(displ));
     return HWC2::Error::BadDisplay;
   }
-  std::vector<DrmPlane *> display_planes;
-  for (auto &plane : drm->planes()) {
+  auto display_planes = std::vector<DrmPlane *>();
+  for (const auto &plane : drm->planes()) {
     if (plane->GetCrtcSupported(*crtc))
       display_planes.push_back(plane.get());
   }
@@ -84,8 +86,8 @@ HWC2::Error DrmHwcTwo::Init() {
     }
   }
 
-  auto &drm_devices = resource_manager_.getDrmDevices();
-  for (auto &device : drm_devices) {
+  const auto &drm_devices = resource_manager_.getDrmDevices();
+  for (const auto &device : drm_devices) {
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
     device->RegisterHotplugHandler(new DrmHotplugHandler(this, device.get()));
   }
@@ -120,35 +122,33 @@ std::string DrmHwcTwo::HwcDisplay::DumpDelta(
     return "No stats yet";
   double ratio = 1.0 - double(delta.gpu_pixops_) / double(delta.total_pixops_);
 
-  return (std::stringstream()
-          << " Total frames count: " << delta.total_frames_ << "\n"
-          << " Failed to test commit frames: " << delta.failed_kms_validate_
-          << "\n"
-          << " Failed to commit frames: " << delta.failed_kms_present_ << "\n"
-          << ((delta.failed_kms_present_ > 0)
-                  ? " !!! Internal failure, FIX it please\n"
-                  : "")
-          << " Flattened frames: " << delta.frames_flattened_ << "\n"
-          << " Pixel operations (free units)"
-          << " : [TOTAL: " << delta.total_pixops_
-          << " / GPU: " << delta.gpu_pixops_ << "]\n"
-          << " Composition efficiency: " << ratio)
-      .str();
+  std::stringstream ss;
+  ss << " Total frames count: " << delta.total_frames_ << "\n"
+     << " Failed to test commit frames: " << delta.failed_kms_validate_ << "\n"
+     << " Failed to commit frames: " << delta.failed_kms_present_ << "\n"
+     << ((delta.failed_kms_present_ > 0)
+             ? " !!! Internal failure, FIX it please\n"
+             : "")
+     << " Flattened frames: " << delta.frames_flattened_ << "\n"
+     << " Pixel operations (free units)"
+     << " : [TOTAL: " << delta.total_pixops_ << " / GPU: " << delta.gpu_pixops_
+     << "]\n"
+     << " Composition efficiency: " << ratio;
+
+  return ss.str();
 }
 
 std::string DrmHwcTwo::HwcDisplay::Dump() {
-  auto out = (std::stringstream()
-              << "- Display on: " << connector_->name() << "\n"
-              << "  Flattening state: " << compositor_.GetFlatteningState()
-              << "\n"
-              << "Statistics since system boot:\n"
-              << DumpDelta(total_stats_) << "\n\n"
-              << "Statistics since last dumpsys request:\n"
-              << DumpDelta(total_stats_.minus(prev_stats_)) << "\n\n")
-                 .str();
+  std::stringstream ss;
+  ss << "- Display on: " << connector_->name() << "\n"
+     << "  Flattening state: " << compositor_.GetFlatteningState() << "\n"
+     << "Statistics since system boot:\n"
+     << DumpDelta(total_stats_) << "\n\n"
+     << "Statistics since last dumpsys request:\n"
+     << DumpDelta(total_stats_.minus(prev_stats_)) << "\n\n";
 
   memcpy(&prev_stats_, &total_stats_, sizeof(Stats));
-  return out;
+  return ss.str();
 }
 
 void DrmHwcTwo::Dump(uint32_t *outSize, char *outBuffer) {
@@ -185,8 +185,8 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
   switch (static_cast<HWC2::Callback>(descriptor)) {
     case HWC2::Callback::Hotplug: {
       SetHotplugCallback(data, function);
-      auto &drm_devices = resource_manager_.getDrmDevices();
-      for (auto &device : drm_devices)
+      const auto &drm_devices = resource_manager_.getDrmDevices();
+      for (const auto &device : drm_devices)
         HandleInitialHotplugState(device.get());
       break;
     }
@@ -1187,7 +1187,7 @@ void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {
 }
 
 void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {
-  for (auto &conn : drmDevice->connectors()) {
+  for (const auto &conn : drmDevice->connectors()) {
     if (conn->state() != DRM_MODE_CONNECTED)
       continue;
     HandleDisplayHotplug(conn->display(), conn->state());
@@ -1195,7 +1195,7 @@ void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {
 }
 
 void DrmHwcTwo::DrmHotplugHandler::HandleEvent(uint64_t timestamp_us) {
-  for (auto &conn : drm_->connectors()) {
+  for (const auto &conn : drm_->connectors()) {
     drmModeConnection old_state = conn->state();
     drmModeConnection cur_state = conn->UpdateModes()
                                       ? DRM_MODE_UNKNOWNCONNECTION

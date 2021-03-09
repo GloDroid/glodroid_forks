@@ -30,7 +30,9 @@
  */
 
 #include <hardware/gralloc.h>
+#if 0 /* Header below is not used by drm_hwcomposer */
 #include <hardware/memtrack.h>
+#endif
 
 #define ALIGN(x,a)	(((x) + (a) - 1L) & ~((a) - 1L))
 #define HW_ALIGN	16
@@ -161,6 +163,8 @@ typedef struct IMG_buffer_format_public_t
 }
 IMG_buffer_format_public_t;
 
+#if 0 /* Not used by drm_hwcomposer but require additional dependencies */
+
 typedef struct
 {
 	/* Base memtrack record, copied to caller */
@@ -206,6 +210,8 @@ typedef struct IMG_gralloc_module_public_t
 				 buffer_handle_t dest, int eDestRotation);
 }
 IMG_gralloc_module_public_t;
+
+#endif
 
 /**
  * pixel format definitions

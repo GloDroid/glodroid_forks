@@ -21,6 +21,7 @@
 #include <hardware/hwcomposer.h>
 
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "compositor/DrmDisplayComposition.h"
@@ -99,7 +100,7 @@ class Planner {
       std::vector<DrmPlane *> *overlay_planes);
 
   template <typename T, typename... A>
-  void AddStage(A &&... args) {
+  void AddStage(A &&...args) {
     stages_.emplace_back(
         std::unique_ptr<PlanStage>(new T(std::forward(args)...)));
   }

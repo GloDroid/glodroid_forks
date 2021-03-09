@@ -18,11 +18,11 @@
 
 #include "BufferInfoMinigbm.h"
 
-#include <log/log.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
 #include "cros_gralloc_handle.h"
+#include "utils/log.h"
 
 #define DRM_FORMAT_YVU420_ANDROID fourcc_code('9', '9', '9', '7')
 

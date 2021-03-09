@@ -21,12 +21,13 @@
 #include "BufferInfoMapperMetadata.h"
 
 #include <drm/drm_fourcc.h>
-#include <log/log.h>
 #include <ui/GraphicBufferMapper.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
 #include <cinttypes>
+
+#include "utils/log.h"
 
 namespace android {
 

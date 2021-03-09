@@ -18,10 +18,10 @@
 #define ANDROID_BUFFERINFOGETTER_H_
 
 #include <drm/drm_fourcc.h>
+#include <hardware/gralloc.h>
 
 #include "drm/DrmDevice.h"
 #include "drmhwcgralloc.h"
-#include "utils/gralloc.h"
 
 #ifndef DRM_FORMAT_INVALID
 #define DRM_FORMAT_INVALID 0

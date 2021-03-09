@@ -18,13 +18,14 @@
 
 #include "ResourceManager.h"
 
-#include <cutils/properties.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 
 #include <sstream>
 
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
+#include "utils/properties.h"
 
 namespace android {
 
@@ -115,7 +116,7 @@ bool ResourceManager::IsKMSDev(const char *path) {
   if (fd < 0)
     return false;
 
-  auto res = drmModeGetResources(fd);
+  auto *res = drmModeGetResources(fd);
   if (!res) {
     close(fd);
     return false;
