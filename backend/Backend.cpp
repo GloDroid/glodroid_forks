@@ -60,18 +60,19 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
   } else {
     std::tie(client_start, client_size) = GetClientLayers(display, z_map);
 
-    size_t extra_client = (z_map.size() - client_size) - avail_planes;
+    int extra_client = int(z_map.size() - client_size) - int(avail_planes);
     if (extra_client > 0) {
       int start = 0;
       size_t steps = 0;
       if (client_size != 0) {
-        size_t prepend = std::min((size_t)client_start, extra_client);
-        size_t append = std::min(z_map.size() - (client_start + client_size),
-                                 extra_client);
+        int prepend = std::min(client_start, extra_client);
+        int append = std::min(int(z_map.size()) -
+                                  int(client_start + client_size),
+                              extra_client);
         start = client_start - (int)prepend;
         client_size += extra_client;
         steps = 1 + std::min(std::min(append, prepend),
-                             z_map.size() - (start + client_size));
+                             int(z_map.size()) - int(start + client_size));
       } else {
         client_size = extra_client;
         steps = 1 + z_map.size() - extra_client;
