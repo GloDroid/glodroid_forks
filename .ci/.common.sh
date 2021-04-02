@@ -1,4 +1,4 @@
-INCLUDE_DIRS="-I. -I../libdrm/include/drm -Iinclude -I/usr/include/libdrm"
+INCLUDE_DIRS="-I. -I../libdrm/include/drm -Iinclude -I/usr/include/libdrm -I./.ci/android_headers"
 
 CLANG="clang++-11"
 CLANG_TIDY="clang-tidy-11"
