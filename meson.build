@@ -1279,7 +1279,7 @@ foreach f : ['strtof', 'mkostemp', 'timespec_get', 'memfd_create', 'random_r', '
   endif
 endforeach
 
-if cc.has_header_symbol('errno.h', 'program_invocation_name',
+if not with_platform_android and cc.has_header_symbol('errno.h', 'program_invocation_name',
                         args : '-D_GNU_SOURCE')
    pre_args += '-DHAVE_PROGRAM_INVOCATION_NAME'
 elif with_tools.contains('intel')
@@ -1413,7 +1413,7 @@ if dep_thread.found() and host_machine.system() != 'windows'
       'pthread_setaffinity_np',
       dependencies : dep_thread,
       prefix : '#include <pthread.h>',
-      args : '-D_GNU_SOURCE')
+      args : '-D_GNU_SOURCE') and not with_platform_android
     pre_args += '-DHAVE_PTHREAD_SETAFFINITY'
   endif
 endif
