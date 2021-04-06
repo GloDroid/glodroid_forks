@@ -859,9 +859,6 @@ else
   pre_args += '-DEGL_NO_X11'
   gl_pkgconfig_c_flags += '-DEGL_NO_X11'
 endif
-if with_gbm
-  pre_args += '-DHAVE_DRM_PLATFORM'
-endif
 
 with_android_stub = get_option('android-stub')
 if with_android_stub and not with_platform_android
