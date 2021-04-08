@@ -528,6 +528,10 @@ static const u32 sun8i_vi_layer_formats[] = {
 	DRM_FORMAT_YVU411,
 	DRM_FORMAT_YVU420,
 	DRM_FORMAT_YVU422,
+
+	DRM_FORMAT_ABGR1555,
+	DRM_FORMAT_ABGR4444,
+	DRM_FORMAT_ABGR8888,
 };
 
 static const u32 sun8i_vi_layer_de3_formats[] = {
