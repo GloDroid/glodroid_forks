@@ -1350,8 +1350,6 @@ static int anx7688_eeprom_write(struct anx7688 *anx7688, unsigned addr,
                 return ret;
         }
 
-        dev_info(anx7688->dev, "eeprom wr %x %*ph\n", addr, 16, buf);
-
         // initiate write
         ret = anx7688_reg_write(anx7688, 0xe2, 0x01);
         if (ret < 0)
