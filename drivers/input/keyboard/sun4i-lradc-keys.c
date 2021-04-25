@@ -288,7 +288,7 @@ static int sun4i_lradc_probe(struct platform_device *pdev)
 	if (error)
 		return error;
 
-	device_init_wakeup(dev, true);
+	device_init_wakeup(dev, of_property_read_bool(dev->of_node, "wakeup-source"));
 
 	error = dev_pm_set_wake_irq(dev, irq);
 	if (error) {
