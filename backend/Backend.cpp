@@ -132,19 +132,20 @@ std::tuple<int, int> Backend::GetExtraClientRange(
   if (avail_planes < display->layers().size())
     avail_planes--;
 
-  size_t extra_client = (layers.size() - client_size) - avail_planes;
+  int extra_client = int(layers.size() - client_size) - int(avail_planes);
 
   if (extra_client > 0) {
     int start = 0;
     size_t steps = 0;
     if (client_size != 0) {
-      size_t prepend = std::min((size_t)client_start, extra_client);
-      size_t append = std::min(layers.size() - (client_start + client_size),
-                               extra_client);
+      int prepend = std::min(client_start, extra_client);
+      int append = std::min(int(layers.size()) -
+                                int(client_start + client_size),
+                            extra_client);
       start = client_start - (int)prepend;
       client_size += extra_client;
       steps = 1 + std::min(std::min(append, prepend),
-                           int(layers.size()) - (start + client_size));
+                           int(layers.size()) - int(start + client_size));
     } else {
       client_size = extra_client;
       steps = 1 + layers.size() - extra_client;
