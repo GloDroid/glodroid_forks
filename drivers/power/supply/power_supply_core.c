@@ -1143,7 +1143,7 @@ __power_supply_register(struct device *parent,
 
 	rc = power_supply_check_supplies(psy);
 	if (rc) {
-		dev_info(dev, "Not all required supplies found, defer probe\n");
+		//dev_info(dev, "Not all required supplies found, defer probe\n");
 		goto check_supplies_failed;
 	}
 
