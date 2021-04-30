@@ -228,7 +228,7 @@ static int sun4i_lradc_probe(struct platform_device *pdev)
 {
 	struct sun4i_lradc_data *lradc;
 	struct device *dev = &pdev->dev;
-	int i, error, irq;
+	int error, i, irq;
 
 	lradc = devm_kzalloc(dev, sizeof(struct sun4i_lradc_data), GFP_KERNEL);
 	if (!lradc)
@@ -274,10 +274,8 @@ static int sun4i_lradc_probe(struct platform_device *pdev)
 		return PTR_ERR(lradc->base);
 
 	irq = platform_get_irq(pdev, 0);
-	if (irq < 0) {
-		dev_err(&pdev->dev, "Failed to get IRQ\n");
+	if (irq < 0)
 		return irq;
-	}
 
 	error = devm_request_irq(dev, irq, sun4i_lradc_irq, 0,
 				 "sun4i-a10-lradc-keys", lradc);
@@ -288,12 +286,12 @@ static int sun4i_lradc_probe(struct platform_device *pdev)
 	if (error)
 		return error;
 
-	device_init_wakeup(dev, of_property_read_bool(dev->of_node, "wakeup-source"));
+	if (device_property_read_bool(dev, "wakeup-source")) {
+		device_set_wakeup_capable(dev, true);
 
-	error = dev_pm_set_wake_irq(dev, irq);
-	if (error) {
-		dev_err(dev, "Could not set wake IRQ\n");
-		return error;
+		error = dev_pm_set_wake_irq(dev, irq);
+		if (error)
+			dev_warn(dev, "Failed to set wake IRQ\n");
 	}
 
 	return 0;
