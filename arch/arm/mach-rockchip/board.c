@@ -153,20 +153,6 @@ int board_usb_init(int index, enum usb_init_type init)
 
 #endif /* CONFIG_USB_GADGET */
 
-#if CONFIG_IS_ENABLED(FASTBOOT)
-int fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
-{
-	if (reason != FASTBOOT_REBOOT_REASON_BOOTLOADER)
-		return -ENOTSUPP;
-
-	printf("Setting reboot to fastboot flag ...\n");
-	/* Set boot mode to fastboot */
-	writel(BOOT_FASTBOOT, CONFIG_ROCKCHIP_BOOT_MODE_REG);
-
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_MISC_INIT_R
 __weak int misc_init_r(void)
 {
