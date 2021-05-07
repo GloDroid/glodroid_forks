@@ -205,7 +205,7 @@ struct anx7688 {
         bool vbus_on, vconn_on;
 	bool pd_capable;
 	int pd_current_limit; // mA
-	struct timer_list nopd_timer;
+	ktime_t current_update_deadline;
 
         struct typec_port *port;
         struct typec_partner *partner;
@@ -540,10 +540,9 @@ fw_loaded:
 		goto err_vconoff;
 	}
 
-	// after this timer fires we'll check if device is pd_capable and
+	// after this deadline passes we'll check if device is pd_capable and
 	// set up the current limit accordingly
-	mod_timer(&anx7688->nopd_timer, jiffies + msecs_to_jiffies(3000));
-	clear_bit(ANX7688_F_CURRENT_UPDATE, anx7688->flags);
+	anx7688->current_update_deadline = ktime_add_ms(ktime_get(), 3000);
 
 	set_bit(ANX7688_F_CONNECTED, anx7688->flags);
         return 0;
@@ -566,7 +565,7 @@ static void anx7688_disconnect(struct anx7688 *anx7688)
 
         dev_dbg(dev, "cable removed\n");
 
-	del_timer_sync(&anx7688->nopd_timer);
+	anx7688->current_update_deadline = 0;
 
 	if (anx7688->vconn_on) {
 		regulator_disable(anx7688->supplies[ANX7688_VCONN_INDEX].consumer);
@@ -651,14 +650,6 @@ static irqreturn_t anx7688_irq_plug_handler(int irq, void *data)
         schedule_delayed_work(&anx7688->work, msecs_to_jiffies(10));
 
         return IRQ_HANDLED;
-}
-
-static void anx7688_nopd_timer_fn(struct timer_list *t)
-{
-	struct anx7688 *anx7688 = from_timer(anx7688, t, nopd_timer);
-
-	set_bit(ANX7688_F_CURRENT_UPDATE, anx7688->flags);
-	schedule_delayed_work(&anx7688->work, 0);
 }
 
 enum {
@@ -785,7 +776,7 @@ static int anx7688_handle_pd_message(struct anx7688* anx7688,
 			rdo_max_v * 100, rdo_max_p * 500, anx7688->pd_current_limit);
 
 		// update current limit sooner, now that we have PD negotiation result
-		mod_timer(&anx7688->nopd_timer, jiffies + msecs_to_jiffies(500));
+		anx7688->current_update_deadline = ktime_add_ms(ktime_get(), 500);
 
 		//TODO: we should go through PDOs and decide which one
 		//to request, build a RDO with a proper index of the
@@ -909,7 +900,7 @@ static int anx7688_handle_pd_message(struct anx7688* anx7688,
 				dev_err(anx7688->dev, "failed to offline vbus_in\n");
 
 			// wait till the dust settles
-			mod_timer(&anx7688->nopd_timer, jiffies + msecs_to_jiffies(3000));
+			anx7688->current_update_deadline = ktime_add_ms(ktime_get(), 3000);
 		} else {
 			dev_dbg(anx7688->dev, "received HARD_RST, idiot firmware is bored\n");
 		}
@@ -1892,8 +1883,11 @@ static void anx7688_work(struct work_struct *work)
 		 */
 		anx7688_update_status(anx7688);
 
-		if (test_and_clear_bit(ANX7688_F_CURRENT_UPDATE, anx7688->flags))
+		if (anx7688->current_update_deadline &&
+			ktime_after(ktime_get(), anx7688->current_update_deadline)) {
+			anx7688->current_update_deadline = 0;
 			anx7688_handle_current_update(anx7688);
+		}
 	}
 
 	mutex_unlock(&anx7688->lock);
@@ -2089,8 +2083,6 @@ static int anx7688_i2c_probe(struct i2c_client *client,
 
         schedule_delayed_work(&anx7688->work, msecs_to_jiffies(10));
 
-	timer_setup(&anx7688->nopd_timer, anx7688_nopd_timer_fn, 0);
-
 	timer_setup(&anx7688->work_timer, anx7688_cabledet_timer_fn, 0);
 	mod_timer(&anx7688->work_timer, jiffies + msecs_to_jiffies(1000));
 
@@ -2116,7 +2108,6 @@ static int anx7688_i2c_remove(struct i2c_client *client)
 	power_supply_unreg_notifier(&anx7688->vbus_in_nb);
 
 	del_timer_sync(&anx7688->work_timer);
-	del_timer_sync(&anx7688->nopd_timer);
 
         cancel_delayed_work_sync(&anx7688->work);
 
@@ -2137,26 +2128,49 @@ static int anx7688_i2c_remove(struct i2c_client *client)
         return 0;
 }
 
+static int __maybe_unused anx7688_suspend(struct device *dev)
+{
+	struct anx7688 *anx7688 = i2c_get_clientdata(to_i2c_client(dev));
+
+	del_timer_sync(&anx7688->work_timer);
+	cancel_delayed_work_sync(&anx7688->work);
+
+	return 0;
+}
+
+static int __maybe_unused anx7688_resume(struct device *dev)
+{
+	struct anx7688 *anx7688 = i2c_get_clientdata(to_i2c_client(dev));
+
+	// check status right after resume, since it could have changed during
+	// sleep
+	schedule_delayed_work(&anx7688->work, msecs_to_jiffies(50));
+	mod_timer(&anx7688->work_timer, jiffies + msecs_to_jiffies(1000));
+
+	return 0;
+}
+
+static const struct dev_pm_ops anx7688_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(anx7688_suspend, anx7688_resume)
+};
+
 static const struct i2c_device_id anx7688_ids[] = {
         { "anx7688", 0 },
         { }
 };
 MODULE_DEVICE_TABLE(i2c, anx7688_ids);
 
-#ifdef CONFIG_OF
 static struct of_device_id anx7688_of_match_table[] = {
         { .compatible = "analogix,anx7688" },
         { },
 };
 MODULE_DEVICE_TABLE(of, anx7688_of_match_table);
-#endif
 
 static struct i2c_driver anx7688_driver = {
         .driver = {
                 .name = "anx7688",
-#ifdef CONFIG_OF
                 .of_match_table = anx7688_of_match_table,
-#endif
+		.pm = &anx7688_pm_ops,
         },
         .probe = anx7688_i2c_probe,
         .remove = anx7688_i2c_remove,
