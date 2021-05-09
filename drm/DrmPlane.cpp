@@ -165,10 +165,35 @@ bool DrmPlane::GetCrtcSupported(const DrmCrtc &crtc) const {
 }
 
 bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
-  if ((rotation_property_.id() == 0) &&
-      layer->transform != DrmHwcTransform::kIdentity) {
-    ALOGV("Rotation is not supported on plane %d", id_);
-    return false;
+  if (rotation_property_.id() == 0) {
+    if (layer->transform != DrmHwcTransform::kIdentity) {
+      ALOGV("Rotation is not supported on plane %d", id_);
+      return false;
+    }
+  } else {
+    // For rotation checks, we assume the hardware reports its capabilities
+    // consistently (e.g. a 270 degree rotation is a 90 degree rotation + H
+    // flip + V flip; it wouldn't make sense to support all of the latter but
+    // not the former).
+    int ret = 0;
+    const std::pair<enum DrmHwcTransform, std::string> transforms[] =
+        {{kFlipH, "reflect-x"},
+         {kFlipV, "reflect-y"},
+         {kRotate90, "rotate-90"},
+         {kRotate180, "rotate-180"},
+         {kRotate270, "rotate-270"}};
+
+    for (const auto &[transform, name] : transforms) {
+      if (layer->transform & transform) {
+        std::tie(std::ignore,
+                 ret) = rotation_property_.GetEnumValueWithName(name);
+        if (ret) {
+          ALOGV("Rotation '%s' is not supported on plane %d", name.c_str(),
+                id_);
+          return false;
+        }
+      }
+    }
   }
 
   if (alpha_property_.id() == 0 && layer->alpha != 0xffff) {
