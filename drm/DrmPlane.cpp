@@ -209,19 +209,20 @@ bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
     }
   } else {
     int ret = 0;
-    uint64_t blend = 0;
 
     switch (layer->blending) {
       case DrmHwcBlending::kPreMult:
-        std::tie(blend,
+        std::tie(std::ignore,
                  ret) = blend_property_.GetEnumValueWithName("Pre-multiplied");
         break;
       case DrmHwcBlending::kCoverage:
-        std::tie(blend, ret) = blend_property_.GetEnumValueWithName("Coverage");
+        std::tie(std::ignore,
+                 ret) = blend_property_.GetEnumValueWithName("Coverage");
         break;
       case DrmHwcBlending::kNone:
       default:
-        std::tie(blend, ret) = blend_property_.GetEnumValueWithName("None");
+        std::tie(std::ignore,
+                 ret) = blend_property_.GetEnumValueWithName("None");
         break;
     }
     if (ret) {
