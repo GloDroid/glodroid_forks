@@ -324,24 +324,6 @@ static int axp20x_battery_get_prop(struct power_supply *psy,
 			return 0;
 		}
 
-		/* If we have DT OCV tables, use them. */
-		if (info->ocv_table[0]) {
-			ret = axp20x_get_ocv_voltage(axp20x_batt, &val1);
-			if (ret)
-				return -EINVAL;
-
-			/*
-			 * For now use table that's closest to the room
-			 * temperature.
-			 */
-			ret = power_supply_batinfo_ocv2cap(info, val1, 20);
-			if (ret < 0)
-				return ret;
-
-			val->intval = ret;
-			return 0;
-		}
-
 		ret = regmap_read(axp20x_batt->regmap, AXP20X_FG_RES, &reg);
 		if (ret)
 			return ret;
