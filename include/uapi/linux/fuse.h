@@ -360,6 +360,7 @@ struct fuse_file_lock {
 #define FUSE_MAP_ALIGNMENT	(1 << 26)
 #define FUSE_SUBMOUNTS		(1 << 27)
 #define FUSE_HANDLE_KILLPRIV_V2	(1 << 28)
+#define FUSE_PASSTHROUGH	(1 << 31)
 
 /**
  * CUSE INIT request/reply flags
@@ -499,6 +500,7 @@ enum fuse_opcode {
 	FUSE_COPY_FILE_RANGE	= 47,
 	FUSE_SETUPMAPPING	= 48,
 	FUSE_REMOVEMAPPING	= 49,
+	FUSE_CANONICAL_PATH	= 2016,
 
 	/* CUSE specific operations */
 	CUSE_INIT		= 4096,
@@ -625,7 +627,7 @@ struct fuse_create_in {
 struct fuse_open_out {
 	uint64_t	fh;
 	uint32_t	open_flags;
-	uint32_t	padding;
+	uint32_t	passthrough_fh;
 };
 
 struct fuse_release_in {
@@ -828,6 +830,14 @@ struct fuse_in_header {
 	uint32_t	padding;
 };
 
+/* fuse_passthrough_out for passthrough V1 */
+struct fuse_passthrough_out {
+	uint32_t	fd;
+	/* For future implementation */
+	uint32_t	len;
+	void		*vec;
+};
+
 struct fuse_out_header {
 	uint32_t	len;
 	int32_t		error;
@@ -905,6 +915,8 @@ struct fuse_notify_retrieve_in {
 /* Device ioctls: */
 #define FUSE_DEV_IOC_MAGIC		229
 #define FUSE_DEV_IOC_CLONE		_IOR(FUSE_DEV_IOC_MAGIC, 0, uint32_t)
+/* 127 is reserved for the V1 interface implementation in Android */
+#define FUSE_DEV_IOC_PASSTHROUGH_OPEN	_IOW(FUSE_DEV_IOC_MAGIC, 127, struct fuse_passthrough_out)
 
 struct fuse_lseek_in {
 	uint64_t	fh;
