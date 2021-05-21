@@ -119,6 +119,12 @@ class DrmHwcTwo : public hwc2_device_t {
 
     UniqueFd acquire_fence_;
 
+    /*
+     * Release fence is not used.
+     * There is no release fence support available in the DRM/KMS. In case no
+     * release fence provided application will use this buffer for writing when
+     * the next frame present fence is signaled.
+     */
     UniqueFd release_fence_;
 
    private:

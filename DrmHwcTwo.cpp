@@ -582,6 +582,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetHdrCapabilities(
   return HWC2::Error::None;
 }
 
+/* Find API details at:
+ * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1767
+ */
 HWC2::Error DrmHwcTwo::HwcDisplay::GetReleaseFences(uint32_t *num_elements,
                                                     hwc2_layer_t *layers,
                                                     int32_t *fences) {
@@ -700,6 +703,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
   return HWC2::Error::None;
 }
 
+/* Find API details at:
+ * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
+ */
 HWC2::Error DrmHwcTwo::HwcDisplay::PresentDisplay(int32_t *present_fence) {
   supported(__func__);
   HWC2::Error ret;
@@ -760,6 +766,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfig(hwc2_config_t config) {
   return HWC2::Error::None;
 }
 
+/* Find API details at:
+ * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1861
+ */
 HWC2::Error DrmHwcTwo::HwcDisplay::SetClientTarget(buffer_handle_t target,
                                                    int32_t acquire_fence,
                                                    int32_t dataspace,
@@ -1046,6 +1055,9 @@ HWC2::Error DrmHwcTwo::HwcLayer::SetLayerBlendMode(int32_t mode) {
   return HWC2::Error::None;
 }
 
+/* Find API details at:
+ * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=2314
+ */
 HWC2::Error DrmHwcTwo::HwcLayer::SetLayerBuffer(buffer_handle_t buffer,
                                                 int32_t acquire_fence) {
   supported(__func__);
