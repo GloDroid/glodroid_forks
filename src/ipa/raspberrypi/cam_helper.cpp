@@ -64,7 +64,7 @@ void CamHelper::process([[maybe_unused]] StatisticsPtr &stats,
 uint32_t CamHelper::exposureLines(const Duration exposure) const
 {
 	assert(initialized_);
-	return exposure / mode_.lineLength;
+	return exposure.count() / mode_.lineLength.count();
 }
 
 Duration CamHelper::exposure(uint32_t exposureLines) const
@@ -86,8 +86,8 @@ uint32_t CamHelper::getVBlanking(Duration &exposure,
 	 * minFrameDuration and maxFrameDuration are clamped by the caller
 	 * based on the limits for the active sensor mode.
 	 */
-	frameLengthMin = minFrameDuration / mode_.lineLength;
-	frameLengthMax = maxFrameDuration / mode_.lineLength;
+	frameLengthMin = minFrameDuration.count() / mode_.lineLength.count();
+	frameLengthMax = maxFrameDuration.count() / mode_.lineLength.count();
 
 	/*
 	 * Limit the exposure to the maximum frame duration requested, and
