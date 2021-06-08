@@ -347,8 +347,8 @@ void Agc::Prepare(Metadata *image_metadata)
 						   device_status.analogue_gain;
 			if (actual_exposure) {
 				status_.digital_gain =
-					status_.total_exposure_value /
-					actual_exposure;
+					status_.total_exposure_value.count() /
+					actual_exposure.count();
 				LOG(RPiAgc, Debug) << "Want total exposure " << status_.total_exposure_value;
 				// Never ask for a gain < 1.0, and also impose
 				// some upper limit. Make it customisable?
@@ -735,7 +735,7 @@ void Agc::divideUpExposure()
 					    shutter_time >=
 				    exposure_value) {
 					analogue_gain =
-						exposure_value / shutter_time;
+						exposure_value.count() / shutter_time.count();
 					break;
 				}
 				analogue_gain = exposure_mode_->gain[stage];
@@ -748,10 +748,10 @@ void Agc::divideUpExposure()
 	// shutter and gain not to be fixed).
 	if (!status_.fixed_shutter && !status_.fixed_analogue_gain &&
 	    status_.flicker_period) {
-		int flicker_periods = shutter_time / status_.flicker_period;
+		int flicker_periods = shutter_time.count() / status_.flicker_period.count();
 		if (flicker_periods) {
 			Duration new_shutter_time = flicker_periods * status_.flicker_period;
-			analogue_gain *= shutter_time / new_shutter_time;
+			analogue_gain *= shutter_time.count() / new_shutter_time.count();
 			// We should still not allow the ag to go over the
 			// largest value in the exposure mode. Note that this
 			// may force more of the total exposure into the digital
