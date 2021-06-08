@@ -1,9 +1,6 @@
 cc_library {
-    name: "libyuv",
+    name: "libyuv_chromium",
     vendor_available: true,
-    vndk: {
-        enabled: true,
-    },
 
     srcs: [
         "source/compare.cc",
@@ -69,88 +66,7 @@ cc_library {
 // compatibilty static library until all uses of libyuv_static are replaced
 // with libyuv (b/37646797)
 cc_library_static {
-    name: "libyuv_static",
+    name: "libyuv_chromium_static",
     vendor_available: true,
-    whole_static_libs: ["libyuv"],
-}
-
-cc_test {
-    name: "libyuv_unittest",
-    static_libs: ["libyuv"],
-    shared_libs: ["libjpeg"],
-    cflags: ["-Wall", "-Werror"],
-    srcs: [
-        "unit_test/basictypes_test.cc",
-        "unit_test/color_test.cc",
-        "unit_test/compare_test.cc",
-        "unit_test/convert_test.cc",
-        "unit_test/cpu_test.cc",
-        "unit_test/cpu_thread_test.cc",
-        "unit_test/math_test.cc",
-        "unit_test/planar_test.cc",
-        "unit_test/rotate_argb_test.cc",
-        "unit_test/rotate_test.cc",
-        "unit_test/scale_argb_test.cc",
-        "unit_test/scale_test.cc",
-        "unit_test/scale_uv_test.cc",
-        "unit_test/unit_test.cc",
-        "unit_test/video_common_test.cc",
-    ],
-}
-
-cc_test {
-    name: "compare",
-    gtest: false,
-    srcs: [
-        "util/compare.cc",
-    ],
-    static_libs: ["libyuv"],
-}
-
-cc_test {
-    name: "i444tonv12_eg",
-    gtest: false,
-    srcs: [
-        "util/i444tonv12_eg.cc",
-    ],
-    static_libs: ["libyuv"],
-}
-
-cc_test {
-    name: "cpuid",
-    gtest: false,
-    srcs: [
-        "util/cpuid.c",
-    ],
-    static_libs: ["libyuv"],
-}
-
-cc_test {
-    name: "psnr",
-    gtest: false,
-    srcs: [
-        "util/psnr_main.cc",
-        "util/psnr.cc",
-        "util/ssim.cc",
-    ],
-    static_libs: ["libyuv"],
-}
-
-cc_test {
-    name: "yuvconvert",
-    gtest: false,
-    srcs: [
-        "util/yuvconvert.cc",
-    ],
-    static_libs: ["libyuv"],
-    shared_libs: ["libjpeg"],
-}
-
-cc_test {
-    name: "yuvconstants",
-    gtest: false,
-    srcs: [
-        "util/yuvconstants.c",
-    ],
-    static_libs: ["libyuv"],
+    whole_static_libs: ["libyuv_chromium"],
 }
