@@ -198,6 +198,7 @@ cc_library_static {
 // https://issuetracker.google.com/147469372
 cc_library_static {
     name: "libc++fs",
+    ramdisk_available: true,
     recovery_available: true,
     defaults: ["libc++ defaults"],
     srcs: [
