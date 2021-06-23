@@ -663,6 +663,11 @@ int drv_bo_get_plane_fd(struct bo *bo, size_t plane)
 	if (bo->is_test_buffer)
 		return -EINVAL;
 
+	if (bo->drv->backend->bo_get_plane_fd) {
+		fd = bo->drv->backend->bo_get_plane_fd(bo, plane);
+		return fd;
+	}
+
 	ret = drmPrimeHandleToFD(bo->drv->fd, bo->handles[plane].u32, DRM_CLOEXEC | DRM_RDWR, &fd);
 
 	// Older DRM implementations blocked DRM_RDWR, but gave a read/write mapping anyways
