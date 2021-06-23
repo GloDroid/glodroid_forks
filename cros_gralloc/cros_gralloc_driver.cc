@@ -56,6 +56,7 @@ cros_gralloc_driver *cros_gralloc_driver::get_instance()
 	return &s_instance;
 }
 
+#ifndef DRV_EXTERNAL
 static struct driver *init_try_node(int idx, char const *str)
 {
 	int fd;
@@ -109,6 +110,12 @@ cros_gralloc_driver::cros_gralloc_driver()
 			return;
 	}
 }
+#else
+cros_gralloc_driver::cros_gralloc_driver()
+{
+	drv_ = drv_create(-1);
+}
+#endif
 
 cros_gralloc_driver::~cros_gralloc_driver()
 {
@@ -119,7 +126,8 @@ cros_gralloc_driver::~cros_gralloc_driver()
 		int fd = drv_get_fd(drv_);
 		drv_destroy(drv_);
 		drv_ = nullptr;
-		close(fd);
+		if (fd != -1)
+			close(fd);
 	}
 }
 
