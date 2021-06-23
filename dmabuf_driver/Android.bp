@@ -1,0 +1,46 @@
+filegroup {
+    name: "minigbm_dmabuf_internal_files",
+    srcs: ["dmabuf_internals.cpp"],
+}
+
+filegroup {
+    name: "minigbm_dmabuf_backend_files",
+    srcs: ["dmabuf_external_driver.cpp"],
+}
+
+cc_library_shared {
+    name: "libminigbm_gralloc_dmabuf",
+    defaults: ["minigbm_cros_gralloc_library_defaults"],
+    cflags: [
+        "-DDRV_EXTERNAL",
+        "-DHAS_DMABUF_SYSTEM_HEAP",
+    ],
+    srcs: [
+        ":minigbm_dmabuf_internal_files",
+        ":minigbm_dmabuf_backend_files",
+    ],
+
+    cpp_std: "c++17",
+}
+
+cc_binary {
+    name: "android.hardware.graphics.allocator@4.0-service.minigbm_dmabuf",
+    vintf_fragments: ["dmabuf.allocator@4.0.xml"],
+    init_rc: ["android.hardware.graphics.allocator@4.0-service.minigbm_dmabuf.rc"],
+    defaults: ["minigbm_gralloc4_allocator_defaults"],
+    shared_libs: ["libminigbm_gralloc_dmabuf"],
+}
+
+cc_library_shared {
+    name: "android.hardware.graphics.mapper@4.0-impl.minigbm_dmabuf",
+    vintf_fragments: ["dmabuf.mapper@4.0.xml"],
+    defaults: ["minigbm_gralloc4_common_defaults"],
+    srcs: [":minigbm_gralloc4_mapper_files"],
+    shared_libs: ["libminigbm_gralloc_dmabuf"],
+}
+
+cc_library_shared {
+    name: "gralloc.minigbm_dmabuf",
+    defaults: ["minigbm_cros_gralloc_defaults"],
+    shared_libs: ["libminigbm_gralloc_dmabuf"],
+}
