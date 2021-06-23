@@ -72,6 +72,7 @@ cros_gralloc_driver *cros_gralloc_driver::get_instance()
 	return &s_instance;
 }
 
+#ifndef DRV_EXTERNAL
 static struct driver *init_try_node(int idx, char const *str)
 {
 	int fd;
@@ -129,11 +130,21 @@ static struct driver *init_try_nodes()
 	return nullptr;
 }
 
+#else
+
+static struct driver *init_try_nodes()
+{
+	return drv_create(-1);
+}
+
+#endif
+
 static void drv_destroy_and_close(struct driver *drv)
 {
 	int fd = drv_get_fd(drv);
 	drv_destroy(drv);
-	close(fd);
+	if (fd != -1)
+		close(fd);
 }
 
 cros_gralloc_driver::cros_gralloc_driver() : drv_(init_try_nodes(), drv_destroy_and_close)
