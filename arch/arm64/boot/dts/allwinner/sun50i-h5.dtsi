@@ -18,7 +18,7 @@
 			clocks = <&ccu CLK_CPUX>;
 			clock-latency-ns = <244144>; /* 8 32k periods */
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpu_sleep>, <&cluster_sleep>;
+//			cpu-idle-states = <&cpu_sleep>, <&cluster_sleep>;
 		};
 
 		cpu1: cpu@1 {
@@ -29,7 +29,7 @@
 			clocks = <&ccu CLK_CPUX>;
 			clock-latency-ns = <244144>; /* 8 32k periods */
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpu_sleep>, <&cluster_sleep>;
+//			cpu-idle-states = <&cpu_sleep>, <&cluster_sleep>;
 		};
 
 		cpu2: cpu@2 {
@@ -40,7 +40,7 @@
 			clocks = <&ccu CLK_CPUX>;
 			clock-latency-ns = <244144>; /* 8 32k periods */
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpu_sleep>, <&cluster_sleep>;
+//			cpu-idle-states = <&cpu_sleep>, <&cluster_sleep>;
 		};
 
 		cpu3: cpu@3 {
@@ -51,9 +51,9 @@
 			clocks = <&ccu CLK_CPUX>;
 			clock-latency-ns = <244144>; /* 8 32k periods */
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpu_sleep>, <&cluster_sleep>;
+//			cpu-idle-states = <&cpu_sleep>, <&cluster_sleep>;
 		};
-
+/*
 		idle-states {
 			entry-method = "psci";
 
@@ -75,6 +75,7 @@
 				arm,psci-suspend-param = <0x01010013>;
 			};
 		};
+*/
 	};
 
 	pmu {
