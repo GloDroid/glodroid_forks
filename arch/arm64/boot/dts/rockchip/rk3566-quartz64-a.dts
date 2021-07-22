@@ -200,6 +200,11 @@
 	};
 };
 
+&combphy1_usq {
+	status = "okay";
+	rockchip,enable-ssc;
+};
+
 &combphy2_psq {
 	status = "okay";
 };
@@ -565,6 +570,16 @@
 			rockchip,pins = <0 RK_PA5 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
+};
+
+/* sata1 is muxed with the usb3 port */
+&sata1 {
+	status = "okay";
+};
+
+/* sata2 is muxed with the pcie2 slot*/
+&sata2 {
+	status = "disabled";
 };
 
 &sdhci {
