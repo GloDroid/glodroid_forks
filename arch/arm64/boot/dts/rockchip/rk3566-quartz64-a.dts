@@ -152,6 +152,16 @@
 		vin-supply = <&vcc5v0_usb>;
 	};
 
+	vcc5v0_usb20_otg: vcc5v0_usb20_otg {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc5v0_usb20_otg";
+		enable-active-high;
+		gpio = <&gpio4 RK_PB5 GPIO_ACTIVE_HIGH>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&dcdc_boost>;
+	};
+
 	vcc3v3_pcie_p: vcc3v3_pcie_p {
 		compatible = "regulator-fixed";
 		enable-active-high;
@@ -666,6 +676,16 @@
 	status = "okay";
 };
 
+&u2phy0_host {
+	phy-supply = <&vcc5v0_usb20_host>;
+	status = "okay";
+};
+
+&u2phy0_otg {
+	phy-supply = <&vcc5v0_usb20_otg>;
+	status = "okay";
+};
+
 &u2phy1_host {
 	phy-supply = <&vcc5v0_usb20_host>;
 	status = "okay";
@@ -676,8 +696,30 @@
 	status = "okay";
 };
 
+&usb2phy0 {
+	status = "okay";
+};
+
 &usb2phy1 {
 	status = "okay";
+};
+
+&usbdrd_dwc3 {
+	status = "okay";
+};
+
+&usbdrd30 {
+	status = "okay";
+};
+
+/* usb3 controller is muxed with sata1 */
+&usbhost_dwc3 {
+	status = "disabled";
+};
+
+/* usb3 controller is muxed with sata1 */
+&usbhost30 {
+	status = "disabled";
 };
 
 &usb_host0_ehci {
