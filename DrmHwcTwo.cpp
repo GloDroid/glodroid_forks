@@ -776,8 +776,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetClientTarget(buffer_handle_t target,
   supported(__func__);
 
   client_layer_.set_buffer(target);
-  client_layer_.acquire_fence_ = UniqueFd(
-      fcntl(acquire_fence, F_DUPFD_CLOEXEC));
+  client_layer_.acquire_fence_ = UniqueFd(acquire_fence);
   client_layer_.SetLayerDataspace(dataspace);
 
   /* TODO: Do not update source_crop every call.
@@ -1063,7 +1062,7 @@ HWC2::Error DrmHwcTwo::HwcLayer::SetLayerBuffer(buffer_handle_t buffer,
   supported(__func__);
 
   set_buffer(buffer);
-  acquire_fence_ = UniqueFd(fcntl(acquire_fence, F_DUPFD_CLOEXEC));
+  acquire_fence_ = UniqueFd(acquire_fence);
   return HWC2::Error::None;
 }
 
