@@ -357,7 +357,6 @@
 	};
 
 	pipegrf: syscon@fdc50000 {
-		compatible = "rockchip,rk3568-pipegrf", "syscon";
 		reg = <0x0 0xfdc50000 0x0 0x1000>;
 	};
 
