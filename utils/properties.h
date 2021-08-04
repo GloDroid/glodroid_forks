@@ -18,9 +18,8 @@ constexpr int PROPERTY_VALUE_MAX = 92;
 auto inline property_get(const char *name, char *value,
                          const char *default_value) -> int {
   char *prop = std::getenv(name);
-  if (prop == nullptr) {
-    snprintf(value, PROPERTY_VALUE_MAX, "%s", default_value);
-  }
+  snprintf(value, PROPERTY_VALUE_MAX, "%s",
+           (prop == nullptr) ? default_value : prop);
   return static_cast<int>(strlen(value));
 }
 
