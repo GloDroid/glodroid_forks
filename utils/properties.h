@@ -20,7 +20,7 @@ auto inline property_get(const char *name, char *value,
   if (prop == nullptr) {
     snprintf(value, PROPERTY_VALUE_MAX, "%s", default_value);
   }
-  return strlen(value);
+  return static_cast<int>(strlen(value));
 }
 
 #endif

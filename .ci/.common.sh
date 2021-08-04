@@ -1,7 +1,7 @@
 INCLUDE_DIRS="-I. -I../libdrm/include/drm -Iinclude -I/usr/include/libdrm -I./.ci/android_headers -I./tests/test_include"
 
-CLANG="clang++-11"
-CLANG_TIDY="clang-tidy-11"
+CLANG="clang++-12"
+CLANG_TIDY="clang-tidy-12"
 
 CXXARGS="-fPIC -Wall -Werror -DPLATFORM_SDK_VERSION=30 -D__ANDROID_API__=30 -Wsign-promo -Wimplicit-fallthrough"
 CXXARGS+=" -D_LIBCPP_ENABLE_THREAD_SAFETY_ANNOTATIONS -Wno-gnu-include-next "

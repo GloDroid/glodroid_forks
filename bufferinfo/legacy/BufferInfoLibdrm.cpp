@@ -37,9 +37,9 @@ enum chroma_order {
 
 struct DroidYuvFormat {
   /* Lookup keys */
-  int native;                     /* HAL_PIXEL_FORMAT_ */
+  uint32_t native;                /* HAL_PIXEL_FORMAT_ */
   enum chroma_order chroma_order; /* chroma order is {Cb, Cr} or {Cr, Cb} */
-  int chroma_step; /* Distance in bytes between subsequent chroma pixels. */
+  size_t chroma_step; /* Distance in bytes between subsequent chroma pixels. */
 
   /* Result */
   int fourcc; /* DRM_FORMAT_ */
@@ -64,8 +64,8 @@ static const struct DroidYuvFormat kDroidYuvFormats[] = {
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-static int get_fourcc_yuv(int native, enum chroma_order chroma_order,
-                          int chroma_step) {
+static int get_fourcc_yuv(uint32_t native, enum chroma_order chroma_order,
+                          size_t chroma_step) {
   for (auto droid_yuv_format : kDroidYuvFormats)
     if (droid_yuv_format.native == native &&
         droid_yuv_format.chroma_order == chroma_order &&
@@ -75,7 +75,7 @@ static int get_fourcc_yuv(int native, enum chroma_order chroma_order,
   return -1;
 }
 
-static bool is_yuv(int native) {
+static bool is_yuv(uint32_t native) {
   for (auto droid_yuv_format : kDroidYuvFormats)
     if (droid_yuv_format.native == native)
       return true;

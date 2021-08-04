@@ -263,7 +263,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     DrmPlane *plane = comp_plane.plane();
     std::vector<size_t> &source_layers = comp_plane.source_layers();
 
-    int fb_id = -1;
+    uint32_t fb_id = UINT32_MAX;
     int fence_fd = -1;
     hwc_rect_t display_frame;
     hwc_frect_t source_crop;
@@ -346,7 +346,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
         rotation |= DRM_MODE_ROTATE_0;
 
       if (fence_fd >= 0) {
-        int prop_id = plane->in_fence_fd_property().id();
+        uint32_t prop_id = plane->in_fence_fd_property().id();
         if (prop_id == 0) {
           ALOGE("Failed to get IN_FENCE_FD property id");
           break;
@@ -399,7 +399,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     }
 
     // Disable the plane if there's no framebuffer
-    if (fb_id < 0) {
+    if (fb_id == UINT32_MAX) {
       ret = drmModeAtomicAddProperty(pset, plane->id(),
                                      plane->crtc_property().id(), 0) < 0 ||
             drmModeAtomicAddProperty(pset, plane->id(),
@@ -754,7 +754,9 @@ void DrmDisplayCompositor::Dump(std::ostringstream *out) const {
 
   uint64_t cur_ts = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
   uint64_t num_ms = (cur_ts - dump_last_timestamp_ns_) / (1000 * 1000);
-  float fps = num_ms ? (num_frames * 1000.0F) / (num_ms) : 0.0F;
+  float fps = num_ms ? static_cast<float>(num_frames) * 1000.0F /
+                           static_cast<float>(num_ms)
+                     : 0.0F;
 
   *out << "--DrmDisplayCompositor[" << display_
        << "]: num_frames=" << num_frames << " num_ms=" << num_ms

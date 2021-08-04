@@ -84,7 +84,7 @@ void DrmEventListener::FlipHandler(int /* fd */, unsigned int /* sequence */,
 
 void DrmEventListener::UEventHandler() {
   char buffer[1024];
-  int ret = 0;
+  ssize_t ret = 0;
 
   struct timespec ts {};
 
@@ -93,7 +93,7 @@ void DrmEventListener::UEventHandler() {
   if (!ret)
     timestamp = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
   else
-    ALOGE("Failed to get monotonic clock on hotplug %d", ret);
+    ALOGE("Failed to get monotonic clock on hotplug %zd", ret);
 
   while (true) {
     ret = read(uevent_fd_.Get(), &buffer, sizeof(buffer));
@@ -101,7 +101,7 @@ void DrmEventListener::UEventHandler() {
       return;
 
     if (ret < 0) {
-      ALOGE("Got error reading uevent %d", ret);
+      ALOGE("Got error reading uevent %zd", ret);
       return;
     }
 

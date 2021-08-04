@@ -145,7 +145,7 @@ static const char *DrmCompositionTypeToString(DrmCompositionType type) {
   }
 }
 
-static const char *DPMSModeToString(int dpms_mode) {
+static const char *DPMSModeToString(uint32_t dpms_mode) {
   switch (dpms_mode) {
     case DRM_MODE_DPMS_ON:
       return "ON";

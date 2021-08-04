@@ -104,7 +104,8 @@ int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
     ALOGW("Vsync worker active with conn=%p refresh=%f\n", conn,
           conn ? conn->active_mode().v_refresh() : 0.0F);
 
-  int64_t phased_timestamp = GetPhasedVSync(kOneSecondNs / refresh,
+  int64_t phased_timestamp = GetPhasedVSync(kOneSecondNs /
+                                                static_cast<int>(refresh),
                                             vsync.tv_sec * kOneSecondNs +
                                                 vsync.tv_nsec);
   vsync.tv_sec = phased_timestamp / kOneSecondNs;

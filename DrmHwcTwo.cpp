@@ -48,7 +48,7 @@ DrmHwcTwo::DrmHwcTwo() : hwc2_device() {
 
 HWC2::Error DrmHwcTwo::CreateDisplay(hwc2_display_t displ,
                                      HWC2::DisplayType type) {
-  DrmDevice *drm = resource_manager_.GetDrmDevice(displ);
+  DrmDevice *drm = resource_manager_.GetDrmDevice(static_cast<int>(displ));
   if (!drm) {
     ALOGE("Failed to get a valid drmresource");
     return HWC2::Error::NoResources;
@@ -413,22 +413,26 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   auto attribute = static_cast<HWC2::Attribute>(attribute_in);
   switch (attribute) {
     case HWC2::Attribute::Width:
-      *value = mode->h_display();
+      *value = static_cast<int>(mode->h_display());
       break;
     case HWC2::Attribute::Height:
-      *value = mode->v_display();
+      *value = static_cast<int>(mode->v_display());
       break;
     case HWC2::Attribute::VsyncPeriod:
       // in nanoseconds
-      *value = 1000.0 * 1000.0 * 1000.0 / mode->v_refresh();
+      *value = static_cast<int>(1E9 / mode->v_refresh());
       break;
     case HWC2::Attribute::DpiX:
       // Dots per 1000 inches
-      *value = mm_width ? (mode->h_display() * kUmPerInch) / mm_width : -1;
+      *value = mm_width
+                   ? static_cast<int>(mode->h_display() * kUmPerInch / mm_width)
+                   : -1;
       break;
     case HWC2::Attribute::DpiY:
       // Dots per 1000 inches
-      *value = mm_height ? (mode->v_display() * kUmPerInch) / mm_height : -1;
+      *value = mm_height ? static_cast<int>(mode->v_display() * kUmPerInch /
+                                            mm_height)
+                         : -1;
       break;
 #if PLATFORM_SDK_VERSION > 29
     case HWC2::Attribute::ConfigGroup:
@@ -786,8 +790,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetClientTarget(buffer_handle_t target,
 
   hwc_frect_t source_crop = {.left = 0.0F,
                              .top = 0.0F,
-                             .right = bo.width + 0.0F,
-                             .bottom = bo.height + 0.0F};
+                             .right = static_cast<float>(bo.width),
+                             .bottom = static_cast<float>(bo.height)};
   client_layer_.SetLayerSourceCrop(source_crop);
 
   return HWC2::Error::None;
@@ -909,7 +913,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayVsyncPeriod(
   if (mode.id() == 0)
     return HWC2::Error::BadConfig;
 
-  *outVsyncPeriod = 1E9 / mode.v_refresh();
+  *outVsyncPeriod = static_cast<hwc2_vsync_period_t>(1E9 / mode.v_refresh());
   return HWC2::Error::None;
 }
 

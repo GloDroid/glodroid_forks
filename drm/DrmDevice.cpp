@@ -195,7 +195,7 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
     crtcs_.emplace_back(std::move(crtc));
   }
 
-  std::vector<int> possible_clones;
+  std::vector<uint32_t> possible_clones;
   for (int i = 0; !ret && i < res->count_encoders; ++i) {
     drmModeEncoderPtr e = drmModeGetEncoder(fd(), res->encoders[i]);
     if (!e) {

@@ -28,7 +28,7 @@ typedef struct hwc_drm_bo {
   uint32_t usage;
   uint32_t pitches[HWC_DRM_BO_MAX_PLANES];
   uint32_t offsets[HWC_DRM_BO_MAX_PLANES];
-  uint32_t prime_fds[HWC_DRM_BO_MAX_PLANES];
+  int prime_fds[HWC_DRM_BO_MAX_PLANES];
   uint64_t modifiers[HWC_DRM_BO_MAX_PLANES];
   int acquire_fence_fd;
 } hwc_drm_bo_t;
