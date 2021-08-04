@@ -215,6 +215,10 @@ static int rockchip_pcie_probe(struct platform_device *pdev)
 	rockchip->pci.dev = dev;
 	rockchip->pci.ops = &dw_pcie_ops;
 
+	ret = dma_set_mask(rockchip->pci.dev, DMA_BIT_MASK(32));
+	if (ret)
+		dev_warn(rockchip->pci.dev, "Failed to set DMA mask to 32-bit. Devices with only 32-bit MSI support may not work properly\n");
+
 	pp = &rockchip->pci.pp;
 	pp->ops = &rockchip_pcie_host_ops;
 
