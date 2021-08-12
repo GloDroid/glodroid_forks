@@ -195,7 +195,7 @@ cc_library_static {
 
 // Not available to vendor modules until libc++ is updated and this library is
 // merged into libc++ proper.
-// https://issuetracker.google.com/147469372
+// Follow http://b/175635923 for progress.
 cc_library_static {
     name: "libc++fs",
     ramdisk_available: true,
