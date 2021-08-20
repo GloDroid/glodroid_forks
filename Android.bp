@@ -14,6 +14,10 @@
 // limitations under the License.
 //
 
+// NOTE: This project is out of date. See http://b/175635923 for details. Until
+// that is resolved it is not possible for us to update or expand access to
+// std::filesystem.
+
 package {
     default_applicable_licenses: ["external_libcxx_license"],
 }
