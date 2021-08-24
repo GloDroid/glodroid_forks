@@ -60,7 +60,7 @@ std::tuple<int, std::vector<DrmCompositionPlane>> Planner::ProvisionPlanes(
   for (auto &i : stages_) {
     int ret = i->ProvisionPlanes(&composition, layers, &planes);
     if (ret) {
-      ALOGE("Failed provision stage with ret %d", ret);
+      ALOGV("Failed provision stage with ret %d", ret);
       return std::make_tuple(ret, std::vector<DrmCompositionPlane>());
     }
   }
@@ -105,7 +105,7 @@ int PlanStageGreedy::ProvisionPlanes(
       break;
 
     if (ret) {
-      ALOGE("Failed to emplace layer %zu, dropping it", i->first);
+      ALOGV("Failed to emplace layer %zu, dropping it", i->first);
       return ret;
     }
   }

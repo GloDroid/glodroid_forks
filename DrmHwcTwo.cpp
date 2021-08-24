@@ -675,7 +675,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
   std::vector<DrmPlane *> overlay_planes(overlay_planes_);
   ret = composition->Plan(&primary_planes, &overlay_planes);
   if (ret) {
-    ALOGE("Failed to plan the composition ret=%d", ret);
+    ALOGV("Failed to plan the composition ret=%d", ret);
     return HWC2::Error::BadConfig;
   }
 

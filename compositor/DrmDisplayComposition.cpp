@@ -101,7 +101,7 @@ int DrmDisplayComposition::Plan(std::vector<DrmPlane *> *primary_planes,
                                                             primary_planes,
                                                             overlay_planes);
   if (ret) {
-    ALOGE("Planner failed provisioning planes ret=%d", ret);
+    ALOGV("Planner failed provisioning planes ret=%d", ret);
     return ret;
   }
 
