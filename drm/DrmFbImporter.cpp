@@ -101,14 +101,17 @@ DrmFbIdHandle::~DrmFbIdHandle() {
    * request via system properties)
    */
   struct drm_gem_close gem_close {};
-  for (unsigned int gem_handle : gem_handles_) {
-    if (gem_handle == 0) {
+  for (int i = 0; i < gem_handles_.size(); i++) {
+    /* Don't close invalid handle. Close handle only once in cases
+     * where several YUV planes located in the single buffer. */
+    if (gem_handles_[i] == 0 ||
+        (i != 0 && gem_handles_[i] == gem_handles_[0])) {
       continue;
     }
-    gem_close.handle = gem_handle;
+    gem_close.handle = gem_handles_[i];
     int32_t err = drmIoctl(drm_->fd(), DRM_IOCTL_GEM_CLOSE, &gem_close);
     if (err != 0) {
-      ALOGE("Failed to close gem handle %d, errno: %d", gem_handle, errno);
+      ALOGE("Failed to close gem handle %d, errno: %d", gem_handles_[i], errno);
     }
   }
 }
