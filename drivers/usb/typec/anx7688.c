@@ -400,10 +400,10 @@ err_poweroff:
         int ret, i;
         u8 fw[2];
 	const u8 dp_snk_identity[16] = {
-		0x00, 0x00, 0x00, 0xec,	/* snk_id_hdr */
-		0x00, 0x00, 0x00, 0x00,	/* snk_cert */
-		0x00, 0x00, 0x00, 0x00,	/* snk_prd */
-		0x39, 0x00, 0x00, 0x51	/* snk_ama */
+		0x00, 0x00, 0x00, 0xec,	/* id header */
+		0x00, 0x00, 0x00, 0x00,	/* cert stat */
+		0x00, 0x00, 0x00, 0x00,	/* product type */
+		0x39, 0x00, 0x00, 0x51	/* alt mode adapter */
 	};
 	const u8 svid[4] = {
 		0x00, 0x00, 0x01, 0xff,
@@ -1023,7 +1023,7 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 {
         struct device *dev = anx7688->dev;
 	bool vbus_on, vconn_on, dr_dfp;
-	int status, cc_status, dp_state, ret;
+	int status, cc_status, dp_state, dp_substate, ret;
 
 	status = anx7688_reg_read(anx7688, ANX7688_REG_STATUS);
 	if (status < 0)
@@ -1036,6 +1036,12 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 	dp_state = anx7688_tcpc_reg_read(anx7688, 0x87);
 	if (dp_state < 0)
 		return dp_state;
+
+	dp_substate = anx7688_tcpc_reg_read(anx7688, 0x88);
+	if (dp_substate < 0)
+		return dp_substate;
+	
+	dp_state = (dp_state << 8) | dp_substate;
 
 	if (anx7688->last_status == -1 || anx7688->last_status != status) {
 		anx7688->last_status = status;
@@ -1051,7 +1057,7 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 
 	if (anx7688->last_dp_state == -1 || anx7688->last_dp_state != dp_state) {
 		anx7688->last_dp_state = dp_state;
-		dev_dbg(dev, "DP state changed to 0x%02x\n", dp_state);
+		dev_dbg(dev, "DP state changed to 0x%04x\n", dp_state);
 	}
 
 	vbus_on = !!(status & ANX7688_VBUS_STATUS);
