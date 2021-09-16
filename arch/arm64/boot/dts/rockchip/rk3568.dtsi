@@ -93,7 +93,7 @@
 		assigned-clock-rates = <100000000>;
 		clocks = <&pmucru CLK_PCIEPHY0_REF>, <&cru PCLK_PIPEPHY0>,
 			 <&cru PCLK_PIPE>;
-		clock-names = "refclk", "apbclk", "pipe_clk";
+		clock-names = "ref", "apb", "pipe";
 		resets = <&cru SRST_P_PIPEPHY0>, <&cru SRST_PIPEPHY0>;
 		reset-names = "combphy-apb", "combphy";
 		rockchip,pipe-grf = <&pipegrf>;
