@@ -376,6 +376,42 @@ int ff_v4l2_request_decode_frame(AVCodecContext *avctx, AVFrame *frame, struct v
     return v4l2_request_queue_decode(avctx, frame, control, count, 1, 1);
 }
 
+static int v4l2_request_try_framesize(AVCodecContext *avctx, uint32_t pixelformat)
+{
+    V4L2RequestContext *ctx = avctx->internal->hwaccel_priv_data;
+    struct v4l2_frmsizeenum frmsize = {
+        .index = 0,
+        .pixel_format = pixelformat,
+    };
+
+    if (ioctl(ctx->video_fd, VIDIOC_ENUM_FRAMESIZES, &frmsize) < 0)
+        return 0;
+
+    /*
+     * We only validate min/max framesize for V4L2_FRMSIZE_TYPE_STEPWISE here, since the alignment
+     * which is eventually needed will be done driver-side later in VIDIOC_S_FMT and there is no need
+     * validate step_width/step_height here
+     */
+
+    do {
+
+        if (frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE && frmsize.discrete.width == avctx->coded_width &&
+            frmsize.discrete.height == avctx->coded_height)
+            return 0;
+        else if ((frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE || frmsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS) &&
+                 avctx->coded_width >= frmsize.stepwise.min_width && avctx->coded_height >= frmsize.stepwise.min_height &&
+                 avctx->coded_width <= frmsize.stepwise.max_width && avctx->coded_height <= frmsize.stepwise.max_height)
+            return 0;
+
+        frmsize.index++;
+
+    } while (ioctl(ctx->video_fd, VIDIOC_ENUM_FRAMESIZES, &frmsize) >= 0);
+
+    av_log(avctx, AV_LOG_INFO, "%s: pixelformat %u not supported for width %u height %u\n", __func__, pixelformat, avctx->coded_width, avctx->coded_height);
+
+    return -1;
+}
+
 static int v4l2_request_try_format(AVCodecContext *avctx, enum v4l2_buf_type type, uint32_t pixelformat)
 {
     V4L2RequestContext *ctx = avctx->internal->hwaccel_priv_data;
@@ -539,6 +575,13 @@ static int v4l2_request_probe_video_device(struct udev_device *device, AVCodecCo
     ret = v4l2_request_try_format(avctx, ctx->output_type, pixelformat);
     if (ret < 0) {
         av_log(avctx, AV_LOG_WARNING, "%s: try output format failed\n", __func__);
+        ret = AVERROR(EINVAL);
+        goto fail;
+    }
+
+    ret = v4l2_request_try_framesize(avctx, pixelformat);
+    if (ret < 0) {
+        av_log(avctx, AV_LOG_WARNING, "%s: try framesize failed\n", __func__);
         ret = AVERROR(EINVAL);
         goto fail;
     }
