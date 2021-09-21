@@ -57,4 +57,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-sapphire.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-sapphire-excavator.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-rock-pi-n10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-quartz64-a.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-quartz64-a-base.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-quartz64-a-usb3.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-quartz64-a-sata.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-evb1-v10.dtb
