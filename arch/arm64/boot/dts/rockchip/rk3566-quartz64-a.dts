@@ -5,7 +5,8 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/rockchip.h>
 #include "rk3566.dtsi"
-#define USE_SATA
+
+//#define USE_USB3
 //#define USE_WIFI
 //#define USE_EMMC
 
@@ -608,7 +609,7 @@
 	vccio7-supply = <&vcc_3v3>;
 };
 
-#ifdef USE_SATA
+#ifndef USE_USB3
 /* sata1 is muxed with the usb3 port */
 &sata1 {
 	status = "okay";
@@ -753,7 +754,7 @@
 	status = "okay";
 };
 
-#ifndef USE_SATA
+#ifdef USE_USB3
 &usbdrd_dwc3 {
 	status = "okay";
 };
