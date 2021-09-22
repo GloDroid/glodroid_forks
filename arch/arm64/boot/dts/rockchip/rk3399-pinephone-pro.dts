@@ -626,7 +626,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb0_int>;
 		vbus-supply = <&vcc5v0_typec>;
-		status = "okay";
 
 		connector {
 			compatible = "usb-c-connector";
@@ -691,23 +690,25 @@
 			"0", "0", "1";
 	};
 
-	lis3mdl: magnetometer@1e {
+	lis3mdl: magnetometer@1c {
 		compatible = "st,lis3mdl-magn";
 		reg = <0x1c>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <RK_PA1 IRQ_TYPE_LEVEL_LOW>;
 		vdd-supply = <&vcc3v3_sys>;
 		vddio-supply = <&vcc_1v8>;
+		status = "disabled";
 	};
 
 	// not populated currently
-	ak09911: compass@0c {
+	ak09911: compass@c {
 		compatible = "asahi-kasei,ak09911";
 		reg = <0x0c>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <RK_PA1 IRQ_TYPE_LEVEL_LOW>;
 		vdd-supply = <&vcc_3v0>;
 		vid-supply = <&vcc_1v8>;
+		status = "disabled";
 	};
 };
 
@@ -726,6 +727,8 @@
 
 	ports {
 		mipi_out: port@1 {
+			#address-cells = <0>;
+			#size-cells = <0>;
 			reg = <1>;
 
 			mipi_out_panel: endpoint {
@@ -734,7 +737,7 @@
 		};
 	};
 
-	panel {
+	panel@0 {
 		compatible = "hannstar,hsd060bhw4";
 		reg = <0>;
 		backlight = <&backlight>;
@@ -745,18 +748,12 @@
 		pinctrl-0 = <&display_rst_l>;
 
 		port {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			reg = <0>;
-
 			mipi_in_panel: endpoint {
 				remote-endpoint = <&mipi_out_panel>;
 			};
 		};
 	};
 };
-
 
 &pmu_io_domains {
 	pmu1830-supply = <&vcc_3v0>;
