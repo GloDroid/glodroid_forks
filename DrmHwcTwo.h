@@ -140,7 +140,7 @@ class DrmHwcTwo : public hwc2_device_t {
     int32_t cursor_x_;
     int32_t cursor_y_;
     hwc_color_t layer_color_;
-    HWC2::Transform transform_ = HWC2::Transform::None;
+    DrmHwcTransform transform_ = DrmHwcTransform::kIdentity;
     uint32_t z_order_ = 0;
     DrmHwcBlending blending_ = DrmHwcBlending::kNone;
     DrmHwcColorSpace color_space_ = DrmHwcColorSpace::kUndefined;

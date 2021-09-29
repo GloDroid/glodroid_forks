@@ -48,23 +48,4 @@ int DrmHwcLayer::ImportBuffer(DrmDevice *drmDevice) {
   return 0;
 }
 
-void DrmHwcLayer::SetTransform(int32_t sf_transform) {
-  transform = 0;
-  // 270* and 180* cannot be combined with flips. More specifically, they
-  // already contain both horizontal and vertical flips, so those fields are
-  // redundant in this case. 90* rotation can be combined with either horizontal
-  // flip or vertical flip, so treat it differently
-  if (sf_transform == HWC_TRANSFORM_ROT_270) {
-    transform = DrmHwcTransform::kRotate270;
-  } else if (sf_transform == HWC_TRANSFORM_ROT_180) {
-    transform = DrmHwcTransform::kRotate180;
-  } else {
-    if (sf_transform & HWC_TRANSFORM_FLIP_H)
-      transform |= DrmHwcTransform::kFlipH;
-    if (sf_transform & HWC_TRANSFORM_FLIP_V)
-      transform |= DrmHwcTransform::kFlipV;
-    if (sf_transform & HWC_TRANSFORM_ROT_90)
-      transform |= DrmHwcTransform::kRotate90;
-  }
-}
 }  // namespace android

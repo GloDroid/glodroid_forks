@@ -45,7 +45,7 @@ enum class DrmHwcSampleRange : int32_t {
   kLimitedRange,
 };
 
-enum DrmHwcTransform {
+enum DrmHwcTransform : uint32_t {
   kIdentity = 0,
   kFlipH = 1 << 0,
   kFlipV = 1 << 1,
@@ -66,7 +66,7 @@ struct DrmHwcLayer {
   std::shared_ptr<DrmFbIdHandle> FbIdHandle;
 
   int gralloc_buffer_usage = 0;
-  uint32_t transform;
+  DrmHwcTransform transform{};
   DrmHwcBlending blending = DrmHwcBlending::kNone;
   uint16_t alpha = 0xffff;
   hwc_frect_t source_crop;
@@ -77,8 +77,6 @@ struct DrmHwcLayer {
   UniqueFd acquire_fence;
 
   int ImportBuffer(DrmDevice *drmDevice);
-
-  void SetTransform(int32_t sf_transform);
 
   bool protected_usage() const {
     return (gralloc_buffer_usage & GRALLOC_USAGE_PROTECTED) ==

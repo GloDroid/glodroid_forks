@@ -1163,7 +1163,27 @@ HWC2::Error DrmHwcTwo::HwcLayer::SetLayerSurfaceDamage(hwc_region_t damage) {
 
 HWC2::Error DrmHwcTwo::HwcLayer::SetLayerTransform(int32_t transform) {
   supported(__func__);
-  transform_ = static_cast<HWC2::Transform>(transform);
+
+  uint32_t l_transform = 0;
+
+  // 270* and 180* cannot be combined with flips. More specifically, they
+  // already contain both horizontal and vertical flips, so those fields are
+  // redundant in this case. 90* rotation can be combined with either horizontal
+  // flip or vertical flip, so treat it differently
+  if (transform == HWC_TRANSFORM_ROT_270) {
+    l_transform = DrmHwcTransform::kRotate270;
+  } else if (transform == HWC_TRANSFORM_ROT_180) {
+    l_transform = DrmHwcTransform::kRotate180;
+  } else {
+    if (transform & HWC_TRANSFORM_FLIP_H)
+      l_transform |= DrmHwcTransform::kFlipH;
+    if (transform & HWC_TRANSFORM_FLIP_V)
+      l_transform |= DrmHwcTransform::kFlipV;
+    if (transform & HWC_TRANSFORM_ROT_90)
+      l_transform |= DrmHwcTransform::kRotate90;
+  }
+
+  transform_ = static_cast<DrmHwcTransform>(l_transform);
   return HWC2::Error::None;
 }
 
@@ -1189,7 +1209,7 @@ void DrmHwcTwo::HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
   layer->alpha = lround(65535.0F * alpha_);
   layer->blending = blending_;
   layer->source_crop = source_crop_;
-  layer->SetTransform(static_cast<int32_t>(transform_));
+  layer->transform = transform_;
   layer->color_space = color_space_;
   layer->sample_range = sample_range_;
 }
