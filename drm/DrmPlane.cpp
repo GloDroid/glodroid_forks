@@ -279,32 +279,29 @@ bool DrmPlane::HasNonRgbFormat() const {
                           }) != std::end(formats_);
 }
 
+static uint64_t ToDrmRotation(DrmHwcTransform transform) {
+  uint64_t rotation = 0;
+  if (transform & DrmHwcTransform::kFlipH)
+    rotation |= DRM_MODE_REFLECT_X;
+  if (transform & DrmHwcTransform::kFlipV)
+    rotation |= DRM_MODE_REFLECT_Y;
+  if (transform & DrmHwcTransform::kRotate90)
+    rotation |= DRM_MODE_ROTATE_90;
+  else if (transform & DrmHwcTransform::kRotate180)
+    rotation |= DRM_MODE_ROTATE_180;
+  else if (transform & DrmHwcTransform::kRotate270)
+    rotation |= DRM_MODE_ROTATE_270;
+  else
+    rotation |= DRM_MODE_ROTATE_0;
+
+  return rotation;
+}
+
 auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
                               uint32_t zpos, uint32_t crtc_id) -> int {
-  uint32_t fb_id = UINT32_MAX;
-  int fence_fd = -1;
-  hwc_rect_t display_frame;
-  hwc_frect_t source_crop;
-  uint64_t rotation = 0;
-  uint64_t alpha = 0xFFFF;
-
   if (!layer.FbIdHandle) {
     ALOGE("Expected a valid framebuffer for pset");
     return -EINVAL;
-  }
-
-  fb_id = layer.FbIdHandle->GetFbId();
-  fence_fd = layer.acquire_fence.Get();
-  display_frame = layer.display_frame;
-  source_crop = layer.source_crop;
-  alpha = layer.alpha;
-
-  // Disable the plane if there's no framebuffer
-  if (fb_id == UINT32_MAX) {
-    if (!AtomicDisablePlane(pset)) {
-      return -EINVAL;
-    }
-    return 0;
   }
 
   if (zpos_property_ && !zpos_property_.is_immutable()) {
@@ -318,55 +315,37 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
     }
   }
 
-  rotation = 0;
-  if (layer.transform & DrmHwcTransform::kFlipH)
-    rotation |= DRM_MODE_REFLECT_X;
-  if (layer.transform & DrmHwcTransform::kFlipV)
-    rotation |= DRM_MODE_REFLECT_Y;
-  if (layer.transform & DrmHwcTransform::kRotate90)
-    rotation |= DRM_MODE_ROTATE_90;
-  else if (layer.transform & DrmHwcTransform::kRotate180)
-    rotation |= DRM_MODE_ROTATE_180;
-  else if (layer.transform & DrmHwcTransform::kRotate270)
-    rotation |= DRM_MODE_ROTATE_270;
-  else
-    rotation |= DRM_MODE_ROTATE_0;
-
-  if (fence_fd >= 0) {
-    if (!in_fence_fd_property_.AtomicSet(pset, fence_fd)) {
-      return -EINVAL;
-    }
-  }
-
-  if (!crtc_property_.AtomicSet(pset, crtc_id) ||
-      !fb_property_.AtomicSet(pset, fb_id) ||
-      !crtc_x_property_.AtomicSet(pset, display_frame.left) ||
-      !crtc_y_property_.AtomicSet(pset, display_frame.top) ||
-      !crtc_w_property_.AtomicSet(pset,
-                                  display_frame.right - display_frame.left) ||
-      !crtc_h_property_.AtomicSet(pset,
-                                  display_frame.bottom - display_frame.top) ||
-      !src_x_property_.AtomicSet(pset, (int)(source_crop.left) << 16) ||
-      !src_y_property_.AtomicSet(pset, (int)(source_crop.top) << 16) ||
-      !src_w_property_.AtomicSet(pset,
-                                 (int)(source_crop.right - source_crop.left)
-                                     << 16) ||
-      !src_h_property_.AtomicSet(pset,
-                                 (int)(source_crop.bottom - source_crop.top)
-                                     << 16)) {
+  if (layer.acquire_fence &&
+      !in_fence_fd_property_.AtomicSet(pset, layer.acquire_fence.Get())) {
     return -EINVAL;
   }
 
-  if (rotation_property_) {
-    if (!rotation_property_.AtomicSet(pset, rotation)) {
-      return -EINVAL;
-    }
+  if (!crtc_property_.AtomicSet(pset, crtc_id) ||
+      !fb_property_.AtomicSet(pset, layer.FbIdHandle->GetFbId()) ||
+      !crtc_x_property_.AtomicSet(pset, layer.display_frame.left) ||
+      !crtc_y_property_.AtomicSet(pset, layer.display_frame.top) ||
+      !crtc_w_property_.AtomicSet(pset, layer.display_frame.right -
+                                            layer.display_frame.left) ||
+      !crtc_h_property_.AtomicSet(pset, layer.display_frame.bottom -
+                                            layer.display_frame.top) ||
+      !src_x_property_.AtomicSet(pset, (int)(layer.source_crop.left) << 16) ||
+      !src_y_property_.AtomicSet(pset, (int)(layer.source_crop.top) << 16) ||
+      !src_w_property_.AtomicSet(pset, (int)(layer.source_crop.right -
+                                             layer.source_crop.left)
+                                           << 16) ||
+      !src_h_property_.AtomicSet(pset, (int)(layer.source_crop.bottom -
+                                             layer.source_crop.top)
+                                           << 16)) {
+    return -EINVAL;
   }
 
-  if (alpha_property_) {
-    if (!alpha_property_.AtomicSet(pset, alpha)) {
-      return -EINVAL;
-    }
+  if (rotation_property_ &&
+      !rotation_property_.AtomicSet(pset, ToDrmRotation(layer.transform))) {
+    return -EINVAL;
+  }
+
+  if (alpha_property_ && !alpha_property_.AtomicSet(pset, layer.alpha)) {
+    return -EINVAL;
   }
 
   if (blending_enum_map_.count(layer.blending) != 0 &&
