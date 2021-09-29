@@ -962,9 +962,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayIdentificationData(
     uint8_t *outPort, uint32_t *outDataSize, uint8_t *outData) {
   supported(__func__);
 
-  drmModePropertyBlobPtr blob = nullptr;
+  auto blob = connector_->GetEdidBlob();
 
-  if (connector_->GetEdidBlob(blob)) {
+  if (!blob) {
     ALOGE("Failed to get edid property value.");
     return HWC2::Error::Unsupported;
   }

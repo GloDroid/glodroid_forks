@@ -103,21 +103,18 @@ DrmConnector *ResourceManager::AvailableWritebackConnector(int display) {
 }
 
 bool ResourceManager::IsKMSDev(const char *path) {
-  int fd = open(path, O_RDWR | O_CLOEXEC);
-  if (fd < 0)
+  auto fd = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
+  if (!fd) {
     return false;
+  }
 
-  auto *res = drmModeGetResources(fd);
+  auto res = MakeDrmModeResUnique(fd.Get());
   if (!res) {
-    close(fd);
     return false;
   }
 
   bool is_kms = res->count_crtcs > 0 && res->count_connectors > 0 &&
                 res->count_encoders > 0;
-
-  drmModeFreeResources(res);
-  close(fd);
 
   return is_kms;
 }

@@ -26,6 +26,7 @@
 #include "DrmEncoder.h"
 #include "DrmMode.h"
 #include "DrmProperty.h"
+#include "DrmUnique.h"
 
 namespace android {
 
@@ -41,7 +42,7 @@ class DrmConnector {
 
   int Init();
   int UpdateEdidProperty();
-  int GetEdidBlob(drmModePropertyBlobPtr &blob);
+  auto GetEdidBlob() -> DrmModePropertyBlobUnique;
 
   uint32_t id() const;
 

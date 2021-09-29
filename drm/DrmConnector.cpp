@@ -90,20 +90,19 @@ int DrmConnector::UpdateEdidProperty() {
   return ret;
 }
 
-int DrmConnector::GetEdidBlob(drmModePropertyBlobPtr &blob) {
+auto DrmConnector::GetEdidBlob() -> DrmModePropertyBlobUnique {
   uint64_t blob_id = 0;
   int ret = UpdateEdidProperty();
-  if (ret) {
-    return ret;
+  if (ret != 0) {
+    return DrmModePropertyBlobUnique();
   }
 
   std::tie(ret, blob_id) = edid_property().value();
-  if (ret) {
-    return ret;
+  if (ret != 0) {
+    return DrmModePropertyBlobUnique();
   }
 
-  blob = drmModeGetPropertyBlob(drm_->fd(), blob_id);
-  return !blob;
+  return MakeDrmModePropertyBlobUnique(drm_->fd(), blob_id);
 }
 
 uint32_t DrmConnector::id() const {

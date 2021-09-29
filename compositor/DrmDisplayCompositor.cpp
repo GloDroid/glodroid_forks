@@ -34,6 +34,7 @@
 #include "drm/DrmCrtc.h"
 #include "drm/DrmDevice.h"
 #include "drm/DrmPlane.h"
+#include "drm/DrmUnique.h"
 #include "utils/autolock.h"
 #include "utils/log.h"
 
@@ -165,7 +166,7 @@ DrmDisplayCompositor::GetActiveModeResolution() {
 }
 
 int DrmDisplayCompositor::DisablePlanes(DrmDisplayComposition *display_comp) {
-  drmModeAtomicReqPtr pset = drmModeAtomicAlloc();
+  auto pset = MakeDrmModeAtomicReqUnique();
   if (!pset) {
     ALOGE("Failed to allocate property set");
     return -ENOMEM;
@@ -176,25 +177,22 @@ int DrmDisplayCompositor::DisablePlanes(DrmDisplayComposition *display_comp) {
                                                       ->composition_planes();
   for (DrmCompositionPlane &comp_plane : comp_planes) {
     DrmPlane *plane = comp_plane.plane();
-    ret = drmModeAtomicAddProperty(pset, plane->id(),
+    ret = drmModeAtomicAddProperty(pset.get(), plane->id(),
                                    plane->crtc_property().id(), 0) < 0 ||
-          drmModeAtomicAddProperty(pset, plane->id(), plane->fb_property().id(),
-                                   0) < 0;
+          drmModeAtomicAddProperty(pset.get(), plane->id(),
+                                   plane->fb_property().id(), 0) < 0;
     if (ret) {
       ALOGE("Failed to add plane %d disable to pset", plane->id());
-      drmModeAtomicFree(pset);
       return ret;
     }
   }
   DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
-  ret = drmModeAtomicCommit(drm->fd(), pset, 0, drm);
+  ret = drmModeAtomicCommit(drm->fd(), pset.get(), 0, drm);
   if (ret) {
     ALOGE("Failed to commit pset ret=%d\n", ret);
-    drmModeAtomicFree(pset);
     return ret;
   }
 
-  drmModeAtomicFree(pset);
   return 0;
 }
 
@@ -221,7 +219,8 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     return -ENODEV;
   }
 
-  drmModeAtomicReqPtr pset = drmModeAtomicAlloc();
+  auto pset_unique = MakeDrmModeAtomicReqUnique();
+  auto *pset = pset_unique.get();
   if (!pset) {
     ALOGE("Failed to allocate property set");
     return -ENOMEM;
@@ -233,7 +232,6 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
                                    (uint64_t)&out_fences[crtc->pipe()]);
     if (ret < 0) {
       ALOGE("Failed to add OUT_FENCE_PTR property to pset: %d", ret);
-      drmModeAtomicFree(pset);
       return ret;
     }
   }
@@ -243,7 +241,6 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
                                    crtc->active_property().id(), 1);
     if (ret < 0) {
       ALOGE("Failed to add crtc active to pset\n");
-      drmModeAtomicFree(pset);
       return ret;
     }
 
@@ -254,7 +251,6 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
                                    crtc->id()) < 0;
     if (ret) {
       ALOGE("Failed to add blob %d to pset", mode_.blob_id);
-      drmModeAtomicFree(pset);
       return ret;
     }
   }
@@ -511,12 +507,9 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     if (ret) {
       if (!test_only)
         ALOGE("Failed to commit pset ret=%d\n", ret);
-      drmModeAtomicFree(pset);
       return ret;
     }
   }
-  if (pset)
-    drmModeAtomicFree(pset);
 
   if (!test_only && mode_.needs_modeset) {
     ret = drm->DestroyPropertyBlob(mode_.old_blob_id);
