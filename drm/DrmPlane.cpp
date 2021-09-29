@@ -127,8 +127,22 @@ int DrmPlane::Init() {
     ALOGE("Could not get zpos property for plane %u", id());
 
   ret = drm_->GetPlaneProperty(*this, "rotation", &rotation_property_);
-  if (ret)
+  if (ret == 0) {
+    rotation_property_.AddEnumToMap("rotate-0", DrmHwcTransform::kIdentity,
+                                    transform_enum_map_);
+    rotation_property_.AddEnumToMap("rotate-90", DrmHwcTransform::kRotate90,
+                                    transform_enum_map_);
+    rotation_property_.AddEnumToMap("rotate-180", DrmHwcTransform::kRotate180,
+                                    transform_enum_map_);
+    rotation_property_.AddEnumToMap("rotate-270", DrmHwcTransform::kRotate270,
+                                    transform_enum_map_);
+    rotation_property_.AddEnumToMap("reflect-x", DrmHwcTransform::kFlipH,
+                                    transform_enum_map_);
+    rotation_property_.AddEnumToMap("reflect-y", DrmHwcTransform::kFlipV,
+                                    transform_enum_map_);
+  } else {
     ALOGE("Could not get rotation property");
+  }
 
   ret = drm_->GetPlaneProperty(*this, "alpha", &alpha_property_);
   if (ret)
@@ -192,34 +206,15 @@ bool DrmPlane::GetCrtcSupported(const DrmCrtc &crtc) const {
 }
 
 bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
-  if (rotation_property_.id() == 0) {
+  if (!rotation_property_) {
     if (layer->transform != DrmHwcTransform::kIdentity) {
-      ALOGV("Rotation is not supported on plane %d", id_);
+      ALOGV("No rotation property on plane %d", id_);
       return false;
     }
   } else {
-    // For rotation checks, we assume the hardware reports its capabilities
-    // consistently (e.g. a 270 degree rotation is a 90 degree rotation + H
-    // flip + V flip; it wouldn't make sense to support all of the latter but
-    // not the former).
-    int ret = 0;
-    const std::pair<enum DrmHwcTransform, std::string> transforms[] =
-        {{kFlipH, "reflect-x"},
-         {kFlipV, "reflect-y"},
-         {kRotate90, "rotate-90"},
-         {kRotate180, "rotate-180"},
-         {kRotate270, "rotate-270"}};
-
-    for (const auto &[transform, name] : transforms) {
-      if (layer->transform & transform) {
-        std::tie(std::ignore,
-                 ret) = rotation_property_.GetEnumValueWithName(name);
-        if (ret) {
-          ALOGV("Rotation '%s' is not supported on plane %d", name.c_str(),
-                id_);
-          return false;
-        }
-      }
+    if (transform_enum_map_.count(layer->transform) == 0) {
+      ALOGV("Transform is not supported on plane %d", id_);
+      return false;
     }
   }
 

@@ -84,6 +84,7 @@ class DrmPlane {
   std::map<DrmHwcBlending, uint64_t> blending_enum_map_;
   std::map<DrmHwcColorSpace, uint64_t> color_encoding_enum_map_;
   std::map<DrmHwcSampleRange, uint64_t> color_range_enum_map_;
+  std::map<DrmHwcTransform, uint64_t> transform_enum_map_;
 };
 }  // namespace android
 
