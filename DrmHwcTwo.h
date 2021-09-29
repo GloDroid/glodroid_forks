@@ -102,10 +102,10 @@ class DrmHwcTwo : public hwc2_device_t {
     }
 
     // Layer hooks
-    HWC2::Error SetCursorPosition(int32_t x, int32_t y);
+    HWC2::Error SetCursorPosition(int32_t /*x*/, int32_t /*y*/);
     HWC2::Error SetLayerBlendMode(int32_t mode);
     HWC2::Error SetLayerBuffer(buffer_handle_t buffer, int32_t acquire_fence);
-    HWC2::Error SetLayerColor(hwc_color_t color);
+    HWC2::Error SetLayerColor(hwc_color_t /*color*/);
     HWC2::Error SetLayerCompositionType(int32_t type);
     HWC2::Error SetLayerDataspace(int32_t dataspace);
     HWC2::Error SetLayerDisplayFrame(hwc_rect_t frame);
@@ -137,9 +137,6 @@ class DrmHwcTwo : public hwc2_device_t {
     hwc_rect_t display_frame_;
     float alpha_ = 1.0f;
     hwc_frect_t source_crop_;
-    int32_t cursor_x_;
-    int32_t cursor_y_;
-    hwc_color_t layer_color_;
     DrmHwcTransform transform_ = DrmHwcTransform::kIdentity;
     uint32_t z_order_ = 0;
     DrmHwcBlending blending_ = DrmHwcBlending::kNone;

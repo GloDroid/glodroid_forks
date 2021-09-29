@@ -1045,10 +1045,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetColorModeWithIntent(int32_t mode,
 
 #endif /* PLATFORM_SDK_VERSION > 27 */
 
-HWC2::Error DrmHwcTwo::HwcLayer::SetCursorPosition(int32_t x, int32_t y) {
+HWC2::Error DrmHwcTwo::HwcLayer::SetCursorPosition(int32_t /*x*/,
+                                                   int32_t /*y*/) {
   supported(__func__);
-  cursor_x_ = x;
-  cursor_y_ = y;
   return HWC2::Error::None;
 }
 
@@ -1084,10 +1083,9 @@ HWC2::Error DrmHwcTwo::HwcLayer::SetLayerBuffer(buffer_handle_t buffer,
   return HWC2::Error::None;
 }
 
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerColor(hwc_color_t color) {
+HWC2::Error DrmHwcTwo::HwcLayer::SetLayerColor(hwc_color_t /*color*/) {
   // TODO(nobody): Put to client composition here?
   supported(__func__);
-  layer_color_ = color;
   return HWC2::Error::None;
 }
 
