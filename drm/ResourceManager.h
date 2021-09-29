@@ -31,7 +31,6 @@ class ResourceManager {
   ResourceManager &operator=(const ResourceManager &) = delete;
   int Init();
   DrmDevice *GetDrmDevice(int display);
-  DrmConnector *AvailableWritebackConnector(int display);
   const std::vector<std::unique_ptr<DrmDevice>> &getDrmDevices() const {
     return drms_;
   }
