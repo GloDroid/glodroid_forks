@@ -29,7 +29,7 @@
 
 namespace android {
 
-ResourceManager::ResourceManager() : num_displays_(0), gralloc_(nullptr) {
+ResourceManager::ResourceManager() : num_displays_(0) {
 }
 
 int ResourceManager::Init() {
@@ -70,8 +70,7 @@ int ResourceManager::Init() {
     return -EINVAL;
   }
 
-  return hw_get_module(GRALLOC_HARDWARE_MODULE_ID,
-                       (const hw_module_t **)&gralloc_);
+  return 0;
 }
 
 int ResourceManager::AddDrmDevice(const std::string &path) {
@@ -125,9 +124,5 @@ DrmDevice *ResourceManager::GetDrmDevice(int display) {
       return drm.get();
   }
   return nullptr;
-}
-
-const gralloc_module_t *ResourceManager::gralloc() {
-  return gralloc_;
 }
 }  // namespace android
