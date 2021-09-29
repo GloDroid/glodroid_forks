@@ -176,9 +176,7 @@ int DrmDisplayCompositor::DisablePlanes(DrmDisplayComposition *display_comp) {
   std::vector<DrmCompositionPlane> &comp_planes = display_comp
                                                       ->composition_planes();
   for (DrmCompositionPlane &comp_plane : comp_planes) {
-    DrmPlane *plane = comp_plane.plane();
-    if (!plane->crtc_property().AtomicSet(*pset, 0) ||
-        !plane->fb_property().AtomicSet(*pset, 0)) {
+    if (comp_plane.plane()->AtomicDisablePlane(*pset) != 0) {
       return -EINVAL;
     }
   }
@@ -238,16 +236,6 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     DrmPlane *plane = comp_plane.plane();
     std::vector<size_t> &source_layers = comp_plane.source_layers();
 
-    uint32_t fb_id = UINT32_MAX;
-    int fence_fd = -1;
-    hwc_rect_t display_frame;
-    hwc_frect_t source_crop;
-    uint64_t rotation = 0;
-    uint64_t alpha = 0xFFFF;
-    uint64_t blend = UINT64_MAX;
-    uint64_t color_encoding = UINT64_MAX;
-    uint64_t color_range = UINT64_MAX;
-
     if (comp_plane.type() != DrmCompositionPlane::Type::kDisable) {
       if (source_layers.size() > 1) {
         ALOGE("Can't handle more than one source layer sz=%zu type=%d",
@@ -258,166 +246,17 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
       if (source_layers.empty() || source_layers.front() >= layers.size()) {
         ALOGE("Source layer index %zu out of bounds %zu type=%d",
               source_layers.front(), layers.size(), comp_plane.type());
-        break;
+        return -EINVAL;
       }
       DrmHwcLayer &layer = layers[source_layers.front()];
-      if (!layer.FbIdHandle) {
-        ALOGE("Expected a valid framebuffer for pset");
-        break;
+
+      if (plane->AtomicSetState(*pset, layer, source_layers.front(),
+                                crtc->id()) != 0) {
+        return -EINVAL;
       }
-      fb_id = layer.FbIdHandle->GetFbId();
-      fence_fd = layer.acquire_fence.Get();
-      display_frame = layer.display_frame;
-      source_crop = layer.source_crop;
-      alpha = layer.alpha;
-
-      if (plane->blend_property()) {
-        switch (layer.blending) {
-          case DrmHwcBlending::kPreMult:
-            std::tie(blend, ret) = plane->blend_property().GetEnumValueWithName(
-                "Pre-multiplied");
-            break;
-          case DrmHwcBlending::kCoverage:
-            std::tie(blend, ret) = plane->blend_property().GetEnumValueWithName(
-                "Coverage");
-            break;
-          case DrmHwcBlending::kNone:
-          default:
-            std::tie(blend, ret) = plane->blend_property().GetEnumValueWithName(
-                "None");
-            break;
-        }
-      }
-
-      if (plane->zpos_property() && !plane->zpos_property().is_immutable()) {
-        uint64_t min_zpos = 0;
-
-        // Ignore ret and use min_zpos as 0 by default
-        std::tie(std::ignore, min_zpos) = plane->zpos_property().range_min();
-
-        if (!plane->zpos_property().AtomicSet(*pset, source_layers.front() +
-                                                         min_zpos)) {
-          break;
-        }
-      }
-
-      rotation = 0;
-      if (layer.transform & DrmHwcTransform::kFlipH)
-        rotation |= DRM_MODE_REFLECT_X;
-      if (layer.transform & DrmHwcTransform::kFlipV)
-        rotation |= DRM_MODE_REFLECT_Y;
-      if (layer.transform & DrmHwcTransform::kRotate90)
-        rotation |= DRM_MODE_ROTATE_90;
-      else if (layer.transform & DrmHwcTransform::kRotate180)
-        rotation |= DRM_MODE_ROTATE_180;
-      else if (layer.transform & DrmHwcTransform::kRotate270)
-        rotation |= DRM_MODE_ROTATE_270;
-      else
-        rotation |= DRM_MODE_ROTATE_0;
-
-      if (fence_fd >= 0) {
-        if (!plane->in_fence_fd_property().AtomicSet(*pset, fence_fd)) {
-          break;
-        }
-      }
-
-      if (plane->color_encoding_propery()) {
-        switch (layer.dataspace & HAL_DATASPACE_STANDARD_MASK) {
-          case HAL_DATASPACE_STANDARD_BT709:
-            std::tie(color_encoding,
-                     ret) = plane->color_encoding_propery()
-                                .GetEnumValueWithName("ITU-R BT.709 YCbCr");
-            break;
-          case HAL_DATASPACE_STANDARD_BT601_625:
-          case HAL_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
-          case HAL_DATASPACE_STANDARD_BT601_525:
-          case HAL_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
-            std::tie(color_encoding,
-                     ret) = plane->color_encoding_propery()
-                                .GetEnumValueWithName("ITU-R BT.601 YCbCr");
-            break;
-          case HAL_DATASPACE_STANDARD_BT2020:
-          case HAL_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
-            std::tie(color_encoding,
-                     ret) = plane->color_encoding_propery()
-                                .GetEnumValueWithName("ITU-R BT.2020 YCbCr");
-            break;
-        }
-      }
-
-      if (plane->color_range_property()) {
-        switch (layer.dataspace & HAL_DATASPACE_RANGE_MASK) {
-          case HAL_DATASPACE_RANGE_FULL:
-            std::tie(color_range,
-                     ret) = plane->color_range_property()
-                                .GetEnumValueWithName("YCbCr full range");
-            break;
-          case HAL_DATASPACE_RANGE_LIMITED:
-            std::tie(color_range,
-                     ret) = plane->color_range_property()
-                                .GetEnumValueWithName("YCbCr limited range");
-            break;
-        }
-      }
-    }
-
-    // Disable the plane if there's no framebuffer
-    if (fb_id == UINT32_MAX) {
-      if (!plane->crtc_property().AtomicSet(*pset, 0) ||
-          !plane->fb_property().AtomicSet(*pset, 0)) {
-        break;
-      }
-      continue;
-    }
-
-    if (!plane->crtc_property().AtomicSet(*pset, crtc->id()) ||
-        !plane->fb_property().AtomicSet(*pset, fb_id) ||
-        !plane->crtc_x_property().AtomicSet(*pset, display_frame.left) ||
-        !plane->crtc_y_property().AtomicSet(*pset, display_frame.top) ||
-        !plane->crtc_w_property().AtomicSet(*pset, display_frame.right -
-                                                       display_frame.left) ||
-        !plane->crtc_h_property().AtomicSet(*pset, display_frame.bottom -
-                                                       display_frame.top) ||
-        !plane->src_x_property().AtomicSet(*pset, (int)(source_crop.left)
-                                                      << 16) ||
-        !plane->src_y_property().AtomicSet(*pset, (int)(source_crop.top)
-                                                      << 16) ||
-        !plane->src_w_property()
-             .AtomicSet(*pset, (int)(source_crop.right - source_crop.left)
-                                   << 16) ||
-        !plane->src_h_property()
-             .AtomicSet(*pset, (int)(source_crop.bottom - source_crop.top)
-                                   << 16)) {
-      break;
-    }
-
-    if (plane->rotation_property()) {
-      if (!plane->rotation_property().AtomicSet(*pset, rotation)) {
-        break;
-      }
-    }
-
-    if (plane->alpha_property()) {
-      if (!plane->alpha_property().AtomicSet(*pset, alpha)) {
-        break;
-      }
-    }
-
-    if (plane->blend_property() && blend != UINT64_MAX) {
-      if (!plane->blend_property().AtomicSet(*pset, blend)) {
-        break;
-      }
-    }
-
-    if (plane->color_encoding_propery() && color_encoding != UINT64_MAX) {
-      if (!plane->color_encoding_propery().AtomicSet(*pset, color_encoding)) {
-        break;
-      }
-    }
-
-    if (plane->color_range_property() && color_range != UINT64_MAX) {
-      if (!plane->color_range_property().AtomicSet(*pset, color_range)) {
-        break;
+    } else {
+      if (plane->AtomicDisablePlane(*pset) != 0) {
+        return -EINVAL;
       }
     }
   }

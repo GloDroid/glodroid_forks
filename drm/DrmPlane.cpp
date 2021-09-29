@@ -257,71 +257,183 @@ bool DrmPlane::HasNonRgbFormat() const {
                           }) != std::end(formats_);
 }
 
-const DrmProperty &DrmPlane::crtc_property() const {
-  return crtc_property_;
+auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
+                              uint32_t zpos, uint32_t crtc_id) -> int {
+  int ret = 0;
+  uint32_t fb_id = UINT32_MAX;
+  int fence_fd = -1;
+  hwc_rect_t display_frame;
+  hwc_frect_t source_crop;
+  uint64_t rotation = 0;
+  uint64_t alpha = 0xFFFF;
+  uint64_t blend = UINT64_MAX;
+  uint64_t color_encoding = UINT64_MAX;
+  uint64_t color_range = UINT64_MAX;
+
+  if (!layer.FbIdHandle) {
+    ALOGE("Expected a valid framebuffer for pset");
+    return -EINVAL;
+  }
+
+  fb_id = layer.FbIdHandle->GetFbId();
+  fence_fd = layer.acquire_fence.Get();
+  display_frame = layer.display_frame;
+  source_crop = layer.source_crop;
+  alpha = layer.alpha;
+
+  // Disable the plane if there's no framebuffer
+  if (fb_id == UINT32_MAX) {
+    if (!AtomicDisablePlane(pset)) {
+      return -EINVAL;
+    }
+    return 0;
+  }
+
+  if (blend_property_) {
+    switch (layer.blending) {
+      case DrmHwcBlending::kPreMult:
+        std::tie(blend,
+                 ret) = blend_property_.GetEnumValueWithName("Pre-multiplied");
+        break;
+      case DrmHwcBlending::kCoverage:
+        std::tie(blend, ret) = blend_property_.GetEnumValueWithName("Coverage");
+        break;
+      case DrmHwcBlending::kNone:
+      default:
+        std::tie(blend, ret) = blend_property_.GetEnumValueWithName("None");
+        break;
+    }
+  }
+
+  if (zpos_property_ && !zpos_property_.is_immutable()) {
+    uint64_t min_zpos = 0;
+
+    // Ignore ret and use min_zpos as 0 by default
+    std::tie(std::ignore, min_zpos) = zpos_property_.range_min();
+
+    if (!zpos_property_.AtomicSet(pset, zpos + min_zpos)) {
+      return -EINVAL;
+    }
+  }
+
+  rotation = 0;
+  if (layer.transform & DrmHwcTransform::kFlipH)
+    rotation |= DRM_MODE_REFLECT_X;
+  if (layer.transform & DrmHwcTransform::kFlipV)
+    rotation |= DRM_MODE_REFLECT_Y;
+  if (layer.transform & DrmHwcTransform::kRotate90)
+    rotation |= DRM_MODE_ROTATE_90;
+  else if (layer.transform & DrmHwcTransform::kRotate180)
+    rotation |= DRM_MODE_ROTATE_180;
+  else if (layer.transform & DrmHwcTransform::kRotate270)
+    rotation |= DRM_MODE_ROTATE_270;
+  else
+    rotation |= DRM_MODE_ROTATE_0;
+
+  if (fence_fd >= 0) {
+    if (!in_fence_fd_property_.AtomicSet(pset, fence_fd)) {
+      return -EINVAL;
+    }
+  }
+
+  if (color_encoding_propery_) {
+    switch (layer.dataspace & HAL_DATASPACE_STANDARD_MASK) {
+      case HAL_DATASPACE_STANDARD_BT709:
+        std::tie(color_encoding,
+                 ret) = color_encoding_propery_
+                            .GetEnumValueWithName("ITU-R BT.709 YCbCr");
+        break;
+      case HAL_DATASPACE_STANDARD_BT601_625:
+      case HAL_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
+      case HAL_DATASPACE_STANDARD_BT601_525:
+      case HAL_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
+        std::tie(color_encoding,
+                 ret) = color_encoding_propery_
+                            .GetEnumValueWithName("ITU-R BT.601 YCbCr");
+        break;
+      case HAL_DATASPACE_STANDARD_BT2020:
+      case HAL_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
+        std::tie(color_encoding,
+                 ret) = color_encoding_propery_
+                            .GetEnumValueWithName("ITU-R BT.2020 YCbCr");
+        break;
+    }
+  }
+
+  if (color_range_property_) {
+    switch (layer.dataspace & HAL_DATASPACE_RANGE_MASK) {
+      case HAL_DATASPACE_RANGE_FULL:
+        std::tie(color_range, ret) = color_range_property_.GetEnumValueWithName(
+            "YCbCr full range");
+        break;
+      case HAL_DATASPACE_RANGE_LIMITED:
+        std::tie(color_range, ret) = color_range_property_.GetEnumValueWithName(
+            "YCbCr limited range");
+        break;
+    }
+  }
+
+  if (!crtc_property_.AtomicSet(pset, crtc_id) ||
+      !fb_property_.AtomicSet(pset, fb_id) ||
+      !crtc_x_property_.AtomicSet(pset, display_frame.left) ||
+      !crtc_y_property_.AtomicSet(pset, display_frame.top) ||
+      !crtc_w_property_.AtomicSet(pset,
+                                  display_frame.right - display_frame.left) ||
+      !crtc_h_property_.AtomicSet(pset,
+                                  display_frame.bottom - display_frame.top) ||
+      !src_x_property_.AtomicSet(pset, (int)(source_crop.left) << 16) ||
+      !src_y_property_.AtomicSet(pset, (int)(source_crop.top) << 16) ||
+      !src_w_property_.AtomicSet(pset,
+                                 (int)(source_crop.right - source_crop.left)
+                                     << 16) ||
+      !src_h_property_.AtomicSet(pset,
+                                 (int)(source_crop.bottom - source_crop.top)
+                                     << 16)) {
+    return -EINVAL;
+  }
+
+  if (rotation_property_) {
+    if (!rotation_property_.AtomicSet(pset, rotation)) {
+      return -EINVAL;
+    }
+  }
+
+  if (alpha_property_) {
+    if (!alpha_property_.AtomicSet(pset, alpha)) {
+      return -EINVAL;
+    }
+  }
+
+  if (blend_property_ && blend != UINT64_MAX) {
+    if (!blend_property_.AtomicSet(pset, blend)) {
+      return -EINVAL;
+    }
+  }
+
+  if (color_encoding_propery_ && color_encoding != UINT64_MAX) {
+    if (!color_encoding_propery_.AtomicSet(pset, color_encoding)) {
+      return -EINVAL;
+    }
+  }
+
+  if (color_range_property_ && color_range != UINT64_MAX) {
+    if (!color_range_property_.AtomicSet(pset, color_range)) {
+      return -EINVAL;
+    }
+  }
+  return 0;
 }
 
-const DrmProperty &DrmPlane::fb_property() const {
-  return fb_property_;
-}
+auto DrmPlane::AtomicDisablePlane(drmModeAtomicReq &pset) -> int {
+  if (!crtc_property_.AtomicSet(pset, 0) || !fb_property_.AtomicSet(pset, 0)) {
+    return -EINVAL;
+  }
 
-const DrmProperty &DrmPlane::crtc_x_property() const {
-  return crtc_x_property_;
-}
-
-const DrmProperty &DrmPlane::crtc_y_property() const {
-  return crtc_y_property_;
-}
-
-const DrmProperty &DrmPlane::crtc_w_property() const {
-  return crtc_w_property_;
-}
-
-const DrmProperty &DrmPlane::crtc_h_property() const {
-  return crtc_h_property_;
-}
-
-const DrmProperty &DrmPlane::src_x_property() const {
-  return src_x_property_;
-}
-
-const DrmProperty &DrmPlane::src_y_property() const {
-  return src_y_property_;
-}
-
-const DrmProperty &DrmPlane::src_w_property() const {
-  return src_w_property_;
-}
-
-const DrmProperty &DrmPlane::src_h_property() const {
-  return src_h_property_;
+  return 0;
 }
 
 const DrmProperty &DrmPlane::zpos_property() const {
   return zpos_property_;
 }
 
-const DrmProperty &DrmPlane::rotation_property() const {
-  return rotation_property_;
-}
-
-const DrmProperty &DrmPlane::alpha_property() const {
-  return alpha_property_;
-}
-
-const DrmProperty &DrmPlane::blend_property() const {
-  return blend_property_;
-}
-
-const DrmProperty &DrmPlane::in_fence_fd_property() const {
-  return in_fence_fd_property_;
-}
-
-const DrmProperty &DrmPlane::color_encoding_propery() const {
-  return color_encoding_propery_;
-}
-
-const DrmProperty &DrmPlane::color_range_property() const {
-  return color_range_property_;
-}
 }  // namespace android
