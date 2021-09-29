@@ -37,11 +37,11 @@ enum DrmPropertyType {
 class DrmProperty {
  public:
   DrmProperty() = default;
-  DrmProperty(drmModePropertyPtr p, uint64_t value);
+  DrmProperty(uint32_t obj_id, drmModePropertyPtr p, uint64_t value);
   DrmProperty(const DrmProperty &) = delete;
   DrmProperty &operator=(const DrmProperty &) = delete;
 
-  void Init(drmModePropertyPtr p, uint64_t value);
+  auto Init(uint32_t obj_id, drmModePropertyPtr p, uint64_t value) -> void;
   std::tuple<uint64_t, int> GetEnumValueWithName(const std::string &name) const;
 
   uint32_t id() const;
@@ -54,6 +54,13 @@ class DrmProperty {
   std::tuple<int, uint64_t> range_min() const;
   std::tuple<int, uint64_t> range_max() const;
 
+  [[nodiscard]] auto AtomicSet(drmModeAtomicReq &pset, uint64_t value) const
+      -> bool;
+
+  operator bool() const {
+    return id_ != 0;
+  }
+
  private:
   class DrmPropertyEnum {
    public:
@@ -64,6 +71,7 @@ class DrmProperty {
     std::string name_;
   };
 
+  uint32_t obj_id_ = 0;
   uint32_t id_ = 0;
 
   DrmPropertyType type_ = DRM_PROPERTY_TYPE_INVALID;

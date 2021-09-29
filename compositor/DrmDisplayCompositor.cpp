@@ -177,13 +177,9 @@ int DrmDisplayCompositor::DisablePlanes(DrmDisplayComposition *display_comp) {
                                                       ->composition_planes();
   for (DrmCompositionPlane &comp_plane : comp_planes) {
     DrmPlane *plane = comp_plane.plane();
-    ret = drmModeAtomicAddProperty(pset.get(), plane->id(),
-                                   plane->crtc_property().id(), 0) < 0 ||
-          drmModeAtomicAddProperty(pset.get(), plane->id(),
-                                   plane->fb_property().id(), 0) < 0;
-    if (ret) {
-      ALOGE("Failed to add plane %d disable to pset", plane->id());
-      return ret;
+    if (!plane->crtc_property().AtomicSet(*pset, 0) ||
+        !plane->fb_property().AtomicSet(*pset, 0)) {
+      return -EINVAL;
     }
   }
   DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
@@ -219,40 +215,23 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     return -ENODEV;
   }
 
-  auto pset_unique = MakeDrmModeAtomicReqUnique();
-  auto *pset = pset_unique.get();
+  auto pset = MakeDrmModeAtomicReqUnique();
   if (!pset) {
     ALOGE("Failed to allocate property set");
     return -ENOMEM;
   }
 
-  if (crtc->out_fence_ptr_property().id() != 0) {
-    ret = drmModeAtomicAddProperty(pset, crtc->id(),
-                                   crtc->out_fence_ptr_property().id(),
-                                   (uint64_t)&out_fences[crtc->pipe()]);
-    if (ret < 0) {
-      ALOGE("Failed to add OUT_FENCE_PTR property to pset: %d", ret);
-      return ret;
-    }
+  if (crtc->out_fence_ptr_property() &&
+      !crtc->out_fence_ptr_property()
+           .AtomicSet(*pset, (uint64_t)&out_fences[crtc->pipe()])) {
+    return -EINVAL;
   }
 
-  if (mode_.needs_modeset) {
-    ret = drmModeAtomicAddProperty(pset, crtc->id(),
-                                   crtc->active_property().id(), 1);
-    if (ret < 0) {
-      ALOGE("Failed to add crtc active to pset\n");
-      return ret;
-    }
-
-    ret = drmModeAtomicAddProperty(pset, crtc->id(), crtc->mode_property().id(),
-                                   mode_.blob_id) < 0 ||
-          drmModeAtomicAddProperty(pset, connector->id(),
-                                   connector->crtc_id_property().id(),
-                                   crtc->id()) < 0;
-    if (ret) {
-      ALOGE("Failed to add blob %d to pset", mode_.blob_id);
-      return ret;
-    }
+  if (mode_.needs_modeset &&
+      (!crtc->active_property().AtomicSet(*pset, 1) ||
+       !crtc->mode_property().AtomicSet(*pset, mode_.blob_id) ||
+       !connector->crtc_id_property().AtomicSet(*pset, crtc->id()))) {
+    return -EINVAL;
   }
 
   for (DrmCompositionPlane &comp_plane : comp_planes) {
@@ -292,7 +271,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
       source_crop = layer.source_crop;
       alpha = layer.alpha;
 
-      if (plane->blend_property().id()) {
+      if (plane->blend_property()) {
         switch (layer.blending) {
           case DrmHwcBlending::kPreMult:
             std::tie(blend, ret) = plane->blend_property().GetEnumValueWithName(
@@ -310,19 +289,14 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
         }
       }
 
-      if (plane->zpos_property().id() &&
-          !plane->zpos_property().is_immutable()) {
+      if (plane->zpos_property() && !plane->zpos_property().is_immutable()) {
         uint64_t min_zpos = 0;
 
         // Ignore ret and use min_zpos as 0 by default
         std::tie(std::ignore, min_zpos) = plane->zpos_property().range_min();
 
-        ret = drmModeAtomicAddProperty(pset, plane->id(),
-                                       plane->zpos_property().id(),
-                                       source_layers.front() + min_zpos) < 0;
-        if (ret) {
-          ALOGE("Failed to add zpos property %d to plane %d",
-                plane->zpos_property().id(), plane->id());
+        if (!plane->zpos_property().AtomicSet(*pset, source_layers.front() +
+                                                         min_zpos)) {
           break;
         }
       }
@@ -342,19 +316,12 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
         rotation |= DRM_MODE_ROTATE_0;
 
       if (fence_fd >= 0) {
-        uint32_t prop_id = plane->in_fence_fd_property().id();
-        if (prop_id == 0) {
-          ALOGE("Failed to get IN_FENCE_FD property id");
-          break;
-        }
-        ret = drmModeAtomicAddProperty(pset, plane->id(), prop_id, fence_fd);
-        if (ret < 0) {
-          ALOGE("Failed to add IN_FENCE_FD property to pset: %d", ret);
+        if (!plane->in_fence_fd_property().AtomicSet(*pset, fence_fd)) {
           break;
         }
       }
 
-      if (plane->color_encoding_propery().id()) {
+      if (plane->color_encoding_propery()) {
         switch (layer.dataspace & HAL_DATASPACE_STANDARD_MASK) {
           case HAL_DATASPACE_STANDARD_BT709:
             std::tie(color_encoding,
@@ -378,7 +345,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
         }
       }
 
-      if (plane->color_range_property().id()) {
+      if (plane->color_range_property()) {
         switch (layer.dataspace & HAL_DATASPACE_RANGE_MASK) {
           case HAL_DATASPACE_RANGE_FULL:
             std::tie(color_range,
@@ -396,103 +363,60 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
 
     // Disable the plane if there's no framebuffer
     if (fb_id == UINT32_MAX) {
-      ret = drmModeAtomicAddProperty(pset, plane->id(),
-                                     plane->crtc_property().id(), 0) < 0 ||
-            drmModeAtomicAddProperty(pset, plane->id(),
-                                     plane->fb_property().id(), 0) < 0;
-      if (ret) {
-        ALOGE("Failed to add plane %d disable to pset", plane->id());
+      if (!plane->crtc_property().AtomicSet(*pset, 0) ||
+          !plane->fb_property().AtomicSet(*pset, 0)) {
         break;
       }
       continue;
     }
 
-    ret = drmModeAtomicAddProperty(pset, plane->id(),
-                                   plane->crtc_property().id(), crtc->id()) < 0;
-    ret |= drmModeAtomicAddProperty(pset, plane->id(),
-                                    plane->fb_property().id(), fb_id) < 0;
-    ret |= drmModeAtomicAddProperty(pset, plane->id(),
-                                    plane->crtc_x_property().id(),
-                                    display_frame.left) < 0;
-    ret |= drmModeAtomicAddProperty(pset, plane->id(),
-                                    plane->crtc_y_property().id(),
-                                    display_frame.top) < 0;
-    ret |= drmModeAtomicAddProperty(pset, plane->id(),
-                                    plane->crtc_w_property().id(),
-                                    display_frame.right - display_frame.left) <
-           0;
-    ret |= drmModeAtomicAddProperty(pset, plane->id(),
-                                    plane->crtc_h_property().id(),
-                                    display_frame.bottom - display_frame.top) <
-           0;
-    ret |= drmModeAtomicAddProperty(pset, plane->id(),
-                                    plane->src_x_property().id(),
-                                    (int)(source_crop.left) << 16) < 0;
-    ret |= drmModeAtomicAddProperty(pset, plane->id(),
-                                    plane->src_y_property().id(),
-                                    (int)(source_crop.top) << 16) < 0;
-    ret |= drmModeAtomicAddProperty(pset, plane->id(),
-                                    plane->src_w_property().id(),
-                                    (int)(source_crop.right - source_crop.left)
-                                        << 16) < 0;
-    ret |= drmModeAtomicAddProperty(pset, plane->id(),
-                                    plane->src_h_property().id(),
-                                    (int)(source_crop.bottom - source_crop.top)
-                                        << 16) < 0;
-    if (ret) {
-      ALOGE("Failed to add plane %d to set", plane->id());
+    if (!plane->crtc_property().AtomicSet(*pset, crtc->id()) ||
+        !plane->fb_property().AtomicSet(*pset, fb_id) ||
+        !plane->crtc_x_property().AtomicSet(*pset, display_frame.left) ||
+        !plane->crtc_y_property().AtomicSet(*pset, display_frame.top) ||
+        !plane->crtc_w_property().AtomicSet(*pset, display_frame.right -
+                                                       display_frame.left) ||
+        !plane->crtc_h_property().AtomicSet(*pset, display_frame.bottom -
+                                                       display_frame.top) ||
+        !plane->src_x_property().AtomicSet(*pset, (int)(source_crop.left)
+                                                      << 16) ||
+        !plane->src_y_property().AtomicSet(*pset, (int)(source_crop.top)
+                                                      << 16) ||
+        !plane->src_w_property()
+             .AtomicSet(*pset, (int)(source_crop.right - source_crop.left)
+                                   << 16) ||
+        !plane->src_h_property()
+             .AtomicSet(*pset, (int)(source_crop.bottom - source_crop.top)
+                                   << 16)) {
       break;
     }
 
-    if (plane->rotation_property().id()) {
-      ret = drmModeAtomicAddProperty(pset, plane->id(),
-                                     plane->rotation_property().id(),
-                                     rotation) < 0;
-      if (ret) {
-        ALOGE("Failed to add rotation property %d to plane %d",
-              plane->rotation_property().id(), plane->id());
+    if (plane->rotation_property()) {
+      if (!plane->rotation_property().AtomicSet(*pset, rotation)) {
         break;
       }
     }
 
-    if (plane->alpha_property().id()) {
-      ret = drmModeAtomicAddProperty(pset, plane->id(),
-                                     plane->alpha_property().id(), alpha) < 0;
-      if (ret) {
-        ALOGE("Failed to add alpha property %d to plane %d",
-              plane->alpha_property().id(), plane->id());
+    if (plane->alpha_property()) {
+      if (!plane->alpha_property().AtomicSet(*pset, alpha)) {
         break;
       }
     }
 
-    if (plane->blend_property().id() && blend != UINT64_MAX) {
-      ret = drmModeAtomicAddProperty(pset, plane->id(),
-                                     plane->blend_property().id(), blend) < 0;
-      if (ret) {
-        ALOGE("Failed to add pixel blend mode property %d to plane %d",
-              plane->blend_property().id(), plane->id());
+    if (plane->blend_property() && blend != UINT64_MAX) {
+      if (!plane->blend_property().AtomicSet(*pset, blend)) {
         break;
       }
     }
 
-    if (plane->color_encoding_propery().id() && color_encoding != UINT64_MAX) {
-      ret = drmModeAtomicAddProperty(pset, plane->id(),
-                                     plane->color_encoding_propery().id(),
-                                     color_encoding) < 0;
-      if (ret) {
-        ALOGE("Failed to add COLOR_ENCODING property %d to plane %d",
-              plane->color_encoding_propery().id(), plane->id());
+    if (plane->color_encoding_propery() && color_encoding != UINT64_MAX) {
+      if (!plane->color_encoding_propery().AtomicSet(*pset, color_encoding)) {
         break;
       }
     }
 
-    if (plane->color_range_property().id() && color_range != UINT64_MAX) {
-      ret = drmModeAtomicAddProperty(pset, plane->id(),
-                                     plane->color_range_property().id(),
-                                     color_range) < 0;
-      if (ret) {
-        ALOGE("Failed to add COLOR_RANGE property %d to plane %d",
-              plane->color_range_property().id(), plane->id());
+    if (plane->color_range_property() && color_range != UINT64_MAX) {
+      if (!plane->color_range_property().AtomicSet(*pset, color_range)) {
         break;
       }
     }
@@ -503,7 +427,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     if (test_only)
       flags |= DRM_MODE_ATOMIC_TEST_ONLY;
 
-    ret = drmModeAtomicCommit(drm->fd(), pset, flags, drm);
+    ret = drmModeAtomicCommit(drm->fd(), pset.get(), flags, drm);
     if (ret) {
       if (!test_only)
         ALOGE("Failed to commit pset ret=%d\n", ret);
@@ -532,7 +456,7 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     mode_.needs_modeset = false;
   }
 
-  if (crtc->out_fence_ptr_property().id()) {
+  if (crtc->out_fence_ptr_property()) {
     display_comp->out_fence_ = UniqueFd((int)out_fences[crtc->pipe()]);
   }
 

@@ -547,7 +547,7 @@ int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
   for (int i = 0; !found && (size_t)i < props->count_props; ++i) {
     drmModePropertyPtr p = drmModeGetProperty(fd(), props->props[i]);
     if (!strcmp(p->name, prop_name)) {
-      property->Init(p, props->prop_values[i]);
+      property->Init(obj_id, p, props->prop_values[i]);
       found = true;
     }
     drmModeFreeProperty(p);
