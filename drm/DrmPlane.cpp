@@ -37,7 +37,6 @@ DrmPlane::DrmPlane(DrmDevice *drm, drmModePlanePtr p)
 }
 
 int DrmPlane::Init() {
-  uint64_t enum_value = UINT64_MAX;
   DrmProperty p;
 
   int ret = drm_->GetPlaneProperty(*this, "type", &p);
@@ -137,20 +136,12 @@ int DrmPlane::Init() {
 
   ret = drm_->GetPlaneProperty(*this, "pixel blend mode", &blend_property_);
   if (ret == 0) {
-    std::tie(enum_value,
-             ret) = blend_property_.GetEnumValueWithName("Pre-multiplied");
-    if (ret == 0) {
-      blending_enum_map_[DrmHwcBlending::kPreMult] = enum_value;
-    }
-    std::tie(enum_value,
-             ret) = blend_property_.GetEnumValueWithName("Coverage");
-    if (ret == 0) {
-      blending_enum_map_[DrmHwcBlending::kCoverage] = enum_value;
-    }
-    std::tie(enum_value, ret) = blend_property_.GetEnumValueWithName("None");
-    if (ret == 0) {
-      blending_enum_map_[DrmHwcBlending::kNone] = enum_value;
-    }
+    blend_property_.AddEnumToMap("Pre-multiplied", DrmHwcBlending::kPreMult,
+                                 blending_enum_map_);
+    blend_property_.AddEnumToMap("Coverage", DrmHwcBlending::kCoverage,
+                                 blending_enum_map_);
+    blend_property_.AddEnumToMap("None", DrmHwcBlending::kNone,
+                                 blending_enum_map_);
   } else {
     ALOGI("Could not get pixel blend mode property");
   }
@@ -163,37 +154,27 @@ int DrmPlane::Init() {
     ret = drm_->GetPlaneProperty(*this, "COLOR_ENCODING",
                                  &color_encoding_propery_);
     if (ret == 0) {
-      std::tie(enum_value, ret) = color_encoding_propery_.GetEnumValueWithName(
-          "ITU-R BT.709 YCbCr");
-      if (ret == 0) {
-        color_encoding_enum_map_[DrmHwcColorSpace::kItuRec709] = enum_value;
-      }
-      std::tie(enum_value, ret) = color_encoding_propery_.GetEnumValueWithName(
-          "ITU-R BT.601 YCbCr");
-      if (ret == 0) {
-        color_encoding_enum_map_[DrmHwcColorSpace::kItuRec601] = enum_value;
-      }
-      std::tie(enum_value, ret) = color_encoding_propery_.GetEnumValueWithName(
-          "ITU-R BT.2020 YCbCr");
-      if (ret == 0) {
-        color_encoding_enum_map_[DrmHwcColorSpace::kItuRec2020] = enum_value;
-      }
+      color_encoding_propery_.AddEnumToMap("ITU-R BT.709 YCbCr",
+                                           DrmHwcColorSpace::kItuRec709,
+                                           color_encoding_enum_map_);
+      color_encoding_propery_.AddEnumToMap("ITU-R BT.601 YCbCr",
+                                           DrmHwcColorSpace::kItuRec601,
+                                           color_encoding_enum_map_);
+      color_encoding_propery_.AddEnumToMap("ITU-R BT.2020 YCbCr",
+                                           DrmHwcColorSpace::kItuRec2020,
+                                           color_encoding_enum_map_);
     } else {
       ALOGI("Could not get COLOR_ENCODING property");
     }
 
     ret = drm_->GetPlaneProperty(*this, "COLOR_RANGE", &color_range_property_);
     if (ret == 0) {
-      std::tie(enum_value, ret) = color_range_property_.GetEnumValueWithName(
-          "YCbCr full range");
-      if (ret == 0) {
-        color_range_enum_map_[DrmHwcSampleRange::kFullRange] = enum_value;
-      }
-      std::tie(enum_value, ret) = color_range_property_.GetEnumValueWithName(
-          "YCbCr limited range");
-      if (ret == 0) {
-        color_range_enum_map_[DrmHwcSampleRange::kLimitedRange] = enum_value;
-      }
+      color_range_property_.AddEnumToMap("YCbCr full range",
+                                         DrmHwcSampleRange::kFullRange,
+                                         color_range_enum_map_);
+      color_range_property_.AddEnumToMap("YCbCr limited range",
+                                         DrmHwcSampleRange::kLimitedRange,
+                                         color_range_enum_map_);
     } else {
       ALOGI("Could not get COLOR_RANGE property");
     }

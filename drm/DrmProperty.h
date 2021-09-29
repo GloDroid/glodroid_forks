@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <xf86drmMode.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -57,6 +58,10 @@ class DrmProperty {
   [[nodiscard]] auto AtomicSet(drmModeAtomicReq &pset, uint64_t value) const
       -> bool;
 
+  template <class E>
+  auto AddEnumToMap(const std::string &name, E key, std::map<E, uint64_t> &map)
+      -> bool;
+
   operator bool() const {
     return id_ != 0;
   }
@@ -83,6 +88,21 @@ class DrmProperty {
   std::vector<DrmPropertyEnum> enums_;
   std::vector<uint32_t> blob_ids_;
 };
+
+template <class E>
+auto DrmProperty::AddEnumToMap(const std::string &name, E key,
+                               std::map<E, uint64_t> &map) -> bool {
+  uint64_t enum_value = UINT64_MAX;
+  int err = 0;
+  std::tie(enum_value, err) = GetEnumValueWithName(name);
+  if (err == 0) {
+    map[key] = enum_value;
+    return true;
+  }
+
+  return false;
+}
+
 }  // namespace android
 
 #endif  // ANDROID_DRM_PROPERTY_H_
