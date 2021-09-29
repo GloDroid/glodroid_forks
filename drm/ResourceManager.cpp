@@ -51,7 +51,7 @@ int ResourceManager::Init() {
       if (stat(path.str().c_str(), &buf))
         break;
 
-      if (IsKMSDev(path.str().c_str()))
+      if (DrmDevice::IsKMSDev(path.str().c_str()))
         ret = AddDrmDevice(path.str());
     }
   }
@@ -81,23 +81,6 @@ int ResourceManager::AddDrmDevice(const std::string &path) {
   drms_.push_back(std::move(drm));
   num_displays_ += displays_added;
   return ret;
-}
-
-bool ResourceManager::IsKMSDev(const char *path) {
-  auto fd = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
-  if (!fd) {
-    return false;
-  }
-
-  auto res = MakeDrmModeResUnique(fd.Get());
-  if (!res) {
-    return false;
-  }
-
-  bool is_kms = res->count_crtcs > 0 && res->count_connectors > 0 &&
-                res->count_encoders > 0;
-
-  return is_kms;
 }
 
 DrmDevice *ResourceManager::GetDrmDevice(int display) {

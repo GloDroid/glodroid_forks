@@ -96,6 +96,8 @@ class DrmDevice {
     return *mDrmFbImporter.get();
   }
 
+  static auto IsKMSDev(const char *path) -> bool;
+
  private:
   int TryEncoderForDisplay(int display, DrmEncoder *enc);
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,

@@ -585,4 +585,22 @@ std::string DrmDevice::GetName() const {
   drmFreeVersion(ver);
   return name;
 }
+
+auto DrmDevice::IsKMSDev(const char *path) -> bool {
+  auto fd = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
+  if (!fd) {
+    return false;
+  }
+
+  auto res = MakeDrmModeResUnique(fd.Get());
+  if (!res) {
+    return false;
+  }
+
+  bool is_kms = res->count_crtcs > 0 && res->count_connectors > 0 &&
+                res->count_encoders > 0;
+
+  return is_kms;
+}
+
 }  // namespace android
