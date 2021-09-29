@@ -80,6 +80,9 @@ class DrmPlane {
   DrmProperty in_fence_fd_property_;
   DrmProperty color_encoding_propery_;
   DrmProperty color_range_property_;
+
+  std::map<DrmHwcColorSpace, uint64_t> color_encoding_enum_map_;
+  std::map<DrmHwcSampleRange, uint64_t> color_range_enum_map_;
 };
 }  // namespace android
 

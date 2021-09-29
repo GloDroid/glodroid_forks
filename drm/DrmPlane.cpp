@@ -37,6 +37,7 @@ DrmPlane::DrmPlane(DrmDevice *drm, drmModePlanePtr p)
 }
 
 int DrmPlane::Init() {
+  uint64_t enum_value = UINT64_MAX;
   DrmProperty p;
 
   int ret = drm_->GetPlaneProperty(*this, "type", &p);
@@ -145,12 +146,41 @@ int DrmPlane::Init() {
   if (HasNonRgbFormat()) {
     ret = drm_->GetPlaneProperty(*this, "COLOR_ENCODING",
                                  &color_encoding_propery_);
-    if (ret)
+    if (ret == 0) {
+      std::tie(enum_value, ret) = color_encoding_propery_.GetEnumValueWithName(
+          "ITU-R BT.709 YCbCr");
+      if (ret == 0) {
+        color_encoding_enum_map_[DrmHwcColorSpace::kItuRec709] = enum_value;
+      }
+      std::tie(enum_value, ret) = color_encoding_propery_.GetEnumValueWithName(
+          "ITU-R BT.601 YCbCr");
+      if (ret == 0) {
+        color_encoding_enum_map_[DrmHwcColorSpace::kItuRec601] = enum_value;
+      }
+      std::tie(enum_value, ret) = color_encoding_propery_.GetEnumValueWithName(
+          "ITU-R BT.2020 YCbCr");
+      if (ret == 0) {
+        color_encoding_enum_map_[DrmHwcColorSpace::kItuRec2020] = enum_value;
+      }
+    } else {
       ALOGI("Could not get COLOR_ENCODING property");
+    }
 
     ret = drm_->GetPlaneProperty(*this, "COLOR_RANGE", &color_range_property_);
-    if (ret)
+    if (ret == 0) {
+      std::tie(enum_value, ret) = color_range_property_.GetEnumValueWithName(
+          "YCbCr full range");
+      if (ret == 0) {
+        color_range_enum_map_[DrmHwcSampleRange::kFullRange] = enum_value;
+      }
+      std::tie(enum_value, ret) = color_range_property_.GetEnumValueWithName(
+          "YCbCr limited range");
+      if (ret == 0) {
+        color_range_enum_map_[DrmHwcSampleRange::kLimitedRange] = enum_value;
+      }
+    } else {
       ALOGI("Could not get COLOR_RANGE property");
+    }
   }
 
   return 0;
@@ -267,8 +297,6 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
   uint64_t rotation = 0;
   uint64_t alpha = 0xFFFF;
   uint64_t blend = UINT64_MAX;
-  uint64_t color_encoding = UINT64_MAX;
-  uint64_t color_range = UINT64_MAX;
 
   if (!layer.FbIdHandle) {
     ALOGE("Expected a valid framebuffer for pset");
@@ -336,41 +364,6 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
     }
   }
 
-  if (color_encoding_propery_) {
-    switch (layer.color_space) {
-      case DrmHwcColorSpace::kItuRec709:
-        std::tie(color_encoding,
-                 ret) = color_encoding_propery_
-                            .GetEnumValueWithName("ITU-R BT.709 YCbCr");
-        break;
-      case DrmHwcColorSpace::kItuRec601:
-        std::tie(color_encoding,
-                 ret) = color_encoding_propery_
-                            .GetEnumValueWithName("ITU-R BT.601 YCbCr");
-        break;
-      case DrmHwcColorSpace::kItuRec2020:
-        std::tie(color_encoding,
-                 ret) = color_encoding_propery_
-                            .GetEnumValueWithName("ITU-R BT.2020 YCbCr");
-        break;
-      default:
-        break;
-    }
-  }
-
-  switch (layer.sample_range) {
-    case DrmHwcSampleRange::kFullRange:
-      std::tie(color_range, ret) = color_range_property_.GetEnumValueWithName(
-          "YCbCr full range");
-      break;
-    case DrmHwcSampleRange::kLimitedRange:
-      std::tie(color_range, ret) = color_range_property_.GetEnumValueWithName(
-          "YCbCr limited range");
-      break;
-    default:
-      break;
-  }
-
   if (!crtc_property_.AtomicSet(pset, crtc_id) ||
       !fb_property_.AtomicSet(pset, fb_id) ||
       !crtc_x_property_.AtomicSet(pset, display_frame.left) ||
@@ -408,17 +401,18 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
     }
   }
 
-  if (color_encoding_propery_ && color_encoding != UINT64_MAX) {
-    if (!color_encoding_propery_.AtomicSet(pset, color_encoding)) {
-      return -EINVAL;
-    }
+  if (color_encoding_enum_map_.count(layer.color_space) != 0 &&
+      !color_encoding_propery_
+           .AtomicSet(pset, color_encoding_enum_map_[layer.color_space])) {
+    return -EINVAL;
   }
 
-  if (color_range_property_ && color_range != UINT64_MAX) {
-    if (!color_range_property_.AtomicSet(pset, color_range)) {
-      return -EINVAL;
-    }
+  if (color_range_enum_map_.count(layer.sample_range) != 0 &&
+      !color_range_property_
+           .AtomicSet(pset, color_range_enum_map_[layer.sample_range])) {
+    return -EINVAL;
   }
+
   return 0;
 }
 
