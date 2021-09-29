@@ -42,16 +42,11 @@ class DrmHwcTwo : public hwc2_device_t {
 
   HWC2::Error Init();
 
-  hwc2_callback_data_t hotplug_callback_data_ = NULL;
-  HWC2_PFN_HOTPLUG hotplug_callback_hook_ = NULL;
-  std::mutex hotplug_callback_lock;
+  std::pair<HWC2_PFN_HOTPLUG, hwc2_callback_data_t> hotplug_callback_{};
+  std::pair<HWC2_PFN_VSYNC, hwc2_callback_data_t> vsync_callback_{};
+  std::pair<HWC2_PFN_REFRESH, hwc2_callback_data_t> refresh_callback_{};
 
-  void SetHotplugCallback(hwc2_callback_data_t data,
-                          hwc2_function_pointer_t hook) {
-    const std::lock_guard<std::mutex> lock(hotplug_callback_lock);
-    hotplug_callback_data_ = data;
-    hotplug_callback_hook_ = reinterpret_cast<HWC2_PFN_HOTPLUG>(hook);
-  }
+  std::mutex callback_lock_;
 
   class HwcLayer {
    public:
@@ -147,14 +142,10 @@ class DrmHwcTwo : public hwc2_device_t {
   class HwcDisplay {
    public:
     HwcDisplay(ResourceManager *resource_manager, DrmDevice *drm,
-               hwc2_display_t handle, HWC2::DisplayType type);
+               hwc2_display_t handle, HWC2::DisplayType type, DrmHwcTwo *hwc2);
     HwcDisplay(const HwcDisplay &) = delete;
     HWC2::Error Init(std::vector<DrmPlane *> *planes);
 
-    void RegisterVsyncCallback(hwc2_callback_data_t data,
-                               hwc2_function_pointer_t func);
-    void RegisterRefreshCallback(hwc2_callback_data_t data,
-                                 hwc2_function_pointer_t func);
     HWC2::Error CreateComposition(bool test);
     std::vector<DrmHwcTwo::HwcLayer *> GetOrderLayersByZPos();
 
@@ -303,6 +294,8 @@ class DrmHwcTwo : public hwc2_device_t {
     void AddFenceToPresentFence(UniqueFd fd);
 
     constexpr static size_t MATRIX_SIZE = 16;
+
+    DrmHwcTwo *hwc2_;
 
     ResourceManager *resource_manager_;
     DrmDevice *drm_;

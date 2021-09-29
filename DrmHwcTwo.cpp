@@ -54,8 +54,8 @@ HWC2::Error DrmHwcTwo::CreateDisplay(hwc2_display_t displ,
     return HWC2::Error::NoResources;
   }
   displays_.emplace(std::piecewise_construct, std::forward_as_tuple(displ),
-                    std::forward_as_tuple(&resource_manager_, drm, displ,
-                                          type));
+                    std::forward_as_tuple(&resource_manager_, drm, displ, type,
+                                          this));
 
   DrmCrtc *crtc = drm->GetCrtcForDisplay(static_cast<int>(displ));
   if (!crtc) {
@@ -183,24 +183,23 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
                                         hwc2_function_pointer_t function) {
   supported(__func__);
 
+  std::unique_lock<std::mutex> lock(callback_lock_);
+
   switch (static_cast<HWC2::Callback>(descriptor)) {
     case HWC2::Callback::Hotplug: {
-      SetHotplugCallback(data, function);
+      hotplug_callback_ = std::make_pair(HWC2_PFN_HOTPLUG(function), data);
+      lock.unlock();
       const auto &drm_devices = resource_manager_.getDrmDevices();
       for (const auto &device : drm_devices)
         HandleInitialHotplugState(device.get());
       break;
     }
     case HWC2::Callback::Refresh: {
-      for (std::pair<const hwc2_display_t, DrmHwcTwo::HwcDisplay> &d :
-           displays_)
-        d.second.RegisterRefreshCallback(data, function);
+      refresh_callback_ = std::make_pair(HWC2_PFN_REFRESH(function), data);
       break;
     }
     case HWC2::Callback::Vsync: {
-      for (std::pair<const hwc2_display_t, DrmHwcTwo::HwcDisplay> &d :
-           displays_)
-        d.second.RegisterVsyncCallback(data, function);
+      vsync_callback_ = std::make_pair(HWC2_PFN_VSYNC(function), data);
       break;
     }
     default:
@@ -211,8 +210,9 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
 
 DrmHwcTwo::HwcDisplay::HwcDisplay(ResourceManager *resource_manager,
                                   DrmDevice *drm, hwc2_display_t handle,
-                                  HWC2::DisplayType type)
-    : resource_manager_(resource_manager),
+                                  HWC2::DisplayType type, DrmHwcTwo *hwc2)
+    : hwc2_(hwc2),
+      resource_manager_(resource_manager),
       drm_(drm),
       handle_(handle),
       type_(type),
@@ -240,7 +240,14 @@ HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
   }
 
   int display = static_cast<int>(handle_);
-  int ret = compositor_.Init(resource_manager_, display);
+  int ret = compositor_.Init(resource_manager_, display, [this] {
+    /* refresh callback */
+    const std::lock_guard<std::mutex> lock(hwc2_->callback_lock_);
+    if (hwc2_->refresh_callback_.first != nullptr &&
+        hwc2_->refresh_callback_.second != nullptr) {
+      hwc2_->refresh_callback_.first(hwc2_->refresh_callback_.second, handle_);
+    }
+  });
   if (ret) {
     ALOGE("Failed display compositor init for display %d (%d)", display, ret);
     return HWC2::Error::NoResources;
@@ -271,7 +278,15 @@ HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
     return HWC2::Error::BadDisplay;
   }
 
-  ret = vsync_worker_.Init(drm_, display);
+  ret = vsync_worker_.Init(drm_, display, [this](int64_t timestamp) {
+    /* vsync callback */
+    const std::lock_guard<std::mutex> lock(hwc2_->callback_lock_);
+    if (hwc2_->vsync_callback_.first != nullptr &&
+        hwc2_->vsync_callback_.second != nullptr) {
+      hwc2_->vsync_callback_.first(hwc2_->vsync_callback_.second, handle_,
+                                   timestamp);
+    }
+  });
   if (ret) {
     ALOGE("Failed to create event worker for d=%d %d\n", display, ret);
     return HWC2::Error::BadDisplay;
@@ -294,18 +309,6 @@ HWC2::Error DrmHwcTwo::HwcDisplay::ChosePreferredConfig() {
     return err;
 
   return SetActiveConfig(connector_->get_preferred_mode_id());
-}
-
-void DrmHwcTwo::HwcDisplay::RegisterVsyncCallback(
-    hwc2_callback_data_t data, hwc2_function_pointer_t func) {
-  supported(__func__);
-  vsync_worker_.RegisterClientCallback(data, func);
-}
-
-void DrmHwcTwo::HwcDisplay::RegisterRefreshCallback(
-    hwc2_callback_data_t data, hwc2_function_pointer_t func) {
-  supported(__func__);
-  compositor_.SetRefreshCallback(data, func);
 }
 
 HWC2::Error DrmHwcTwo::HwcDisplay::AcceptDisplayChanges() {
@@ -1213,13 +1216,15 @@ void DrmHwcTwo::HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
 }
 
 void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {
-  const std::lock_guard<std::mutex> lock(hotplug_callback_lock);
+  const std::lock_guard<std::mutex> lock(callback_lock_);
 
-  if (hotplug_callback_hook_ && hotplug_callback_data_)
-    hotplug_callback_hook_(hotplug_callback_data_, displayid,
-                           state == DRM_MODE_CONNECTED
-                               ? HWC2_CONNECTION_CONNECTED
-                               : HWC2_CONNECTION_DISCONNECTED);
+  if (hotplug_callback_.first != nullptr &&
+      hotplug_callback_.second != nullptr) {
+    hotplug_callback_.first(hotplug_callback_.second, displayid,
+                            state == DRM_MODE_CONNECTED
+                                ? HWC2_CONNECTION_CONNECTED
+                                : HWC2_CONNECTION_DISCONNECTED);
+  }
 }
 
 void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {

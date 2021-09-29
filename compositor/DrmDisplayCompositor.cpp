@@ -49,20 +49,6 @@ std::ostream &operator<<(std::ostream &str, FlatteningState state) {
   return str << flattenting_state_str[static_cast<int>(state)];
 }
 
-class CompositorVsyncCallback : public VsyncCallback {
- public:
-  explicit CompositorVsyncCallback(DrmDisplayCompositor *compositor)
-      : compositor_(compositor) {
-  }
-
-  void Callback(int display, int64_t timestamp) override {
-    compositor_->Vsync(display, timestamp);
-  }
-
- private:
-  DrmDisplayCompositor *compositor_;
-};
-
 DrmDisplayCompositor::DrmDisplayCompositor()
     : resource_manager_(nullptr),
       display_(-1),
@@ -103,7 +89,10 @@ DrmDisplayCompositor::~DrmDisplayCompositor() {
   pthread_mutex_destroy(&lock_);
 }
 
-int DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display) {
+auto DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display,
+                                std::function<void()> client_refresh_callback)
+    -> int {
+  client_refresh_callback_ = std::move(client_refresh_callback);
   resource_manager_ = resource_manager;
   display_ = display;
   DrmDevice *drm = resource_manager_->GetDrmDevice(display);
@@ -118,9 +107,19 @@ int DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display) {
   }
   planner_ = Planner::CreateInstance(drm);
 
-  vsync_worker_.Init(drm, display_);
-  auto callback = std::make_shared<CompositorVsyncCallback>(this);
-  vsync_worker_.RegisterCallback(callback);
+  vsync_worker_.Init(drm, display_, [this](int64_t timestamp) {
+    AutoLock lock(&lock_, "DrmDisplayCompositor::Init()");
+    if (lock.Lock())
+      return;
+    flatten_countdown_--;
+    if (!CountdownExpired())
+      return;
+    lock.Unlock();
+    int ret = FlattenActiveComposition();
+    ALOGV("scene flattening triggered for display %d at timestamp %" PRIu64
+          " result = %d \n",
+          display_, timestamp, ret);
+  });
 
   initialized_ = true;
   return 0;
@@ -445,9 +444,7 @@ bool DrmDisplayCompositor::IsFlatteningNeeded() const {
 }
 
 int DrmDisplayCompositor::FlattenOnClient() {
-  const std::lock_guard<std::mutex> lock(refresh_callback_lock);
-
-  if (refresh_callback_hook_ && refresh_callback_data_) {
+  if (client_refresh_callback_) {
     {
       AutoLock lock(&lock_, __func__);
       if (!IsFlatteningNeeded()) {
@@ -463,7 +460,7 @@ int DrmDisplayCompositor::FlattenOnClient() {
         "No writeback connector available, "
         "falling back to client composition");
     SetFlattening(FlatteningState::kClientRequested);
-    refresh_callback_hook_(refresh_callback_data_, display_);
+    client_refresh_callback_();
     return 0;
   }
 
@@ -477,20 +474,6 @@ int DrmDisplayCompositor::FlattenActiveComposition() {
 
 bool DrmDisplayCompositor::CountdownExpired() const {
   return flatten_countdown_ <= 0;
-}
-
-void DrmDisplayCompositor::Vsync(int display, int64_t timestamp) {
-  AutoLock lock(&lock_, __func__);
-  if (lock.Lock())
-    return;
-  flatten_countdown_--;
-  if (!CountdownExpired())
-    return;
-  lock.Unlock();
-  int ret = FlattenActiveComposition();
-  ALOGV("scene flattening triggered for display %d at timestamp %" PRIu64
-        " result = %d \n",
-        display, timestamp, ret);
 }
 
 void DrmDisplayCompositor::Dump(std::ostringstream *out) const {

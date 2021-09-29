@@ -37,25 +37,14 @@ VSyncWorker::VSyncWorker()
       last_timestamp_(-1) {
 }
 
-int VSyncWorker::Init(DrmDevice *drm, int display) {
+auto VSyncWorker::Init(DrmDevice *drm, int display,
+                       std::function<void(uint64_t /*timestamp*/)> callback)
+    -> int {
   drm_ = drm;
   display_ = display;
+  callback_ = std::move(callback);
 
   return InitWorker();
-}
-
-void VSyncWorker::RegisterCallback(std::shared_ptr<VsyncCallback> callback) {
-  Lock();
-  callback_ = std::move(callback);
-  Unlock();
-}
-
-void VSyncWorker::RegisterClientCallback(hwc2_callback_data_t data,
-                                         hwc2_function_pointer_t hook) {
-  Lock();
-  vsync_callback_data_ = data;
-  vsync_callback_hook_ = (HWC2_PFN_VSYNC)hook;
-  Unlock();
 }
 
 void VSyncWorker::VSyncControl(bool enabled) {
@@ -133,7 +122,6 @@ void VSyncWorker::Routine() {
   }
 
   int display = display_;
-  std::shared_ptr<VsyncCallback> callback(callback_);
   Unlock();
 
   DrmCrtc *crtc = drm_->GetCrtcForDisplay(display);
@@ -145,8 +133,9 @@ void VSyncWorker::Routine() {
 
   drmVBlank vblank;
   memset(&vblank, 0, sizeof(vblank));
-  vblank.request.type = (drmVBlankSeqType)(
-      DRM_VBLANK_RELATIVE | (high_crtc & DRM_VBLANK_HIGH_CRTC_MASK));
+  vblank.request.type = (drmVBlankSeqType)(DRM_VBLANK_RELATIVE |
+                                           (high_crtc &
+                                            DRM_VBLANK_HIGH_CRTC_MASK));
   vblank.request.sequence = 1;
 
   int64_t timestamp = 0;
@@ -166,13 +155,9 @@ void VSyncWorker::Routine() {
   if (!enabled_)
     return;
 
-  if (callback)
-    callback->Callback(display, timestamp);
-
-  Lock();
-  if (enabled_ && vsync_callback_hook_ && vsync_callback_data_)
-    vsync_callback_hook_(vsync_callback_data_, display, timestamp);
-  Unlock();
+  if (callback_) {
+    callback_(timestamp);
+  }
 
   last_timestamp_ = timestamp;
 }

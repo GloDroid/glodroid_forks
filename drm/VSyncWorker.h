@@ -23,6 +23,7 @@
 #include <stdint.h>
 
 #include <atomic>
+#include <functional>
 #include <map>
 
 #include "DrmDevice.h"
@@ -30,21 +31,13 @@
 
 namespace android {
 
-class VsyncCallback {
- public:
-  virtual ~VsyncCallback() = default;
-  virtual void Callback(int display, int64_t timestamp) = 0;
-};
-
 class VSyncWorker : public Worker {
  public:
   VSyncWorker();
   ~VSyncWorker() override = default;
 
-  int Init(DrmDevice *drm, int display);
-  void RegisterCallback(std::shared_ptr<VsyncCallback> callback);
-  void RegisterClientCallback(hwc2_callback_data_t data,
-                              hwc2_function_pointer_t hook);
+  auto Init(DrmDevice *drm, int display,
+            std::function<void(uint64_t /*timestamp*/)> callback) -> int;
 
   void VSyncControl(bool enabled);
 
@@ -57,17 +50,11 @@ class VSyncWorker : public Worker {
 
   DrmDevice *drm_;
 
-  // shared_ptr since we need to use this outside of the thread lock (to
-  // actually call the hook) and we don't want the memory freed until we're
-  // done
-  std::shared_ptr<VsyncCallback> callback_ = NULL;
+  std::function<void(uint64_t /*timestamp*/)> callback_;
 
   int display_;
   std::atomic_bool enabled_;
   int64_t last_timestamp_;
-
-  hwc2_callback_data_t vsync_callback_data_ = NULL;
-  HWC2_PFN_VSYNC vsync_callback_hook_ = NULL;
 };
 }  // namespace android
 

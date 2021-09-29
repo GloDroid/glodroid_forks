@@ -52,25 +52,14 @@ class DrmDisplayCompositor {
   DrmDisplayCompositor();
   ~DrmDisplayCompositor();
 
-  int Init(ResourceManager *resource_manager, int display);
-
-  hwc2_callback_data_t refresh_callback_data_ = NULL;
-  HWC2_PFN_REFRESH refresh_callback_hook_ = NULL;
-  std::mutex refresh_callback_lock;
-
-  void SetRefreshCallback(hwc2_callback_data_t data,
-                          hwc2_function_pointer_t hook) {
-    const std::lock_guard<std::mutex> lock(refresh_callback_lock);
-    refresh_callback_data_ = data;
-    refresh_callback_hook_ = reinterpret_cast<HWC2_PFN_REFRESH>(hook);
-  }
+  auto Init(ResourceManager *resource_manager, int display,
+            std::function<void()> client_refresh_callback) -> int;
 
   std::unique_ptr<DrmDisplayComposition> CreateInitializedComposition() const;
   int ApplyComposition(std::unique_ptr<DrmDisplayComposition> composition);
   int TestComposition(DrmDisplayComposition *composition);
   int Composite();
   void Dump(std::ostringstream *out) const;
-  void Vsync(int display, int64_t timestamp);
   void ClearDisplay();
   UniqueFd TakeOutFence() {
     if (!active_composition_) {
@@ -86,6 +75,7 @@ class DrmDisplayCompositor {
   std::tuple<uint32_t, uint32_t, int> GetActiveModeResolution();
 
  private:
+  std::function<void()> client_refresh_callback_;
   struct ModeState {
     bool needs_modeset = false;
     DrmMode mode;
