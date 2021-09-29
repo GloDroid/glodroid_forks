@@ -44,6 +44,9 @@ class DrmHwcTwo : public hwc2_device_t {
 
   std::pair<HWC2_PFN_HOTPLUG, hwc2_callback_data_t> hotplug_callback_{};
   std::pair<HWC2_PFN_VSYNC, hwc2_callback_data_t> vsync_callback_{};
+#if PLATFORM_SDK_VERSION > 29
+  std::pair<HWC2_PFN_VSYNC_2_4, hwc2_callback_data_t> vsync_2_4_callback_{};
+#endif
   std::pair<HWC2_PFN_REFRESH, hwc2_callback_data_t> refresh_callback_{};
 
   std::mutex callback_lock_;

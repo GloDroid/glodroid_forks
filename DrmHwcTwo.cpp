@@ -202,6 +202,12 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
       vsync_callback_ = std::make_pair(HWC2_PFN_VSYNC(function), data);
       break;
     }
+#if PLATFORM_SDK_VERSION > 29
+    case HWC2::Callback::Vsync_2_4: {
+      vsync_2_4_callback_ = std::make_pair(HWC2_PFN_VSYNC_2_4(function), data);
+      break;
+    }
+#endif
     default:
       break;
   }
@@ -279,10 +285,19 @@ HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
   }
 
   ret = vsync_worker_.Init(drm_, display, [this](int64_t timestamp) {
-    /* vsync callback */
     const std::lock_guard<std::mutex> lock(hwc2_->callback_lock_);
-    if (hwc2_->vsync_callback_.first != nullptr &&
-        hwc2_->vsync_callback_.second != nullptr) {
+    /* vsync callback */
+#if PLATFORM_SDK_VERSION > 29
+    if (hwc2_->vsync_2_4_callback_.first != nullptr &&
+        hwc2_->vsync_2_4_callback_.second != nullptr) {
+      hwc2_vsync_period_t period_ns{};
+      GetDisplayVsyncPeriod(&period_ns);
+      hwc2_->vsync_2_4_callback_.first(hwc2_->vsync_2_4_callback_.second,
+                                       handle_, timestamp, period_ns);
+    } else
+#endif
+        if (hwc2_->vsync_callback_.first != nullptr &&
+            hwc2_->vsync_callback_.second != nullptr) {
       hwc2_->vsync_callback_.first(hwc2_->vsync_callback_.second, handle_,
                                    timestamp);
     }
