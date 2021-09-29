@@ -55,9 +55,9 @@ enum DrmHwcTransform {
 };
 
 enum class DrmHwcBlending : int32_t {
-  kNone = HWC_BLENDING_NONE,
-  kPreMult = HWC_BLENDING_PREMULT,
-  kCoverage = HWC_BLENDING_COVERAGE,
+  kNone,
+  kPreMult,
+  kCoverage,
 };
 
 struct DrmHwcLayer {

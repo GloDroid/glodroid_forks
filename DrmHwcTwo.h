@@ -133,7 +133,6 @@ class DrmHwcTwo : public hwc2_device_t {
     HWC2::Composition sf_type_ = HWC2::Composition::Invalid;
     HWC2::Composition validated_type_ = HWC2::Composition::Invalid;
 
-    HWC2::BlendMode blending_ = HWC2::BlendMode::None;
     buffer_handle_t buffer_ = NULL;
     hwc_rect_t display_frame_;
     float alpha_ = 1.0f;
@@ -143,6 +142,7 @@ class DrmHwcTwo : public hwc2_device_t {
     hwc_color_t layer_color_;
     HWC2::Transform transform_ = HWC2::Transform::None;
     uint32_t z_order_ = 0;
+    DrmHwcBlending blending_ = DrmHwcBlending::kNone;
     DrmHwcColorSpace color_space_ = DrmHwcColorSpace::kUndefined;
     DrmHwcSampleRange sample_range_ = DrmHwcSampleRange::kUndefined;
   };

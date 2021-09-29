@@ -1054,7 +1054,21 @@ HWC2::Error DrmHwcTwo::HwcLayer::SetCursorPosition(int32_t x, int32_t y) {
 
 HWC2::Error DrmHwcTwo::HwcLayer::SetLayerBlendMode(int32_t mode) {
   supported(__func__);
-  blending_ = static_cast<HWC2::BlendMode>(mode);
+  switch (static_cast<HWC2::BlendMode>(mode)) {
+    case HWC2::BlendMode::None:
+      blending_ = DrmHwcBlending::kNone;
+      break;
+    case HWC2::BlendMode::Premultiplied:
+      blending_ = DrmHwcBlending::kPreMult;
+      break;
+    case HWC2::BlendMode::Coverage:
+      blending_ = DrmHwcBlending::kCoverage;
+      break;
+    default:
+      ALOGE("Unknown blending mode b=%d", blending_);
+      blending_ = DrmHwcBlending::kNone;
+      break;
+  }
   return HWC2::Error::None;
 }
 
@@ -1168,27 +1182,12 @@ HWC2::Error DrmHwcTwo::HwcLayer::SetLayerZOrder(uint32_t order) {
 
 void DrmHwcTwo::HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
   supported(__func__);
-  switch (blending_) {
-    case HWC2::BlendMode::None:
-      layer->blending = DrmHwcBlending::kNone;
-      break;
-    case HWC2::BlendMode::Premultiplied:
-      layer->blending = DrmHwcBlending::kPreMult;
-      break;
-    case HWC2::BlendMode::Coverage:
-      layer->blending = DrmHwcBlending::kCoverage;
-      break;
-    default:
-      ALOGE("Unknown blending mode b=%d", blending_);
-      layer->blending = DrmHwcBlending::kNone;
-      break;
-  }
-
   layer->sf_handle = buffer_;
   // TODO(rsglobal): Avoid extra fd duplication
   layer->acquire_fence = UniqueFd(fcntl(acquire_fence_.Get(), F_DUPFD_CLOEXEC));
   layer->display_frame = display_frame_;
   layer->alpha = lround(65535.0F * alpha_);
+  layer->blending = blending_;
   layer->source_crop = source_crop_;
   layer->SetTransform(static_cast<int32_t>(transform_));
   layer->color_space = color_space_;

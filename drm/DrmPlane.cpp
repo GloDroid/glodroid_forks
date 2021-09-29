@@ -136,8 +136,24 @@ int DrmPlane::Init() {
     ALOGI("Could not get alpha property");
 
   ret = drm_->GetPlaneProperty(*this, "pixel blend mode", &blend_property_);
-  if (ret)
+  if (ret == 0) {
+    std::tie(enum_value,
+             ret) = blend_property_.GetEnumValueWithName("Pre-multiplied");
+    if (ret == 0) {
+      blending_enum_map_[DrmHwcBlending::kPreMult] = enum_value;
+    }
+    std::tie(enum_value,
+             ret) = blend_property_.GetEnumValueWithName("Coverage");
+    if (ret == 0) {
+      blending_enum_map_[DrmHwcBlending::kCoverage] = enum_value;
+    }
+    std::tie(enum_value, ret) = blend_property_.GetEnumValueWithName("None");
+    if (ret == 0) {
+      blending_enum_map_[DrmHwcBlending::kNone] = enum_value;
+    }
+  } else {
     ALOGI("Could not get pixel blend mode property");
+  }
 
   ret = drm_->GetPlaneProperty(*this, "IN_FENCE_FD", &in_fence_fd_property_);
   if (ret)
@@ -231,34 +247,10 @@ bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
     return false;
   }
 
-  if (blend_property_.id() == 0) {
-    if ((layer->blending != DrmHwcBlending::kNone) &&
-        (layer->blending != DrmHwcBlending::kPreMult)) {
-      ALOGV("Blending is not supported on plane %d", id_);
-      return false;
-    }
-  } else {
-    int ret = 0;
-
-    switch (layer->blending) {
-      case DrmHwcBlending::kPreMult:
-        std::tie(std::ignore,
-                 ret) = blend_property_.GetEnumValueWithName("Pre-multiplied");
-        break;
-      case DrmHwcBlending::kCoverage:
-        std::tie(std::ignore,
-                 ret) = blend_property_.GetEnumValueWithName("Coverage");
-        break;
-      case DrmHwcBlending::kNone:
-      default:
-        std::tie(std::ignore,
-                 ret) = blend_property_.GetEnumValueWithName("None");
-        break;
-    }
-    if (ret) {
-      ALOGV("Expected a valid blend mode on plane %d", id_);
-      return false;
-    }
+  if (blending_enum_map_.count(layer->blending) == 0 &&
+      layer->blending != DrmHwcBlending::kNone) {
+    ALOGV("Blending is not supported on plane %d", id_);
+    return false;
   }
 
   uint32_t format = layer->buffer_info.format;
@@ -289,14 +281,12 @@ bool DrmPlane::HasNonRgbFormat() const {
 
 auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
                               uint32_t zpos, uint32_t crtc_id) -> int {
-  int ret = 0;
   uint32_t fb_id = UINT32_MAX;
   int fence_fd = -1;
   hwc_rect_t display_frame;
   hwc_frect_t source_crop;
   uint64_t rotation = 0;
   uint64_t alpha = 0xFFFF;
-  uint64_t blend = UINT64_MAX;
 
   if (!layer.FbIdHandle) {
     ALOGE("Expected a valid framebuffer for pset");
@@ -315,22 +305,6 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
       return -EINVAL;
     }
     return 0;
-  }
-
-  if (blend_property_) {
-    switch (layer.blending) {
-      case DrmHwcBlending::kPreMult:
-        std::tie(blend,
-                 ret) = blend_property_.GetEnumValueWithName("Pre-multiplied");
-        break;
-      case DrmHwcBlending::kCoverage:
-        std::tie(blend, ret) = blend_property_.GetEnumValueWithName("Coverage");
-        break;
-      case DrmHwcBlending::kNone:
-      default:
-        std::tie(blend, ret) = blend_property_.GetEnumValueWithName("None");
-        break;
-    }
   }
 
   if (zpos_property_ && !zpos_property_.is_immutable()) {
@@ -395,10 +369,9 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
     }
   }
 
-  if (blend_property_ && blend != UINT64_MAX) {
-    if (!blend_property_.AtomicSet(pset, blend)) {
-      return -EINVAL;
-    }
+  if (blending_enum_map_.count(layer.blending) != 0 &&
+      !blend_property_.AtomicSet(pset, blending_enum_map_[layer.blending])) {
+    return -EINVAL;
   }
 
   if (color_encoding_enum_map_.count(layer.color_space) != 0 &&
