@@ -32,6 +32,19 @@ namespace android {
 
 class DrmFbIdHandle;
 
+enum class DrmHwcColorSpace : int32_t {
+  kUndefined,
+  kItuRec601,
+  kItuRec709,
+  kItuRec2020,
+};
+
+enum class DrmHwcSampleRange : int32_t {
+  kUndefined,
+  kFullRange,
+  kLimitedRange,
+};
+
 enum DrmHwcTransform {
   kIdentity = 0,
   kFlipH = 1 << 0,
@@ -58,7 +71,8 @@ struct DrmHwcLayer {
   uint16_t alpha = 0xffff;
   hwc_frect_t source_crop;
   hwc_rect_t display_frame;
-  android_dataspace_t dataspace;
+  DrmHwcColorSpace color_space;
+  DrmHwcSampleRange sample_range;
 
   UniqueFd acquire_fence;
 

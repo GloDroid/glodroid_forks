@@ -1084,7 +1084,34 @@ HWC2::Error DrmHwcTwo::HwcLayer::SetLayerCompositionType(int32_t type) {
 
 HWC2::Error DrmHwcTwo::HwcLayer::SetLayerDataspace(int32_t dataspace) {
   supported(__func__);
-  dataspace_ = static_cast<android_dataspace_t>(dataspace);
+  switch (dataspace & HAL_DATASPACE_STANDARD_MASK) {
+    case HAL_DATASPACE_STANDARD_BT709:
+      color_space_ = DrmHwcColorSpace::kItuRec709;
+      break;
+    case HAL_DATASPACE_STANDARD_BT601_625:
+    case HAL_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
+    case HAL_DATASPACE_STANDARD_BT601_525:
+    case HAL_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
+      color_space_ = DrmHwcColorSpace::kItuRec601;
+      break;
+    case HAL_DATASPACE_STANDARD_BT2020:
+    case HAL_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
+      color_space_ = DrmHwcColorSpace::kItuRec2020;
+      break;
+    default:
+      color_space_ = DrmHwcColorSpace::kUndefined;
+  }
+
+  switch (dataspace & HAL_DATASPACE_RANGE_MASK) {
+    case HAL_DATASPACE_RANGE_FULL:
+      sample_range_ = DrmHwcSampleRange::kFullRange;
+      break;
+    case HAL_DATASPACE_RANGE_LIMITED:
+      sample_range_ = DrmHwcSampleRange::kLimitedRange;
+      break;
+    default:
+      sample_range_ = DrmHwcSampleRange::kUndefined;
+  }
   return HWC2::Error::None;
 }
 
@@ -1164,7 +1191,8 @@ void DrmHwcTwo::HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
   layer->alpha = lround(65535.0F * alpha_);
   layer->source_crop = source_crop_;
   layer->SetTransform(static_cast<int32_t>(transform_));
-  layer->dataspace = dataspace_;
+  layer->color_space = color_space_;
+  layer->sample_range = sample_range_;
 }
 
 void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {

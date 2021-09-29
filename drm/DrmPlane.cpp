@@ -337,40 +337,38 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
   }
 
   if (color_encoding_propery_) {
-    switch (layer.dataspace & HAL_DATASPACE_STANDARD_MASK) {
-      case HAL_DATASPACE_STANDARD_BT709:
+    switch (layer.color_space) {
+      case DrmHwcColorSpace::kItuRec709:
         std::tie(color_encoding,
                  ret) = color_encoding_propery_
                             .GetEnumValueWithName("ITU-R BT.709 YCbCr");
         break;
-      case HAL_DATASPACE_STANDARD_BT601_625:
-      case HAL_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
-      case HAL_DATASPACE_STANDARD_BT601_525:
-      case HAL_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
+      case DrmHwcColorSpace::kItuRec601:
         std::tie(color_encoding,
                  ret) = color_encoding_propery_
                             .GetEnumValueWithName("ITU-R BT.601 YCbCr");
         break;
-      case HAL_DATASPACE_STANDARD_BT2020:
-      case HAL_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
+      case DrmHwcColorSpace::kItuRec2020:
         std::tie(color_encoding,
                  ret) = color_encoding_propery_
                             .GetEnumValueWithName("ITU-R BT.2020 YCbCr");
         break;
+      default:
+        break;
     }
   }
 
-  if (color_range_property_) {
-    switch (layer.dataspace & HAL_DATASPACE_RANGE_MASK) {
-      case HAL_DATASPACE_RANGE_FULL:
-        std::tie(color_range, ret) = color_range_property_.GetEnumValueWithName(
-            "YCbCr full range");
-        break;
-      case HAL_DATASPACE_RANGE_LIMITED:
-        std::tie(color_range, ret) = color_range_property_.GetEnumValueWithName(
-            "YCbCr limited range");
-        break;
-    }
+  switch (layer.sample_range) {
+    case DrmHwcSampleRange::kFullRange:
+      std::tie(color_range, ret) = color_range_property_.GetEnumValueWithName(
+          "YCbCr full range");
+      break;
+    case DrmHwcSampleRange::kLimitedRange:
+      std::tie(color_range, ret) = color_range_property_.GetEnumValueWithName(
+          "YCbCr limited range");
+      break;
+    default:
+      break;
   }
 
   if (!crtc_property_.AtomicSet(pset, crtc_id) ||

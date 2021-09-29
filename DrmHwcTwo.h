@@ -143,7 +143,8 @@ class DrmHwcTwo : public hwc2_device_t {
     hwc_color_t layer_color_;
     HWC2::Transform transform_ = HWC2::Transform::None;
     uint32_t z_order_ = 0;
-    android_dataspace_t dataspace_ = HAL_DATASPACE_UNKNOWN;
+    DrmHwcColorSpace color_space_ = DrmHwcColorSpace::kUndefined;
+    DrmHwcSampleRange sample_range_ = DrmHwcSampleRange::kUndefined;
   };
 
   class HwcDisplay {
