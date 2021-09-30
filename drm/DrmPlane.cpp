@@ -224,7 +224,8 @@ bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
   }
 
   if (blending_enum_map_.count(layer->blending) == 0 &&
-      layer->blending != DrmHwcBlending::kNone) {
+      layer->blending != DrmHwcBlending::kNone &&
+      layer->blending != DrmHwcBlending::kPreMult) {
     ALOGV("Blending is not supported on plane %d", id_);
     return false;
   }
