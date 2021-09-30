@@ -79,8 +79,9 @@ class DrmDevice {
   const std::vector<std::unique_ptr<DrmCrtc>> &crtcs() const;
   uint32_t next_mode_id();
 
-  int CreatePropertyBlob(void *data, size_t length, uint32_t *blob_id) const;
-  int DestroyPropertyBlob(uint32_t blob_id) const;
+  auto RegisterUserPropertyBlob(void *data, size_t length) const
+      -> DrmModeUserPropertyBlobUnique;
+
   bool HandlesDisplay(int display) const;
   void RegisterHotplugHandler(DrmEventHandler *handler) {
     event_listener_.RegisterHotplugHandler(handler);

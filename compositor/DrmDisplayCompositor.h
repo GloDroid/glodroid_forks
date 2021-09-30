@@ -57,10 +57,9 @@ class DrmDisplayCompositor {
 
  private:
   struct ModeState {
-    bool needs_modeset = false;
     DrmMode mode;
-    uint32_t blob_id = 0;
-    uint32_t old_blob_id = 0;
+    DrmModeUserPropertyBlobUnique blob;
+    DrmModeUserPropertyBlobUnique old_blob;
   };
 
   DrmDisplayCompositor(const DrmDisplayCompositor &) = delete;
@@ -72,7 +71,7 @@ class DrmDisplayCompositor {
   void ApplyFrame(std::unique_ptr<DrmDisplayComposition> composition,
                   int status);
 
-  std::tuple<int, uint32_t> CreateModeBlob(const DrmMode &mode);
+  auto CreateModeBlob(const DrmMode &mode) -> DrmModeUserPropertyBlobUnique;
 
   ResourceManager *resource_manager_;
   int display_;

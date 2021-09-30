@@ -500,8 +500,8 @@ int DrmDevice::AttachWriteback(DrmConnector *display_conn) {
   return -EINVAL;
 }
 
-int DrmDevice::CreatePropertyBlob(void *data, size_t length,
-                                  uint32_t *blob_id) const {
+auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const
+    -> DrmModeUserPropertyBlobUnique {
   struct drm_mode_create_blob create_blob {};
   create_blob.length = length;
   create_blob.data = (__u64)data;
@@ -509,24 +509,21 @@ int DrmDevice::CreatePropertyBlob(void *data, size_t length,
   int ret = drmIoctl(fd(), DRM_IOCTL_MODE_CREATEPROPBLOB, &create_blob);
   if (ret) {
     ALOGE("Failed to create mode property blob %d", ret);
-    return ret;
+    return DrmModeUserPropertyBlobUnique();
   }
-  *blob_id = create_blob.blob_id;
-  return 0;
-}
 
-int DrmDevice::DestroyPropertyBlob(uint32_t blob_id) const {
-  if (!blob_id)
-    return 0;
-
-  struct drm_mode_destroy_blob destroy_blob {};
-  destroy_blob.blob_id = (__u32)blob_id;
-  int ret = drmIoctl(fd(), DRM_IOCTL_MODE_DESTROYPROPBLOB, &destroy_blob);
-  if (ret) {
-    ALOGE("Failed to destroy mode property blob %" PRIu32 "/%d", blob_id, ret);
-    return ret;
-  }
-  return 0;
+  return DrmModeUserPropertyBlobUnique(
+      new uint32_t(create_blob.blob_id), [this](const uint32_t *it) {
+        struct drm_mode_destroy_blob destroy_blob {};
+        destroy_blob.blob_id = (__u32)*it;
+        int err = drmIoctl(fd(), DRM_IOCTL_MODE_DESTROYPROPBLOB, &destroy_blob);
+        if (err != 0) {
+          ALOGE("Failed to destroy mode property blob %" PRIu32 "/%d", *it,
+                err);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
+        delete it;
+      });
 }
 
 DrmEventListener *DrmDevice::event_listener() {

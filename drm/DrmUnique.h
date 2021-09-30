@@ -68,6 +68,8 @@ auto inline MakeDrmModePlaneResUnique(int fd) {
                                });
 }
 
+using DrmModeUserPropertyBlobUnique = DUniquePtr<uint32_t /*id*/>;
+
 using DrmModePropertyBlobUnique = DUniquePtr<drmModePropertyBlobRes>;
 auto inline MakeDrmModePropertyBlobUnique(int fd, uint32_t blob_id) {
   return DrmModePropertyBlobUnique(drmModeGetPropertyBlob(fd, blob_id),
