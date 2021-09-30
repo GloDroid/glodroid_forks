@@ -45,13 +45,7 @@ DrmDisplayCompositor::DrmDisplayCompositor()
       display_(-1),
       initialized_(false),
       active_(false),
-      use_hw_overlays_(true),
-      dump_frames_composited_(0),
-      dump_last_timestamp_ns_(0) {
-  struct timespec ts {};
-  if (clock_gettime(CLOCK_MONOTONIC, &ts))
-    return;
-  dump_last_timestamp_ns_ = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
+      use_hw_overlays_(true) {
 }
 
 DrmDisplayCompositor::~DrmDisplayCompositor() {
@@ -304,7 +298,6 @@ void DrmDisplayCompositor::ApplyFrame(
     ClearDisplay();
     return;
   }
-  ++dump_frames_composited_;
 
   active_composition_.swap(composition);
 }
@@ -356,26 +349,4 @@ int DrmDisplayCompositor::TestComposition(DrmDisplayComposition *composition) {
   return CommitFrame(composition, true);
 }
 
-void DrmDisplayCompositor::Dump(std::ostringstream *out) const {
-  uint64_t num_frames = dump_frames_composited_;
-  dump_frames_composited_ = 0;
-
-  struct timespec ts {};
-  int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
-  if (ret) {
-    return;
-  }
-
-  uint64_t cur_ts = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
-  uint64_t num_ms = (cur_ts - dump_last_timestamp_ns_) / (1000 * 1000);
-  float fps = num_ms ? static_cast<float>(num_frames) * 1000.0F /
-                           static_cast<float>(num_ms)
-                     : 0.0F;
-
-  *out << "--DrmDisplayCompositor[" << display_
-       << "]: num_frames=" << num_frames << " num_ms=" << num_ms
-       << " fps=" << fps << "\n";
-
-  dump_last_timestamp_ns_ = cur_ts;
-}
 }  // namespace android

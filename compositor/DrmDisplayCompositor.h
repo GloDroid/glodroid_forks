@@ -45,7 +45,6 @@ class DrmDisplayCompositor {
   int ApplyComposition(std::unique_ptr<DrmDisplayComposition> composition);
   int TestComposition(DrmDisplayComposition *composition);
   int Composite();
-  void Dump(std::ostringstream *out) const;
   void ClearDisplay();
   UniqueFd TakeOutFence() {
     if (!active_composition_) {
@@ -91,10 +90,6 @@ class DrmDisplayCompositor {
 
   ModeState mode_;
 
-  // State tracking progress since our last Dump(). These are mutable since
-  // we need to reset them on every Dump() call.
-  mutable uint64_t dump_frames_composited_;
-  mutable uint64_t dump_last_timestamp_ns_;
   std::unique_ptr<Planner> planner_;
 };
 }  // namespace android

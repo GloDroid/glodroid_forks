@@ -127,8 +127,6 @@ class DrmDisplayComposition {
     return planner_;
   }
 
-  void Dump(std::ostringstream *out) const;
-
   UniqueFd out_fence_;
 
  private:
