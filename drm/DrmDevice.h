@@ -69,12 +69,10 @@ class DrmDevice {
   DrmPlane *GetPlane(uint32_t id) const;
   DrmEventListener *event_listener();
 
-  int GetPlaneProperty(const DrmPlane &plane, const char *prop_name,
-                       DrmProperty *property);
   int GetCrtcProperty(const DrmCrtc &crtc, const char *prop_name,
-                      DrmProperty *property);
+                      DrmProperty *property) const;
   int GetConnectorProperty(const DrmConnector &connector, const char *prop_name,
-                           DrmProperty *property);
+                           DrmProperty *property) const;
 
   std::string GetName() const;
 
@@ -98,10 +96,11 @@ class DrmDevice {
 
   static auto IsKMSDev(const char *path) -> bool;
 
- private:
-  int TryEncoderForDisplay(int display, DrmEncoder *enc);
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
+
+ private:
+  int TryEncoderForDisplay(int display, DrmEncoder *enc);
 
   int CreateDisplayPipe(DrmConnector *connector);
   int AttachWriteback(DrmConnector *display_conn);

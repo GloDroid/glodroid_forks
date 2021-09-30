@@ -557,19 +557,14 @@ int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
   return found ? 0 : -ENOENT;
 }
 
-int DrmDevice::GetPlaneProperty(const DrmPlane &plane, const char *prop_name,
-                                DrmProperty *property) {
-  return GetProperty(plane.id(), DRM_MODE_OBJECT_PLANE, prop_name, property);
-}
-
 int DrmDevice::GetCrtcProperty(const DrmCrtc &crtc, const char *prop_name,
-                               DrmProperty *property) {
+                               DrmProperty *property) const {
   return GetProperty(crtc.id(), DRM_MODE_OBJECT_CRTC, prop_name, property);
 }
 
 int DrmDevice::GetConnectorProperty(const DrmConnector &connector,
                                     const char *prop_name,
-                                    DrmProperty *property) {
+                                    DrmProperty *property) const {
   return GetProperty(connector.id(), DRM_MODE_OBJECT_CONNECTOR, prop_name,
                      property);
 }

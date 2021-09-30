@@ -57,6 +57,11 @@ class DrmPlane {
   DrmDevice *drm_;
   uint32_t id_;
 
+  enum class Presence { kOptional, kMandatory };
+
+  auto GetPlaneProperty(const char *prop_name, DrmProperty &property,
+                        Presence presence = Presence::kMandatory) -> bool;
+
   uint32_t possible_crtc_mask_;
 
   uint32_t type_{};

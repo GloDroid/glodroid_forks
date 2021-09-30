@@ -39,12 +39,11 @@ DrmPlane::DrmPlane(DrmDevice *drm, drmModePlanePtr p)
 int DrmPlane::Init() {
   DrmProperty p;
 
-  int ret = drm_->GetPlaneProperty(*this, "type", &p);
-  if (ret) {
-    ALOGE("Could not get plane type property");
-    return ret;
+  if (!GetPlaneProperty("type", p)) {
+    return -ENOTSUP;
   }
 
+  int ret = 0;
   uint64_t type = 0;
   std::tie(ret, type) = p.value();
   if (ret) {
@@ -62,72 +61,22 @@ int DrmPlane::Init() {
       return -EINVAL;
   }
 
-  ret = drm_->GetPlaneProperty(*this, "CRTC_ID", &crtc_property_);
-  if (ret) {
-    ALOGE("Could not get CRTC_ID property");
-    return ret;
+  if (!GetPlaneProperty("CRTC_ID", crtc_property_) ||
+      !GetPlaneProperty("FB_ID", fb_property_) ||
+      !GetPlaneProperty("CRTC_X", crtc_x_property_) ||
+      !GetPlaneProperty("CRTC_Y", crtc_y_property_) ||
+      !GetPlaneProperty("CRTC_W", crtc_w_property_) ||
+      !GetPlaneProperty("CRTC_H", crtc_h_property_) ||
+      !GetPlaneProperty("SRC_X", src_x_property_) ||
+      !GetPlaneProperty("SRC_Y", src_y_property_) ||
+      !GetPlaneProperty("SRC_W", src_w_property_) ||
+      !GetPlaneProperty("SRC_H", src_h_property_)) {
+    return -ENOTSUP;
   }
 
-  ret = drm_->GetPlaneProperty(*this, "FB_ID", &fb_property_);
-  if (ret) {
-    ALOGE("Could not get FB_ID property");
-    return ret;
-  }
+  GetPlaneProperty("zpos", zpos_property_, Presence::kOptional);
 
-  ret = drm_->GetPlaneProperty(*this, "CRTC_X", &crtc_x_property_);
-  if (ret) {
-    ALOGE("Could not get CRTC_X property");
-    return ret;
-  }
-
-  ret = drm_->GetPlaneProperty(*this, "CRTC_Y", &crtc_y_property_);
-  if (ret) {
-    ALOGE("Could not get CRTC_Y property");
-    return ret;
-  }
-
-  ret = drm_->GetPlaneProperty(*this, "CRTC_W", &crtc_w_property_);
-  if (ret) {
-    ALOGE("Could not get CRTC_W property");
-    return ret;
-  }
-
-  ret = drm_->GetPlaneProperty(*this, "CRTC_H", &crtc_h_property_);
-  if (ret) {
-    ALOGE("Could not get CRTC_H property");
-    return ret;
-  }
-
-  ret = drm_->GetPlaneProperty(*this, "SRC_X", &src_x_property_);
-  if (ret) {
-    ALOGE("Could not get SRC_X property");
-    return ret;
-  }
-
-  ret = drm_->GetPlaneProperty(*this, "SRC_Y", &src_y_property_);
-  if (ret) {
-    ALOGE("Could not get SRC_Y property");
-    return ret;
-  }
-
-  ret = drm_->GetPlaneProperty(*this, "SRC_W", &src_w_property_);
-  if (ret) {
-    ALOGE("Could not get SRC_W property");
-    return ret;
-  }
-
-  ret = drm_->GetPlaneProperty(*this, "SRC_H", &src_h_property_);
-  if (ret) {
-    ALOGE("Could not get SRC_H property");
-    return ret;
-  }
-
-  ret = drm_->GetPlaneProperty(*this, "zpos", &zpos_property_);
-  if (ret)
-    ALOGE("Could not get zpos property for plane %u", id());
-
-  ret = drm_->GetPlaneProperty(*this, "rotation", &rotation_property_);
-  if (ret == 0) {
+  if (GetPlaneProperty("rotation", rotation_property_, Presence::kOptional)) {
     rotation_property_.AddEnumToMap("rotate-0", DrmHwcTransform::kIdentity,
                                     transform_enum_map_);
     rotation_property_.AddEnumToMap("rotate-90", DrmHwcTransform::kRotate90,
@@ -140,34 +89,25 @@ int DrmPlane::Init() {
                                     transform_enum_map_);
     rotation_property_.AddEnumToMap("reflect-y", DrmHwcTransform::kFlipV,
                                     transform_enum_map_);
-  } else {
-    ALOGE("Could not get rotation property");
   }
 
-  ret = drm_->GetPlaneProperty(*this, "alpha", &alpha_property_);
-  if (ret)
-    ALOGI("Could not get alpha property");
+  GetPlaneProperty("alpha", alpha_property_, Presence::kOptional);
 
-  ret = drm_->GetPlaneProperty(*this, "pixel blend mode", &blend_property_);
-  if (ret == 0) {
+  if (GetPlaneProperty("pixel blend mode", blend_property_,
+                       Presence::kOptional)) {
     blend_property_.AddEnumToMap("Pre-multiplied", DrmHwcBlending::kPreMult,
                                  blending_enum_map_);
     blend_property_.AddEnumToMap("Coverage", DrmHwcBlending::kCoverage,
                                  blending_enum_map_);
     blend_property_.AddEnumToMap("None", DrmHwcBlending::kNone,
                                  blending_enum_map_);
-  } else {
-    ALOGI("Could not get pixel blend mode property");
   }
 
-  ret = drm_->GetPlaneProperty(*this, "IN_FENCE_FD", &in_fence_fd_property_);
-  if (ret)
-    ALOGI("Could not get IN_FENCE_FD property");
+  GetPlaneProperty("IN_FENCE_FD", in_fence_fd_property_, Presence::kOptional);
 
   if (HasNonRgbFormat()) {
-    ret = drm_->GetPlaneProperty(*this, "COLOR_ENCODING",
-                                 &color_encoding_propery_);
-    if (ret == 0) {
+    if (GetPlaneProperty("COLOR_ENCODING", color_encoding_propery_,
+                         Presence::kOptional)) {
       color_encoding_propery_.AddEnumToMap("ITU-R BT.709 YCbCr",
                                            DrmHwcColorSpace::kItuRec709,
                                            color_encoding_enum_map_);
@@ -177,20 +117,16 @@ int DrmPlane::Init() {
       color_encoding_propery_.AddEnumToMap("ITU-R BT.2020 YCbCr",
                                            DrmHwcColorSpace::kItuRec2020,
                                            color_encoding_enum_map_);
-    } else {
-      ALOGI("Could not get COLOR_ENCODING property");
     }
 
-    ret = drm_->GetPlaneProperty(*this, "COLOR_RANGE", &color_range_property_);
-    if (ret == 0) {
+    if (GetPlaneProperty("COLOR_RANGE", color_range_property_,
+                         Presence::kOptional)) {
       color_range_property_.AddEnumToMap("YCbCr full range",
                                          DrmHwcSampleRange::kFullRange,
                                          color_range_enum_map_);
       color_range_property_.AddEnumToMap("YCbCr limited range",
                                          DrmHwcSampleRange::kLimitedRange,
                                          color_range_enum_map_);
-    } else {
-      ALOGI("Could not get COLOR_RANGE property");
     }
   }
 
@@ -355,6 +291,23 @@ auto DrmPlane::AtomicDisablePlane(drmModeAtomicReq &pset) -> int {
 
 const DrmProperty &DrmPlane::zpos_property() const {
   return zpos_property_;
+}
+
+auto DrmPlane::GetPlaneProperty(const char *prop_name, DrmProperty &property,
+                                Presence presence) -> bool {
+  int err = drm_->GetProperty(id_, DRM_MODE_OBJECT_PLANE, prop_name, &property);
+  if (err != 0) {
+    if (presence == Presence::kMandatory) {
+      ALOGE("Could not get mandatory property \"%s\" from plane %d", prop_name,
+            id_);
+    } else {
+      ALOGV("Could not get optional property \"%s\" from plane %d", prop_name,
+            id_);
+    }
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace android
