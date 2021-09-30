@@ -34,7 +34,8 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
   int client_start = -1;
   size_t client_size = 0;
 
-  if (display->compositor().ShouldFlattenOnClient()) {
+  if (display->ProcessClientFlatteningState(layers.size() <= 1)) {
+    display->total_stats().frames_flattened_++;
     client_start = 0;
     client_size = layers.size();
     MarkValidated(layers, client_start, client_size);
@@ -56,8 +57,6 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
 
   *num_types = client_size;
 
-  display->total_stats().frames_flattened_ = display->compositor()
-                                                 .GetFlattenedFramesCount();
   display->total_stats().gpu_pixops_ += CalcPixOps(layers, client_start,
                                                    client_size);
   display->total_stats().total_pixops_ += CalcPixOps(layers, 0, layers.size());

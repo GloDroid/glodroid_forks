@@ -40,15 +40,6 @@
 
 namespace android {
 
-std::ostream &operator<<(std::ostream &str, FlatteningState state) {
-  std::array<const char *, 6> flattenting_state_str = {
-      "None",   "Not needed", "SF Requested", "Squashed by GPU",
-      "Serial", "Concurrent",
-  };
-
-  return str << flattenting_state_str[static_cast<int>(state)];
-}
-
 DrmDisplayCompositor::DrmDisplayCompositor()
     : resource_manager_(nullptr),
       display_(-1),
@@ -56,10 +47,7 @@ DrmDisplayCompositor::DrmDisplayCompositor()
       active_(false),
       use_hw_overlays_(true),
       dump_frames_composited_(0),
-      dump_last_timestamp_ns_(0),
-      flatten_countdown_(FLATTEN_COUNTDOWN_INIT),
-      flattening_state_(FlatteningState::kNone),
-      frames_flattened_(0) {
+      dump_last_timestamp_ns_(0) {
   struct timespec ts {};
   if (clock_gettime(CLOCK_MONOTONIC, &ts))
     return;
@@ -69,11 +57,6 @@ DrmDisplayCompositor::DrmDisplayCompositor()
 DrmDisplayCompositor::~DrmDisplayCompositor() {
   if (!initialized_)
     return;
-
-  vsync_worker_.Exit();
-  int ret = pthread_mutex_lock(&lock_);
-  if (ret)
-    ALOGE("Failed to acquire compositor lock %d", ret);
   DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
   if (mode_.blob_id)
     drm->DestroyPropertyBlob(mode_.blob_id);
@@ -81,18 +64,10 @@ DrmDisplayCompositor::~DrmDisplayCompositor() {
     drm->DestroyPropertyBlob(mode_.old_blob_id);
 
   active_composition_.reset();
-
-  ret = pthread_mutex_unlock(&lock_);
-  if (ret)
-    ALOGE("Failed to acquire compositor lock %d", ret);
-
-  pthread_mutex_destroy(&lock_);
 }
 
-auto DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display,
-                                std::function<void()> client_refresh_callback)
+auto DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display)
     -> int {
-  client_refresh_callback_ = std::move(client_refresh_callback);
   resource_manager_ = resource_manager;
   display_ = display;
   DrmDevice *drm = resource_manager_->GetDrmDevice(display);
@@ -100,26 +75,7 @@ auto DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display,
     ALOGE("Could not find drmdevice for display");
     return -EINVAL;
   }
-  int ret = pthread_mutex_init(&lock_, nullptr);
-  if (ret) {
-    ALOGE("Failed to initialize drm compositor lock %d\n", ret);
-    return ret;
-  }
   planner_ = Planner::CreateInstance(drm);
-
-  vsync_worker_.Init(drm, display_, [this](int64_t timestamp) {
-    AutoLock lock(&lock_, "DrmDisplayCompositor::Init()");
-    if (lock.Lock())
-      return;
-    flatten_countdown_--;
-    if (!CountdownExpired())
-      return;
-    lock.Unlock();
-    int ret = FlattenActiveComposition();
-    ALOGV("scene flattening triggered for display %d at timestamp %" PRIu64
-          " result = %d \n",
-          display_, timestamp, ret);
-  });
 
   initialized_ = true;
   return 0;
@@ -135,19 +91,6 @@ DrmDisplayCompositor::CreateInitializedComposition() const {
   }
 
   return std::make_unique<DrmDisplayComposition>(crtc, planner_.get());
-}
-
-FlatteningState DrmDisplayCompositor::GetFlatteningState() const {
-  return flattening_state_;
-}
-
-uint32_t DrmDisplayCompositor::GetFlattenedFramesCount() const {
-  return frames_flattened_;
-}
-
-bool DrmDisplayCompositor::ShouldFlattenOnClient() const {
-  return flattening_state_ == FlatteningState::kClientRequested ||
-         flattening_state_ == FlatteningState::kClientDone;
 }
 
 std::tuple<uint32_t, uint32_t, int>
@@ -348,9 +291,6 @@ void DrmDisplayCompositor::ClearDisplay() {
 
 void DrmDisplayCompositor::ApplyFrame(
     std::unique_ptr<DrmDisplayComposition> composition, int status) {
-  AutoLock lock(&lock_, __func__);
-  if (lock.Lock())
-    return;
   int ret = status;
 
   if (!ret) {
@@ -367,14 +307,6 @@ void DrmDisplayCompositor::ApplyFrame(
   ++dump_frames_composited_;
 
   active_composition_.swap(composition);
-
-  flatten_countdown_ = FLATTEN_COUNTDOWN_INIT;
-  if (flattening_state_ != FlatteningState::kClientRequested) {
-    SetFlattening(FlatteningState::kNone);
-  } else {
-    SetFlattening(FlatteningState::kClientDone);
-  }
-  vsync_worker_.VSyncControl(true);
 }
 
 int DrmDisplayCompositor::ApplyComposition(
@@ -424,70 +356,13 @@ int DrmDisplayCompositor::TestComposition(DrmDisplayComposition *composition) {
   return CommitFrame(composition, true);
 }
 
-void DrmDisplayCompositor::SetFlattening(FlatteningState new_state) {
-  if (flattening_state_ != new_state) {
-    switch (flattening_state_) {
-      case FlatteningState::kClientDone:
-        ++frames_flattened_;
-        break;
-      case FlatteningState::kClientRequested:
-      case FlatteningState::kNone:
-      case FlatteningState::kNotNeeded:
-        break;
-    }
-  }
-  flattening_state_ = new_state;
-}
-
-bool DrmDisplayCompositor::IsFlatteningNeeded() const {
-  return CountdownExpired() && active_composition_->layers().size() >= 2;
-}
-
-int DrmDisplayCompositor::FlattenOnClient() {
-  if (client_refresh_callback_) {
-    {
-      AutoLock lock(&lock_, __func__);
-      if (!IsFlatteningNeeded()) {
-        if (flattening_state_ != FlatteningState::kClientDone) {
-          ALOGV("Flattening is not needed");
-          SetFlattening(FlatteningState::kNotNeeded);
-        }
-        return -EALREADY;
-      }
-    }
-
-    ALOGV(
-        "No writeback connector available, "
-        "falling back to client composition");
-    SetFlattening(FlatteningState::kClientRequested);
-    client_refresh_callback_();
-    return 0;
-  }
-
-  ALOGV("No writeback connector available");
-  return -EINVAL;
-}
-
-int DrmDisplayCompositor::FlattenActiveComposition() {
-  return FlattenOnClient();
-}
-
-bool DrmDisplayCompositor::CountdownExpired() const {
-  return flatten_countdown_ <= 0;
-}
-
 void DrmDisplayCompositor::Dump(std::ostringstream *out) const {
-  int ret = pthread_mutex_lock(&lock_);
-  if (ret)
-    return;
-
   uint64_t num_frames = dump_frames_composited_;
   dump_frames_composited_ = 0;
 
   struct timespec ts {};
-  ret = clock_gettime(CLOCK_MONOTONIC, &ts);
+  int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
   if (ret) {
-    pthread_mutex_unlock(&lock_);
     return;
   }
 
@@ -502,7 +377,5 @@ void DrmDisplayCompositor::Dump(std::ostringstream *out) const {
        << " fps=" << fps << "\n";
 
   dump_last_timestamp_ns_ = cur_ts;
-
-  pthread_mutex_unlock(&lock_);
 }
 }  // namespace android

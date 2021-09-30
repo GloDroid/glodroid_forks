@@ -140,9 +140,28 @@ std::string DrmHwcTwo::HwcDisplay::DumpDelta(
 }
 
 std::string DrmHwcTwo::HwcDisplay::Dump() {
+  std::string flattening_state_str;
+  switch (flattenning_state_) {
+    case ClientFlattenningState::Disabled:
+      flattening_state_str = "Disabled";
+      break;
+    case ClientFlattenningState::NotRequired:
+      flattening_state_str = "Not needed";
+      break;
+    case ClientFlattenningState::Flattened:
+      flattening_state_str = "Active";
+      break;
+    case ClientFlattenningState::ClientRefreshRequested:
+      flattening_state_str = "Refresh requested";
+      break;
+    default:
+      flattening_state_str = std::to_string(flattenning_state_) +
+                             " VSync remains";
+  }
+
   std::stringstream ss;
   ss << "- Display on: " << connector_->name() << "\n"
-     << "  Flattening state: " << compositor_.GetFlatteningState() << "\n"
+     << "  Flattening state: " << flattening_state_str << "\n"
      << "Statistics since system boot:\n"
      << DumpDelta(total_stats_) << "\n\n"
      << "Statistics since last dumpsys request:\n"
@@ -246,14 +265,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
   }
 
   int display = static_cast<int>(handle_);
-  int ret = compositor_.Init(resource_manager_, display, [this] {
-    /* refresh callback */
-    const std::lock_guard<std::mutex> lock(hwc2_->callback_lock_);
-    if (hwc2_->refresh_callback_.first != nullptr &&
-        hwc2_->refresh_callback_.second != nullptr) {
-      hwc2_->refresh_callback_.first(hwc2_->refresh_callback_.second, handle_);
-    }
-  });
+  int ret = compositor_.Init(resource_manager_, display);
   if (ret) {
     ALOGE("Failed display compositor init for display %d (%d)", display, ret);
     return HWC2::Error::NoResources;
@@ -300,6 +312,23 @@ HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
             hwc2_->vsync_callback_.second != nullptr) {
       hwc2_->vsync_callback_.first(hwc2_->vsync_callback_.second, handle_,
                                    timestamp);
+    }
+  });
+  if (ret) {
+    ALOGE("Failed to create event worker for d=%d %d\n", display, ret);
+    return HWC2::Error::BadDisplay;
+  }
+
+  ret = flattening_vsync_worker_.Init(drm_, display, [this](int64_t /*timestamp*/) {
+    const std::lock_guard<std::mutex> lock(hwc2_->callback_lock_);
+    /* Frontend flattening */
+    if (flattenning_state_ > ClientFlattenningState::ClientRefreshRequested &&
+        --flattenning_state_ ==
+            ClientFlattenningState::ClientRefreshRequested &&
+        hwc2_->refresh_callback_.first != nullptr &&
+        hwc2_->refresh_callback_.second != nullptr) {
+      hwc2_->refresh_callback_.first(hwc2_->refresh_callback_.second, handle_);
+      flattening_vsync_worker_.VSyncControl(false);
     }
   });
   if (ret) {

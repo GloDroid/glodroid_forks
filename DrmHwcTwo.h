@@ -293,7 +293,40 @@ class DrmHwcTwo : public hwc2_device_t {
       return total_stats_;
     }
 
+    /* returns true if composition should be sent to client */
+    bool ProcessClientFlatteningState(bool skip) {
+      int flattenning_state = flattenning_state_;
+      if (flattenning_state == ClientFlattenningState::Disabled) {
+        return false;
+      }
+
+      if (skip) {
+        flattenning_state_ = ClientFlattenningState::NotRequired;
+        return false;
+      }
+
+      if (flattenning_state == ClientFlattenningState::ClientRefreshRequested) {
+        flattenning_state_ = ClientFlattenningState::Flattened;
+        return true;
+      }
+
+      flattening_vsync_worker_.VSyncControl(true);
+      flattenning_state_ = ClientFlattenningState::VsyncCountdownMax;
+      return false;
+    }
+
    private:
+    enum ClientFlattenningState : int32_t {
+      Disabled = -3,
+      NotRequired = -2,
+      Flattened = -1,
+      ClientRefreshRequested = 0,
+      VsyncCountdownMax = 60, /* 1 sec @ 60FPS */
+    };
+
+    std::atomic_int flattenning_state_{ClientFlattenningState::NotRequired};
+    VSyncWorker flattening_vsync_worker_;
+
     void AddFenceToPresentFence(UniqueFd fd);
 
     constexpr static size_t MATRIX_SIZE = 16;
