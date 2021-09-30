@@ -65,11 +65,6 @@ class DrmDisplayCompositor {
 
   DrmDisplayCompositor(const DrmDisplayCompositor &) = delete;
 
-  // We'll wait for acquire fences to fire for kAcquireWaitTimeoutMs,
-  // kAcquireWaitTries times, logging a warning in between.
-  static const int kAcquireWaitTries = 5;
-  static const int kAcquireWaitTimeoutMs = 100;
-
   int CommitFrame(DrmDisplayComposition *display_comp, bool test_only);
   int ApplyDpms(DrmDisplayComposition *display_comp);
   int DisablePlanes(DrmDisplayComposition *display_comp);
