@@ -602,8 +602,8 @@ Logger::Logger()
  */
 void Logger::parseLogFile()
 {
-	const char *file = utils::secure_getenv("LIBCAMERA_LOG_FILE");
-	if (!file)
+	const char *file = "syslog"; //utils::secure_getenv("LIBCAMERA_LOG_FILE");
+	if (!file) {
 		return;
 
 	if (!strcmp(file, "syslog")) {
@@ -623,7 +623,7 @@ void Logger::parseLogFile()
  */
 void Logger::parseLogLevels()
 {
-	const char *debug = utils::secure_getenv("LIBCAMERA_LOG_LEVELS");
+	const char *debug = "*:DEBUG";//utils::secure_getenv("LIBCAMERA_LOG_LEVELS");
 	if (!debug)
 		return;
 
