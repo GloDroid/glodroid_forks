@@ -136,7 +136,6 @@ libcamera_deps = [
 
 libcamera = shared_library('libcamera',
                            libcamera_sources,
-                           version : libcamera_version,
                            name_prefix : '',
                            install : true,
                            include_directories : includes,
