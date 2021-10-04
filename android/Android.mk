@@ -14,7 +14,7 @@ LIBCAMERA_TOP := $(dir $(LOCAL_PATH))
 include $(CLEAR_VARS)
 
 LOCAL_CPPFLAGS := -fexceptions
-LOCAL_SHARED_LIBRARIES := libc libexif libjpeg libyuv_chromium libdl
+LOCAL_SHARED_LIBRARIES := libc libexif libjpeg libyuv_chromium libdl boost
 MESON_GEN_PKGCONFIGS := libexif libjpeg libyuv dl
 
 ifeq ($(TARGET_IS_64_BIT),true)
@@ -33,6 +33,7 @@ endif
 
 define libcamera-lib
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_MODULE_SUFFIX := .so
 LOCAL_MODULE := $1
 LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_RELATIVE_PATH := $2
@@ -44,7 +45,28 @@ else
 LOCAL_SRC_FILES := $(call relative_top_path,$(LOCAL_PATH))$($3)
 endif
 LOCAL_CHECK_ELF_FILES := false
-LOCAL_MODULE_SUFFIX := .so
+include $(BUILD_PREBUILT)
+include $(CLEAR_VARS)
+endef
+
+define libcamera-exec
+LOCAL_MODULE_CLASS := EXECUTABLES
+LOCAL_MODULE_SUFFIX :=
+LOCAL_MODULE := $1
+LOCAL_VENDOR_MODULE := true
+#LOCAL_MODULE_RELATIVE_PATH := $2
+LOCAL_SRC_FILES := $(call relative_top_path,$(LOCAL_PATH))$($3)
+LOCAL_CHECK_ELF_FILES := false
+include $(BUILD_PREBUILT)
+include $(CLEAR_VARS)
+endef
+
+define libcamera-etc
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_SUFFIX :=
+LOCAL_MODULE := $1
+LOCAL_MODULE_PATH  := $(TARGET_OUT_VENDOR_ETC)/$2
+LOCAL_SRC_FILES := $(call relative_top_path,$(LOCAL_PATH))$($3)
 include $(BUILD_PREBUILT)
 include $(CLEAR_VARS)
 endef
@@ -61,6 +83,10 @@ $(eval $(call libcamera-lib,libcamera-base,,LIBCAMERA_BASE_BIN))
 LOCAL_SHARED_LIBRARIES += libcamera libcamera-base
 # Modules 'camera.libcamera', produces '/vendor/lib{64}/hw/camera.libcamera.so' HAL
 $(eval $(call libcamera-lib,camera.libcamera,hw,LIBCAMERA_HAL_BIN))
+
+$(eval $(call libcamera-lib,ipa_rpi,libcamera,LIBCAMERA_IPA_RPI_BIN))
+$(eval $(call libcamera-etc,ipa_rpi.so.sign,libcamera,LIBCAMERA_IPA_RPI_SIGN))
+$(eval $(call libcamera-exec,raspberrypi_ipa_proxy,libcamera,LIBCAMERA_IPA_RPI_PROXY))
 
 #-------------------------------------------------------------------------------
 

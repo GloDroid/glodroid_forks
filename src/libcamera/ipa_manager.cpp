@@ -112,7 +112,8 @@ IPAManager::IPAManager()
 	unsigned int ipaCount = 0;
 
 	/* User-specified paths take precedence. */
-	const char *modulePaths = utils::secure_getenv("LIBCAMERA_IPA_MODULE_PATH");
+//	const char *modulePaths = utils::secure_getenv("LIBCAMERA_IPA_MODULE_PATH");
+	const char *modulePaths = "/vendor/lib64/libcamera/";
 	if (modulePaths) {
 		for (const auto &dir : utils::split(modulePaths, ":")) {
 			if (dir.empty())
