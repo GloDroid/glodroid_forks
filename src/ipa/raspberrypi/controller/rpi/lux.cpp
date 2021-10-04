@@ -77,7 +77,7 @@ void Lux::Process(StatisticsPtr &stats, Metadata *image_metadata)
 		double current_Y = sum / (double)num + .5;
 		double gain_ratio = reference_gain_ / current_gain;
 		double shutter_speed_ratio =
-			reference_shutter_speed_ / device_status.shutter_speed;
+			reference_shutter_speed_ .count() / device_status.shutter_speed.count();
 		double aperture_ratio = reference_aperture_ / current_aperture;
 		double Y_ratio = current_Y * (65536 / num_bins) / reference_Y_;
 		double estimated_lux = shutter_speed_ratio * gain_ratio *

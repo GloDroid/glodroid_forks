@@ -302,7 +302,7 @@ void Process::closeAllFdsExcept(const std::vector<int> &fds)
 
 int Process::isolate()
 {
-	int ret = unshare(CLONE_NEWUSER | CLONE_NEWNET);
+	int ret = unshare(/*CLONE_NEWUSER */ CLONE_NEWNET);
 	if (ret) {
 		ret = -errno;
 		LOG(Process, Error) << "Failed to unshare execution context: "

@@ -4,7 +4,7 @@ project('libcamera', 'c', 'cpp',
     meson_version : '>= 0.55',
     version : '0.0.0',
     default_options : [
-        'werror=true',
+#        'werror=true',
         'warning_level=2',
         'cpp_std=c++17',
     ],
