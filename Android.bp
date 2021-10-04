@@ -1,0 +1,6 @@
+cc_library {
+    name: "boost",
+    host_supported: true,
+    vendor_available: true,
+    export_include_dirs: ["."],
+}
