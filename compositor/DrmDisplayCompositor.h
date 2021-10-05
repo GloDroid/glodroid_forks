@@ -44,8 +44,13 @@ class DrmDisplayCompositor {
   std::unique_ptr<DrmDisplayComposition> CreateInitializedComposition() const;
   int ApplyComposition(std::unique_ptr<DrmDisplayComposition> composition);
   int TestComposition(DrmDisplayComposition *composition);
-  int Composite();
   void ClearDisplay();
+  auto SetDisplayMode(const DrmMode &display_mode) -> bool;
+  auto SetDisplayActive(bool state) -> void {
+    active_ = state;
+    active_changed_ = true;
+  }
+
   UniqueFd TakeOutFence() {
     if (!active_composition_) {
       return UniqueFd();
@@ -65,11 +70,7 @@ class DrmDisplayCompositor {
   DrmDisplayCompositor(const DrmDisplayCompositor &) = delete;
 
   int CommitFrame(DrmDisplayComposition *display_comp, bool test_only);
-  int ApplyDpms(DrmDisplayComposition *display_comp);
   int DisablePlanes(DrmDisplayComposition *display_comp);
-
-  void ApplyFrame(std::unique_ptr<DrmDisplayComposition> composition,
-                  int status);
 
   auto CreateModeBlob(const DrmMode &mode) -> DrmModeUserPropertyBlobUnique;
 
@@ -79,8 +80,7 @@ class DrmDisplayCompositor {
   std::unique_ptr<DrmDisplayComposition> active_composition_;
 
   bool initialized_;
-  bool active_;
-  bool use_hw_overlays_;
+  bool active_{true}, active_changed_{true};
 
   ModeState mode_;
 

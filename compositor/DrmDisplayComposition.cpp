@@ -37,41 +37,11 @@ DrmDisplayComposition::DrmDisplayComposition(DrmCrtc *crtc, Planner *planner)
       planner_(planner) {
 }
 
-bool DrmDisplayComposition::validate_composition_type(DrmCompositionType des) {
-  return type_ == DRM_COMPOSITION_TYPE_EMPTY || type_ == des;
-}
-
-int DrmDisplayComposition::SetLayers(DrmHwcLayer *layers, size_t num_layers,
-                                     bool geometry_changed) {
-  if (!validate_composition_type(DRM_COMPOSITION_TYPE_FRAME))
-    return -EINVAL;
-
-  geometry_changed_ = geometry_changed;
-
+int DrmDisplayComposition::SetLayers(DrmHwcLayer *layers, size_t num_layers) {
   for (size_t layer_index = 0; layer_index < num_layers; layer_index++) {
     layers_.emplace_back(std::move(layers[layer_index]));
   }
 
-  type_ = DRM_COMPOSITION_TYPE_FRAME;
-  return 0;
-}
-
-int DrmDisplayComposition::SetDpmsMode(uint32_t dpms_mode) {
-  if (!validate_composition_type(DRM_COMPOSITION_TYPE_DPMS))
-    return -EINVAL;
-  dpms_mode_ = dpms_mode;
-  type_ = DRM_COMPOSITION_TYPE_DPMS;
-  return 0;
-}
-
-int DrmDisplayComposition::SetDisplayMode(const DrmMode &display_mode) {
-  if (!validate_composition_type(DRM_COMPOSITION_TYPE_MODESET)) {
-    ALOGE("SetDisplayMode() Failed to validate composition type");
-    return -EINVAL;
-  }
-  display_mode_ = display_mode;
-  dpms_mode_ = DRM_MODE_DPMS_ON;
-  type_ = DRM_COMPOSITION_TYPE_MODESET;
   return 0;
 }
 
@@ -87,9 +57,6 @@ int DrmDisplayComposition::AddPlaneComposition(DrmCompositionPlane plane) {
 
 int DrmDisplayComposition::Plan(std::vector<DrmPlane *> *primary_planes,
                                 std::vector<DrmPlane *> *overlay_planes) {
-  if (type_ != DRM_COMPOSITION_TYPE_FRAME)
-    return 0;
-
   std::map<size_t, DrmHwcLayer *> to_composite;
 
   for (size_t i = 0; i < layers_.size(); ++i)

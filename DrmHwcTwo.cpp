@@ -716,7 +716,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
 
   // TODO(nobody): Don't always assume geometry changed
   int ret = composition->SetLayers(composition_layers.data(),
-                                   composition_layers.size(), true);
+                                   composition_layers.size());
   if (ret) {
     ALOGE("Failed to set layers in the composition ret=%d", ret);
     return HWC2::Error::BadLayer;
@@ -793,15 +793,13 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfig(hwc2_config_t config) {
     return HWC2::Error::BadConfig;
   }
 
-  auto composition = std::make_unique<DrmDisplayComposition>(crtc_,
-                                                             planner_.get());
-  int ret = composition->SetDisplayMode(*mode);
-  if (ret) {
+  if (!compositor_.SetDisplayMode(*mode)) {
     return HWC2::Error::BadConfig;
   }
-  ret = compositor_.ApplyComposition(std::move(composition));
-  if (ret) {
-    ALOGE("Failed to queue dpms composition on %d", ret);
+  int err = compositor_.ApplyComposition(
+      compositor_.CreateInitializedComposition());
+  if (err != 0) {
+    ALOGE("Failed to queue mode changing commit %d", err);
     return HWC2::Error::BadConfig;
   }
 
@@ -883,14 +881,13 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetOutputBuffer(buffer_handle_t buffer,
 
 HWC2::Error DrmHwcTwo::HwcDisplay::SetPowerMode(int32_t mode_in) {
   supported(__func__);
-  uint64_t dpms_value = 0;
   auto mode = static_cast<HWC2::PowerMode>(mode_in);
   switch (mode) {
     case HWC2::PowerMode::Off:
-      dpms_value = DRM_MODE_DPMS_OFF;
+      compositor_.SetDisplayActive(false);
       break;
     case HWC2::PowerMode::On:
-      dpms_value = DRM_MODE_DPMS_ON;
+      compositor_.SetDisplayActive(true);
       break;
     case HWC2::PowerMode::Doze:
     case HWC2::PowerMode::DozeSuspend:
@@ -900,10 +897,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetPowerMode(int32_t mode_in) {
       return HWC2::Error::BadParameter;
   };
 
-  auto composition = std::make_unique<DrmDisplayComposition>(crtc_,
-                                                             planner_.get());
-  composition->SetDpmsMode(dpms_value);
-  int ret = compositor_.ApplyComposition(std::move(composition));
+  int ret = compositor_.ApplyComposition(
+      compositor_.CreateInitializedComposition());
   if (ret) {
     ALOGE("Failed to apply the dpms composition ret=%d", ret);
     return HWC2::Error::BadParameter;

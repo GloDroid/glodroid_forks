@@ -44,8 +44,7 @@ DrmDisplayCompositor::DrmDisplayCompositor()
     : resource_manager_(nullptr),
       display_(-1),
       initialized_(false),
-      active_(false),
-      use_hw_overlays_(true) {
+      active_(false) {
 }
 
 DrmDisplayCompositor::~DrmDisplayCompositor() {
@@ -205,41 +204,19 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
     }
   }
 
-  if (!test_only && mode_.blob) {
-    /* TODO: Add dpms to the pset when the kernel supports it */
-    ret = ApplyDpms(display_comp);
-    if (ret) {
-      ALOGE("Failed to apply DPMS after modeset %d\n", ret);
-      return ret;
+  if (!test_only) {
+    if (mode_.blob) {
+      connector->set_active_mode(mode_.mode);
+      mode_.old_blob = std::move(mode_.blob);
     }
+    active_changed_ = false;
 
-    connector->set_active_mode(mode_.mode);
-    mode_.old_blob = std::move(mode_.blob);
-  }
-
-  if (crtc->out_fence_ptr_property()) {
-    display_comp->out_fence_ = UniqueFd((int)out_fences[crtc->pipe()]);
+    if (crtc->out_fence_ptr_property()) {
+      display_comp->out_fence_ = UniqueFd((int)out_fences[crtc->pipe()]);
+    }
   }
 
   return ret;
-}
-
-int DrmDisplayCompositor::ApplyDpms(DrmDisplayComposition *display_comp) {
-  DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
-  DrmConnector *conn = drm->GetConnectorForDisplay(display_);
-  if (!conn) {
-    ALOGE("Failed to get DrmConnector for display %d", display_);
-    return -ENODEV;
-  }
-
-  const DrmProperty &prop = conn->dpms_property();
-  int ret = drmModeConnectorSetProperty(drm->fd(), conn->id(), prop.id(),
-                                        display_comp->dpms_mode());
-  if (ret) {
-    ALOGE("Failed to set DPMS property for connector %d", conn->id());
-    return ret;
-  }
-  return 0;
 }
 
 auto DrmDisplayCompositor::CreateModeBlob(const DrmMode &mode)
@@ -262,59 +239,20 @@ void DrmDisplayCompositor::ClearDisplay() {
   active_composition_.reset(nullptr);
 }
 
-void DrmDisplayCompositor::ApplyFrame(
-    std::unique_ptr<DrmDisplayComposition> composition, int status) {
-  int ret = status;
-
-  if (!ret) {
-    ret = CommitFrame(composition.get(), false);
-  }
+int DrmDisplayCompositor::ApplyComposition(
+    std::unique_ptr<DrmDisplayComposition> composition) {
+  int ret = CommitFrame(composition.get(), false);
 
   if (ret) {
     ALOGE("Composite failed for display %d", display_);
     // Disable the hw used by the last active composition. This allows us to
     // signal the release fences from that composition to avoid hanging.
     ClearDisplay();
-    return;
+    return ret;
   }
 
-  active_composition_.swap(composition);
-}
-
-int DrmDisplayCompositor::ApplyComposition(
-    std::unique_ptr<DrmDisplayComposition> composition) {
-  int ret = 0;
-  switch (composition->type()) {
-    case DRM_COMPOSITION_TYPE_FRAME:
-      if (composition->geometry_changed()) {
-        // Send the composition to the kernel to ensure we can commit it. This
-        // is just a test, it won't actually commit the frame.
-        ret = CommitFrame(composition.get(), true);
-        if (ret) {
-          ALOGE("Commit test failed for display %d, FIXME", display_);
-          return ret;
-        }
-      }
-
-      ApplyFrame(std::move(composition), ret);
-      break;
-    case DRM_COMPOSITION_TYPE_DPMS:
-      active_ = (composition->dpms_mode() == DRM_MODE_DPMS_ON);
-      ret = ApplyDpms(composition.get());
-      if (ret)
-        ALOGE("Failed to apply dpms for display %d", display_);
-      return ret;
-    case DRM_COMPOSITION_TYPE_MODESET:
-      mode_.mode = composition->display_mode();
-      mode_.blob = CreateModeBlob(mode_.mode);
-      if (!mode_.blob) {
-        ALOGE("Failed to create mode blob for display %d", display_);
-        return -EINVAL;
-      }
-      return 0;
-    default:
-      ALOGE("Unknown composition type %d", composition->type());
-      return -EINVAL;
+  if (composition) {
+    active_composition_.swap(composition);
   }
 
   return ret;
@@ -322,6 +260,12 @@ int DrmDisplayCompositor::ApplyComposition(
 
 int DrmDisplayCompositor::TestComposition(DrmDisplayComposition *composition) {
   return CommitFrame(composition, true);
+}
+
+auto DrmDisplayCompositor::SetDisplayMode(const DrmMode &display_mode) -> bool {
+  mode_.mode = display_mode;
+  mode_.blob = CreateModeBlob(mode_.mode);
+  return !!mode_.blob;
 }
 
 }  // namespace android
