@@ -81,20 +81,6 @@ DrmDisplayCompositor::CreateInitializedComposition() const {
   return std::make_unique<DrmDisplayComposition>(crtc, planner_.get());
 }
 
-std::tuple<uint32_t, uint32_t, int>
-DrmDisplayCompositor::GetActiveModeResolution() {
-  DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
-  DrmConnector *connector = drm->GetConnectorForDisplay(display_);
-  if (connector == nullptr) {
-    ALOGE("Failed to determine display mode: no connector for display %d",
-          display_);
-    return std::make_tuple(0, 0, -ENODEV);
-  }
-
-  const DrmMode &mode = connector->active_mode();
-  return std::make_tuple(mode.h_display(), mode.v_display(), 0);
-}
-
 int DrmDisplayCompositor::DisablePlanes(DrmDisplayComposition *display_comp) {
   auto pset = MakeDrmModeAtomicReqUnique();
   if (!pset) {

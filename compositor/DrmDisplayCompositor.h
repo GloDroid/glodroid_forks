@@ -58,8 +58,6 @@ class DrmDisplayCompositor {
     return std::move(active_composition_->out_fence_);
   }
 
-  std::tuple<uint32_t, uint32_t, int> GetActiveModeResolution();
-
  private:
   struct ModeState {
     DrmMode mode;
