@@ -511,8 +511,8 @@
 				regulator-name = "otg_switch";
 				// TODO: This requires a proper rk818-charger implementation
 				// without this always-on the type-c is not powered on
-				regulator-always-on;
-				regulator-boot-on;
+				//regulator-always-on;
+				//regulator-boot-on;
 			};
 		};
 
@@ -1013,7 +1013,7 @@
 };
 
 &usbdrd_dwc3_0 {
-	dr_mode = "host";
+	dr_mode = "peripheral";
 	status = "okay";
 };
 
