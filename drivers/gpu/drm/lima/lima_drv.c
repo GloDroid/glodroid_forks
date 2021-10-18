@@ -79,27 +79,16 @@ static int lima_ioctl_gem_create(struct drm_device *dev, void *data, struct drm_
 {
 	struct drm_lima_gem_create *args = data;
 
-	if (args->flags & ~(LIMA_BO_FLAG_HEAP | LIMA_BO_FLAG_FORCE_VA))
+	if (args->pad)
+		return -EINVAL;
+
+	if (args->flags & ~(LIMA_BO_FLAG_HEAP))
 		return -EINVAL;
 
 	if (args->size == 0)
 		return -EINVAL;
 
-	if (args->flags & LIMA_BO_FLAG_FORCE_VA) {
-		u64 max = (u64)args->va + (u64)args->size;
-
-		if (max > LIMA_VA_RESERVE_START)
-			return -EINVAL;
-
-		if (!IS_ALIGNED(args->va, PAGE_SIZE))
-			return -EINVAL;
-	} else {
-		if (args->va)
-			return -EINVAL;
-	}
-
-	return lima_gem_create_handle(dev, file, args->size, args->flags,
-				      &args->handle, args->va);
+	return lima_gem_create_handle(dev, file, args->size, args->flags, &args->handle);
 }
 
 static int lima_ioctl_gem_info(struct drm_device *dev, void *data, struct drm_file *file)
@@ -270,7 +259,6 @@ DEFINE_DRM_GEM_FOPS(lima_drm_driver_fops);
  * Changelog:
  *
  * - 1.1.0 - add heap buffer support
- * - 1.2.0 - add force va support
  */
 
 static const struct drm_driver lima_drm_driver = {
@@ -282,9 +270,9 @@ static const struct drm_driver lima_drm_driver = {
 	.fops               = &lima_drm_driver_fops,
 	.name               = "lima",
 	.desc               = "lima DRM",
-	.date               = "20200215",
+	.date               = "20191231",
 	.major              = 1,
-	.minor              = 2,
+	.minor              = 1,
 	.patchlevel         = 0,
 
 	.gem_create_object  = lima_gem_create_object,
