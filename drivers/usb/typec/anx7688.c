@@ -159,6 +159,7 @@ static const char * const anx7688_supply_names[] = {
         "dvdd18",
         "avdd10",
         "dvdd10",
+        "i2c",
         "hdmi_vt",
 
         "vconn", // power for VCONN1/VCONN2 switches
