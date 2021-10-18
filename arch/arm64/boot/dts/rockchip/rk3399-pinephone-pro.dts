@@ -602,6 +602,7 @@
 		VDDIO-supply = <&vcc3v0_touch>;
 		touchscreen-size-x = <720>;
 		touchscreen-size-y = <1440>;
+		poweroff-in-suspend;
 	};
 
 	light-sensor@48 {
