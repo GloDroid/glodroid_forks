@@ -2007,6 +2007,7 @@ static int anx7688_i2c_probe(struct i2c_client *client,
         vid_l = anx7688_tcpc_reg_read(anx7688, ANX7688_TCPC_REG_VENDOR_ID0);
         vid_h = anx7688_tcpc_reg_read(anx7688, ANX7688_TCPC_REG_VENDOR_ID1);
 	if (vid_l < 0 || vid_h < 0) {
+		ret = vid_l < 0 ? vid_l : vid_h;
 		anx7688_power_disable(anx7688);
 		goto err_disable_reg;
 	}
