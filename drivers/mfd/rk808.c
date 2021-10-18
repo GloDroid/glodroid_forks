@@ -569,18 +569,6 @@ static int rk808_restart_notify(struct notifier_block *this, unsigned long mode,
 	struct rk808 *rk808 = i2c_get_clientdata(rk808_i2c_client);
 
 	switch (rk808->variant) {
-	case RK805_ID:
-		reg = RK805_DEV_CTRL_REG;
-		bit = DEV_OFF_RST;
-		break;
-	case RK808_ID:
-		reg = RK808_DEVCTRL_REG,
-		bit = DEV_OFF;
-		break;
-	case RK818_ID:
-		reg = RK818_DEVCTRL_REG;
-		bit = DEV_OFF_RST;
-		break;
 	case RK817_ID:
 		reg = RK817_SYS_CFG(3);
 		bit = DEV_RST;
