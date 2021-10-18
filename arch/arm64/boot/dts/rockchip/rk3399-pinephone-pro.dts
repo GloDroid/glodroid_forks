@@ -757,7 +757,7 @@
 };
 
 &pmu_io_domains {
-	pmu1830-supply = <&vcc_3v0>;
+	pmu1830-supply = <&vcc_1v8>;
 	status = "okay";
 };
 
