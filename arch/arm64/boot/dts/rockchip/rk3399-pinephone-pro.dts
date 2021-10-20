@@ -215,23 +215,6 @@
 		vin-supply = <&vcc3v3_sys>;
 	};
 
-	/* micro SD card power */
-	vcc3v0_sd: vcc3v0-sd {
-		compatible = "regulator-fixed";
-		enable-active-high;
-		gpio = <&gpio0 RK_PA1 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&sdmmc0_pwr_h>;
-		regulator-name = "vcc3v0_sd";
-		regulator-min-microvolt = <3000000>;
-		regulator-max-microvolt = <3000000>;
-		vin-supply = <&vcc3v3_sys>;
-
-		regulator-state-mem {
-			regulator-off-in-suspend;
-		};
-	};
-
 	/* MIPI DSI panel 1.8v supply */
 	vcc1v8_lcd: vcc1v8-lcd {
 		compatible = "regulator-fixed";
@@ -474,8 +457,8 @@
 				};
 			};
 
-			vcc_sd: LDO_REG9 {
-				regulator-name = "vcc_sd";
+			vccio_sd: LDO_REG9 {
+				regulator-name = "vccio_sd";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-state-mem {
@@ -801,7 +784,7 @@
 
 	bt656-supply = <&vcc1v8_dvp>;
 	audio-supply = <&vcca1v8_codec>;
-	sdmmc-supply = <&vcc_sd>;
+	sdmmc-supply = <&vccio_sd>;
 	gpio1830-supply = <&vcc_3v0>;
 };
 
@@ -1036,8 +1019,8 @@
 	max-frequency = <150000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_cd &sdmmc_bus4>;
-	vmmc-supply = <&vcc3v0_sd>;
-	vqmmc-supply = <&vcc_sd>;
+	vmmc-supply = <&vcc3v3_sys>;
+	vqmmc-supply = <&vccio_sd>;
 	status = "okay";
 };
 
