@@ -47,30 +47,42 @@ BufferInfoGetter *BufferInfoMapperMetadata::CreateInstance() {
  */
 int __attribute__((weak))
 BufferInfoMapperMetadata::GetFds(buffer_handle_t handle, hwc_drm_bo_t *bo) {
-  int num_fds = handle->numFds;
+  int fd_index = 0;
 
-  if (num_fds >= 1 && num_fds <= 2) {
-    if (IsDrmFormatRgb(bo->format)) {
-      bo->prime_fds[0] = handle->data[0];
-    } else {
-      bo->prime_fds[0] = bo->prime_fds[1] = bo->prime_fds[2] = handle->data[0];
-    }
-    if (bo->prime_fds[0] <= 0) {
-      ALOGE("Encountered invalid fd %d", bo->prime_fds[0]);
-      return android::BAD_VALUE;
+  if (handle->numFds <= 0) {
+    ALOGE("Handle has no fds");
+    return android::BAD_VALUE;
+  }
+
+  for (int i = 0; i < HWC_DRM_BO_MAX_PLANES; i++) {
+    /* If no size, we're out of usable planes */
+    if (bo->sizes[i] <= 0) {
+      if (i == 0) {
+        ALOGE("Bad handle metadata");
+        return android::BAD_VALUE;
+      }
+      break;
     }
 
-  } else if (num_fds >= 3) {
-    bo->prime_fds[0] = handle->data[0];
-    bo->prime_fds[1] = handle->data[1];
-    bo->prime_fds[2] = handle->data[2];
-    for (int i = 0; i < 3; i++) {
-      if (bo->prime_fds[i] <= 0) {
-        ALOGE("Encountered invalid fd %d", bo->prime_fds[i]);
+    /*
+     * If the offset is zero, its multi-buffer
+     * so move to the next fd
+     */
+    if (i != 0 && bo->offsets[i] == 0) {
+      fd_index++;
+      if (fd_index >= handle->numFds) {
+        ALOGE("Handle has no more fds");
         return android::BAD_VALUE;
       }
     }
+
+    bo->prime_fds[i] = handle->data[fd_index];
+    if (bo->prime_fds[i] <= 0) {
+      ALOGE("Invalid prime fd");
+      return android::BAD_VALUE;
+    }
   }
+
   return 0;
 }
 
@@ -135,6 +147,7 @@ int BufferInfoMapperMetadata::ConvertBoInfo(buffer_handle_t handle,
     bo->modifiers[i] = bo->modifiers[0];
     bo->pitches[i] = layouts[i].strideInBytes;
     bo->offsets[i] = layouts[i].offsetInBytes;
+    bo->sizes[i] = layouts[i].totalSizeInBytes;
   }
 
   return GetFds(handle, bo);
