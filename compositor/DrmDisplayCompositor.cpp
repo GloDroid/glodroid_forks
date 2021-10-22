@@ -205,16 +205,6 @@ int DrmDisplayCompositor::CommitFrame(DrmDisplayComposition *display_comp,
   return ret;
 }
 
-auto DrmDisplayCompositor::CreateModeBlob(const DrmMode &mode)
-    -> DrmModeUserPropertyBlobUnique {
-  struct drm_mode_modeinfo drm_mode {};
-  mode.ToDrmModeModeInfo(&drm_mode);
-
-  DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
-  return drm->RegisterUserPropertyBlob(&drm_mode,
-                                       sizeof(struct drm_mode_modeinfo));
-}
-
 void DrmDisplayCompositor::ClearDisplay() {
   if (!active_composition_)
     return;
@@ -250,7 +240,7 @@ int DrmDisplayCompositor::TestComposition(DrmDisplayComposition *composition) {
 
 auto DrmDisplayCompositor::SetDisplayMode(const DrmMode &display_mode) -> bool {
   mode_.mode = display_mode;
-  mode_.blob = CreateModeBlob(mode_.mode);
+  mode_.blob = mode_.mode.CreateModeBlob(*resource_manager_->GetDrmDevice(display_));
   return !!mode_.blob;
 }
 

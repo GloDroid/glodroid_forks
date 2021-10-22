@@ -70,8 +70,6 @@ class DrmDisplayCompositor {
   int CommitFrame(DrmDisplayComposition *display_comp, bool test_only);
   int DisablePlanes(DrmDisplayComposition *display_comp);
 
-  auto CreateModeBlob(const DrmMode &mode) -> DrmModeUserPropertyBlobUnique;
-
   ResourceManager *resource_manager_;
   int display_;
 
