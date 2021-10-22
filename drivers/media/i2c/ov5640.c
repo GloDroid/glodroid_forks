@@ -3885,8 +3885,10 @@ static int ov5640_probe(struct i2c_client *client)
 		return ret;
 
 	ret = ov5640_get_regulators(sensor);
-	if (ret)
+	if (ret) {
+		dev_err_probe(dev, ret, "Failed to get regulators\n");
 		return ret;
+	}
 
 	mutex_init(&sensor->lock);
 
@@ -3895,8 +3897,10 @@ static int ov5640_probe(struct i2c_client *client)
 		goto entity_cleanup;
 
 	ret = v4l2_async_register_subdev_sensor(&sensor->sd);
-	if (ret)
+	if (ret) {
+		dev_err_probe(dev, ret, "Failed to register sensor\n");
 		goto free_ctrls;
+	}
 
 	return 0;
 
