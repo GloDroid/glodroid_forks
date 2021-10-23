@@ -46,8 +46,10 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
 
     bool testing_needed = !(client_start == 0 && client_size == layers.size());
 
+    AtomicCommitArgs a_args = {.test_only = true};
+
     if (testing_needed &&
-        display->CreateComposition(true) != HWC2::Error::None) {
+        display->CreateComposition(a_args) != HWC2::Error::None) {
       ++display->total_stats().failed_kms_validate_;
       client_start = 0;
       client_size = layers.size();

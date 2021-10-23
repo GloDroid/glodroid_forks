@@ -660,20 +660,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetReleaseFences(uint32_t *num_elements,
   return HWC2::Error::None;
 }
 
-void DrmHwcTwo::HwcDisplay::AddFenceToPresentFence(UniqueFd fd) {
-  if (!fd) {
-    return;
-  }
-
-  if (present_fence_) {
-    present_fence_ = UniqueFd(
-        sync_merge("dc_present", present_fence_.Get(), fd.Get()));
-  } else {
-    present_fence_ = std::move(fd);
-  }
-}
-
-HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
+HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   // order the layers by z-order
   bool use_client_layer = false;
   uint32_t client_z_order = UINT32_MAX;
@@ -741,21 +728,13 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
     i = overlay_planes.erase(i);
   }
 
-  AtomicCommitArgs a_args = {
-      .test_only = test,
-      .composition = composition,
-  };
-
+  a_args.composition = composition;
   ret = compositor_.ExecuteAtomicCommit(a_args);
 
   if (ret) {
-    if (!test)
+    if (!a_args.test_only)
       ALOGE("Failed to apply the frame composition ret=%d", ret);
     return HWC2::Error::BadParameter;
-  } else {
-    if (!test) {
-      AddFenceToPresentFence(std::move(a_args.out_fence));
-    }
   }
   return HWC2::Error::None;
 }
@@ -769,7 +748,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::PresentDisplay(int32_t *present_fence) {
 
   ++total_stats_.total_frames_;
 
-  ret = CreateComposition(false);
+  AtomicCommitArgs a_args{};
+  ret = CreateComposition(a_args);
+
   if (ret != HWC2::Error::None)
     ++total_stats_.failed_kms_present_;
 
@@ -781,7 +762,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::PresentDisplay(int32_t *present_fence) {
   if (ret != HWC2::Error::None)
     return ret;
 
-  *present_fence = present_fence_.Release();
+  *present_fence = a_args.out_fence.Release();
 
   ++frame_no_;
   return HWC2::Error::None;

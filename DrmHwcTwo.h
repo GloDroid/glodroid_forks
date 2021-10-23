@@ -149,7 +149,7 @@ class DrmHwcTwo : public hwc2_device_t {
     HwcDisplay(const HwcDisplay &) = delete;
     HWC2::Error Init(std::vector<DrmPlane *> *planes);
 
-    HWC2::Error CreateComposition(bool test);
+    HWC2::Error CreateComposition(AtomicCommitArgs &a_args);
     std::vector<DrmHwcTwo::HwcLayer *> GetOrderLayersByZPos();
 
     void ClearDisplay();
@@ -327,8 +327,6 @@ class DrmHwcTwo : public hwc2_device_t {
     std::atomic_int flattenning_state_{ClientFlattenningState::NotRequired};
     VSyncWorker flattening_vsync_worker_;
 
-    void AddFenceToPresentFence(UniqueFd fd);
-
     constexpr static size_t MATRIX_SIZE = 16;
 
     DrmHwcTwo *hwc2_;
@@ -351,7 +349,6 @@ class DrmHwcTwo : public hwc2_device_t {
     uint32_t layer_idx_ = 0;
     std::map<hwc2_layer_t, HwcLayer> layers_;
     HwcLayer client_layer_;
-    UniqueFd present_fence_;
     int32_t color_mode_{};
     std::array<float, MATRIX_SIZE> color_transform_matrix_{};
     android_color_transform_t color_transform_hint_;
