@@ -34,53 +34,49 @@
 
 namespace android {
 
+struct AtomicCommitArgs {
+  /* inputs. All fields are optional, but at least one has to be specified */
+  bool test_only = false;
+  std::optional<DrmMode> display_mode;
+  std::optional<bool> active;
+  std::shared_ptr<DrmDisplayComposition> composition;
+  /* 'clear' should never be used together with 'composition' */
+  bool clear_active_composition = false;
+
+  /* out */
+  UniqueFd out_fence;
+
+  /* helpers */
+  auto HasInputs() -> bool {
+    return display_mode || active || composition || clear_active_composition;
+  }
+};
+
 class DrmDisplayCompositor {
  public:
-  DrmDisplayCompositor();
-  ~DrmDisplayCompositor();
-
+  DrmDisplayCompositor() = default;
+  ~DrmDisplayCompositor() = default;
   auto Init(ResourceManager *resource_manager, int display) -> int;
 
   std::unique_ptr<DrmDisplayComposition> CreateInitializedComposition() const;
-  int ApplyComposition(std::unique_ptr<DrmDisplayComposition> composition);
-  int TestComposition(DrmDisplayComposition *composition);
-  void ClearDisplay();
-  auto SetDisplayMode(const DrmMode &display_mode) -> bool;
-  auto SetDisplayActive(bool state) -> void {
-    active_ = state;
-    active_changed_ = true;
-  }
 
-  UniqueFd TakeOutFence() {
-    if (!active_composition_) {
-      return UniqueFd();
-    }
-    return std::move(active_composition_->out_fence_);
-  }
+  auto ExecuteAtomicCommit(AtomicCommitArgs &args) -> int;
 
  private:
-  struct ModeState {
-    DrmMode mode;
-    DrmModeUserPropertyBlobUnique blob;
-    DrmModeUserPropertyBlobUnique old_blob;
-  };
-
   DrmDisplayCompositor(const DrmDisplayCompositor &) = delete;
 
-  int CommitFrame(DrmDisplayComposition *display_comp, bool test_only);
-  int DisablePlanes(DrmDisplayComposition *display_comp);
+  auto CommitFrame(AtomicCommitArgs &args) -> int;
 
-  ResourceManager *resource_manager_;
-  int display_;
+  struct {
+    std::shared_ptr<DrmDisplayComposition> composition;
+    DrmModeUserPropertyBlobUnique mode_blob;
+    bool active_state{};
+  } active_kms_data;
 
-  std::unique_ptr<DrmDisplayComposition> active_composition_;
-
-  bool initialized_;
-  bool active_{true}, active_changed_{true};
-
-  ModeState mode_;
-
+  ResourceManager *resource_manager_ = nullptr;
   std::unique_ptr<Planner> planner_;
+  bool initialized_{};
+  int display_ = -1;
 };
 }  // namespace android
 

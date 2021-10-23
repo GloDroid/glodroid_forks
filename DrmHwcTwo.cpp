@@ -253,7 +253,8 @@ DrmHwcTwo::HwcDisplay::HwcDisplay(ResourceManager *resource_manager,
 }
 
 void DrmHwcTwo::HwcDisplay::ClearDisplay() {
-  compositor_.ClearDisplay();
+  AtomicCommitArgs a_args = {.clear_active_composition = true};
+  compositor_.ExecuteAtomicCommit(a_args);
 }
 
 HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
@@ -711,7 +712,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
     composition_layers.emplace_back(std::move(layer));
   }
 
-  auto composition = std::make_unique<DrmDisplayComposition>(crtc_,
+  auto composition = std::make_shared<DrmDisplayComposition>(crtc_,
                                                              planner_.get());
 
   // TODO(nobody): Don't always assume geometry changed
@@ -740,16 +741,21 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(bool test) {
     i = overlay_planes.erase(i);
   }
 
-  if (test) {
-    ret = compositor_.TestComposition(composition.get());
-  } else {
-    ret = compositor_.ApplyComposition(std::move(composition));
-    AddFenceToPresentFence(compositor_.TakeOutFence());
-  }
+  AtomicCommitArgs a_args = {
+      .test_only = test,
+      .composition = composition,
+  };
+
+  ret = compositor_.ExecuteAtomicCommit(a_args);
+
   if (ret) {
     if (!test)
       ALOGE("Failed to apply the frame composition ret=%d", ret);
     return HWC2::Error::BadParameter;
+  } else {
+    if (!test) {
+      AddFenceToPresentFence(std::move(a_args.out_fence));
+    }
   }
   return HWC2::Error::None;
 }
@@ -793,11 +799,12 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfig(hwc2_config_t config) {
     return HWC2::Error::BadConfig;
   }
 
-  if (!compositor_.SetDisplayMode(*mode)) {
-    return HWC2::Error::BadConfig;
-  }
-  int err = compositor_.ApplyComposition(
-      compositor_.CreateInitializedComposition());
+  AtomicCommitArgs a_args = {
+      .display_mode = *mode,
+      .clear_active_composition = true,
+  };
+
+  int err = compositor_.ExecuteAtomicCommit(a_args);
   if (err != 0) {
     ALOGE("Failed to queue mode changing commit %d", err);
     return HWC2::Error::BadConfig;
@@ -882,12 +889,14 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetOutputBuffer(buffer_handle_t buffer,
 HWC2::Error DrmHwcTwo::HwcDisplay::SetPowerMode(int32_t mode_in) {
   supported(__func__);
   auto mode = static_cast<HWC2::PowerMode>(mode_in);
+  AtomicCommitArgs a_args{};
+
   switch (mode) {
     case HWC2::PowerMode::Off:
-      compositor_.SetDisplayActive(false);
+      a_args.active = false;
       break;
     case HWC2::PowerMode::On:
-      compositor_.SetDisplayActive(true);
+      a_args.active = true;
       break;
     case HWC2::PowerMode::Doze:
     case HWC2::PowerMode::DozeSuspend:
@@ -897,10 +906,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetPowerMode(int32_t mode_in) {
       return HWC2::Error::BadParameter;
   };
 
-  int ret = compositor_.ApplyComposition(
-      compositor_.CreateInitializedComposition());
-  if (ret) {
-    ALOGE("Failed to apply the dpms composition ret=%d", ret);
+  int err = compositor_.ExecuteAtomicCommit(a_args);
+  if (err) {
+    ALOGE("Failed to apply the dpms composition err=%d", err);
     return HWC2::Error::BadParameter;
   }
   return HWC2::Error::None;

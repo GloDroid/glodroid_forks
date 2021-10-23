@@ -102,8 +102,6 @@ class DrmDisplayComposition {
     return planner_;
   }
 
-  UniqueFd out_fence_;
-
  private:
   DrmCrtc *crtc_ = NULL;
   Planner *planner_ = NULL;
