@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "DrmDevice.h"
+#include "UEventListener.h"
 #include "DrmFbImporter.h"
 
 namespace android {
@@ -29,6 +30,10 @@ class ResourceManager {
   ResourceManager();
   ResourceManager(const ResourceManager &) = delete;
   ResourceManager &operator=(const ResourceManager &) = delete;
+  ~ResourceManager() {
+    uevent_listener_.Exit();
+  }
+
   int Init();
   DrmDevice *GetDrmDevice(int display);
   const std::vector<std::unique_ptr<DrmDevice>> &getDrmDevices() const {
@@ -41,6 +46,10 @@ class ResourceManager {
     return scale_with_gpu_;
   }
 
+  UEventListener *GetUEventListener() {
+    return &uevent_listener_;
+  }
+
  private:
   int AddDrmDevice(std::string const &path);
 
@@ -48,6 +57,8 @@ class ResourceManager {
   std::vector<std::unique_ptr<DrmDevice>> drms_;
 
   bool scale_with_gpu_{};
+
+  UEventListener uevent_listener_;
 };
 }  // namespace android
 

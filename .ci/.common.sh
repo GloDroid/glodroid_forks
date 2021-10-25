@@ -27,13 +27,13 @@ drm/DrmConnector.cpp
 drm/DrmCrtc.cpp
 drm/DrmDevice.cpp
 drm/DrmEncoder.cpp
-drm/DrmEventListener.cpp
 drm/DrmFbImporter.cpp
 drm/DrmMode.cpp
 drm/DrmPlane.cpp
 drm/DrmProperty.cpp
 DrmHwcTwo.cpp
 drm/ResourceManager.cpp
+drm/UEventListener.cpp
 drm/VSyncWorker.cpp
 tests/worker_test.cpp
 utils/autolock.cpp

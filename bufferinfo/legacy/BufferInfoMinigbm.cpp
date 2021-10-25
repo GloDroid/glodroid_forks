@@ -21,6 +21,8 @@
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
+#include <cerrno>
+
 #include "cros_gralloc_handle.h"
 #include "utils/log.h"
 

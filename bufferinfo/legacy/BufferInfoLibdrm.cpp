@@ -23,6 +23,8 @@
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
+#include <mutex>
+
 #include "utils/log.h"
 #include "utils/properties.h"
 

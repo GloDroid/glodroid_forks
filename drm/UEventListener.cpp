@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-drm-event-listener"
+#define LOG_TAG "hwc-uevent-listener"
 
-#include "DrmEventListener.h"
+#include "UEventListener.h"
 
 #include <linux/netlink.h>
 #include <sys/socket.h>
@@ -26,7 +26,6 @@
 #include <cerrno>
 #include <cstring>
 
-#include "DrmDevice.h"
 #include "utils/log.h"
 
 /* Originally defined in system/core/libsystem/include/system/graphics.h */
@@ -34,11 +33,10 @@
 
 namespace android {
 
-DrmEventListener::DrmEventListener(DrmDevice *drm)
-    : Worker("drm-event-listener", HAL_PRIORITY_URGENT_DISPLAY), drm_(drm) {
-}
+UEventListener::UEventListener()
+    : Worker("uevent-listener", HAL_PRIORITY_URGENT_DISPLAY){};
 
-int DrmEventListener::Init() {
+int UEventListener::Init() {
   uevent_fd_ = UniqueFd(
       socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_KOBJECT_UEVENT));
   if (!uevent_fd_) {
@@ -57,43 +55,12 @@ int DrmEventListener::Init() {
     return -errno;
   }
 
-  // NOLINTNEXTLINE(readability-isolate-declaration)
-  FD_ZERO(&fds_);
-  FD_SET(drm_->fd(), &fds_);
-  FD_SET(uevent_fd_.Get(), &fds_);
-  max_fd_ = std::max(drm_->fd(), uevent_fd_.Get());
-
   return InitWorker();
 }
 
-void DrmEventListener::RegisterHotplugHandler(DrmEventHandler *handler) {
-  assert(!hotplug_handler_);
-  hotplug_handler_.reset(handler);
-}
-
-void DrmEventListener::FlipHandler(int /* fd */, unsigned int /* sequence */,
-                                   unsigned int tv_sec, unsigned int tv_usec,
-                                   void *user_data) {
-  auto *handler = (DrmEventHandler *)user_data;
-  if (!handler)
-    return;
-
-  handler->HandleEvent((uint64_t)tv_sec * 1000 * 1000 + tv_usec);
-  delete handler;  // NOLINT(cppcoreguidelines-owning-memory)
-}
-
-void DrmEventListener::UEventHandler() {
+void UEventListener::Routine() {
   char buffer[1024];
   ssize_t ret = 0;
-
-  struct timespec ts {};
-
-  uint64_t timestamp = 0;
-  ret = clock_gettime(CLOCK_MONOTONIC, &ts);
-  if (!ret)
-    timestamp = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
-  else
-    ALOGE("Failed to get monotonic clock on hotplug %zd", ret);
 
   while (true) {
     ret = read(uevent_fd_.Get(), &buffer, sizeof(buffer));
@@ -120,26 +87,9 @@ void DrmEventListener::UEventHandler() {
       i += strlen(event) + 1;
     }
 
-    if (drm_event && hotplug_event)
-      hotplug_handler_->HandleEvent(timestamp);
+    if (drm_event && hotplug_event && hotplug_handler_) {
+      hotplug_handler_();
+    }
   }
-}
-
-void DrmEventListener::Routine() {
-  int ret = 0;
-  do {
-    ret = select(max_fd_ + 1, &fds_, nullptr, nullptr, nullptr);
-  } while (ret == -1 && errno == EINTR);
-
-  if (FD_ISSET(drm_->fd(), &fds_)) {
-    drmEventContext event_context =
-        {.version = 2,
-         .vblank_handler = nullptr,
-         .page_flip_handler = DrmEventListener::FlipHandler};
-    drmHandleEvent(drm_->fd(), &event_context);
-  }
-
-  if (FD_ISSET(uevent_fd_.Get(), &fds_))
-    UEventHandler();
 }
 }  // namespace android

@@ -25,7 +25,6 @@
 #include "DrmConnector.h"
 #include "DrmCrtc.h"
 #include "DrmEncoder.h"
-#include "DrmEventListener.h"
 #include "DrmFbImporter.h"
 #include "DrmPlane.h"
 #include "utils/UniqueFd.h"
@@ -38,7 +37,7 @@ class DrmPlane;
 class DrmDevice {
  public:
   DrmDevice();
-  ~DrmDevice();
+  ~DrmDevice() = default;
 
   std::tuple<int, int> Init(const char *path, int num_displays);
 
@@ -67,7 +66,6 @@ class DrmDevice {
   DrmConnector *AvailableWritebackConnector(int display) const;
   DrmCrtc *GetCrtcForDisplay(int display) const;
   DrmPlane *GetPlane(uint32_t id) const;
-  DrmEventListener *event_listener();
 
   int GetCrtcProperty(const DrmCrtc &crtc, const char *prop_name,
                       DrmProperty *property) const;
@@ -83,9 +81,6 @@ class DrmDevice {
       -> DrmModeUserPropertyBlobUnique;
 
   bool HandlesDisplay(int display) const;
-  void RegisterHotplugHandler(DrmEventHandler *handler) {
-    event_listener_.RegisterHotplugHandler(handler);
-  }
 
   bool HasAddFb2ModifiersSupport() const {
     return HasAddFb2ModifiersSupport_;
@@ -114,7 +109,6 @@ class DrmDevice {
   std::vector<std::unique_ptr<DrmEncoder>> encoders_;
   std::vector<std::unique_ptr<DrmCrtc>> crtcs_;
   std::vector<std::unique_ptr<DrmPlane>> planes_;
-  DrmEventListener event_listener_;
 
   std::pair<uint32_t, uint32_t> min_resolution_;
   std::pair<uint32_t, uint32_t> max_resolution_;

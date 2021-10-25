@@ -87,11 +87,9 @@ HWC2::Error DrmHwcTwo::Init() {
     }
   }
 
-  const auto &drm_devices = resource_manager_.getDrmDevices();
-  for (const auto &device : drm_devices) {
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
-    device->RegisterHotplugHandler(new DrmHotplugHandler(this, device.get()));
-  }
+  resource_manager_.GetUEventListener()->RegisterHotplugHandler(
+      [this] { HandleHotplugUEvent(); });
+
   return ret;
 }
 
@@ -1263,30 +1261,32 @@ void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {
   }
 }
 
-void DrmHwcTwo::DrmHotplugHandler::HandleEvent(uint64_t timestamp_us) {
-  for (const auto &conn : drm_->connectors()) {
-    drmModeConnection old_state = conn->state();
-    drmModeConnection cur_state = conn->UpdateModes()
-                                      ? DRM_MODE_UNKNOWNCONNECTION
-                                      : conn->state();
+void DrmHwcTwo::HandleHotplugUEvent() {
+  for (const auto &drm : resource_manager_.getDrmDevices()) {
+    for (const auto &conn : drm->connectors()) {
+      drmModeConnection old_state = conn->state();
+      drmModeConnection cur_state = conn->UpdateModes()
+                                        ? DRM_MODE_UNKNOWNCONNECTION
+                                        : conn->state();
 
-    if (cur_state == old_state)
-      continue;
+      if (cur_state == old_state)
+        continue;
 
-    ALOGI("%s event @%" PRIu64 " for connector %u on display %d",
-          cur_state == DRM_MODE_CONNECTED ? "Plug" : "Unplug", timestamp_us,
-          conn->id(), conn->display());
+      ALOGI("%s event for connector %u on display %d",
+            cur_state == DRM_MODE_CONNECTED ? "Plug" : "Unplug", conn->id(),
+            conn->display());
 
-    int display_id = conn->display();
-    if (cur_state == DRM_MODE_CONNECTED) {
-      auto &display = hwc2_->displays_.at(display_id);
-      display.ChosePreferredConfig();
-    } else {
-      auto &display = hwc2_->displays_.at(display_id);
-      display.ClearDisplay();
+      int display_id = conn->display();
+      if (cur_state == DRM_MODE_CONNECTED) {
+        auto &display = displays_.at(display_id);
+        display.ChosePreferredConfig();
+      } else {
+        auto &display = displays_.at(display_id);
+        display.ClearDisplay();
+      }
+
+      HandleDisplayHotplug(display_id, cur_state);
     }
-
-    hwc2_->HandleDisplayHotplug(display_id, cur_state);
   }
 }
 

@@ -70,6 +70,12 @@ int ResourceManager::Init() {
     return -EINVAL;
   }
 
+  ret = uevent_listener_.Init();
+  if (ret) {
+    ALOGE("Can't initialize event listener %d", ret);
+    return ret;
+  }
+
   return 0;
 }
 

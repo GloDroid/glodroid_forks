@@ -14,51 +14,34 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRM_EVENT_LISTENER_H_
-#define ANDROID_DRM_EVENT_LISTENER_H_
+#ifndef ANDROID_UEVENT_LISTENER_H_
+#define ANDROID_UEVENT_LISTENER_H_
+
+#include <functional>
 
 #include "utils/UniqueFd.h"
 #include "utils/Worker.h"
 
 namespace android {
 
-class DrmDevice;
-
-class DrmEventHandler {
+class UEventListener : public Worker {
  public:
-  DrmEventHandler() {
-  }
-  virtual ~DrmEventHandler() {
-  }
-
-  virtual void HandleEvent(uint64_t timestamp_us) = 0;
-};
-
-class DrmEventListener : public Worker {
- public:
-  DrmEventListener(DrmDevice *drm);
-  virtual ~DrmEventListener() {
-  }
+  UEventListener();
+  virtual ~UEventListener() = default;
 
   int Init();
 
-  void RegisterHotplugHandler(DrmEventHandler *handler);
-
-  static void FlipHandler(int fd, unsigned int sequence, unsigned int tv_sec,
-                          unsigned int tv_usec, void *user_data);
+  void RegisterHotplugHandler(std::function<void()> hotplug_handler) {
+    hotplug_handler_ = hotplug_handler;
+  }
 
  protected:
   virtual void Routine();
 
  private:
-  void UEventHandler();
-
-  fd_set fds_{};
   UniqueFd uevent_fd_;
-  int max_fd_ = -1;
 
-  DrmDevice *drm_;
-  std::unique_ptr<DrmEventHandler> hotplug_handler_;
+  std::function<void()> hotplug_handler_;
 };
 }  // namespace android
 

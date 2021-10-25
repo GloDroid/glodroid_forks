@@ -95,12 +95,12 @@ cc_library_static {
         "drm/DrmCrtc.cpp",
         "drm/DrmDevice.cpp",
         "drm/DrmEncoder.cpp",
-        "drm/DrmEventListener.cpp",
         "drm/DrmFbImporter.cpp",
         "drm/DrmMode.cpp",
         "drm/DrmPlane.cpp",
         "drm/DrmProperty.cpp",
         "drm/ResourceManager.cpp",
+        "drm/UEventListener.cpp",
         "drm/VSyncWorker.cpp",
 
         "utils/autolock.cpp",

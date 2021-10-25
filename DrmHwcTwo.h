@@ -359,18 +359,6 @@ class DrmHwcTwo : public hwc2_device_t {
     std::string DumpDelta(DrmHwcTwo::HwcDisplay::Stats delta);
   };
 
-  class DrmHotplugHandler : public DrmEventHandler {
-   public:
-    DrmHotplugHandler(DrmHwcTwo *hwc2, DrmDevice *drm)
-        : hwc2_(hwc2), drm_(drm) {
-    }
-    void HandleEvent(uint64_t timestamp_us);
-
-   private:
-    DrmHwcTwo *hwc2_;
-    DrmDevice *drm_;
-  };
-
  private:
   static DrmHwcTwo *toDrmHwcTwo(hwc2_device_t *dev) {
     return static_cast<DrmHwcTwo *>(dev);
@@ -438,6 +426,8 @@ class DrmHwcTwo : public hwc2_device_t {
   HWC2::Error CreateDisplay(hwc2_display_t displ, HWC2::DisplayType type);
   void HandleDisplayHotplug(hwc2_display_t displayid, int state);
   void HandleInitialHotplugState(DrmDevice *drmDevice);
+
+  void HandleHotplugUEvent();
 
   ResourceManager resource_manager_;
   std::map<hwc2_display_t, HwcDisplay> displays_;

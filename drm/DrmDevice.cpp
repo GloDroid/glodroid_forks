@@ -111,13 +111,9 @@ static std::vector<DrmConnector *> make_primary_display_candidates(
   return primary_candidates;
 }
 
-DrmDevice::DrmDevice() : event_listener_(this) {
+DrmDevice::DrmDevice() {
   self.reset(this);
   mDrmFbImporter = std::make_unique<DrmFbImporter>(self);
-}
-
-DrmDevice::~DrmDevice() {
-  event_listener_.Exit();
 }
 
 std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
@@ -326,12 +322,6 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   if (ret)
     return std::make_tuple(ret, 0);
 
-  ret = event_listener_.Init();
-  if (ret) {
-    ALOGE("Can't initialize event listener %d", ret);
-    return std::make_tuple(ret, 0);
-  }
-
   for (auto &conn : connectors_) {
     ret = CreateDisplayPipe(conn.get());
     if (ret) {
@@ -524,10 +514,6 @@ auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const
         // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
         delete it;
       });
-}
-
-DrmEventListener *DrmDevice::event_listener() {
-  return &event_listener_;
 }
 
 int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
