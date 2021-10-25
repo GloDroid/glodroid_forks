@@ -1069,7 +1069,7 @@
 
 	u2phy0_host: host-port {
 		status = "okay";
-    phy-supply = <&vcc5v0_sys>;
+		phy-supply = <&vcc5v0_sys>;
 	};
 
 	port {
@@ -1088,7 +1088,7 @@
 
 	u2phy1_host: host-port {
 		status = "okay";
-    phy-supply = <&vcc5v0_sys>;
+		phy-supply = <&vcc5v0_sys>;
 	};
 };
 
