@@ -698,12 +698,10 @@
 			compatible = "usb-c-connector";
 			data-role = "dual";
 			label = "USB-C";
-			op-sink-microwatt = <1000000>;
+			op-sink-microwatt = <2500000>;
 			power-role = "dual";
-			sink-pdos =
-				<PDO_FIXED(5000, 2500, PDO_FIXED_USB_COMM)>;
-			source-pdos =
-				<PDO_FIXED(5000, 1400, PDO_FIXED_USB_COMM)>;
+			sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+			source-pdos = <PDO_FIXED(5000, 900, PDO_FIXED_USB_COMM)>;
 			try-power-role = "sink";
 
 			extcon-cables = <1 2 5 6 9 10 12 44>;
