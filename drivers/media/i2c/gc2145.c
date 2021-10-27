@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-#define DEBUG
+//#define DEBUG
 
 #include <asm/div64.h>
 #include <linux/clk.h>
