@@ -1,9 +1,9 @@
 cc_library_shared {
     name: "hwcomposer.filegroups_build_test",
     defaults: ["hwcomposer.drm_defaults"],
-    whole_static_libs: ["drm_hwcomposer"],
 
     srcs: [
+        ":drm_hwcomposer_common",
         ":drm_hwcomposer_platformhisi",
         ":drm_hwcomposer_platformimagination",
         ":drm_hwcomposer_platformmediatek",
