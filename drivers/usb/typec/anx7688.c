@@ -169,6 +169,8 @@ static const char * const anx7688_supply_names[] = {
 
 #define ANX7688_NUM_SUPPLIES ARRAY_SIZE(anx7688_supply_names)
 #define ANX7688_NUM_ALWAYS_ON_SUPPLIES (ANX7688_NUM_SUPPLIES - 1)
+
+#define ANX7688_I2C_INDEX (ANX7688_NUM_SUPPLIES - 4)
 #define ANX7688_VCONN_INDEX (ANX7688_NUM_SUPPLIES - 2)
 #define ANX7688_VBUS_INDEX (ANX7688_NUM_SUPPLIES - 1)
 
@@ -2170,12 +2172,23 @@ static int __maybe_unused anx7688_suspend(struct device *dev)
 	del_timer_sync(&anx7688->work_timer);
 	cancel_delayed_work_sync(&anx7688->work);
 
+	if (test_bit(ANX7688_F_POWERED, anx7688->flags))
+		regulator_disable(anx7688->supplies[ANX7688_I2C_INDEX].consumer);
+
 	return 0;
 }
 
 static int __maybe_unused anx7688_resume(struct device *dev)
 {
 	struct anx7688 *anx7688 = i2c_get_clientdata(to_i2c_client(dev));
+	int ret;
+
+	if (test_bit(ANX7688_F_POWERED, anx7688->flags)) {
+		ret = regulator_enable(anx7688->supplies[ANX7688_I2C_INDEX].consumer);
+		if (ret)
+			dev_warn(anx7688->dev,
+				 "failed to enable I2C regulator (%d)\n", ret);
+	}
 
 	// check status right after resume, since it could have changed during
 	// sleep
