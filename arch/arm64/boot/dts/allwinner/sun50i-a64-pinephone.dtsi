@@ -13,6 +13,8 @@
 #include <dt-bindings/usb/pd.h>
 
 / {
+	chassis-type = "handset";
+
 	aliases {
 		ethernet0 = &rtl8723cs;
 		serial0 = &uart0;
