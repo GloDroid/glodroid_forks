@@ -463,9 +463,9 @@ CameraConfiguration::Status RPiCameraConfiguration::validate()
 
 			cfg.stride = unicamFormat.planes[0].bpl;
 			cfg.frameSize = unicamFormat.planes[0].size;
-
 			rawCount++;
 		} else {
+			cfg.bufferCount = 1;
 			outSize[outCount] = std::make_pair(count, cfg.size);
 			/* Record the largest resolution for fixups later. */
 			if (maxSize < cfg.size) {
