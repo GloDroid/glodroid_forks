@@ -34,14 +34,13 @@ if libdw.found()
 endif
 
 if libunwind.found()
-    config_h.set('HAVE_UNWIND', 1)
+#    config_h.set('HAVE_UNWIND', 1)
 endif
 
 libcamera_base_deps = [
     dependency('threads'),
     libatomic,
     libdw,
-    libunwind,
 ]
 
 # Internal components must use the libcamera_base_private dependency to enable
