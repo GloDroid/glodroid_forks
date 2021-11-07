@@ -505,7 +505,7 @@
 		};
 
 		battery {
-			compatible = "rk818-battery";
+			compatible = "rockchip,rk818-battery";
 			ocv_table = <3400 3675 3689 3716 3740 3756 3768 3780
 				3793 3807 3827 3853 3896 3937 3974 4007 4066
 				4110 4161 4217 4308>;
