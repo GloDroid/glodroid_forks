@@ -106,3 +106,4 @@ obj-$(CONFIG_BATTERY_ACER_A500)	+= acer_a500_battery.o
 obj-$(CONFIG_BATTERY_SURFACE)	+= surface_battery.o
 obj-$(CONFIG_CHARGER_SURFACE)	+= surface_charger.o
 obj-$(CONFIG_BATTERY_RK818)	+= rk818_battery.o
+obj-$(CONFIG_CHARGER_RK818)	+= rk818_charger.o
