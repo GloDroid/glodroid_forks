@@ -7,6 +7,9 @@
 #include <linux/list_sort.h>
 #include <linux/list.h>
 
+typedef int __attribute__((nonnull(2,3))) (*cmp_func)(void *,
+		struct list_head *, struct list_head *);
+
 /*
  * Returns a list organized in an intermediate format suited
  * to chaining of merge() calls: null-terminated, no reserved or
