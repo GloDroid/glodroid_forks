@@ -321,6 +321,14 @@ int gbm_mesa_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32_t 
 
 	bool scanout = (use_flags & BO_USE_SCANOUT) != 0;
 	bool linear = (use_flags & BO_USE_SW_MASK) != 0;
+
+	/* Alignment for RPI4 CSI camera. Since we do not care about other cameras, keep this globally for now.
+	 * TODO: Distinguish between devices */
+	if (use_flags & (BO_USE_CAMERA_READ | BO_USE_CAMERA_WRITE)) {
+		scanout = true;
+		width = ALIGN(width, 32);
+	}
+
 	uint32_t s_format = format;
 	int s_height = height;
 	if (get_gbm_mesa_format(format) == 0) {
