@@ -204,6 +204,13 @@ cc_library_static {
     name: "libc++fs",
     ramdisk_available: true,
     recovery_available: true,
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.art",
+        "com.android.art.debug",
+    ],
+    // being part of updatable apexes, this should work on older releases
+    min_sdk_version: "apex_inherit",
     defaults: ["libc++ defaults"],
     srcs: [
         "src/filesystem/directory_iterator.cpp",
