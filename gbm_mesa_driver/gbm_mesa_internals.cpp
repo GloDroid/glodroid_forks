@@ -78,6 +78,8 @@ int gbm_mesa_driver_init(struct driver *drv)
 	drv_add_combinations(drv, texture_only_formats, ARRAY_SIZE(texture_only_formats),
 			     &linear_metadata, BO_USE_TEXTURE_MASK | BO_USE_SCANOUT);
 
+	drv_add_combination(drv, DRM_FORMAT_R8, &linear_metadata, BO_USE_SW_MASK | BO_USE_LINEAR);
+
 	drv_modify_combination(drv, DRM_FORMAT_NV12, &linear_metadata,
 			       BO_USE_HW_VIDEO_ENCODER | BO_USE_HW_VIDEO_DECODER |
 				   BO_USE_CAMERA_READ | BO_USE_CAMERA_WRITE);
