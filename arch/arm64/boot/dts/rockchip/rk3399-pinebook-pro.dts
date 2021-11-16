@@ -17,6 +17,7 @@
 / {
 	model = "Pine64 Pinebook Pro";
 	compatible = "pine64,pinebook-pro", "rockchip,rk3399";
+	chassis-type = "laptop";
 
 	aliases {
 		mmc0 = &sdio0;
@@ -383,10 +384,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&dc_det_pin>;
 	};
-};
-
-&cdn_dp {
-	status = "okay";
 };
 
 &cpu_b0 {
