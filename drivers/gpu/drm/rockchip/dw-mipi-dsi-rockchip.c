@@ -407,6 +407,14 @@ static int dw_mipi_dsi_phy_init(void *priv_data)
 	 */
 	vco = (dsi->lane_mbps < 200) ? 0 : (dsi->lane_mbps + 100) / 200;
 
+	if (dsi->cdata->lanecfg1_grf_reg) {
+		regmap_write(dsi->grf_regmap, dsi->cdata->lanecfg1_grf_reg,
+					      dsi->cdata->lanecfg1);
+
+	  dev_info(dsi->dev, "dw_mipi_dsi_phy_init / dw_mipi_dsi_rockchip_config: %08x => set=%08x\n",
+			dsi->cdata->lanecfg1_grf_reg, dsi->cdata->lanecfg1);
+	}
+
 	i = max_mbps_to_parameter(dsi->lane_mbps);
 	if (i < 0) {
 		DRM_DEV_ERROR(dsi->dev,
@@ -953,7 +961,7 @@ static int dw_mipi_dsi_rockchip_bind(struct device *dev,
 	ret = clk_prepare_enable(dsi->grf_clk);
 	if (ret) {
 		DRM_DEV_ERROR(dsi->dev, "Failed to enable grf_clk: %d\n", ret);
-		return ret;
+		goto err_pllref_disable;
 	}
 
 	dw_mipi_dsi_rockchip_config(dsi);
@@ -965,16 +973,20 @@ static int dw_mipi_dsi_rockchip_bind(struct device *dev,
 	ret = rockchip_dsi_drm_create_encoder(dsi, drm_dev);
 	if (ret) {
 		DRM_DEV_ERROR(dev, "Failed to create drm encoder\n");
-		return ret;
+		goto err_pllref_disable;
 	}
 
 	ret = dw_mipi_dsi_bind(dsi->dmd, &dsi->encoder);
 	if (ret) {
 		DRM_DEV_ERROR(dev, "Failed to bind: %d\n", ret);
-		return ret;
+		goto err_pllref_disable;
 	}
 
 	return 0;
+
+err_pllref_disable:
+	clk_disable_unprepare(dsi->pllref_clk);
+	return ret;
 }
 
 static void dw_mipi_dsi_rockchip_unbind(struct device *dev,
