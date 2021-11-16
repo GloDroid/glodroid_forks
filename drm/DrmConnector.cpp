@@ -159,43 +159,27 @@ std::string DrmConnector::name() const {
 }
 
 int DrmConnector::UpdateModes() {
-  int fd = drm_->fd();
-
-  drmModeConnectorPtr c = drmModeGetConnector(fd, id_);
+  drmModeConnectorPtr c = drmModeGetConnector(drm_->fd(), id_);
   if (!c) {
     ALOGE("Failed to get connector %d", id_);
     return -ENODEV;
   }
 
-  state_ = c->connection;
-
-  bool preferred_mode_found = false;
-  std::vector<DrmMode> new_modes;
+  modes_.clear();
   for (int i = 0; i < c->count_modes; ++i) {
     bool exists = false;
     for (const DrmMode &mode : modes_) {
       if (mode == c->modes[i]) {
-        new_modes.push_back(mode);
         exists = true;
         break;
       }
     }
+
     if (!exists) {
-      DrmMode m(&c->modes[i]);
-      m.set_id(drm_->next_mode_id());
-      new_modes.push_back(m);
-    }
-    // Use only the first DRM_MODE_TYPE_PREFERRED mode found
-    if (!preferred_mode_found &&
-        (new_modes.back().type() & DRM_MODE_TYPE_PREFERRED)) {
-      preferred_mode_id_ = new_modes.back().id();
-      preferred_mode_found = true;
+      modes_.emplace_back(DrmMode(&c->modes[i]));
     }
   }
-  modes_.swap(new_modes);
-  if (!preferred_mode_found && !modes_.empty()) {
-    preferred_mode_id_ = modes_[0].id();
-  }
+
   return 0;
 }
 

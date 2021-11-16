@@ -349,9 +349,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::ChosePreferredConfig() {
   uint32_t num_configs = 0;
   HWC2::Error err = GetDisplayConfigs(&num_configs, nullptr);
   if (err != HWC2::Error::None || !num_configs)
-    return err;
+    return HWC2::Error::BadDisplay;
 
-  return SetActiveConfig(connector_->get_preferred_mode_id());
+  return SetActiveConfig(preferred_config_id_);
 }
 
 HWC2::Error DrmHwcTwo::HwcDisplay::AcceptDisplayChanges() {
@@ -378,13 +378,13 @@ HWC2::Error DrmHwcTwo::HwcDisplay::DestroyLayer(hwc2_layer_t layer) {
   return HWC2::Error::None;
 }
 
-HWC2::Error DrmHwcTwo::HwcDisplay::GetActiveConfig(hwc2_config_t *config) {
+HWC2::Error DrmHwcTwo::HwcDisplay::GetActiveConfig(
+    hwc2_config_t *config) const {
   supported(__func__);
-  DrmMode const &mode = connector_->active_mode();
-  if (mode.id() == 0)
+  if (hwc_configs_.count(active_config_id_) == 0)
     return HWC2::Error::BadConfig;
 
-  *config = mode.id();
+  *config = active_config_id_;
   return HWC2::Error::None;
 }
 
@@ -443,15 +443,14 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
                                                        int32_t attribute_in,
                                                        int32_t *value) {
   supported(__func__);
-  auto mode = std::find_if(connector_->modes().begin(),
-                           connector_->modes().end(),
-                           [config](DrmMode const &m) {
-                             return m.id() == config;
-                           });
-  if (mode == connector_->modes().end()) {
-    ALOGE("Could not find active mode for %d", config);
+  int conf = static_cast<int>(config);
+
+  if (hwc_configs_.count(conf) == 0) {
+    ALOGE("Could not find active mode for %d", conf);
     return HWC2::Error::BadConfig;
   }
+
+  auto &hwc_config = hwc_configs_[conf];
 
   static const int32_t kUmPerInch = 25400;
   uint32_t mm_width = connector_->mm_width();
@@ -459,30 +458,32 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   auto attribute = static_cast<HWC2::Attribute>(attribute_in);
   switch (attribute) {
     case HWC2::Attribute::Width:
-      *value = static_cast<int>(mode->h_display());
+      *value = static_cast<int>(hwc_config.mode.h_display());
       break;
     case HWC2::Attribute::Height:
-      *value = static_cast<int>(mode->v_display());
+      *value = static_cast<int>(hwc_config.mode.v_display());
       break;
     case HWC2::Attribute::VsyncPeriod:
       // in nanoseconds
-      *value = static_cast<int>(1E9 / mode->v_refresh());
+      *value = static_cast<int>(1E9 / hwc_config.mode.v_refresh());
       break;
     case HWC2::Attribute::DpiX:
       // Dots per 1000 inches
-      *value = mm_width
-                   ? static_cast<int>(mode->h_display() * kUmPerInch / mm_width)
-                   : -1;
+      *value = mm_width ? static_cast<int>(hwc_config.mode.h_display() *
+                                           kUmPerInch / mm_width)
+                        : -1;
       break;
     case HWC2::Attribute::DpiY:
       // Dots per 1000 inches
-      *value = mm_height ? static_cast<int>(mode->v_display() * kUmPerInch /
-                                            mm_height)
+      *value = mm_height ? static_cast<int>(hwc_config.mode.v_display() *
+                                            kUmPerInch / mm_height)
                          : -1;
       break;
 #if PLATFORM_SDK_VERSION > 29
     case HWC2::Attribute::ConfigGroup:
-      *value = 0; /* TODO: Add support for config groups */
+      /* Dispite ConfigGroup is a part of HWC2.4 API, framework
+       * able to request it even if service @2.1 is used */
+      *value = hwc_config.group_id;
       break;
 #endif
     default:
@@ -506,79 +507,149 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayConfigs(uint32_t *num_configs,
       ALOGE("Failed to update display modes %d", ret);
       return HWC2::Error::BadDisplay;
     }
-  }
 
-  // Since the upper layers only look at vactive/hactive/refresh, height and
-  // width, it doesn't differentiate interlaced from progressive and other
-  // similar modes. Depending on the order of modes we return to SF, it could
-  // end up choosing a suboptimal configuration and dropping the preferred
-  // mode. To workaround this, don't offer interlaced modes to SF if there is
-  // at least one non-interlaced alternative and only offer a single WxH@R
-  // mode with at least the prefered mode from in DrmConnector::UpdateModes()
+    hwc_configs_.clear();
+    preferred_config_id_ = 0;
+    int preferred_config_group_id_ = 0;
 
-  // TODO(nobody): Remove the following block of code until AOSP handles all
-  // modes
-  std::vector<DrmMode> sel_modes;
-
-  // Add the preferred mode first to be sure it's not dropped
-  auto mode = std::find_if(connector_->modes().begin(),
-                           connector_->modes().end(), [&](DrmMode const &m) {
-                             return m.id() ==
-                                    connector_->get_preferred_mode_id();
-                           });
-  if (mode != connector_->modes().end())
-    sel_modes.push_back(*mode);
-
-  // Add the active mode if different from preferred mode
-  if (connector_->active_mode().id() != connector_->get_preferred_mode_id())
-    sel_modes.push_back(connector_->active_mode());
-
-  // Cycle over the modes and filter out "similar" modes, keeping only the
-  // first ones in the order given by DRM (from CEA ids and timings order)
-  for (const DrmMode &mode : connector_->modes()) {
-    // TODO(nobody): Remove this when 3D Attributes are in AOSP
-    if (mode.flags() & DRM_MODE_FLAG_3D_MASK)
-      continue;
-
-    // TODO(nobody): Remove this when the Interlaced attribute is in AOSP
-    if (mode.flags() & DRM_MODE_FLAG_INTERLACE) {
-      auto m = std::find_if(connector_->modes().begin(),
-                            connector_->modes().end(),
-                            [&mode](DrmMode const &m) {
-                              return !(m.flags() & DRM_MODE_FLAG_INTERLACE) &&
-                                     m.h_display() == mode.h_display() &&
-                                     m.v_display() == mode.v_display();
-                            });
-      if (m == connector_->modes().end())
-        sel_modes.push_back(mode);
-
-      continue;
+    if (connector_->modes().empty()) {
+      ALOGE("No modes reported by KMS");
+      return HWC2::Error::BadDisplay;
     }
 
-    // Search for a similar WxH@R mode in the filtered list and drop it if
-    // another mode with the same WxH@R has already been selected
-    // TODO(nobody): Remove this when AOSP handles duplicates modes
-    auto m = std::find_if(sel_modes.begin(), sel_modes.end(),
-                          [&mode](DrmMode const &m) {
-                            return m.h_display() == mode.h_display() &&
-                                   m.v_display() == mode.v_display() &&
-                                   m.v_refresh() == mode.v_refresh();
-                          });
-    if (m == sel_modes.end())
-      sel_modes.push_back(mode);
-  }
+    int last_config_id = 1;
+    int last_group_id = 1;
 
-  auto num_modes = static_cast<uint32_t>(sel_modes.size());
-  if (!configs) {
-    *num_configs = num_modes;
-    return HWC2::Error::None;
+    /* Group modes */
+    for (const auto &mode : connector_->modes()) {
+      /* Find group for the new mode or create new group */
+      int group_found = 0;
+      for (auto &hwc_config : hwc_configs_) {
+        if (mode.h_display() == hwc_config.second.mode.h_display() &&
+            mode.v_display() == hwc_config.second.mode.v_display()) {
+          group_found = hwc_config.second.group_id;
+        }
+      }
+      if (group_found == 0) {
+        group_found = last_group_id++;
+      }
+
+      bool disabled = false;
+      if (mode.flags() & DRM_MODE_FLAG_3D_MASK) {
+        ALOGI("Disabling display mode %s (Modes with 3D flag aren't supported)",
+              mode.name().c_str());
+        disabled = true;
+      }
+
+      /* Add config */
+      hwc_configs_[last_config_id] = {
+          .id = last_config_id,
+          .group_id = group_found,
+          .mode = mode,
+          .disabled = disabled,
+      };
+
+      /* Chwck if the mode is preferred */
+      if ((mode.type() & DRM_MODE_TYPE_PREFERRED) != 0 &&
+          preferred_config_id_ == 0) {
+        preferred_config_id_ = last_config_id;
+        preferred_config_group_id_ = group_found;
+      }
+
+      last_config_id++;
+    }
+
+    /* We must have preferred mode. Set first mode as preferred
+     * in case KMS haven't reported anything. */
+    if (preferred_config_id_ == 0) {
+      preferred_config_id_ = 1;
+      preferred_config_group_id_ = 1;
+    }
+
+    for (int group = 1; group < last_group_id; group++) {
+      bool has_interlaced = false;
+      bool has_progressive = false;
+      for (auto &hwc_config : hwc_configs_) {
+        if (hwc_config.second.group_id != group || hwc_config.second.disabled) {
+          continue;
+        }
+
+        if (hwc_config.second.IsInterlaced()) {
+          has_interlaced = true;
+        } else {
+          has_progressive = true;
+        }
+      }
+
+      bool has_both = has_interlaced && has_progressive;
+      if (!has_both) {
+        continue;
+      }
+
+      bool group_contains_preferred_interlaced = false;
+      if (group == preferred_config_group_id_ &&
+          hwc_configs_[preferred_config_id_].IsInterlaced()) {
+        group_contains_preferred_interlaced = true;
+      }
+
+      for (auto &hwc_config : hwc_configs_) {
+        if (hwc_config.second.group_id != group || hwc_config.second.disabled) {
+          continue;
+        }
+
+        bool disable = group_contains_preferred_interlaced
+                           ? !hwc_config.second.IsInterlaced()
+                           : hwc_config.second.IsInterlaced();
+
+        if (disable) {
+          ALOGI(
+              "Group %i: Disabling display mode %s (This group should consist "
+              "of %s modes)",
+              group, hwc_config.second.mode.name().c_str(),
+              group_contains_preferred_interlaced ? "interlaced"
+                                                  : "progressive");
+
+          hwc_config.second.disabled = true;
+        }
+      }
+    }
+
+    /* Group should not contain 2 modes with FPS delta less than ~1HZ
+     * otherwise android.graphics.cts.SetFrameRateTest CTS will fail
+     */
+    for (int m1 = 1; m1 < last_config_id; m1++) {
+      for (int m2 = 1; m2 < last_config_id; m2++) {
+        if (m1 != m2 &&
+            hwc_configs_[m1].group_id == hwc_configs_[m2].group_id &&
+            !hwc_configs_[m1].disabled && !hwc_configs_[m2].disabled &&
+            fabsf(hwc_configs_[m1].mode.v_refresh() -
+                  hwc_configs_[m2].mode.v_refresh()) < 1.0) {
+          ALOGI(
+              "Group %i: Disabling display mode %s (Refresh rate value is "
+              "too close to existing mode %s)",
+              hwc_configs_[m2].group_id, hwc_configs_[m2].mode.name().c_str(),
+              hwc_configs_[m1].mode.name().c_str());
+
+          hwc_configs_[m2].disabled = true;
+        }
+      }
+    }
   }
 
   uint32_t idx = 0;
-  for (const DrmMode &mode : sel_modes) {
-    if (idx >= *num_configs)
-      break;
-    configs[idx++] = mode.id();
+  for (auto &hwc_config : hwc_configs_) {
+    if (hwc_config.second.disabled) {
+      continue;
+    }
+
+    if (configs != nullptr) {
+      if (idx >= *num_configs) {
+        break;
+      }
+      configs[idx] = hwc_config.second.id;
+    }
+
+    idx++;
   }
   *num_configs = idx;
   return HWC2::Error::None;
@@ -768,18 +839,18 @@ HWC2::Error DrmHwcTwo::HwcDisplay::PresentDisplay(int32_t *present_fence) {
 
 HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfig(hwc2_config_t config) {
   supported(__func__);
-  auto mode = std::find_if(connector_->modes().begin(),
-                           connector_->modes().end(),
-                           [config](DrmMode const &m) {
-                             return m.id() == config;
-                           });
-  if (mode == connector_->modes().end()) {
-    ALOGE("Could not find active mode for %d", config);
+
+  int conf = static_cast<int>(config);
+
+  if (hwc_configs_.count(conf) == 0) {
+    ALOGE("Could not find active mode for %d", conf);
     return HWC2::Error::BadConfig;
   }
 
+  auto &mode = hwc_configs_[conf].mode;
+
   AtomicCommitArgs a_args = {
-      .display_mode = *mode,
+      .display_mode = mode,
       .clear_active_composition = true,
   };
 
@@ -789,13 +860,13 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfig(hwc2_config_t config) {
     return HWC2::Error::BadConfig;
   }
 
-  connector_->set_active_mode(*mode);
+  active_config_id_ = conf;
 
   // Setup the client layer's dimensions
   hwc_rect_t display_frame = {.left = 0,
                               .top = 0,
-                              .right = static_cast<int>(mode->h_display()),
-                              .bottom = static_cast<int>(mode->v_display())};
+                              .right = static_cast<int>(mode.h_display()),
+                              .bottom = static_cast<int>(mode.v_display())};
   client_layer_.SetLayerDisplayFrame(display_frame);
 
   return HWC2::Error::None;
@@ -938,12 +1009,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
 HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayVsyncPeriod(
     hwc2_vsync_period_t *outVsyncPeriod /* ns */) {
   supported(__func__);
-  DrmMode const &mode = connector_->active_mode();
-  if (mode.id() == 0)
-    return HWC2::Error::BadConfig;
-
-  *outVsyncPeriod = static_cast<hwc2_vsync_period_t>(1E9 / mode.v_refresh());
-  return HWC2::Error::None;
+  return GetDisplayAttribute(active_config_id_, HWC2_ATTRIBUTE_VSYNC_PERIOD,
+                             (int32_t *)(outVsyncPeriod));
 }
 
 HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfigWithConstraints(

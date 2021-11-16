@@ -49,14 +49,6 @@ bool DrmMode::operator==(const drmModeModeInfo &m) const {
          v_scan_ == m.vscan && flags_ == m.flags && type_ == m.type;
 }
 
-uint32_t DrmMode::id() const {
-  return id_;
-}
-
-void DrmMode::set_id(uint32_t id) {
-  id_ = id;
-}
-
 uint32_t DrmMode::clock() const {
   return clock_;
 }
@@ -115,7 +107,7 @@ uint32_t DrmMode::type() const {
 }
 
 std::string DrmMode::name() const {
-  return name_;
+  return name_ + "@" + std::to_string(v_refresh());
 }
 
 auto DrmMode::CreateModeBlob(const DrmDevice &drm)

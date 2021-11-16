@@ -17,9 +17,10 @@
 #ifndef ANDROID_DRM_MODE_H_
 #define ANDROID_DRM_MODE_H_
 
-#include <stdint.h>
+#include <stdio.h>
 #include <xf86drmMode.h>
 
+#include <cstdint>
 #include <string>
 
 #include "DrmUnique.h"
@@ -34,9 +35,6 @@ class DrmMode {
   DrmMode(drmModeModeInfoPtr m);
 
   bool operator==(const drmModeModeInfo &m) const;
-
-  uint32_t id() const;
-  void set_id(uint32_t id);
 
   uint32_t clock() const;
 
@@ -61,8 +59,6 @@ class DrmMode {
   auto CreateModeBlob(const DrmDevice &drm) -> DrmModeUserPropertyBlobUnique;
 
  private:
-  uint32_t id_ = 0;
-
   uint32_t clock_ = 0;
 
   uint16_t h_display_ = 0;

@@ -160,7 +160,7 @@ class DrmHwcTwo : public hwc2_device_t {
     HWC2::Error AcceptDisplayChanges();
     HWC2::Error CreateLayer(hwc2_layer_t *layer);
     HWC2::Error DestroyLayer(hwc2_layer_t layer);
-    HWC2::Error GetActiveConfig(hwc2_config_t *config);
+    HWC2::Error GetActiveConfig(hwc2_config_t *config) const;
     HWC2::Error GetChangedCompositionTypes(uint32_t *num_elements,
                                            hwc2_layer_t *layers,
                                            int32_t *types);
@@ -249,6 +249,22 @@ class DrmHwcTwo : public hwc2_device_t {
       uint32_t failed_kms_present_ = 0;
       uint32_t frames_flattened_ = 0;
     };
+
+    struct HwcDisplayConfig {
+      int id{};
+      int group_id{};
+      DrmMode mode;
+      bool disabled{};
+
+      bool IsInterlaced() {
+        return (mode.flags() & DRM_MODE_FLAG_INTERLACE) != 0;
+      }
+    };
+
+    std::map<int /*config_id*/, struct HwcDisplayConfig> hwc_configs_;
+
+    int active_config_id_ = 0;
+    int preferred_config_id_ = 0;
 
     const Backend *backend() const {
       return backend_.get();
