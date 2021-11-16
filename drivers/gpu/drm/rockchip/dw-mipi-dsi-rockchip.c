@@ -619,7 +619,7 @@ dw_mipi_dsi_get_lane_mbps(void *priv_data, const struct drm_display_mode *mode,
 			continue;
 
 		delta = abs(fout - tmp);
-		if (delta < min_delta) {
+		if (delta < min_delta && fout < tmp) {
 			best_prediv = _prediv;
 			best_fbdiv = _fbdiv;
 			min_delta = delta;
