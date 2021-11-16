@@ -280,36 +280,6 @@ static void gbm_mesa_inode_to_handle(struct bo *bo)
 	}
 }
 
-static int gbm_mesa_get_spoofed_format_data(uint32_t in_format, int in_height, uint32_t *out_format,
-					    int *out_height)
-{
-	int first_plane_bpp = drv_bytes_per_pixel_from_format(in_format, 0);
-	switch (first_plane_bpp) {
-	case 1:
-		*out_format = DRM_FORMAT_R8;
-		break;
-	case 2:
-		*out_format = DRM_FORMAT_GR88;
-		break;
-	case 4:
-		*out_format = DRM_FORMAT_ARGB8888;
-		break;
-	default:
-		drv_log("Invalid first_plane_bpp value: %i\n", first_plane_bpp);
-		return -EINVAL;
-	}
-
-	*out_height = in_height;
-
-	for (size_t i = 1; i < drv_num_planes_from_format(in_format); i++) {
-		int plane_bpp = drv_bytes_per_pixel_from_format(in_format, i);
-		assert(plane_bpp != 0);
-		*out_height += DIV_ROUND_UP(in_height * plane_bpp, first_plane_bpp);
-	}
-
-	return 0;
-}
-
 int gbm_mesa_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32_t format,
 		       uint64_t use_flags)
 {
@@ -324,29 +294,33 @@ int gbm_mesa_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32_t 
 	bool scanout = (use_flags & BO_USE_SCANOUT) != 0;
 	bool linear = (use_flags & BO_USE_SW_MASK) != 0;
 
-	/* Alignment for RPI4 CSI camera. Since we do not care about other cameras, keep this globally for now.
+	int size_align = 1;
+
+	/* Alignment for RPI4 CSI camera. Since we do not care about other cameras, keep this
+	 * globally for now.
 	 * TODO: Distinguish between devices */
 	if (use_flags & (BO_USE_CAMERA_READ | BO_USE_CAMERA_WRITE)) {
 		scanout = true;
 		width = ALIGN(width, 32);
+		size_align = 4096;
 	}
 
-	uint32_t s_format = format;
-	int s_height = height;
 	if (get_gbm_mesa_format(format) == 0) {
+		drv_bo_from_format(bo, width, height, format);
 		// Always use linear for spoofed format allocations.
-		linear = true;
-		err = gbm_mesa_get_spoofed_format_data(format, height, &s_format, &s_height);
-	}
-
-	if (!err)
-		err = gbm_mesa_alloc(drv->gbm_driver, width, s_height, s_format, scanout, linear,
+		bo->meta.total_size = ALIGN(bo->meta.total_size, size_align);
+		err = gbm_mesa_alloc(drv->gbm_driver, bo->meta.total_size, 1, DRM_FORMAT_R8,
+				     scanout, /*linear =*/true, &single_plane_fd, &stride,
+				     &bo->meta.format_modifier);
+		if (err)
+			return err;
+	} else {
+		err = gbm_mesa_alloc(drv->gbm_driver, width, height, format, scanout, linear,
 				     &single_plane_fd, &stride, &bo->meta.format_modifier);
-
-	if (err)
-		return err;
-
-	drv_bo_from_format(bo, stride, height, format);
+		if (err)
+			return err;
+		drv_bo_from_format(bo, stride, height, format);
+	}
 
 	auto priv = new GbmMesaBoPriv();
 	for (size_t plane = 0; plane < bo->meta.num_planes; plane++) {
@@ -377,12 +351,14 @@ int gbm_mesa_bo_import(struct bo *bo, struct drv_import_fd_data *data)
 
 		uint32_t s_format = data->format;
 		int s_height = data->height;
+		int s_width = data->width;
 		if (get_gbm_mesa_format(s_format) == 0) {
-			gbm_mesa_get_spoofed_format_data(data->format, data->height, &s_format,
-							 &s_height);
+			s_width = bo->meta.total_size;
+			s_height = 1;
+			s_format = DRM_FORMAT_R8;
 		}
 
-		priv->gbm_bo = gbm_import(drv->gbm_driver, data->fds[0], data->width, s_height,
+		priv->gbm_bo = gbm_import(drv->gbm_driver, data->fds[0], s_width, s_height,
 					  data->strides[0], data->format_modifier, s_format);
 	}
 
@@ -417,13 +393,14 @@ void *gbm_mesa_bo_map(struct bo *bo, struct vma *vma, size_t plane, uint32_t map
 	void *buf = MAP_FAILED;
 
 	uint32_t s_format = bo->meta.format;
+	int s_width = bo->meta.width;
 	int s_height = bo->meta.height;
 	if (get_gbm_mesa_format(s_format) == 0) {
-		gbm_mesa_get_spoofed_format_data(bo->meta.format, bo->meta.height, &s_format,
-						 &s_height);
+		s_width = bo->meta.total_size;
+		s_height = 1;
 	}
 
-	gbm_map(priv->gbm_bo, bo->meta.width, s_height, &buf, &vma->priv);
+	gbm_map(priv->gbm_bo, s_width, s_height, &buf, &vma->priv);
 
 	return buf;
 }
