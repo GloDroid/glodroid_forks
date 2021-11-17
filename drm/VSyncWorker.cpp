@@ -92,7 +92,7 @@ int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
   vsync.tv_nsec = int(phased_timestamp - (vsync.tv_sec * kOneSecondNs));
   do {
     ret = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &vsync, nullptr);
-  } while (ret == -1 && errno == EINTR);
+  } while (ret == EINTR);
   if (ret)
     return ret;
 
