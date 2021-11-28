@@ -28,9 +28,17 @@
 #include "DrmDevice.h"
 #include "utils/log.h"
 
+#ifndef DRM_MODE_CONNECTOR_SPI
+#define DRM_MODE_CONNECTOR_SPI 19
+#endif
+
+#ifndef DRM_MODE_CONNECTOR_USB
+#define DRM_MODE_CONNECTOR_USB 20
+#endif
+
 namespace android {
 
-constexpr size_t kTypesCount = 17;
+constexpr size_t kTypesCount = 21;
 
 DrmConnector::DrmConnector(DrmDevice *drm, drmModeConnectorPtr c,
                            DrmEncoder *current_encoder,
@@ -120,14 +128,15 @@ void DrmConnector::set_display(int display) {
 bool DrmConnector::internal() const {
   return type_ == DRM_MODE_CONNECTOR_LVDS || type_ == DRM_MODE_CONNECTOR_eDP ||
          type_ == DRM_MODE_CONNECTOR_DSI ||
-         type_ == DRM_MODE_CONNECTOR_VIRTUAL || type_ == DRM_MODE_CONNECTOR_DPI;
+         type_ == DRM_MODE_CONNECTOR_VIRTUAL ||
+         type_ == DRM_MODE_CONNECTOR_DPI || type_ == DRM_MODE_CONNECTOR_SPI;
 }
 
 bool DrmConnector::external() const {
   return type_ == DRM_MODE_CONNECTOR_HDMIA ||
          type_ == DRM_MODE_CONNECTOR_DisplayPort ||
          type_ == DRM_MODE_CONNECTOR_DVID || type_ == DRM_MODE_CONNECTOR_DVII ||
-         type_ == DRM_MODE_CONNECTOR_VGA;
+         type_ == DRM_MODE_CONNECTOR_VGA || type_ == DRM_MODE_CONNECTOR_USB;
 }
 
 bool DrmConnector::writeback() const {
@@ -144,9 +153,10 @@ bool DrmConnector::valid_type() const {
 
 std::string DrmConnector::name() const {
   constexpr std::array<const char *, kTypesCount> kNames =
-      {"None",   "VGA",  "DVI-I",     "DVI-D",   "DVI-A", "Composite",
-       "SVIDEO", "LVDS", "Component", "DIN",     "DP",    "HDMI-A",
-       "HDMI-B", "TV",   "eDP",       "Virtual", "DSI"};
+      {"None",      "VGA",  "DVI-I",     "DVI-D",   "DVI-A", "Composite",
+       "SVIDEO",    "LVDS", "Component", "DIN",     "DP",    "HDMI-A",
+       "HDMI-B",    "TV",   "eDP",       "Virtual", "DSI",   "DPI",
+       "Writeback", "SPI",  "USB"};
 
   if (type_ < kTypesCount) {
     std::ostringstream name_buf;
