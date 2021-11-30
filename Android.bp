@@ -136,7 +136,6 @@ cc_library_shared {
         ":drm_hwcomposer_common",
         "bufferinfo/legacy/BufferInfoMinigbm.cpp",
     ],
-    include_dirs: ["external/minigbm/cros_gralloc"],
 }
 
 // Used by hwcomposer.drm_imagination
