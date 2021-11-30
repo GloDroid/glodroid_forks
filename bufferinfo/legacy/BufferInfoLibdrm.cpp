@@ -204,4 +204,20 @@ int BufferInfoLibdrm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
   return 0;
 }
 
+constexpr char gbm_gralloc_module_name[] = "GBM Memory Allocator";
+constexpr char drm_gralloc_module_name[] = "DRM Memory Allocator";
+
+int BufferInfoLibdrm::ValidateGralloc() {
+  if (strcmp(gralloc_->common.name, drm_gralloc_module_name) != 0 &&
+      strcmp(gralloc_->common.name, gbm_gralloc_module_name) != 0) {
+    ALOGE(
+        "Gralloc name isn't valid: Expected: \"%s\" or \"%s\", Actual: \"%s\"",
+        gbm_gralloc_module_name, drm_gralloc_module_name,
+        gralloc_->common.name);
+    return -EINVAL;
+  }
+
+  return 0;
+}
+
 }  // namespace android

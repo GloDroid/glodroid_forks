@@ -22,6 +22,7 @@
 #include <xf86drmMode.h>
 
 #include <cerrno>
+#include <cstring>
 
 #include "cros_gralloc_handle.h"
 #include "utils/log.h"
@@ -52,6 +53,18 @@ int BufferInfoMinigbm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
     bo->prime_fds[i] = gr_handle->fds[i];
     bo->pitches[i] = gr_handle->strides[i];
     bo->offsets[i] = gr_handle->offsets[i];
+  }
+
+  return 0;
+}
+
+constexpr char cros_gralloc_module_name[] = "CrOS Gralloc";
+
+int BufferInfoMinigbm::ValidateGralloc() {
+  if (strcmp(gralloc_->common.name, cros_gralloc_module_name) != 0) {
+    ALOGE("Gralloc name isn't valid: Expected: \"%s\", Actual: \"%s\"",
+          cros_gralloc_module_name, gralloc_->common.name);
+    return -EINVAL;
   }
 
   return 0;

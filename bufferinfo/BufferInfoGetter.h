@@ -49,6 +49,10 @@ class LegacyBufferInfoGetter : public BufferInfoGetter {
 
   int Init();
 
+  virtual int ValidateGralloc() {
+    return 0;
+  }
+
   int ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) override = 0;
 
   static std::unique_ptr<LegacyBufferInfoGetter> CreateInstance();
@@ -65,9 +69,13 @@ class LegacyBufferInfoGetter : public BufferInfoGetter {
   LegacyBufferInfoGetter::CreateInstance() {                           \
     auto instance = std::make_unique<getter_>();                       \
     if (instance) {                                                    \
-      int ret = instance->Init();                                      \
-      if (ret) {                                                       \
-        ALOGE("Failed to initialize the " #getter_ " getter %d", ret); \
+      int err = instance->Init();                                      \
+      if (err) {                                                       \
+        ALOGE("Failed to initialize the " #getter_ " getter %d", err); \
+        instance.reset();                                              \
+      }                                                                \
+      err = instance->ValidateGralloc();                               \
+      if (err) {                                                       \
         instance.reset();                                              \
       }                                                                \
     }                                                                  \
