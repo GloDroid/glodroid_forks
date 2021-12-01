@@ -134,12 +134,20 @@ mapper_metadata_get_buffer_info(struct ANativeWindowBuffer *buf,
 
    buf_info.num_planes = layouts.size();
 
-   bool per_plane_unique_fd = buf->handle->numFds == buf_info.num_planes;
+   int fd_index = 0;
 
    for (uint32_t i = 0; i < layouts.size(); i++) {
-      buf_info.fds[i] = per_plane_unique_fd ? buf->handle->data[i] : buf->handle->data[0];
       buf_info.pitches[i] = layouts[i].strideInBytes;
       buf_info.offsets[i] = layouts[i].offsetInBytes;
+
+      /* offset == 0 means layer is located in different dma-buf */
+      if (buf_info.offsets[i] == 0 && i > 0)
+         fd_index++;
+
+      if (fd_index >= buf->handle->numFds)
+         return -EINVAL;
+
+      buf_info.fds[i] = buf->handle->data[fd_index];
    }
 
    /* optional attributes */
