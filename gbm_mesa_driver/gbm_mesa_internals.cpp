@@ -221,7 +221,7 @@ static std::shared_ptr<GbmMesaDriver> gbm_mesa_get_or_init_driver(struct driver 
 			});
 			/* cardX KMS node need this otherwise composer won't be able to configure
 			 * KMS state */
-			if (!gbm_mesa_drv->gbm_node_fd)
+			if (gbm_mesa_drv->gbm_node_fd)
 				drmDropMaster(gbm_mesa_drv->gbm_node_fd.Get());
 			else
 				ALOGE(
