@@ -66,6 +66,7 @@ cc_defaults {
     cppflags: [
         "-DHWC2_INCLUDE_STRINGIFICATION",
         "-DHWC2_USE_CPP11",
+        "-std=c++17",
     ],
 
     product_variables: {
