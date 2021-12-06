@@ -66,15 +66,15 @@ static const struct DroidYuvFormat kDroidYuvFormats[] = {
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-static int get_fourcc_yuv(uint32_t native, enum chroma_order chroma_order,
-                          size_t chroma_step) {
+static uint32_t get_fourcc_yuv(uint32_t native, enum chroma_order chroma_order,
+                               size_t chroma_step) {
   for (auto droid_yuv_format : kDroidYuvFormats)
     if (droid_yuv_format.native == native &&
         droid_yuv_format.chroma_order == chroma_order &&
         droid_yuv_format.chroma_step == chroma_step)
       return droid_yuv_format.fourcc;
 
-  return -1;
+  return UINT32_MAX;
 }
 
 static bool is_yuv(uint32_t native) {
@@ -131,7 +131,7 @@ bool BufferInfoLibdrm::GetYuvPlaneInfo(int num_fds, buffer_handle_t handle,
   /* .chroma_step is the byte distance between the same chroma channel
    * values of subsequent pixels, assumed to be the same for Cb and Cr. */
   bo->format = get_fourcc_yuv(bo->hal_format, chroma_order, ycbcr.chroma_step);
-  if (bo->format == -1) {
+  if (bo->format == UINT32_MAX) {
     ALOGW(
         "unsupported YUV format, native = %x, chroma_order = %s, chroma_step = "
         "%d",

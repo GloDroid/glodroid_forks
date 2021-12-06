@@ -41,7 +41,7 @@ auto DrmFbIdHandle::CreateInstance(hwc_drm_bo_t *bo, GemHandle first_gem_handle,
   int32_t err = 0;
 
   /* Framebuffer object creation require gem handle for every used plane */
-  for (int i = 1; i < local->gem_handles_.size(); i++) {
+  for (size_t i = 1; i < local->gem_handles_.size(); i++) {
     if (bo->prime_fds[i] > 0) {
       if (bo->prime_fds[i] != bo->prime_fds[0]) {
         err = drmPrimeFDToHandle(drm->fd(), bo->prime_fds[i],
@@ -101,7 +101,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
    * request via system properties)
    */
   struct drm_gem_close gem_close {};
-  for (int i = 0; i < gem_handles_.size(); i++) {
+  for (size_t i = 0; i < gem_handles_.size(); i++) {
     /* Don't close invalid handle. Close handle only once in cases
      * where several YUV planes located in the single buffer. */
     if (gem_handles_[i] == 0 ||

@@ -72,7 +72,7 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   int client_start = -1;
   size_t client_size = 0;
 
-  for (int z_order = 0; z_order < layers.size(); ++z_order) {
+  for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (IsClientLayer(display, layers[z_order])) {
       if (client_start < 0)
         client_start = (int)z_order;
@@ -100,7 +100,7 @@ bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
 uint32_t Backend::CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
                              size_t first_z, size_t size) {
   uint32_t pixops = 0;
-  for (int z_order = 0; z_order < layers.size(); ++z_order) {
+  for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (z_order >= first_z && z_order < first_z + size) {
       hwc_rect_t df = layers[z_order]->display_frame();
       pixops += (df.right - df.left) * (df.bottom - df.top);
@@ -111,7 +111,7 @@ uint32_t Backend::CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
 
 void Backend::MarkValidated(std::vector<DrmHwcTwo::HwcLayer *> &layers,
                             size_t client_first_z, size_t client_size) {
-  for (int z_order = 0; z_order < layers.size(); ++z_order) {
+  for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (z_order >= client_first_z && z_order < client_first_z + client_size)
       layers[z_order]->set_validated_type(HWC2::Composition::Client);
     else
@@ -152,12 +152,12 @@ std::tuple<int, int> Backend::GetExtraClientRange(
       steps = 1 + layers.size() - extra_client;
     }
 
-    uint32_t gpu_pixops = INT_MAX;
-    for (int i = 0; i < steps; i++) {
+    uint32_t gpu_pixops = UINT32_MAX;
+    for (size_t i = 0; i < steps; i++) {
       uint32_t po = CalcPixOps(layers, start + i, client_size);
       if (po < gpu_pixops) {
         gpu_pixops = po;
-        client_start = start + i;
+        client_start = start + int(i);
       }
     }
   }
