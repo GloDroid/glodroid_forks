@@ -341,6 +341,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
     return HWC2::Error::BadDisplay;
   }
 
+  client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
+
   return ChosePreferredConfig();
 }
 
