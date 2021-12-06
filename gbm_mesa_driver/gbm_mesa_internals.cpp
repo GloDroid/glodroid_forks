@@ -294,7 +294,11 @@ int gbm_mesa_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32_t 
 	if (drv == nullptr)
 		return -EINVAL;
 
-	bool scanout = (use_flags & BO_USE_SCANOUT) != 0;
+	/* If no more free CMA, this can be allocated in VRAM but HWC won't be able to display it
+	 * directly */
+	bool scanout_weak = (use_flags & BO_USE_SCANOUT) != 0;
+
+	bool scanout_strong = false;
 	bool linear = (use_flags & BO_USE_SW_MASK) != 0;
 
 	int size_align = 1;
@@ -303,7 +307,7 @@ int gbm_mesa_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32_t 
 	 * globally for now.
 	 * TODO: Distinguish between devices */
 	if (use_flags & (BO_USE_CAMERA_READ | BO_USE_CAMERA_WRITE)) {
-		scanout = true;
+		scanout_strong = true;
 		width = ALIGN(width, 32);
 		size_align = 4096;
 	}
@@ -313,13 +317,20 @@ int gbm_mesa_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32_t 
 		// Always use linear for spoofed format allocations.
 		bo->meta.total_size = ALIGN(bo->meta.total_size, size_align);
 		err = gbm_mesa_alloc(drv->gbm_driver, bo->meta.total_size, 1, DRM_FORMAT_R8,
-				     scanout, /*linear =*/true, &single_plane_fd, &stride,
-				     &bo->meta.format_modifier);
+				     scanout_weak | scanout_strong, /*linear =*/true,
+				     &single_plane_fd, &stride, &bo->meta.format_modifier);
 		if (err)
 			return err;
 	} else {
-		err = gbm_mesa_alloc(drv->gbm_driver, width, height, format, scanout, linear,
-				     &single_plane_fd, &stride, &bo->meta.format_modifier);
+		err = gbm_mesa_alloc(drv->gbm_driver, width, height, format,
+				     scanout_weak | scanout_strong, linear, &single_plane_fd,
+				     &stride, &bo->meta.format_modifier);
+
+		if (err && !scanout_strong)
+			err = gbm_mesa_alloc(drv->gbm_driver, width, height, format,
+					     /* scanout = */ false, linear, &single_plane_fd,
+					     &stride, &bo->meta.format_modifier);
+
 		if (err)
 			return err;
 		drv_bo_from_format(bo, stride, height, format);
