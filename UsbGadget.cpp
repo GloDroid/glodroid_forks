@@ -52,7 +52,6 @@ char usb_controller_address[128];
 #define FUNCTIONS_PATH GADGET_PATH "functions/"
 #define FUNCTION_NAME "function"
 #define FUNCTION_PATH CONFIG_PATH FUNCTION_NAME
-#define RNDIS_PATH FUNCTIONS_PATH "gsi.rndis"
 
 #define PERSISTENT_VENDOR_CONFIG "persist.vendor.usb.usbradio.config"
 #define VENDOR_CONFIG "vendor.usb.config"
@@ -519,7 +518,7 @@ V1_0::Status UsbGadget::setupFunctions(
 
   if ((functions & GadgetFunction::RNDIS) != 0) {
     ALOGI("setCurrentUsbFunctions rndis");
-    if (linkFunction("gsi.rndis", i++)) return Status::ERROR;
+    if (linkFunction("rndis.gs4", i++)) return Status::ERROR;
   }
 
   std::string vendorFunctions = getVendorFunctions();
