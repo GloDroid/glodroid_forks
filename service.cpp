@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "android.hardware.usb@1.3-service.bonito"
+#define LOG_TAG "android.hardware.usb@1.3-service.glodroid"
 
 #include <hidl/HidlTransportSupport.h>
 
