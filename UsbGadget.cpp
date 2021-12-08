@@ -18,6 +18,7 @@
 
 #include "UsbGadget.h"
 
+#include <cutils/properties.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -33,6 +34,7 @@ constexpr int EPOLL_EVENTS = 10;
 constexpr bool DEBUG = false;
 constexpr int DISCONNECT_WAIT_US = 100000;
 constexpr int PULL_UP_DELAY = 500000;
+char usb_controller_address[128];
 
 #define BUILD_TYPE "ro.build.type"
 #define GADGET_PATH "/config/usb_gadget/g1/"
@@ -109,7 +111,7 @@ static void *monitorFfs(void *param) {
   // notify here if the endpoints are already present.
   if (descriptorWritten) {
     usleep(PULL_UP_DELAY);
-    if (!!WriteStringToFile(GADGET_NAME, PULLUP_PATH)) {
+    if (!!WriteStringToFile(usb_controller_address, PULLUP_PATH)) {
       lock_guard<mutex> lock(usbGadget->mLock);
       usbGadget->mCurrentUsbFunctionsApplied = true;
       gadgetPullup = true;
@@ -161,7 +163,7 @@ static void *monitorFfs(void *param) {
                     .count() < PULL_UP_DELAY)
               usleep(PULL_UP_DELAY);
 
-            if (!!WriteStringToFile(GADGET_NAME, PULLUP_PATH)) {
+            if (!!WriteStringToFile(usb_controller_address, PULLUP_PATH)) {
               lock_guard<mutex> lock(usbGadget->mLock);
               usbGadget->mCurrentUsbFunctionsApplied = true;
               ALOGI("GADGET pulled up");
@@ -188,6 +190,8 @@ static void *monitorFfs(void *param) {
 UsbGadget::UsbGadget()
     : mMonitorCreated(false), mCurrentUsbFunctionsApplied(false) {
   if (access(OS_DESC_PATH, R_OK) != 0) ALOGE("configfs setup not done yet");
+
+  property_get(usb_controller_property, usb_controller_address, "none");
 }
 
 static int unlinkFunctions(const char *path) {
@@ -548,7 +552,8 @@ V1_0::Status UsbGadget::setupFunctions(
 
   // Pull up the gadget right away when there are no ffs functions.
   if (!ffsEnabled) {
-    if (!WriteStringToFile(GADGET_NAME, PULLUP_PATH)) return Status::ERROR;
+    if (!WriteStringToFile(usb_controller_address, PULLUP_PATH))
+      return Status::ERROR;
     mCurrentUsbFunctionsApplied = true;
     if (callback)
       callback->setCurrentUsbFunctionsCb(functions, Status::SUCCESS);

@@ -92,6 +92,8 @@ struct UsbGadget : public IUsbGadget {
   Return<Status> reset() override;
 
  private:
+  const char *usb_controller_property = "sys.usb.controller";
+
   Status tearDownGadget();
   Status setupFunctions(uint64_t functions,
                         const sp<V1_0::IUsbGadgetCallback> &callback,
