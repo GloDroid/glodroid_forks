@@ -169,29 +169,30 @@
 	// spaker - amp enabled by SPK_CTL_H
 	//
 	// mclk - GPIO4_A0/I2S_CLK
-	//
-	// some gpio-jack-detection driver?
-	//pinctrl-0 = <&hp_det>; // GPIO4_D4
 
 	rt5640-sound {
 		compatible = "simple-audio-card";
-		simple-audio-card,name = "rockchip,rt5640-codec";
+		pinctrl-names = "default";
+		pinctrl-0 = <&hp_det>;
+		simple-audio-card,name = "PinePhonePro";
 		simple-audio-card,aux-devs = <&speaker_amp>;
 		simple-audio-card,format = "i2s";
 		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,hp-det-gpio = <&gpio4 RK_PD4 GPIO_ACTIVE_LOW>;
+		simple-audio-card,pin-switches = "Internal Speaker";
 
 		simple-audio-card,widgets =
 			"Microphone", "Headset Microphone",
 			"Microphone", "Internal Microphone",
-			"Headphone", "Headphone Jack",
+			"Headphone", "Headphones",
 			"Speaker", "Internal Earpiece",
 			"Speaker", "Internal Speaker",
 			"Line", "Line In Modem",
 			"Line", "Line Out Modem";
 
 		simple-audio-card,routing =
-			"Headphone Jack", "HPOL",
-			"Headphone Jack", "HPOR",
+			"Headphones", "HPOL",
+			"Headphones", "HPOR",
 			"Internal Earpiece", "SPOLP",
 			"Internal Earpiece", "SPOLN",
 			"Internal Speaker", "Speaker Amp OUTL",
