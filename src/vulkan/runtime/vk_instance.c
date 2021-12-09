@@ -267,23 +267,32 @@ vk_instance_get_proc_addr(const struct vk_instance *instance,
    if (instance == NULL)
       return NULL;
 
+   uint32_t api_version = instance->app_info.api_version;
+
+#ifdef ANDROID
+/* Android APPS uses Vulkan wrapper which expect to get full API callbacks
+ * required by InstanceVersion regardless of version the application requested
+ */
+   entrypoints->EnumerateInstanceVersion(&api_version);
+#endif
+
    func = vk_instance_dispatch_table_get_if_supported(&instance->dispatch_table,
                                                       name,
-                                                      instance->app_info.api_version,
+                                                      api_version,
                                                       &instance->enabled_extensions);
    if (func != NULL)
       return func;
 
    func = vk_physical_device_dispatch_table_get_if_supported(&vk_physical_device_trampolines,
                                                              name,
-                                                             instance->app_info.api_version,
+                                                             api_version,
                                                              &instance->enabled_extensions);
    if (func != NULL)
       return func;
 
    func = vk_device_dispatch_table_get_if_supported(&vk_device_trampolines,
                                                     name,
-                                                    instance->app_info.api_version,
+                                                    api_version,
                                                     &instance->enabled_extensions,
                                                     NULL);
    if (func != NULL)
