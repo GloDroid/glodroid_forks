@@ -17,6 +17,7 @@
 #define LOG_TAG "android.hardware.usb@1.3-service.bonito"
 
 #include <hidl/HidlTransportSupport.h>
+
 #include "Usb.h"
 #include "UsbGadget.h"
 
@@ -36,28 +37,27 @@ using android::OK;
 using android::status_t;
 
 int main() {
-    android::sp<IUsb> service = new Usb();
-    android::sp<IUsbGadget> service2 = new UsbGadget();
+  android::sp<IUsb> service = new Usb();
+  android::sp<IUsbGadget> service2 = new UsbGadget();
 
-    configureRpcThreadpool(2, true /*callerWillJoin*/);
-    status_t status = service->registerAsService();
+  configureRpcThreadpool(2, true /*callerWillJoin*/);
+  status_t status = service->registerAsService();
 
-    if (status != OK) {
-        ALOGE("Cannot register USB HAL service");
-        return 1;
-    }
-
-    status = service2->registerAsService();
-
-    if (status != OK) {
-        ALOGE("Cannot register USB Gadget HAL service");
-        return 1;
-    }
-
-    ALOGI("USB HAL Ready.");
-    joinRpcThreadpool();
-    // Under noraml cases, execution will not reach this line.
-    ALOGI("USB HAL failed to join thread pool.");
+  if (status != OK) {
+    ALOGE("Cannot register USB HAL service");
     return 1;
+  }
 
+  status = service2->registerAsService();
+
+  if (status != OK) {
+    ALOGE("Cannot register USB Gadget HAL service");
+    return 1;
+  }
+
+  ALOGI("USB HAL Ready.");
+  joinRpcThreadpool();
+  // Under noraml cases, execution will not reach this line.
+  ALOGI("USB HAL failed to join thread pool.");
+  return 1;
 }

@@ -25,6 +25,7 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <utils/Log.h>
+
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -81,17 +82,19 @@ struct UsbGadget : public IUsbGadget {
   uint64_t mCurrentUsbFunctions;
   bool mCurrentUsbFunctionsApplied;
 
-  Return<void> setCurrentUsbFunctions(uint64_t functions,
-                                      const sp<V1_0::IUsbGadgetCallback> &callback,
-                                      uint64_t timeout) override;
+  Return<void> setCurrentUsbFunctions(
+      uint64_t functions, const sp<V1_0::IUsbGadgetCallback> &callback,
+      uint64_t timeout) override;
 
-  Return<void> getCurrentUsbFunctions(const sp<V1_0::IUsbGadgetCallback> &callback) override;
+  Return<void> getCurrentUsbFunctions(
+      const sp<V1_0::IUsbGadgetCallback> &callback) override;
 
   Return<Status> reset() override;
 
-private:
+ private:
   Status tearDownGadget();
-  Status setupFunctions(uint64_t functions, const sp<V1_0::IUsbGadgetCallback> &callback,
+  Status setupFunctions(uint64_t functions,
+                        const sp<V1_0::IUsbGadgetCallback> &callback,
                         uint64_t timeout);
 };
 

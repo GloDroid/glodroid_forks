@@ -17,6 +17,7 @@
 #define LOG_TAG "android.hardware.usb.gadget@1.1-service.bonito"
 
 #include "UsbGadget.h"
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -156,11 +157,11 @@ static void *monitorFfs(void *param) {
           } else if (descriptorPresent && writeUdc) {
             steady_clock::time_point temp = steady_clock::now();
 
-            if (std::chrono::duration_cast<microseconds>(temp - disconnect).count()
-                < PULL_UP_DELAY)
+            if (std::chrono::duration_cast<microseconds>(temp - disconnect)
+                    .count() < PULL_UP_DELAY)
               usleep(PULL_UP_DELAY);
 
-            if(!!WriteStringToFile(GADGET_NAME, PULLUP_PATH)) {
+            if (!!WriteStringToFile(GADGET_NAME, PULLUP_PATH)) {
               lock_guard<mutex> lock(usbGadget->mLock);
               usbGadget->mCurrentUsbFunctionsApplied = true;
               ALOGI("GADGET pulled up");
@@ -263,9 +264,9 @@ V1_0::Status UsbGadget::tearDownGadget() {
     // Stop the monitor thread by writing into signal fd.
     ret = TEMP_FAILURE_RETRY(write(mEventFd, &flag, sizeof(flag)));
     if (ret < 0) {
-        ALOGE("Error writing errno=%d", errno);
+      ALOGE("Error writing errno=%d", errno);
     } else if (ret < sizeof(flag)) {
-        ALOGE("Short write length=%zd", ret);
+      ALOGE("Short write length=%zd", ret);
     }
 
     ALOGI("mMonitor signalled to exit");
@@ -284,12 +285,12 @@ V1_0::Status UsbGadget::tearDownGadget() {
 }
 
 Return<Status> UsbGadget::reset() {
-    if (!WriteStringToFile("none", PULLUP_PATH)) {
-        ALOGI("Gadget cannot be pulled down");
-        return Status::ERROR;
-    }
+  if (!WriteStringToFile("none", PULLUP_PATH)) {
+    ALOGI("Gadget cannot be pulled down");
+    return Status::ERROR;
+  }
 
-    return Status::SUCCESS;
+  return Status::SUCCESS;
 }
 
 static int linkFunction(const char *function, int index) {
@@ -440,7 +441,7 @@ static V1_0::Status validateAndSetVidPid(uint64_t functions) {
       ret = setVidPid("0x18d1", "0x2d04");
       break;
     case GadgetFunction::ADB | GadgetFunction::ACCESSORY |
-         GadgetFunction::AUDIO_SOURCE:
+        GadgetFunction::AUDIO_SOURCE:
       if (!(vendorFunctions == "user" || vendorFunctions == ""))
         ALOGE("Invalid vendorFunctions set: %s", vendorFunctions.c_str());
       ret = setVidPid("0x18d1", "0x2d05");
@@ -489,7 +490,6 @@ V1_0::Status UsbGadget::setupFunctions(
     if (inotify_add_watch(inotifyFd, "/dev/usb-ffs/ptp/", IN_ALL_EVENTS) == -1)
       return Status::ERROR;
 
-
     if (linkFunction("ffs.ptp", i++)) return Status::ERROR;
 
     // Add endpoints to be monitored.
@@ -536,8 +536,7 @@ V1_0::Status UsbGadget::setupFunctions(
   if ((functions & GadgetFunction::ADB) != 0) {
     ffsEnabled = true;
     ALOGI("setCurrentUsbFunctions Adb");
-    if (!WriteStringToFile("1", DESC_USE_PATH))
-      return Status::ERROR;
+    if (!WriteStringToFile("1", DESC_USE_PATH)) return Status::ERROR;
     if (inotify_add_watch(inotifyFd, "/dev/usb-ffs/adb/", IN_ALL_EVENTS) == -1)
       return Status::ERROR;
 
