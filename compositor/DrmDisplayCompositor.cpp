@@ -71,7 +71,7 @@ DrmDisplayCompositor::CreateInitializedComposition() const {
 auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   ATRACE_CALL();
 
-  if (args.active && *args.active == active_kms_data.active_state) {
+  if (args.active && *args.active == active_frame_state.crtc_active_state) {
     /* Don't set the same state twice */
     args.active.reset();
   }
@@ -81,7 +81,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     return 0;
   }
 
-  if (!active_kms_data.active_state) {
+  if (!active_frame_state.crtc_active_state) {
     /* Force activate display */
     args.active = true;
   }
@@ -90,6 +90,8 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     ALOGE("%s: Invalid arguments", __func__);
     return -EINVAL;
   }
+
+  auto new_frame_state = NewFrameState();
 
   DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
 
@@ -116,9 +118,8 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     return -EINVAL;
   }
 
-  DrmModeUserPropertyBlobUnique mode_blob;
-
   if (args.active) {
+    new_frame_state.crtc_active_state = *args.active;
     if (!crtc->active_property().AtomicSet(*pset, *args.active) ||
         !connector->crtc_id_property().AtomicSet(*pset, crtc->id())) {
       return -EINVAL;
@@ -126,20 +127,23 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   if (args.display_mode) {
-    mode_blob = args.display_mode.value().CreateModeBlob(
+    new_frame_state.mode_blob = args.display_mode.value().CreateModeBlob(
         *resource_manager_->GetDrmDevice(display_));
 
-    if (!mode_blob) {
+    if (!new_frame_state.mode_blob) {
       ALOGE("Failed to create mode_blob");
       return -EINVAL;
     }
 
-    if (!crtc->mode_property().AtomicSet(*pset, *mode_blob)) {
+    if (!crtc->mode_property().AtomicSet(*pset, *new_frame_state.mode_blob)) {
       return -EINVAL;
     }
   }
 
   if (args.composition) {
+    new_frame_state.used_framebuffers.clear();
+    new_frame_state.used_planes.clear();
+
     std::vector<DrmHwcLayer> &layers = args.composition->layers();
     std::vector<DrmCompositionPlane> &comp_planes = args.composition
                                                         ->composition_planes();
@@ -162,6 +166,9 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
         }
         DrmHwcLayer &layer = layers[source_layers.front()];
 
+        new_frame_state.used_framebuffers.emplace_back(layer.FbIdHandle);
+        new_frame_state.used_planes.emplace_back(plane);
+
         if (plane->AtomicSetState(*pset, layer, source_layers.front(),
                                   crtc->id()) != 0) {
           return -EINVAL;
@@ -174,10 +181,11 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     }
   }
 
-  if (args.clear_active_composition && active_kms_data.composition) {
-    auto &comp_planes = active_kms_data.composition->composition_planes();
-    for (auto &comp_plane : comp_planes) {
-      if (comp_plane.plane()->AtomicDisablePlane(*pset) != 0) {
+  if (args.clear_active_composition) {
+    new_frame_state.used_framebuffers.clear();
+    new_frame_state.used_planes.clear();
+    for (auto *plane : active_frame_state.used_planes) {
+      if (plane->AtomicDisablePlane(*pset) != 0) {
         return -EINVAL;
       }
     }
@@ -196,21 +204,12 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
 
   if (!args.test_only) {
     if (args.display_mode) {
+      /* TODO(nobody): we still need this for synthetic vsync, remove after
+       * vsync reworked */
       connector->set_active_mode(*args.display_mode);
-      active_kms_data.mode_blob = std::move(mode_blob);
     }
 
-    if (args.clear_active_composition) {
-      active_kms_data.composition.reset();
-    }
-
-    if (args.composition) {
-      active_kms_data.composition = args.composition;
-    }
-
-    if (args.active) {
-      active_kms_data.active_state = *args.active;
-    }
+    active_frame_state = std::move(new_frame_state);
 
     if (crtc->out_fence_ptr_property()) {
       args.out_fence = UniqueFd((int)out_fence);

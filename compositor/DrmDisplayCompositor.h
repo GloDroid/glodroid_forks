@@ -67,11 +67,26 @@ class DrmDisplayCompositor {
 
   auto CommitFrame(AtomicCommitArgs &args) -> int;
 
-  struct {
-    std::shared_ptr<DrmDisplayComposition> composition;
+  struct KmsState {
+    /* Required to cleanup unused planes */
+    std::vector<DrmPlane *> used_planes;
+    /* We have to hold a reference to framebuffer while displaying it ,
+     * otherwise picture will blink */
+    std::vector<std::shared_ptr<DrmFbIdHandle>> used_framebuffers;
+
     DrmModeUserPropertyBlobUnique mode_blob;
-    bool active_state{};
-  } active_kms_data;
+
+    /* To avoid setting the inactive state twice, which will fail the commit */
+    bool crtc_active_state{};
+  } active_frame_state;
+
+  auto NewFrameState() -> KmsState {
+    return (KmsState){
+        .used_planes = active_frame_state.used_planes,
+        .used_framebuffers = active_frame_state.used_framebuffers,
+        .crtc_active_state = active_frame_state.crtc_active_state,
+    };
+  }
 
   ResourceManager *resource_manager_ = nullptr;
   std::unique_ptr<Planner> planner_;
