@@ -22,8 +22,13 @@
 #include "BufferInfoMapperMetadata.h"
 #endif
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
+
+#include <mutex>
 
 #include "utils/log.h"
 #include "utils/properties.h"
@@ -46,6 +51,20 @@ BufferInfoGetter *BufferInfoGetter::GetInstance() {
   }
 
   return inst.get();
+}
+
+std::optional<BufferUniqueId> BufferInfoGetter::GetUniqueId(
+    buffer_handle_t handle) {
+  struct stat sb {};
+  if (fstat(handle->data[0], &sb) != 0) {
+    return {};
+  }
+
+  if (sb.st_size == 0) {
+    return {};
+  }
+
+  return static_cast<BufferUniqueId>(sb.st_ino);
 }
 
 int LegacyBufferInfoGetter::Init() {

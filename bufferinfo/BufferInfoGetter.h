@@ -31,12 +31,16 @@
 
 namespace android {
 
+using BufferUniqueId = uint64_t;
+
 class BufferInfoGetter {
  public:
   virtual ~BufferInfoGetter() = default;
 
   virtual auto GetBoInfo(buffer_handle_t handle)
       -> std::optional<BufferInfo> = 0;
+
+  virtual std::optional<BufferUniqueId> GetUniqueId(buffer_handle_t handle);
 
   static BufferInfoGetter *GetInstance();
 
