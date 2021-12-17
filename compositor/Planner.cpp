@@ -27,7 +27,6 @@ namespace android {
 
 std::unique_ptr<Planner> Planner::CreateInstance(DrmDevice * /*device*/) {
   std::unique_ptr<Planner> planner(new Planner);
-  planner->AddStage<PlanStageGreedy>();
   return planner;
 }
 
@@ -57,40 +56,16 @@ std::tuple<int, std::vector<DrmCompositionPlane>> Planner::ProvisionPlanes(
   }
 
   // Go through the provisioning stages and provision planes
-  for (auto &i : stages_) {
-    int ret = i->ProvisionPlanes(&composition, layers, &planes);
-    if (ret) {
-      ALOGV("Failed provision stage with ret %d", ret);
-      return std::make_tuple(ret, std::vector<DrmCompositionPlane>());
-    }
+  int ret = ProvisionPlanesInternal(&composition, layers, &planes);
+  if (ret) {
+    ALOGV("Failed provision stage with ret %d", ret);
+    return std::make_tuple(ret, std::vector<DrmCompositionPlane>());
   }
 
   return std::make_tuple(0, std::move(composition));
 }
 
-int PlanStageProtected::ProvisionPlanes(
-    std::vector<DrmCompositionPlane> *composition,
-    std::map<size_t, DrmHwcLayer *> &layers, std::vector<DrmPlane *> *planes) {
-  int ret = 0;
-  for (auto i = layers.begin(); i != layers.end();) {
-    if (!i->second->protected_usage()) {
-      ++i;
-      continue;
-    }
-
-    ret = Emplace(composition, planes, std::make_pair(i->first, i->second));
-    if (ret) {
-      ALOGE("Failed to dedicate protected layer! Dropping it.");
-      return ret;
-    }
-
-    i = layers.erase(i);
-  }
-
-  return 0;
-}
-
-int PlanStageGreedy::ProvisionPlanes(
+int Planner::ProvisionPlanesInternal(
     std::vector<DrmCompositionPlane> *composition,
     std::map<size_t, DrmHwcLayer *> &layers, std::vector<DrmPlane *> *planes) {
   // Fill up the remaining planes
