@@ -32,35 +32,28 @@ namespace android {
 class Importer;
 class Planner;
 
+constexpr size_t kUndefinedSourceLayer = UINT16_MAX;
+
 class DrmCompositionPlane {
  public:
   DrmCompositionPlane() = default;
   DrmCompositionPlane(DrmCompositionPlane &&rhs) = default;
   DrmCompositionPlane &operator=(DrmCompositionPlane &&other) = default;
-  DrmCompositionPlane(DrmPlane *plane) : plane_(plane) {
-  }
   DrmCompositionPlane(DrmPlane *plane, size_t source_layer)
-      : plane_(plane), source_layers_(1, source_layer) {
+      : plane_(plane), source_layer_(source_layer) {
   }
 
   DrmPlane *plane() const {
     return plane_;
   }
-  void set_plane(DrmPlane *plane) {
-    plane_ = plane;
-  }
 
-  std::vector<size_t> &source_layers() {
-    return source_layers_;
-  }
-
-  const std::vector<size_t> &source_layers() const {
-    return source_layers_;
+  size_t source_layer() const {
+    return source_layer_;
   }
 
  private:
   DrmPlane *plane_ = NULL;
-  std::vector<size_t> source_layers_;
+  size_t source_layer_ = kUndefinedSourceLayer;
 };
 
 class DrmDisplayComposition {

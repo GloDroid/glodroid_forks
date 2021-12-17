@@ -152,20 +152,14 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
 
     for (DrmCompositionPlane &comp_plane : comp_planes) {
       DrmPlane *plane = comp_plane.plane();
-      std::vector<size_t> &source_layers = comp_plane.source_layers();
+      size_t source_layer = comp_plane.source_layer();
 
-      if (source_layers.size() > 1) {
-        ALOGE("Can't handle more than one source layer sz=%zu",
-              source_layers.size());
-        continue;
-      }
-
-      if (source_layers.empty() || source_layers.front() >= layers.size()) {
-        ALOGE("Source layer index %zu out of bounds %zu", source_layers.front(),
+      if (source_layer >= layers.size()) {
+        ALOGE("Source layer index %zu out of bounds %zu", source_layer,
               layers.size());
         return -EINVAL;
       }
-      DrmHwcLayer &layer = layers[source_layers.front()];
+      DrmHwcLayer &layer = layers[source_layer];
 
       new_frame_state.used_framebuffers.emplace_back(layer.FbIdHandle);
       new_frame_state.used_planes.emplace_back(plane);
@@ -174,8 +168,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
       auto &v = unused_planes;
       v.erase(std::remove(v.begin(), v.end(), plane), v.end());
 
-      if (plane->AtomicSetState(*pset, layer, source_layers.front(),
-                                crtc->id()) != 0) {
+      if (plane->AtomicSetState(*pset, layer, source_layer, crtc->id()) != 0) {
         return -EINVAL;
       }
     }
