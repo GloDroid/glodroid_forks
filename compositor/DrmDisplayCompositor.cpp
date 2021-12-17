@@ -140,6 +140,8 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     }
   }
 
+  auto unused_planes = new_frame_state.used_planes;
+
   if (args.composition) {
     new_frame_state.used_framebuffers.clear();
     new_frame_state.used_planes.clear();
@@ -152,31 +154,29 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
       DrmPlane *plane = comp_plane.plane();
       std::vector<size_t> &source_layers = comp_plane.source_layers();
 
-      if (comp_plane.type() != DrmCompositionPlane::Type::kDisable) {
-        if (source_layers.size() > 1) {
-          ALOGE("Can't handle more than one source layer sz=%zu type=%d",
-                source_layers.size(), comp_plane.type());
-          continue;
-        }
+      if (source_layers.size() > 1) {
+        ALOGE("Can't handle more than one source layer sz=%zu",
+              source_layers.size());
+        continue;
+      }
 
-        if (source_layers.empty() || source_layers.front() >= layers.size()) {
-          ALOGE("Source layer index %zu out of bounds %zu type=%d",
-                source_layers.front(), layers.size(), comp_plane.type());
-          return -EINVAL;
-        }
-        DrmHwcLayer &layer = layers[source_layers.front()];
+      if (source_layers.empty() || source_layers.front() >= layers.size()) {
+        ALOGE("Source layer index %zu out of bounds %zu", source_layers.front(),
+              layers.size());
+        return -EINVAL;
+      }
+      DrmHwcLayer &layer = layers[source_layers.front()];
 
-        new_frame_state.used_framebuffers.emplace_back(layer.FbIdHandle);
-        new_frame_state.used_planes.emplace_back(plane);
+      new_frame_state.used_framebuffers.emplace_back(layer.FbIdHandle);
+      new_frame_state.used_planes.emplace_back(plane);
 
-        if (plane->AtomicSetState(*pset, layer, source_layers.front(),
-                                  crtc->id()) != 0) {
-          return -EINVAL;
-        }
-      } else {
-        if (plane->AtomicDisablePlane(*pset) != 0) {
-          return -EINVAL;
-        }
+      /* Remove from 'unused' list, since plane is re-used */
+      auto &v = unused_planes;
+      v.erase(std::remove(v.begin(), v.end(), plane), v.end());
+
+      if (plane->AtomicSetState(*pset, layer, source_layers.front(),
+                                crtc->id()) != 0) {
+        return -EINVAL;
       }
     }
   }
@@ -184,7 +184,10 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   if (args.clear_active_composition) {
     new_frame_state.used_framebuffers.clear();
     new_frame_state.used_planes.clear();
-    for (auto *plane : active_frame_state.used_planes) {
+  }
+
+  if (args.clear_active_composition || args.composition) {
+    for (auto *plane : unused_planes) {
       if (plane->AtomicDisablePlane(*pset) != 0) {
         return -EINVAL;
       }

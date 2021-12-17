@@ -790,16 +790,6 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     return HWC2::Error::BadConfig;
   }
 
-  // Disable the planes we're not using
-  for (auto i = primary_planes.begin(); i != primary_planes.end();) {
-    composition->AddPlaneDisable(*i);
-    i = primary_planes.erase(i);
-  }
-  for (auto i = overlay_planes.begin(); i != overlay_planes.end();) {
-    composition->AddPlaneDisable(*i);
-    i = overlay_planes.erase(i);
-  }
-
   a_args.composition = composition;
   ret = compositor_.ExecuteAtomicCommit(a_args);
 

@@ -45,11 +45,6 @@ int DrmDisplayComposition::SetLayers(DrmHwcLayer *layers, size_t num_layers) {
   return 0;
 }
 
-int DrmDisplayComposition::AddPlaneDisable(DrmPlane *plane) {
-  composition_planes_.emplace_back(DrmCompositionPlane::Type::kDisable, plane);
-  return 0;
-}
-
 int DrmDisplayComposition::AddPlaneComposition(DrmCompositionPlane plane) {
   composition_planes_.emplace_back(std::move(plane));
   return 0;

@@ -34,22 +34,13 @@ class Planner;
 
 class DrmCompositionPlane {
  public:
-  enum class Type : int32_t {
-    kDisable,
-    kLayer,
-  };
-
   DrmCompositionPlane() = default;
   DrmCompositionPlane(DrmCompositionPlane &&rhs) = default;
   DrmCompositionPlane &operator=(DrmCompositionPlane &&other) = default;
-  DrmCompositionPlane(Type type, DrmPlane *plane) : type_(type), plane_(plane) {
+  DrmCompositionPlane(DrmPlane *plane) : plane_(plane) {
   }
-  DrmCompositionPlane(Type type, DrmPlane *plane, size_t source_layer)
-      : type_(type), plane_(plane), source_layers_(1, source_layer) {
-  }
-
-  Type type() const {
-    return type_;
+  DrmCompositionPlane(DrmPlane *plane, size_t source_layer)
+      : plane_(plane), source_layers_(1, source_layer) {
   }
 
   DrmPlane *plane() const {
@@ -68,7 +59,6 @@ class DrmCompositionPlane {
   }
 
  private:
-  Type type_ = Type::kDisable;
   DrmPlane *plane_ = NULL;
   std::vector<size_t> source_layers_;
 };
@@ -81,7 +71,6 @@ class DrmDisplayComposition {
 
   int SetLayers(DrmHwcLayer *layers, size_t num_layers);
   int AddPlaneComposition(DrmCompositionPlane plane);
-  int AddPlaneDisable(DrmPlane *plane);
 
   int Plan(std::vector<DrmPlane *> *primary_planes,
            std::vector<DrmPlane *> *overlay_planes);

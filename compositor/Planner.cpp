@@ -70,8 +70,7 @@ std::tuple<int, std::vector<DrmCompositionPlane>> Planner::ProvisionPlanes(
 
 int PlanStageProtected::ProvisionPlanes(
     std::vector<DrmCompositionPlane> *composition,
-    std::map<size_t, DrmHwcLayer *> &layers,
-    std::vector<DrmPlane *> *planes) {
+    std::map<size_t, DrmHwcLayer *> &layers, std::vector<DrmPlane *> *planes) {
   int ret = 0;
   for (auto i = layers.begin(); i != layers.end();) {
     if (!i->second->protected_usage()) {
@@ -79,8 +78,7 @@ int PlanStageProtected::ProvisionPlanes(
       continue;
     }
 
-    ret = Emplace(composition, planes, DrmCompositionPlane::Type::kLayer,
-                  std::make_pair(i->first, i->second));
+    ret = Emplace(composition, planes, std::make_pair(i->first, i->second));
     if (ret) {
       ALOGE("Failed to dedicate protected layer! Dropping it.");
       return ret;
@@ -94,12 +92,10 @@ int PlanStageProtected::ProvisionPlanes(
 
 int PlanStageGreedy::ProvisionPlanes(
     std::vector<DrmCompositionPlane> *composition,
-    std::map<size_t, DrmHwcLayer *> &layers,
-    std::vector<DrmPlane *> *planes) {
+    std::map<size_t, DrmHwcLayer *> &layers, std::vector<DrmPlane *> *planes) {
   // Fill up the remaining planes
   for (auto i = layers.begin(); i != layers.end(); i = layers.erase(i)) {
-    int ret = Emplace(composition, planes, DrmCompositionPlane::Type::kLayer,
-                      std::make_pair(i->first, i->second));
+    int ret = Emplace(composition, planes, std::make_pair(i->first, i->second));
     // We don't have any planes left
     if (ret == -ENOENT)
       break;

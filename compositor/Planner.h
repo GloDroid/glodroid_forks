@@ -55,7 +55,6 @@ class Planner {
     // Inserts the given layer:plane in the composition at the back
     static int Emplace(std::vector<DrmCompositionPlane> *composition,
                        std::vector<DrmPlane *> *planes,
-                       DrmCompositionPlane::Type type,
                        std::pair<size_t, DrmHwcLayer *> layer) {
       DrmPlane *plane = PopPlane(planes);
       std::vector<DrmPlane *> unused_planes;
@@ -70,7 +69,7 @@ class Planner {
       }
 
       if (!ret) {
-        composition->emplace_back(type, plane, layer.first);
+        composition->emplace_back(plane, layer.first);
         planes->insert(planes->begin(), unused_planes.begin(),
                        unused_planes.end());
       }
