@@ -67,6 +67,7 @@ DrmDisplayCompositor::CreateInitializedComposition() const {
   return std::make_unique<DrmDisplayComposition>(crtc, planner_.get());
 }
 
+// NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
 auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   ATRACE_CALL();
 

@@ -116,10 +116,12 @@ DrmDevice::DrmDevice() {
   mDrmFbImporter = std::make_unique<DrmFbImporter>(self);
 }
 
+// NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
 std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   /* TODO: Use drmOpenControl here instead */
   fd_ = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
   if (fd() < 0) {
+    // NOLINTNEXTLINE(concurrency-mt-unsafe): Fixme
     ALOGE("Failed to open dri %s: %s", path, strerror(errno));
     return std::make_tuple(-ENODEV, 0);
   }

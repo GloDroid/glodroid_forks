@@ -495,6 +495,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   return HWC2::Error::None;
 }
 
+// NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
 HWC2::Error DrmHwcTwo::HwcDisplay::GetDisplayConfigs(uint32_t *num_configs,
                                                      hwc2_config_t *configs) {
   supported(__func__);

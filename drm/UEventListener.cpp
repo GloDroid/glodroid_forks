@@ -40,6 +40,7 @@ int UEventListener::Init() {
   uevent_fd_ = UniqueFd(
       socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_KOBJECT_UEVENT));
   if (!uevent_fd_) {
+    // NOLINTNEXTLINE(concurrency-mt-unsafe): Fixme
     ALOGE("Failed to open uevent socket: %s", strerror(errno));
     return -errno;
   }
@@ -51,6 +52,7 @@ int UEventListener::Init() {
 
   int ret = bind(uevent_fd_.Get(), (struct sockaddr *)&addr, sizeof(addr));
   if (ret) {
+    // NOLINTNEXTLINE(concurrency-mt-unsafe): Fixme
     ALOGE("Failed to bind uevent socket: %s", strerror(errno));
     return -errno;
   }
