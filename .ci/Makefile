@@ -98,9 +98,9 @@ DEPS := $(patsubst %.cpp,$(OUT_DIR)/%.d,$(BUILD_FILES))
 
 build: $(OBJ)
 
-tidy: $(TIDY_TS)
+tidy: $(TIDY_TS) build
 
-tidy-fine: $(FINE_TIDY_TS)
+tidy-fine: $(FINE_TIDY_TS) build
 
 CXXARGS := $(foreach dir,$(INCLUDE_DIRS),-I$(SRC_DIR)/$(dir)) $(foreach dir,$(SYSTEM_INCLUDE_DIRS),-I$(dir)) $(CXXFLAGS)
 
@@ -110,7 +110,7 @@ $(OUT_DIR)/%.o: $(SRC_DIR)/%.cpp
 
 $(OUT_DIR)/%.d: $(SRC_DIR)/%.cpp
 	mkdir -p $(dir $@)
-	$(CLANG) $(CXXARGS) $< -MM -MT $(patsubst %.cpp,%.o,$<) -o $@
+	$(CLANG) $(CXXARGS) $< -MM -MT $(OUT_DIR)/$(patsubst %.cpp,%.o,$<) -o $@
 
 space := $(subst ,, )
 comma := ,
@@ -122,10 +122,10 @@ define exec-tidy
 	touch $@
 endef
 
-$(OUT_DIR)/%.h.t_ts: $(SRC_DIR)/%.h $(OBJ)
+$(OUT_DIR)/%.h.t_ts: $(SRC_DIR)/%.h
 	$(exec-tidy)
 
-$(OUT_DIR)/%.cpp.t_ts: $(SRC_DIR)/%.cpp $(OBJ)
+$(OUT_DIR)/%.cpp.t_ts: $(SRC_DIR)/%.cpp $(OUT_DIR)/%.o
 	$(exec-tidy)
 
 # TIDY-FINE
@@ -135,10 +135,10 @@ define exec-tidy-fine
 	touch $@
 endef
 
-$(OUT_DIR)/%.cpp.ft_ts: $(SRC_DIR)/%.cpp $(OBJ)
+$(OUT_DIR)/%.cpp.ft_ts: $(SRC_DIR)/%.cpp $(OUT_DIR)/%.o
 	$(exec-tidy-fine)
 
-$(OUT_DIR)/%.h.ft_ts: $(SRC_DIR)/%.h $(OBJ)
+$(OUT_DIR)/%.h.ft_ts: $(SRC_DIR)/%.h
 	$(exec-tidy-fine)
 
 ifneq ($(MAKECMDGOALS), clean)
