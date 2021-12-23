@@ -1083,6 +1083,14 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetColorModeWithIntent(int32_t mode,
 
 #endif /* PLATFORM_SDK_VERSION > 27 */
 
+const Backend *DrmHwcTwo::HwcDisplay::backend() const {
+  return backend_.get();
+}
+
+void DrmHwcTwo::HwcDisplay::set_backend(std::unique_ptr<Backend> backend) {
+  backend_ = std::move(backend);
+}
+
 HWC2::Error DrmHwcTwo::HwcLayer::SetCursorPosition(int32_t /*x*/,
                                                    int32_t /*y*/) {
   return HWC2::Error::None;

@@ -30,6 +30,7 @@
 #include <sstream>
 #include <string>
 
+#include "drm/DrmPlane.h"
 #include "utils/log.h"
 #include "utils/properties.h"
 

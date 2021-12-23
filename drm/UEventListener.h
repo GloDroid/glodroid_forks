@@ -27,16 +27,16 @@ namespace android {
 class UEventListener : public Worker {
  public:
   UEventListener();
-  virtual ~UEventListener() = default;
+  ~UEventListener() override = default;
 
   int Init();
 
   void RegisterHotplugHandler(std::function<void()> hotplug_handler) {
-    hotplug_handler_ = hotplug_handler;
+    hotplug_handler_ = std::move(hotplug_handler);
   }
 
  protected:
-  virtual void Routine();
+  void Routine() override;
 
  private:
   UniqueFd uevent_fd_;

@@ -6,7 +6,6 @@ Checks: >
     *,
     -fuchsia*,
     -llvm*,
-    -concurrency-mt-unsafe,
     -cppcoreguidelines-pro-type-vararg, -hicpp-vararg,
     -hicpp-signed-bitwise,
 

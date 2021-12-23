@@ -45,17 +45,25 @@ BUILD_FILES := \
 #bufferinfo/BufferInfoMapperMetadata.cpp
 #utils/hwcutils.cpp
 
-TIDY_FILES_H := \
-    drm/DrmFbImporter.h \
-    drm/DrmUnique.h \
-    utils/UniqueFd.h \
-    utils/log.h \
-    utils/properties.h \
-
-TIDY_FILES_CPP := \
-
-TIDY_COARSE_CHECKS := * \
+TIDY_CHECKS_NORMAL := * \
     -hicpp-* -llvmlibc-* -fuchsia-* -altera-* \
+    -llvm-header-guard \
+    -cppcoreguidelines-special-member-functions \
+    -cppcoreguidelines-pro-type-cstyle-cast \
+    -cppcoreguidelines-macro-usage \
+    -cppcoreguidelines-avoid-c-arrays \
+    -google-readability-braces-around-statements \
+    -google-readability-casting \
+    -misc-non-private-member-variables-in-classes \
+    -modernize-avoid-c-arrays \
+    -modernize-use-trailing-return-type \
+    -readability-braces-around-statements \
+    -readability-convert-member-functions-to-static \
+    -readability-implicit-bool-conversion \
+    -readability-identifier-naming \
+
+TIDY_CHECKS_COARSE := \
+    $(TIDY_CHECKS_NORMAL) \
     -cppcoreguidelines-pro-bounds-array-to-pointer-decay \
     -cppcoreguidelines-pro-bounds-constant-array-index \
     -cppcoreguidelines-pro-bounds-pointer-arithmetic \
@@ -77,6 +85,75 @@ TIDY_COARSE_CHECKS := * \
     -readability-magic-numbers \
     -readability-use-anyofallof \
 
+TIDY_FILES := \
+    drm/UEventListener.h:COARSE                        \
+    drm/DrmFbImporter.h:FINE                           \
+    drm/ResourceManager.h:                             \
+    drm/DrmMode.h:                                     \
+    drm/DrmDevice.h:                                   \
+    drm/DrmProperty.h:                                 \
+    drm/DrmConnector.h:                                \
+    drm/DrmCrtc.h:                                     \
+    drm/VSyncWorker.h:                                 \
+    drm/DrmPlane.h:                                    \
+    drm/DrmUnique.h:FINE                               \
+    drm/DrmEncoder.h:                                  \
+    bufferinfo/legacy/BufferInfoMinigbm.h:             \
+    bufferinfo/legacy/BufferInfoLibdrm.h:              \
+    bufferinfo/legacy/BufferInfoMaliMediatek.h:        \
+    bufferinfo/legacy/BufferInfoMaliHisi.h:            \
+    bufferinfo/legacy/BufferInfoImagination.h:         \
+    bufferinfo/legacy/BufferInfoMaliMeson.h:           \
+    bufferinfo/BufferInfoGetter.h:                     \
+    bufferinfo/BufferInfoMapperMetadata.h:             \
+    include/drmhwcgralloc.h:                           \
+    include/drmhwcomposer.h:                           \
+    utils/Worker.h:                                    \
+    utils/UniqueFd.h:FINE                              \
+    utils/autolock.h:                                  \
+    utils/log.h:FINE                                   \
+    utils/properties.h:FINE                            \
+    compositor/DrmDisplayCompositor.h:                 \
+    compositor/Planner.h:                              \
+    compositor/DrmDisplayComposition.h:                \
+    backend/BackendManager.h:                          \
+    backend/BackendClient.h:                           \
+    backend/Backend.h:                                 \
+    backend/BackendRCarDu.h:                           \
+    DrmHwcTwo.h:                                       \
+
+TIDY_FILES += \
+    backend/BackendClient.cpp:COARSE                       \
+    backend/Backend.cpp:COARSE                             \
+    backend/BackendManager.cpp:COARSE                      \
+    backend/BackendRCarDu.cpp:COARSE                       \
+    bufferinfo/BufferInfoGetter.cpp:COARSE                 \
+    bufferinfo/legacy/BufferInfoImagination.cpp:COARSE     \
+    bufferinfo/legacy/BufferInfoLibdrm.cpp:COARSE          \
+    bufferinfo/legacy/BufferInfoMaliHisi.cpp:COARSE        \
+    bufferinfo/legacy/BufferInfoMaliMediatek.cpp:COARSE    \
+    bufferinfo/legacy/BufferInfoMaliMeson.cpp:COARSE       \
+    bufferinfo/legacy/BufferInfoMinigbm.cpp:COARSE         \
+    compositor/DrmDisplayComposition.cpp:COARSE            \
+    compositor/DrmDisplayCompositor.cpp:COARSE             \
+    compositor/Planner.cpp:COARSE                          \
+    drm/DrmConnector.cpp:COARSE                            \
+    drm/DrmCrtc.cpp:COARSE                                 \
+    drm/DrmDevice.cpp:COARSE                               \
+    drm/DrmEncoder.cpp:COARSE                              \
+    drm/DrmFbImporter.cpp:COARSE                           \
+    drm/DrmMode.cpp:COARSE                                 \
+    drm/DrmPlane.cpp:COARSE                                \
+    drm/DrmProperty.cpp:COARSE                             \
+    DrmHwcTwo.cpp:COARSE                                   \
+    drm/ResourceManager.cpp:COARSE                         \
+    drm/UEventListener.cpp:COARSE                          \
+    drm/VSyncWorker.cpp:COARSE                             \
+    tests/worker_test.cpp:COARSE                           \
+    utils/autolock.cpp:COARSE                              \
+    utils/Worker.cpp:COARSE                                \
+
+
 .PHONY: all build tidy tidy-fine clean
 
 all: build tidy tidy-fine
@@ -87,20 +164,9 @@ clean:
 _OBJ := $(BUILD_FILES:.cpp=.o)
 OBJ  := $(patsubst %,$(OUT_DIR)/%,$(_OBJ))
 
-_TIDY_TS := $(BUILD_FILES:.cpp=.cpp.t_ts)
-TIDY_TS := $(patsubst %,$(OUT_DIR)/%,$(_TIDY_TS))
-
-_FINE_TIDY_TS := $(TIDY_FILES_CPP:.cpp=.cpp,ft_ts)
-_FINE_TIDY_TS += $(TIDY_FILES_H:.h=.h.ft_ts)
-FINE_TIDY_TS  := $(patsubst %,$(OUT_DIR)/%,$(_FINE_TIDY_TS))
-
 DEPS := $(patsubst %.cpp,$(OUT_DIR)/%.d,$(BUILD_FILES))
 
 build: $(OBJ)
-
-tidy: $(TIDY_TS) build
-
-tidy-fine: $(FINE_TIDY_TS) build
 
 CXXARGS := $(foreach dir,$(INCLUDE_DIRS),-I$(SRC_DIR)/$(dir)) $(foreach dir,$(SYSTEM_INCLUDE_DIRS),-I$(dir)) $(CXXFLAGS)
 
@@ -112,34 +178,37 @@ $(OUT_DIR)/%.d: $(SRC_DIR)/%.cpp
 	mkdir -p $(dir $@)
 	$(CLANG) $(CXXARGS) $< -MM -MT $(OUT_DIR)/$(patsubst %.cpp,%.o,$<) -o $@
 
+# TIDY
 space := $(subst ,, )
 comma := ,
 
-# TIDY
-define exec-tidy
-	mkdir -p $(dir $@)
-	$(CLANG_TIDY) $< --checks="$(subst $(space),$(comma),$(strip $(TIDY_COARSE_CHECKS)))" -- -x c++ $(CXXARGS)
-	touch $@
+TIDY_ARGS_FINE :=
+TIDY_ARGS_NONE := --checks="-*,llvm-include-order"
+TIDY_ARGS_     := --checks="-*,llvm-include-order"
+TIDY_ARGS_NORMAL := --checks="$(subst $(space),$(comma),$(strip $(TIDY_CHECKS_NORMAL)))"
+TIDY_ARGS_COARSE := --checks="$(subst $(space),$(comma),$(strip $(TIDY_CHECKS_COARSE)))"
+
+define process-tidy
+
+_TARG := $(OUT_DIR)/$1.tidy.ts
+_DEP := $(SRC_DIR)/$1
+
+TIDY_DEPS += $(_TARG)
+
+TIDY_ARGS:=$(TIDY_ARGS_$2)
+
+$(_TARG): $(_DEP)
+	mkdir -p $(dir $(_TARG))
+	$(CLANG_TIDY) $(_DEP) $(TIDY_ARGS) -- -x c++ $(CXXARGS)
+	touch $(_TARG)
+
 endef
 
-$(OUT_DIR)/%.h.t_ts: $(SRC_DIR)/%.h
-	$(exec-tidy)
+$(foreach pair,$(TIDY_FILES),$(eval $(call process-tidy,$(word 1, $(subst :, ,$(pair))),$(word 2, $(subst :, ,$(pair))))))
 
-$(OUT_DIR)/%.cpp.t_ts: $(SRC_DIR)/%.cpp $(OUT_DIR)/%.o
-	$(exec-tidy)
+#$(warning $(TIDY_DEPS))
 
-# TIDY-FINE
-define exec-tidy-fine
-	mkdir -p $(dir $@)
-	$(CLANG_TIDY) $< -- -x c++ $(CXXARGS)
-	touch $@
-endef
-
-$(OUT_DIR)/%.cpp.ft_ts: $(SRC_DIR)/%.cpp $(OUT_DIR)/%.o
-	$(exec-tidy-fine)
-
-$(OUT_DIR)/%.h.ft_ts: $(SRC_DIR)/%.h
-	$(exec-tidy-fine)
+tidy: $(TIDY_DEPS)
 
 ifneq ($(MAKECMDGOALS), clean)
 -include $(DEPS)

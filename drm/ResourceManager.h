@@ -20,8 +20,8 @@
 #include <string.h>
 
 #include "DrmDevice.h"
-#include "UEventListener.h"
 #include "DrmFbImporter.h"
+#include "UEventListener.h"
 
 namespace android {
 
@@ -30,9 +30,7 @@ class ResourceManager {
   ResourceManager();
   ResourceManager(const ResourceManager &) = delete;
   ResourceManager &operator=(const ResourceManager &) = delete;
-  ~ResourceManager() {
-    uevent_listener_.Exit();
-  }
+  ~ResourceManager();
 
   int Init();
   DrmDevice *GetDrmDevice(int display);

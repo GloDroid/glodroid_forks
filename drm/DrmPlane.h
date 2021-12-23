@@ -29,6 +29,7 @@
 namespace android {
 
 class DrmDevice;
+struct DrmHwcLayer;
 
 class DrmPlane {
  public:

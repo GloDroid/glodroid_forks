@@ -267,12 +267,8 @@ class DrmHwcTwo : public hwc2_device_t {
     int active_config_id_ = 0;
     int preferred_config_id_ = 0;
 
-    const Backend *backend() const {
-      return backend_.get();
-    }
-    void set_backend(std::unique_ptr<Backend> backend) {
-      backend_ = std::move(backend);
-    }
+    const Backend *backend() const;
+    void set_backend(std::unique_ptr<Backend> backend);
 
     const std::vector<DrmPlane *> &primary_planes() const {
       return primary_planes_;

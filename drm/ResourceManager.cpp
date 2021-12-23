@@ -24,12 +24,18 @@
 #include <sstream>
 
 #include "bufferinfo/BufferInfoGetter.h"
+#include "drm/DrmDevice.h"
+#include "drm/DrmPlane.h"
 #include "utils/log.h"
 #include "utils/properties.h"
 
 namespace android {
 
 ResourceManager::ResourceManager() : num_displays_(0) {
+}
+
+ResourceManager::~ResourceManager() {
+  uevent_listener_.Exit();
 }
 
 int ResourceManager::Init() {

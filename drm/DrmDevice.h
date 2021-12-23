@@ -26,7 +26,6 @@
 #include "DrmCrtc.h"
 #include "DrmEncoder.h"
 #include "DrmFbImporter.h"
-#include "DrmPlane.h"
 #include "utils/UniqueFd.h"
 
 namespace android {
