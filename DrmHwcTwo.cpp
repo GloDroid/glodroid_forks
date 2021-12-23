@@ -1285,7 +1285,10 @@ void DrmHwcTwo::HandleHotplugUEvent() {
 }
 
 // static
-int DrmHwcTwo::HookDevClose(hw_device_t * /*dev*/) {
+int DrmHwcTwo::HookDevClose(hw_device_t *dev) {
+  // NOLINTNEXTLINE (cppcoreguidelines-pro-type-reinterpret-cast): Safe
+  auto *hwc2_dev = reinterpret_cast<hwc2_device_t *>(dev);
+  std::unique_ptr<DrmHwcTwo> ctx(toDrmHwcTwo(hwc2_dev));
   return 0;
 }
 
@@ -1576,8 +1579,8 @@ int DrmHwcTwo::HookDevOpen(const struct hw_module_t *module, const char *name,
   }
 
   ctx->common.module = (hw_module_t *)module;
-  *dev = &ctx->common;
-  ctx.release();  // NOLINT(bugprone-unused-return-value)
+  *dev = &ctx.release()->common;
+
   return 0;
 }
 }  // namespace android
