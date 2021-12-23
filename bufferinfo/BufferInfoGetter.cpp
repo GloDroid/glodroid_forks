@@ -62,9 +62,11 @@ bool BufferInfoGetter::IsHandleUsable(buffer_handle_t handle) {
 }
 
 int LegacyBufferInfoGetter::Init() {
-  int ret = hw_get_module(GRALLOC_HARDWARE_MODULE_ID,
-                          (const hw_module_t **)&gralloc_);
-  if (ret) {
+  int ret = hw_get_module(
+      GRALLOC_HARDWARE_MODULE_ID,
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+      reinterpret_cast<const hw_module_t **>(&gralloc_));
+  if (ret != 0) {
     ALOGE("Failed to open gralloc module");
     return ret;
   }

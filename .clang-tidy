@@ -65,3 +65,7 @@ CheckOptions:
     value:           lower_case
   - key:             readability-identifier-naming.IgnoreMainLikeFunctions
     value:           1
+  - key:             cppcoreguidelines-macro-usage.AllowedRegexp
+    value:           "LOG_TAG|ATRACE_TAG"
+  - key:             readability-magic-numbers.IgnoredFloatingPointValues
+    value:           '1000.0'

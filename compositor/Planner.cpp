@@ -57,7 +57,7 @@ std::tuple<int, std::vector<DrmCompositionPlane>> Planner::ProvisionPlanes(
 
   // Go through the provisioning stages and provision planes
   int ret = ProvisionPlanesInternal(&composition, layers, &planes);
-  if (ret) {
+  if (ret != 0) {
     ALOGV("Failed provision stage with ret %d", ret);
     return std::make_tuple(ret, std::vector<DrmCompositionPlane>());
   }
@@ -75,7 +75,7 @@ int Planner::ProvisionPlanesInternal(
     if (ret == -ENOENT)
       break;
 
-    if (ret) {
+    if (ret != 0) {
       ALOGV("Failed to emplace layer %zu, dropping it", i->first);
       return ret;
     }

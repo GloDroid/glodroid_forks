@@ -33,19 +33,19 @@ DrmCrtc::DrmCrtc(DrmDevice *drm, drmModeCrtcPtr c, unsigned pipe)
 
 int DrmCrtc::Init() {
   int ret = drm_->GetCrtcProperty(*this, "ACTIVE", &active_property_);
-  if (ret) {
+  if (ret != 0) {
     ALOGE("Failed to get ACTIVE property");
     return ret;
   }
 
   ret = drm_->GetCrtcProperty(*this, "MODE_ID", &mode_property_);
-  if (ret) {
+  if (ret != 0) {
     ALOGE("Failed to get MODE_ID property");
     return ret;
   }
 
   ret = drm_->GetCrtcProperty(*this, "OUT_FENCE_PTR", &out_fence_ptr_property_);
-  if (ret) {
+  if (ret != 0) {
     ALOGE("Failed to get OUT_FENCE_PTR property");
     return ret;
   }

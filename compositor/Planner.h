@@ -49,16 +49,16 @@ class Planner {
     DrmPlane *plane = PopPlane(planes);
     std::vector<DrmPlane *> unused_planes;
     int ret = -ENOENT;
-    while (plane) {
+    while (plane != nullptr) {
       ret = plane->IsValidForLayer(layer.second) ? 0 : -EINVAL;
-      if (!ret)
+      if (ret == 0)
         break;
-      if (!plane->zpos_property().is_immutable())
+      if (!plane->GetZPosProperty().is_immutable())
         unused_planes.push_back(plane);
       plane = PopPlane(planes);
     }
 
-    if (!ret) {
+    if (ret == 0) {
       composition->emplace_back(plane, layer.first);
       planes->insert(planes->begin(), unused_planes.begin(),
                      unused_planes.end());
@@ -67,9 +67,9 @@ class Planner {
     return ret;
   }
 
-  int ProvisionPlanesInternal(std::vector<DrmCompositionPlane> *composition,
-                              std::map<size_t, DrmHwcLayer *> &layers,
-                              std::vector<DrmPlane *> *planes);
+  static int ProvisionPlanesInternal(
+      std::vector<DrmCompositionPlane> *composition,
+      std::map<size_t, DrmHwcLayer *> &layers, std::vector<DrmPlane *> *planes);
 
  public:
   // Creates a planner instance
@@ -84,13 +84,13 @@ class Planner {
   //
   // Returns: A tuple with the status of the operation (0 for success) and
   //          a vector of the resulting plan (ie: layer->plane mapping).
-  std::tuple<int, std::vector<DrmCompositionPlane>> ProvisionPlanes(
+  static std::tuple<int, std::vector<DrmCompositionPlane>> ProvisionPlanes(
       std::map<size_t, DrmHwcLayer *> &layers, DrmCrtc *crtc,
       std::vector<DrmPlane *> *primary_planes,
       std::vector<DrmPlane *> *overlay_planes);
 
  private:
-  std::vector<DrmPlane *> GetUsablePlanes(
+  static std::vector<DrmPlane *> GetUsablePlanes(
       DrmCrtc *crtc, std::vector<DrmPlane *> *primary_planes,
       std::vector<DrmPlane *> *overlay_planes);
 };

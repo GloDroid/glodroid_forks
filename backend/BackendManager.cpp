@@ -49,7 +49,7 @@ int BackendManager::SetBackendForDisplay(DrmHwcTwo::HwcDisplay *display) {
   std::string backend_name(backend_override);
 
   display->set_backend(GetBackendByName(backend_name));
-  if (!display->backend()) {
+  if (display->backend() == nullptr) {
     ALOGE("Failed to set backend '%s' for '%s' and driver '%s'",
           backend_name.c_str(), display->connector()->name().c_str(),
           driver_name.c_str());

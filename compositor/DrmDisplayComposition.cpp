@@ -74,7 +74,7 @@ int DrmDisplayComposition::Plan(std::vector<DrmPlane *> *primary_planes,
       continue;
 
     std::vector<DrmPlane *> *container = nullptr;
-    if (i.plane()->type() == DRM_PLANE_TYPE_PRIMARY)
+    if (i.plane()->GetType() == DRM_PLANE_TYPE_PRIMARY)
       container = primary_planes;
     else
       container = overlay_planes;

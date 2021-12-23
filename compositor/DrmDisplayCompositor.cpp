@@ -161,7 +161,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
       }
       DrmHwcLayer &layer = layers[source_layer];
 
-      new_frame_state.used_framebuffers.emplace_back(layer.FbIdHandle);
+      new_frame_state.used_framebuffers.emplace_back(layer.fb_id_handle);
       new_frame_state.used_planes.emplace_back(plane);
 
       /* Remove from 'unused' list, since plane is re-used */

@@ -79,7 +79,7 @@ HWC2::Error DrmHwcTwo::Init() {
   }
 
   HWC2::Error ret = HWC2::Error::None;
-  for (int i = 0; i < resource_manager_.getDisplayCount(); i++) {
+  for (int i = 0; i < resource_manager_.GetDisplayCount(); i++) {
     ret = CreateDisplay(i, HWC2::DisplayType::Physical);
     if (ret != HWC2::Error::None) {
       ALOGE("Failed to create display %d with error %d", i, ret);
@@ -192,7 +192,7 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
     case HWC2::Callback::Hotplug: {
       hotplug_callback_ = std::make_pair(HWC2_PFN_HOTPLUG(function), data);
       lock.unlock();
-      const auto &drm_devices = resource_manager_.getDrmDevices();
+      const auto &drm_devices = resource_manager_.GetDrmDevices();
       for (const auto &device : drm_devices)
         HandleInitialHotplugState(device.get());
       break;
@@ -260,9 +260,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
                "1");
   bool use_overlay_planes = strtol(use_overlay_planes_prop, nullptr, 10);
   for (auto &plane : *planes) {
-    if (plane->type() == DRM_PLANE_TYPE_PRIMARY)
+    if (plane->GetType() == DRM_PLANE_TYPE_PRIMARY)
       primary_planes_.push_back(plane);
-    else if (use_overlay_planes && (plane)->type() == DRM_PLANE_TYPE_OVERLAY)
+    else if (use_overlay_planes && (plane)->GetType() == DRM_PLANE_TYPE_OVERLAY)
       overlay_planes_.push_back(plane);
   }
 
@@ -840,7 +840,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetClientTarget(buffer_handle_t target,
 
   /* TODO: Do not update source_crop every call.
    * It makes sense to do it once after every hotplug event. */
-  hwc_drm_bo bo{};
+  HwcDrmBo bo{};
   BufferInfoGetter::GetInstance()->ConvertBoInfo(target, &bo);
 
   hwc_frect_t source_crop = {.left = 0.0F,
@@ -1264,7 +1264,7 @@ void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {
 }
 
 void DrmHwcTwo::HandleHotplugUEvent() {
-  for (const auto &drm : resource_manager_.getDrmDevices()) {
+  for (const auto &drm : resource_manager_.GetDrmDevices()) {
     for (const auto &conn : drm->connectors()) {
       drmModeConnection old_state = conn->state();
       drmModeConnection cur_state = conn->UpdateModes()

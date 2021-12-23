@@ -34,10 +34,10 @@ class ResourceManager {
 
   int Init();
   DrmDevice *GetDrmDevice(int display);
-  const std::vector<std::unique_ptr<DrmDevice>> &getDrmDevices() const {
+  const std::vector<std::unique_ptr<DrmDevice>> &GetDrmDevices() const {
     return drms_;
   }
-  int getDisplayCount() const {
+  int GetDisplayCount() const {
     return num_displays_;
   }
   bool ForcedScalingWithGpu() const {

@@ -33,7 +33,7 @@ int AutoLock::Lock() {
     return -EINVAL;
   }
   int ret = pthread_mutex_lock(mutex_);
-  if (ret) {
+  if (ret != 0) {
     ALOGE("Failed to acquire %s lock %d", name_, ret);
     return ret;
   }
@@ -47,7 +47,7 @@ int AutoLock::Unlock() {
     return -EINVAL;
   }
   int ret = pthread_mutex_unlock(mutex_);
-  if (ret) {
+  if (ret != 0) {
     ALOGE("Failed to release %s lock %d", name_, ret);
     return ret;
   }

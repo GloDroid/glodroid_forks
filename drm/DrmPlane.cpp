@@ -133,10 +133,6 @@ int DrmPlane::Init() {
   return 0;
 }
 
-uint32_t DrmPlane::id() const {
-  return id_;
-}
-
 bool DrmPlane::GetCrtcSupported(const DrmCrtc &crtc) const {
   return ((1 << crtc.pipe()) & possible_crtc_mask_) != 0;
 }
@@ -176,7 +172,7 @@ bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
   return true;
 }
 
-uint32_t DrmPlane::type() const {
+uint32_t DrmPlane::GetType() const {
   return type_;
 }
 
@@ -212,7 +208,7 @@ static uint64_t ToDrmRotation(DrmHwcTransform transform) {
 
 auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
                               uint32_t zpos, uint32_t crtc_id) -> int {
-  if (!layer.FbIdHandle) {
+  if (!layer.fb_id_handle) {
     ALOGE("Expected a valid framebuffer for pset");
     return -EINVAL;
   }
@@ -234,7 +230,7 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
   }
 
   if (!crtc_property_.AtomicSet(pset, crtc_id) ||
-      !fb_property_.AtomicSet(pset, layer.FbIdHandle->GetFbId()) ||
+      !fb_property_.AtomicSet(pset, layer.fb_id_handle->GetFbId()) ||
       !crtc_x_property_.AtomicSet(pset, layer.display_frame.left) ||
       !crtc_y_property_.AtomicSet(pset, layer.display_frame.top) ||
       !crtc_w_property_.AtomicSet(pset, layer.display_frame.right -
@@ -289,7 +285,7 @@ auto DrmPlane::AtomicDisablePlane(drmModeAtomicReq &pset) -> int {
   return 0;
 }
 
-const DrmProperty &DrmPlane::zpos_property() const {
+const DrmProperty &DrmPlane::GetZPosProperty() const {
   return zpos_property_;
 }
 

@@ -34,12 +34,12 @@ class Backend {
                              DrmHwcTwo::HwcLayer *layer);
 
  protected:
-  bool HardwareSupportsLayerType(HWC2::Composition comp_type);
-  uint32_t CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
-                      size_t first_z, size_t size);
-  void MarkValidated(std::vector<DrmHwcTwo::HwcLayer *> &layers,
-                     size_t client_first_z, size_t client_size);
-  std::tuple<int, int> GetExtraClientRange(
+  static bool HardwareSupportsLayerType(HWC2::Composition comp_type);
+  static uint32_t CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
+                             size_t first_z, size_t size);
+  static void MarkValidated(std::vector<DrmHwcTwo::HwcLayer *> &layers,
+                            size_t client_first_z, size_t client_size);
+  static std::tuple<int, int> GetExtraClientRange(
       DrmHwcTwo::HwcDisplay *display,
       const std::vector<DrmHwcTwo::HwcLayer *> &layers, int client_start,
       size_t client_size);

@@ -63,7 +63,7 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
                                                    client_size);
   display->total_stats().total_pixops_ += CalcPixOps(layers, 0, layers.size());
 
-  return *num_types ? HWC2::Error::HasChanges : HWC2::Error::None;
+  return *num_types != 0 ? HWC2::Error::HasChanges : HWC2::Error::None;
 }
 
 std::tuple<int, size_t> Backend::GetClientLayers(

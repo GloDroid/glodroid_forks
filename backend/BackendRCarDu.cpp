@@ -28,7 +28,7 @@ bool BackendRCarDu::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
 
   int ret = BufferInfoGetter::GetInstance()->ConvertBoInfo(layer->buffer(),
                                                            &bo);
-  if (ret)
+  if (ret != 0)
     return true;
 
   if (bo.format == DRM_FORMAT_ABGR8888)

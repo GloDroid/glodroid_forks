@@ -55,12 +55,15 @@ class LegacyBufferInfoGetter : public BufferInfoGetter {
   static std::unique_ptr<LegacyBufferInfoGetter> CreateInstance();
 
   static uint32_t ConvertHalFormatToDrm(uint32_t hal_format);
+
+  // NOLINTNEXTLINE:(readability-identifier-naming)
   const gralloc_module_t *gralloc_;
 };
 
 #ifdef DISABLE_LEGACY_GETTERS
 #define LEGACY_BUFFER_INFO_GETTER(getter_)
 #else
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LEGACY_BUFFER_INFO_GETTER(getter_)                             \
   std::unique_ptr<LegacyBufferInfoGetter>                              \
   LegacyBufferInfoGetter::CreateInstance() {                           \

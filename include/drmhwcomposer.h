@@ -63,12 +63,12 @@ enum class DrmHwcBlending : int32_t {
 struct DrmHwcLayer {
   buffer_handle_t sf_handle = nullptr;
   hwc_drm_bo_t buffer_info{};
-  std::shared_ptr<DrmFbIdHandle> FbIdHandle;
+  std::shared_ptr<DrmFbIdHandle> fb_id_handle;
 
   int gralloc_buffer_usage = 0;
   DrmHwcTransform transform{};
   DrmHwcBlending blending = DrmHwcBlending::kNone;
-  uint16_t alpha = 0xffff;
+  uint16_t alpha = UINT16_MAX;
   hwc_frect_t source_crop;
   hwc_rect_t display_frame;
   DrmHwcColorSpace color_space;
@@ -76,9 +76,9 @@ struct DrmHwcLayer {
 
   UniqueFd acquire_fence;
 
-  int ImportBuffer(DrmDevice *drmDevice);
+  int ImportBuffer(DrmDevice *drm_device);
 
-  bool protected_usage() const {
+  bool IsProtected() const {
     return (gralloc_buffer_usage & GRALLOC_USAGE_PROTECTED) ==
            GRALLOC_USAGE_PROTECTED;
   }

@@ -54,7 +54,7 @@ BufferInfoMapperMetadata::GetFds(buffer_handle_t handle, hwc_drm_bo_t *bo) {
     return android::BAD_VALUE;
   }
 
-  for (int i = 0; i < HWC_DRM_BO_MAX_PLANES; i++) {
+  for (int i = 0; i < kHwcDrmBoMaxPlanes; i++) {
     /* If no size, we're out of usable planes */
     if (bo->sizes[i] <= 0) {
       if (i == 0) {
@@ -89,12 +89,12 @@ BufferInfoMapperMetadata::GetFds(buffer_handle_t handle, hwc_drm_bo_t *bo) {
 int BufferInfoMapperMetadata::ConvertBoInfo(buffer_handle_t handle,
                                             hwc_drm_bo_t *bo) {
   GraphicBufferMapper &mapper = GraphicBufferMapper::getInstance();
-  if (!handle)
+  if (handle == nullptr)
     return -EINVAL;
 
   uint64_t usage = 0;
   int err = mapper.getUsage(handle, &usage);
-  if (err) {
+  if (err != 0) {
     ALOGE("Failed to get usage err=%d", err);
     return err;
   }
@@ -102,27 +102,27 @@ int BufferInfoMapperMetadata::ConvertBoInfo(buffer_handle_t handle,
 
   ui::PixelFormat hal_format;
   err = mapper.getPixelFormatRequested(handle, &hal_format);
-  if (err) {
+  if (err != 0) {
     ALOGE("Failed to get HAL Pixel Format err=%d", err);
     return err;
   }
   bo->hal_format = static_cast<uint32_t>(hal_format);
 
   err = mapper.getPixelFormatFourCC(handle, &bo->format);
-  if (err) {
+  if (err != 0) {
     ALOGE("Failed to get FourCC format err=%d", err);
     return err;
   }
 
   err = mapper.getPixelFormatModifier(handle, &bo->modifiers[0]);
-  if (err) {
+  if (err != 0) {
     ALOGE("Failed to get DRM Modifier err=%d", err);
     return err;
   }
 
   uint64_t width = 0;
   err = mapper.getWidth(handle, &width);
-  if (err) {
+  if (err != 0) {
     ALOGE("Failed to get Width err=%d", err);
     return err;
   }
@@ -130,7 +130,7 @@ int BufferInfoMapperMetadata::ConvertBoInfo(buffer_handle_t handle,
 
   uint64_t height = 0;
   err = mapper.getHeight(handle, &height);
-  if (err) {
+  if (err != 0) {
     ALOGE("Failed to get Height err=%d", err);
     return err;
   }
@@ -138,7 +138,7 @@ int BufferInfoMapperMetadata::ConvertBoInfo(buffer_handle_t handle,
 
   std::vector<ui::PlaneLayout> layouts;
   err = mapper.getPlaneLayouts(handle, &layouts);
-  if (err) {
+  if (err != 0) {
     ALOGE("Failed to get Plane Layouts err=%d", err);
     return err;
   }

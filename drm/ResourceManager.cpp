@@ -49,12 +49,12 @@ int ResourceManager::Init() {
     ret = AddDrmDevice(std::string(path_pattern));
   } else {
     path_pattern[path_len - 1] = '\0';
-    for (int idx = 0; !ret; ++idx) {
+    for (int idx = 0; ret == 0; ++idx) {
       std::ostringstream path;
       path << path_pattern << idx;
 
       struct stat buf {};
-      if (stat(path.str().c_str(), &buf))
+      if (stat(path.str().c_str(), &buf) != 0)
         break;
 
       if (DrmDevice::IsKMSDev(path.str().c_str()))
@@ -62,22 +62,22 @@ int ResourceManager::Init() {
     }
   }
 
-  if (!num_displays_) {
+  if (num_displays_ == 0) {
     ALOGE("Failed to initialize any displays");
-    return ret ? -EINVAL : ret;
+    return ret != 0 ? -EINVAL : ret;
   }
 
   char scale_with_gpu[PROPERTY_VALUE_MAX];
   property_get("vendor.hwc.drm.scale_with_gpu", scale_with_gpu, "0");
   scale_with_gpu_ = bool(strncmp(scale_with_gpu, "0", 1));
 
-  if (!BufferInfoGetter::GetInstance()) {
+  if (BufferInfoGetter::GetInstance() == nullptr) {
     ALOGE("Failed to initialize BufferInfoGetter");
     return -EINVAL;
   }
 
   ret = uevent_listener_.Init();
-  if (ret) {
+  if (ret != 0) {
     ALOGE("Can't initialize event listener %d", ret);
     return ret;
   }

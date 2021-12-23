@@ -391,14 +391,6 @@ DrmCrtc *DrmDevice::GetCrtcForDisplay(int display) const {
   return nullptr;
 }
 
-DrmPlane *DrmDevice::GetPlane(uint32_t id) const {
-  for (const auto &plane : planes_) {
-    if (plane->id() == id)
-      return plane.get();
-  }
-  return nullptr;
-}
-
 const std::vector<std::unique_ptr<DrmCrtc>> &DrmDevice::crtcs() const {
   return crtcs_;
 }

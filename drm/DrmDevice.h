@@ -63,7 +63,6 @@ class DrmDevice {
   DrmConnector *GetWritebackConnectorForDisplay(int display) const;
   DrmConnector *AvailableWritebackConnector(int display) const;
   DrmCrtc *GetCrtcForDisplay(int display) const;
-  DrmPlane *GetPlane(uint32_t id) const;
 
   int GetCrtcProperty(const DrmCrtc &crtc, const char *prop_name,
                       DrmProperty *property) const;

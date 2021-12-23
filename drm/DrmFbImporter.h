@@ -57,7 +57,7 @@ class DrmFbIdHandle {
   const std::shared_ptr<DrmDevice> drm_;
 
   uint32_t fb_id_{};
-  std::array<GemHandle, HWC_DRM_BO_MAX_PLANES> gem_handles_{};
+  std::array<GemHandle, kHwcDrmBoMaxPlanes> gem_handles_{};
 };
 
 class DrmFbImporter {
