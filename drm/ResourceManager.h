@@ -17,7 +17,7 @@
 #ifndef RESOURCEMANAGER_H
 #define RESOURCEMANAGER_H
 
-#include <string.h>
+#include <cstring>
 
 #include "DrmDevice.h"
 #include "DrmFbImporter.h"
@@ -40,7 +40,7 @@ class ResourceManager {
   int getDisplayCount() const {
     return num_displays_;
   }
-  bool ForcedScalingWithGpu() {
+  bool ForcedScalingWithGpu() const {
     return scale_with_gpu_;
   }
 

@@ -31,8 +31,7 @@ namespace android {
 
 class BufferInfoGetter {
  public:
-  virtual ~BufferInfoGetter() {
-  }
+  virtual ~BufferInfoGetter() = default;
 
   virtual int ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) = 0;
 
@@ -52,8 +51,6 @@ class LegacyBufferInfoGetter : public BufferInfoGetter {
   virtual int ValidateGralloc() {
     return 0;
   }
-
-  int ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) override = 0;
 
   static std::unique_ptr<LegacyBufferInfoGetter> CreateInstance();
 

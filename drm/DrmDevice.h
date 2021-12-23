@@ -17,8 +17,7 @@
 #ifndef ANDROID_DRM_H_
 #define ANDROID_DRM_H_
 
-#include <stdint.h>
-
+#include <cstdint>
 #include <map>
 #include <tuple>
 
@@ -86,7 +85,7 @@ class DrmDevice {
   }
 
   DrmFbImporter &GetDrmFbImporter() {
-    return *mDrmFbImporter.get();
+    return *mDrmFbImporter;
   }
 
   static auto IsKMSDev(const char *path) -> bool;

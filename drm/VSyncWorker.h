@@ -20,9 +20,9 @@
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
 #include <hardware/hwcomposer2.h>
-#include <stdint.h>
 
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <map>
 

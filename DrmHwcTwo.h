@@ -18,9 +18,9 @@
 #define ANDROID_DRM_HWC_TWO_H_
 
 #include <hardware/hwcomposer2.h>
-#include <math.h>
 
 #include <array>
+#include <cmath>
 #include <map>
 #include <optional>
 
@@ -87,16 +87,16 @@ class DrmHwcTwo : public hwc2_device_t {
 
     void PopulateDrmLayer(DrmHwcLayer *layer);
 
-    bool RequireScalingOrPhasing() {
+    bool RequireScalingOrPhasing() const {
       float src_width = source_crop_.right - source_crop_.left;
       float src_height = source_crop_.bottom - source_crop_.top;
 
-      float dest_width = display_frame_.right - display_frame_.left;
-      float dest_height = display_frame_.bottom - display_frame_.top;
+      auto dest_width = float(display_frame_.right - display_frame_.left);
+      auto dest_height = float(display_frame_.bottom - display_frame_.top);
 
       bool scaling = src_width != dest_width || src_height != dest_height;
-      bool phasing = (source_crop_.left - floor(source_crop_.left) != 0) ||
-                     (source_crop_.top - floor(source_crop_.top) != 0);
+      bool phasing = (source_crop_.left - std::floor(source_crop_.left) != 0) ||
+                     (source_crop_.top - std::floor(source_crop_.top) != 0);
       return scaling || phasing;
     }
 
@@ -132,9 +132,9 @@ class DrmHwcTwo : public hwc2_device_t {
     HWC2::Composition sf_type_ = HWC2::Composition::Invalid;
     HWC2::Composition validated_type_ = HWC2::Composition::Invalid;
 
-    buffer_handle_t buffer_ = NULL;
+    buffer_handle_t buffer_ = nullptr;
     hwc_rect_t display_frame_;
-    float alpha_ = 1.0f;
+    float alpha_ = 1.0F;
     hwc_frect_t source_crop_;
     DrmHwcTransform transform_ = DrmHwcTransform::kIdentity;
     uint32_t z_order_ = 0;
@@ -234,7 +234,7 @@ class DrmHwcTwo : public hwc2_device_t {
 
     /* Statistics */
     struct Stats {
-      Stats minus(Stats b) {
+      Stats minus(Stats b) const {
         return {total_frames_ - b.total_frames_,
                 total_pixops_ - b.total_pixops_,
                 gpu_pixops_ - b.gpu_pixops_,
@@ -257,7 +257,7 @@ class DrmHwcTwo : public hwc2_device_t {
       DrmMode mode;
       bool disabled{};
 
-      bool IsInterlaced() {
+      bool IsInterlaced() const {
         return (mode.flags() & DRM_MODE_FLAG_INTERLACE) != 0;
       }
     };
@@ -357,8 +357,8 @@ class DrmHwcTwo : public hwc2_device_t {
     std::unique_ptr<Backend> backend_;
 
     VSyncWorker vsync_worker_;
-    DrmConnector *connector_ = NULL;
-    DrmCrtc *crtc_ = NULL;
+    DrmConnector *connector_ = nullptr;
+    DrmCrtc *crtc_ = nullptr;
     hwc2_display_t handle_;
     HWC2::DisplayType type_;
     uint32_t layer_idx_ = 0;

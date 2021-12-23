@@ -19,9 +19,9 @@
 
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
-#include <stdbool.h>
-#include <stdint.h>
 
+#include <cstdbool>
+#include <cstdint>
 #include <vector>
 
 #include "drm/DrmFbImporter.h"
@@ -61,7 +61,7 @@ enum class DrmHwcBlending : int32_t {
 };
 
 struct DrmHwcLayer {
-  buffer_handle_t sf_handle = NULL;
+  buffer_handle_t sf_handle = nullptr;
   hwc_drm_bo_t buffer_info{};
   std::shared_ptr<DrmFbIdHandle> FbIdHandle;
 

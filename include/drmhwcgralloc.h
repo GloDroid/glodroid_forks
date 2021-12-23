@@ -17,10 +17,10 @@
 #ifndef ANDROID_DRMHWCGRALLOC_H_
 #define ANDROID_DRMHWCGRALLOC_H_
 
-#include <stdint.h>
+#include <cstdint>
 
 #define HWC_DRM_BO_MAX_PLANES 4
-typedef struct hwc_drm_bo {
+struct hwc_drm_bo {
   uint32_t width;
   uint32_t height;
   uint32_t format;     /* DRM_FORMAT_* from drm_fourcc.h */
@@ -33,6 +33,8 @@ typedef struct hwc_drm_bo {
   int prime_fds[HWC_DRM_BO_MAX_PLANES];
   uint64_t modifiers[HWC_DRM_BO_MAX_PLANES];
   int acquire_fence_fd;
-} hwc_drm_bo_t;
+};
+
+using hwc_drm_bo_t = hwc_drm_bo;
 
 #endif  // ANDROID_DRMHWCGRALLOC_H_

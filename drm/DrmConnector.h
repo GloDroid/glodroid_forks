@@ -17,9 +17,9 @@
 #ifndef ANDROID_DRM_CONNECTOR_H_
 #define ANDROID_DRM_CONNECTOR_H_
 
-#include <stdint.h>
 #include <xf86drmMode.h>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 

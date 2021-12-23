@@ -36,7 +36,7 @@ class Planner {
   // Removes and returns the next available plane from planes
   static DrmPlane *PopPlane(std::vector<DrmPlane *> *planes) {
     if (planes->empty())
-      return NULL;
+      return nullptr;
     DrmPlane *plane = planes->front();
     planes->erase(planes->begin());
     return plane;

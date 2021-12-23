@@ -17,10 +17,10 @@
 #ifndef ANDROID_DRM_MODE_H_
 #define ANDROID_DRM_MODE_H_
 
-#include <stdio.h>
 #include <xf86drmMode.h>
 
 #include <cstdint>
+#include <cstdio>
 #include <string>
 
 #include "DrmUnique.h"
@@ -32,7 +32,7 @@ class DrmDevice;
 class DrmMode {
  public:
   DrmMode() = default;
-  DrmMode(drmModeModeInfoPtr m);
+  explicit DrmMode(drmModeModeInfoPtr m);
 
   bool operator==(const drmModeModeInfo &m) const;
 

@@ -17,9 +17,9 @@
 #ifndef ANDROID_DRM_PROPERTY_H_
 #define ANDROID_DRM_PROPERTY_H_
 
-#include <stdint.h>
 #include <xf86drmMode.h>
 
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -62,14 +62,14 @@ class DrmProperty {
   auto AddEnumToMap(const std::string &name, E key, std::map<E, uint64_t> &map)
       -> bool;
 
-  operator bool() const {
+  explicit operator bool() const {
     return id_ != 0;
   }
 
  private:
   class DrmPropertyEnum {
    public:
-    DrmPropertyEnum(drm_mode_property_enum *e);
+    explicit DrmPropertyEnum(drm_mode_property_enum *e);
     ~DrmPropertyEnum() = default;
 
     uint64_t value_;

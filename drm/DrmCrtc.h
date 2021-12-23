@@ -17,8 +17,9 @@
 #ifndef ANDROID_DRM_CRTC_H_
 #define ANDROID_DRM_CRTC_H_
 
-#include <stdint.h>
 #include <xf86drmMode.h>
+
+#include <cstdint>
 
 #include "DrmMode.h"
 #include "DrmProperty.h"

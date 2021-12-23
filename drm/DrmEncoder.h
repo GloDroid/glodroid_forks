@@ -17,9 +17,9 @@
 #ifndef ANDROID_DRM_ENCODER_H_
 #define ANDROID_DRM_ENCODER_H_
 
-#include <stdint.h>
 #include <xf86drmMode.h>
 
+#include <cstdint>
 #include <set>
 #include <vector>
 

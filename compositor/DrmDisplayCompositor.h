@@ -63,9 +63,9 @@ class DrmDisplayCompositor {
 
   auto ExecuteAtomicCommit(AtomicCommitArgs &args) -> int;
 
- private:
   DrmDisplayCompositor(const DrmDisplayCompositor &) = delete;
 
+ private:
   auto CommitFrame(AtomicCommitArgs &args) -> int;
 
   struct KmsState {

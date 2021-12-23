@@ -64,10 +64,13 @@ TIDY_CHECKS_NORMAL := * \
 
 TIDY_CHECKS_COARSE := \
     $(TIDY_CHECKS_NORMAL) \
+    -cppcoreguidelines-non-private-member-variables-in-classes \
     -cppcoreguidelines-pro-bounds-array-to-pointer-decay \
     -cppcoreguidelines-pro-bounds-constant-array-index \
     -cppcoreguidelines-pro-bounds-pointer-arithmetic \
     -cppcoreguidelines-pro-type-cstyle-cast \
+    -cppcoreguidelines-pro-type-reinterpret-cast \
+    -cppcoreguidelines-pro-type-static-cast-downcast \
     -cppcoreguidelines-pro-type-union-access \
     -cppcoreguidelines-pro-type-vararg \
     -cppcoreguidelines-avoid-magic-numbers \
@@ -78,6 +81,7 @@ TIDY_CHECKS_COARSE := \
     -misc-non-private-member-variables-in-classes \
     -modernize-avoid-c-arrays \
     -modernize-use-trailing-return-type \
+    -modernize-use-nodiscard \
     -readability-braces-around-statements \
     -readability-convert-member-functions-to-static \
     -readability-implicit-bool-conversion \
@@ -88,39 +92,39 @@ TIDY_CHECKS_COARSE := \
 TIDY_FILES := \
     drm/UEventListener.h:COARSE                        \
     drm/DrmFbImporter.h:FINE                           \
-    drm/ResourceManager.h:                             \
-    drm/DrmMode.h:                                     \
-    drm/DrmDevice.h:                                   \
-    drm/DrmProperty.h:                                 \
-    drm/DrmConnector.h:                                \
-    drm/DrmCrtc.h:                                     \
-    drm/VSyncWorker.h:                                 \
-    drm/DrmPlane.h:                                    \
+    drm/ResourceManager.h:COARSE                       \
+    drm/DrmMode.h:COARSE                               \
+    drm/DrmDevice.h:COARSE                             \
+    drm/DrmProperty.h:COARSE                           \
+    drm/DrmConnector.h:COARSE                          \
+    drm/DrmCrtc.h:COARSE                               \
+    drm/VSyncWorker.h:COARSE                           \
+    drm/DrmPlane.h:COARSE                              \
     drm/DrmUnique.h:FINE                               \
-    drm/DrmEncoder.h:                                  \
-    bufferinfo/legacy/BufferInfoMinigbm.h:             \
-    bufferinfo/legacy/BufferInfoLibdrm.h:              \
-    bufferinfo/legacy/BufferInfoMaliMediatek.h:        \
-    bufferinfo/legacy/BufferInfoMaliHisi.h:            \
-    bufferinfo/legacy/BufferInfoImagination.h:         \
-    bufferinfo/legacy/BufferInfoMaliMeson.h:           \
-    bufferinfo/BufferInfoGetter.h:                     \
-    bufferinfo/BufferInfoMapperMetadata.h:             \
-    include/drmhwcgralloc.h:                           \
-    include/drmhwcomposer.h:                           \
-    utils/Worker.h:                                    \
+    drm/DrmEncoder.h:COARSE                            \
+    bufferinfo/legacy/BufferInfoMinigbm.h:COARSE       \
+    bufferinfo/legacy/BufferInfoLibdrm.h:COARSE        \
+    bufferinfo/legacy/BufferInfoMaliMediatek.h:COARSE  \
+    bufferinfo/legacy/BufferInfoMaliHisi.h:COARSE      \
+    bufferinfo/legacy/BufferInfoImagination.h:COARSE   \
+    bufferinfo/legacy/BufferInfoMaliMeson.h:COARSE     \
+    bufferinfo/BufferInfoGetter.h:COARSE               \
+    bufferinfo/BufferInfoMapperMetadata.h:COARSE       \
+    include/drmhwcgralloc.h:COARSE                     \
+    include/drmhwcomposer.h:COARSE                     \
+    utils/Worker.h:COARSE                              \
     utils/UniqueFd.h:FINE                              \
-    utils/autolock.h:                                  \
+    utils/autolock.h:COARSE                            \
     utils/log.h:FINE                                   \
     utils/properties.h:FINE                            \
-    compositor/DrmDisplayCompositor.h:                 \
-    compositor/Planner.h:                              \
-    compositor/DrmDisplayComposition.h:                \
-    backend/BackendManager.h:                          \
-    backend/BackendClient.h:                           \
-    backend/Backend.h:                                 \
-    backend/BackendRCarDu.h:                           \
-    DrmHwcTwo.h:                                       \
+    compositor/DrmDisplayCompositor.h:COARSE           \
+    compositor/Planner.h:COARSE                        \
+    compositor/DrmDisplayComposition.h:COARSE          \
+    backend/BackendManager.h:COARSE                    \
+    backend/BackendClient.h:COARSE                     \
+    backend/Backend.h:COARSE                           \
+    backend/BackendRCarDu.h:COARSE                     \
+    DrmHwcTwo.h:COARSE                                 \
 
 TIDY_FILES += \
     backend/BackendClient.cpp:COARSE                       \

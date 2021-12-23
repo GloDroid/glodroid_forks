@@ -1235,7 +1235,7 @@ void DrmHwcTwo::HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
   // TODO(rsglobal): Avoid extra fd duplication
   layer->acquire_fence = UniqueFd(fcntl(acquire_fence_.Get(), F_DUPFD_CLOEXEC));
   layer->display_frame = display_frame_;
-  layer->alpha = lround(65535.0F * alpha_);
+  layer->alpha = std::lround(65535.0F * alpha_);
   layer->blending = blending_;
   layer->source_crop = source_crop_;
   layer->transform = transform_;

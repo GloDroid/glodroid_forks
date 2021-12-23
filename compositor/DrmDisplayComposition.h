@@ -52,7 +52,7 @@ class DrmCompositionPlane {
   }
 
  private:
-  DrmPlane *plane_ = NULL;
+  DrmPlane *plane_ = nullptr;
   size_t source_layer_ = kUndefinedSourceLayer;
 };
 
@@ -85,8 +85,8 @@ class DrmDisplayComposition {
   }
 
  private:
-  DrmCrtc *crtc_ = NULL;
-  Planner *planner_ = NULL;
+  DrmCrtc *crtc_ = nullptr;
+  Planner *planner_ = nullptr;
 
   std::vector<DrmHwcLayer> layers_;
   std::vector<DrmCompositionPlane> composition_planes_;
