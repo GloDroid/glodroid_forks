@@ -67,7 +67,7 @@ const std::map<int, const Camera3Format> camera3FormatsMap = {
 		}
 	}, {
 		HAL_PIXEL_FORMAT_YCbCr_420_888, {
-			{ formats::NV12, formats::NV21 },
+			{ formats::NV12, formats::NV21, formats::MJPEG },
 			true,
 			"YCbCr_420_888"
 		}
@@ -77,7 +77,7 @@ const std::map<int, const Camera3Format> camera3FormatsMap = {
 		 * usage flag. For now, copy the YCbCr_420 configuration.
 		 */
 		HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, {
-			{ formats::NV12, formats::NV21 },
+			{ formats::NV12, formats::NV21, formats::MJPEG },
 			true,
 			"IMPLEMENTATION_DEFINED"
 		}
