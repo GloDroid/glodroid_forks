@@ -122,6 +122,9 @@ CameraConfiguration::Status UVCCameraConfiguration::validate()
 	const Size size = cfg.size;
 
 	const std::vector<PixelFormat> pixelFormats = formats.pixelformats();
+	if (pixelFormats.empty())
+		return Invalid;
+
 	auto iter = std::find(pixelFormats.begin(), pixelFormats.end(), pixelFormat);
 	if (iter == pixelFormats.end()) {
 		cfg.pixelFormat = pixelFormats.front();
