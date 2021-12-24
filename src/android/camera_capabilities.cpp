@@ -1059,6 +1059,12 @@ int CameraCapabilities::initializeStaticMetadata()
 		};
 		staticMetadata_->addEntry(ANDROID_SENSOR_INFO_PHYSICAL_SIZE,
 					  physicalSize);
+	} else {
+		std::array<float, 2> physicalSize{
+			3.2,2.4
+		};
+		staticMetadata_->addEntry(ANDROID_SENSOR_INFO_PHYSICAL_SIZE,
+					  physicalSize);
 	}
 
 	{
