@@ -642,17 +642,19 @@ int CameraCapabilities::initializeStreamConfigurations()
 			if (ret)
 				return ret;
 
+			int64_t minFrameDuration = 1e9 / 30.0;
+			int64_t maxFrameDuration = 1e9 / 1.0;
+
 			const ControlInfoMap &controls = camera_->controls();
 			const auto frameDurations = controls.find(
 				&controls::FrameDurationLimits);
 			if (frameDurations == controls.end()) {
-				LOG(HAL, Error)
+				LOG(HAL, Warning)
 					<< "Camera does not report frame durations";
-				return -EINVAL;
+			} else {
+				minFrameDuration = frameDurations->second.min().get<int64_t>() * 1000;
+				maxFrameDuration = frameDurations->second.max().get<int64_t>() * 1000;
 			}
-
-			int64_t minFrameDuration = frameDurations->second.min().get<int64_t>() * 1000;
-			int64_t maxFrameDuration = frameDurations->second.max().get<int64_t>() * 1000;
 
 			/*
 			 * Cap min frame duration to 30 FPS with 1% tolerance.
