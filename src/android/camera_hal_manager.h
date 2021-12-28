@@ -56,7 +56,9 @@ private:
 	CameraDevice *cameraDeviceFromHalId(unsigned int id) LIBCAMERA_TSA_REQUIRES(mutex_);
 
 	std::unique_ptr<libcamera::CameraManager> cameraManager_;
+#ifdef HAVE_LIBYAML
 	CameraHalConfig halConfig_;
+#endif
 
 	const camera_module_callbacks_t *callbacks_;
 	std::vector<std::unique_ptr<CameraDevice>> cameras_ LIBCAMERA_TSA_GUARDED_BY(mutex_);

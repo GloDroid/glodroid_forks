@@ -3,7 +3,6 @@
 android_deps = [
     dependency('libexif', required : get_option('android')),
     dependency('libjpeg', required : get_option('android')),
-    dependency('yaml-0.1', required : get_option('android')),
     libcamera_private,
 ]
 
@@ -41,7 +40,6 @@ android_hal_sources = files([
     'camera3_hal.cpp',
     'camera_capabilities.cpp',
     'camera_device.cpp',
-    'camera_hal_config.cpp',
     'camera_hal_manager.cpp',
     'camera_metadata.cpp',
     'camera_ops.cpp',
@@ -55,6 +53,14 @@ android_hal_sources = files([
 ])
 
 android_cpp_args = []
+
+libyaml_dep = dependency('yaml-0.1', required : false)
+if libyaml_dep.found()
+    config_h.set('HAVE_LIBYAML', 1)
+    android_hal_sources += files([
+        'camera_hal_config.cpp',
+    ])
+endif
 
 subdir('cros')
 subdir('mm')
