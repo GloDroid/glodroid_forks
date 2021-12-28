@@ -48,6 +48,7 @@ int CameraHalManager::init()
 {
 	cameraManager_ = std::make_unique<CameraManager>();
 
+#ifdef HAVE_LIBYAML
 	/*
 	 * If the configuration file is not available the HAL only supports
 	 * external cameras. If it exists but it's not valid then error out.
@@ -56,6 +57,7 @@ int CameraHalManager::init()
 		LOG(HAL, Error) << "HAL configuration file is not valid";
 		return -EINVAL;
 	}
+#endif
 
 	/* Support camera hotplug. */
 	cameraManager_->cameraAdded.connect(this, &CameraHalManager::cameraAdded);
@@ -133,6 +135,7 @@ void CameraHalManager::cameraAdded(std::shared_ptr<Camera> cam)
 		}
 	}
 
+#ifdef HAVE_LIBYAML
 	/*
 	 * The configuration file must be valid, and contain a corresponding
 	 * entry for internal cameras. External cameras can be initialized
@@ -145,6 +148,16 @@ void CameraHalManager::cameraAdded(std::shared_ptr<Camera> cam)
 	}
 
 	const CameraConfigData *cameraConfigData = halConfig_.cameraConfigData(cam->id());
+#else
+	/*
+	 * Assume that cameras without properties::Location specified are external.
+	 */
+	const CameraConfigData *cameraConfigData = nullptr;
+	if (!isCameraExternal && cameraLocation(cam.get()) < 0) {
+		isCameraExternal = true;
+		id = nextExternalCameraId_;
+	}
+#endif
 
 	/*
 	 * Some cameras whose location is reported by libcamera as external may
