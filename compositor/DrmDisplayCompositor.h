@@ -78,13 +78,13 @@ class DrmDisplayCompositor {
 
     /* To avoid setting the inactive state twice, which will fail the commit */
     bool crtc_active_state{};
-  } active_frame_state;
+  } active_frame_state_;
 
   auto NewFrameState() -> KmsState {
     return (KmsState){
-        .used_planes = active_frame_state.used_planes,
-        .used_framebuffers = active_frame_state.used_framebuffers,
-        .crtc_active_state = active_frame_state.crtc_active_state,
+        .used_planes = active_frame_state_.used_planes,
+        .used_framebuffers = active_frame_state_.used_framebuffers,
+        .crtc_active_state = active_frame_state_.crtc_active_state,
     };
   }
 

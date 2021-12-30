@@ -15,7 +15,6 @@ SKIP_FILES := \
     bufferinfo/BufferInfoMapperMetadata.cpp
 
 TIDY_FILES_OVERRIDE := \
-    backend/BackendManager.h:COARSE                     \
     bufferinfo/legacy/BufferInfoImagination.cpp:COARSE  \
     bufferinfo/legacy/BufferInfoLibdrm.cpp:COARSE       \
     bufferinfo/legacy/BufferInfoMaliHisi.cpp:COARSE     \
@@ -25,7 +24,6 @@ TIDY_FILES_OVERRIDE := \
     compositor/DrmDisplayComposition.cpp:COARSE         \
     compositor/DrmDisplayComposition.h:COARSE           \
     compositor/DrmDisplayCompositor.cpp:COARSE          \
-    compositor/DrmDisplayCompositor.h:COARSE            \
     drm/DrmFbImporter.h:FINE                            \
     drm/DrmMode.h:COARSE                                \
     drm/DrmDevice.h:COARSE                              \
@@ -36,7 +34,6 @@ TIDY_FILES_OVERRIDE := \
     drm/DrmEncoder.h:COARSE                             \
     drm/DrmConnector.cpp:COARSE                         \
     drm/DrmDevice.cpp:COARSE                            \
-    drm/DrmPlane.cpp:COARSE                             \
     drm/DrmProperty.cpp:COARSE                          \
     drm/UEventListener.cpp:COARSE                       \
     drm/VSyncWorker.cpp:COARSE                          \

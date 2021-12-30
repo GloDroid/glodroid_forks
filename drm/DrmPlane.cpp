@@ -33,6 +33,7 @@ DrmPlane::DrmPlane(DrmDevice *drm, drmModePlanePtr p)
     : drm_(drm),
       id_(p->plane_id),
       possible_crtc_mask_(p->possible_crtcs),
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
       formats_(p->formats, p->formats + p->count_formats) {
 }
 
@@ -46,7 +47,7 @@ int DrmPlane::Init() {
   int ret = 0;
   uint64_t type = 0;
   std::tie(ret, type) = p.value();
-  if (ret) {
+  if (ret != 0) {
     ALOGE("Failed to get plane type property value");
     return ret;
   }
@@ -150,7 +151,7 @@ bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
     }
   }
 
-  if (alpha_property_.id() == 0 && layer->alpha != 0xffff) {
+  if (alpha_property_.id() == 0 && layer->alpha != UINT16_MAX) {
     ALOGV("Alpha is not supported on plane %d", id_);
     return false;
   }
@@ -190,15 +191,15 @@ bool DrmPlane::HasNonRgbFormat() const {
 
 static uint64_t ToDrmRotation(DrmHwcTransform transform) {
   uint64_t rotation = 0;
-  if (transform & DrmHwcTransform::kFlipH)
+  if ((transform & DrmHwcTransform::kFlipH) != 0)
     rotation |= DRM_MODE_REFLECT_X;
-  if (transform & DrmHwcTransform::kFlipV)
+  if ((transform & DrmHwcTransform::kFlipV) != 0)
     rotation |= DRM_MODE_REFLECT_Y;
-  if (transform & DrmHwcTransform::kRotate90)
+  if ((transform & DrmHwcTransform::kRotate90) != 0)
     rotation |= DRM_MODE_ROTATE_90;
-  else if (transform & DrmHwcTransform::kRotate180)
+  else if ((transform & DrmHwcTransform::kRotate180) != 0)
     rotation |= DRM_MODE_ROTATE_180;
-  else if (transform & DrmHwcTransform::kRotate270)
+  else if ((transform & DrmHwcTransform::kRotate270) != 0)
     rotation |= DRM_MODE_ROTATE_270;
   else
     rotation |= DRM_MODE_ROTATE_0;

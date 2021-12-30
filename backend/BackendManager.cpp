@@ -36,7 +36,7 @@ BackendManager &BackendManager::GetInstance() {
 }
 
 int BackendManager::RegisterBackend(const std::string &name,
-                                    backend_constructor_t backend_constructor) {
+                                    BackendConstructorT backend_constructor) {
   available_backends_[name] = std::move(backend_constructor);
   return 0;
 }

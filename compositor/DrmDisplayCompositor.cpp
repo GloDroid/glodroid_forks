@@ -70,7 +70,7 @@ DrmDisplayCompositor::CreateInitializedComposition() const {
 auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   ATRACE_CALL();
 
-  if (args.active && *args.active == active_frame_state.crtc_active_state) {
+  if (args.active && *args.active == active_frame_state_.crtc_active_state) {
     /* Don't set the same state twice */
     args.active.reset();
   }
@@ -80,7 +80,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     return 0;
   }
 
-  if (!active_frame_state.crtc_active_state) {
+  if (!active_frame_state_.crtc_active_state) {
     /* Force activate display */
     args.active = true;
   }
@@ -204,7 +204,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
       connector->set_active_mode(*args.display_mode);
     }
 
-    active_frame_state = std::move(new_frame_state);
+    active_frame_state_ = std::move(new_frame_state);
 
     if (crtc->out_fence_ptr_property()) {
       args.out_fence = UniqueFd((int)out_fence);
