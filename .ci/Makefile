@@ -4,46 +4,49 @@ SYSTEM_INCLUDE_DIRS := /usr/include/libdrm
 
 CLANG := clang++-12
 CLANG_TIDY := clang-tidy-12
-OUT_DIR := /tmp/drm_hwcomposer/build/
+OUT_DIR := /tmp/drm_hwcomposer/build
 SRC_DIR := .
 
 CXXFLAGS := -fPIC -Wall -Wextra -Werror -DPLATFORM_SDK_VERSION=31 -D__ANDROID_API__=31
 CXXFLAGS += -D_LIBCPP_ENABLE_THREAD_SAFETY_ANNOTATIONS
 CXXFLAGS += -fvisibility-inlines-hidden -std=gnu++17 -DHWC2_USE_CPP11 -DHWC2_INCLUDE_STRINGIFICATION -fno-rtti
 
-BUILD_FILES := \
-    backend/BackendClient.cpp \
-    backend/Backend.cpp \
-    backend/BackendManager.cpp \
-    backend/BackendRCarDu.cpp \
-    bufferinfo/BufferInfoGetter.cpp \
-    bufferinfo/legacy/BufferInfoImagination.cpp \
-    bufferinfo/legacy/BufferInfoLibdrm.cpp \
-    bufferinfo/legacy/BufferInfoMaliHisi.cpp \
-    bufferinfo/legacy/BufferInfoMaliMediatek.cpp \
-    bufferinfo/legacy/BufferInfoMaliMeson.cpp \
-    bufferinfo/legacy/BufferInfoMinigbm.cpp \
-    compositor/DrmDisplayComposition.cpp \
-    compositor/DrmDisplayCompositor.cpp \
-    compositor/Planner.cpp \
-    drm/DrmConnector.cpp \
-    drm/DrmCrtc.cpp \
-    drm/DrmDevice.cpp \
-    drm/DrmEncoder.cpp \
-    drm/DrmFbImporter.cpp \
-    drm/DrmMode.cpp \
-    drm/DrmPlane.cpp \
-    drm/DrmProperty.cpp \
-    DrmHwcTwo.cpp \
-    drm/ResourceManager.cpp \
-    drm/UEventListener.cpp \
-    drm/VSyncWorker.cpp \
-    tests/worker_test.cpp \
-    utils/autolock.cpp \
-    utils/Worker.cpp \
-    utils/hwcutils.cpp \
+SKIP_FILES := \
+    bufferinfo/BufferInfoMapperMetadata.cpp
 
-#bufferinfo/BufferInfoMapperMetadata.cpp
+TIDY_FILES_OVERRIDE := \
+    backend/BackendManager.h:COARSE                     \
+    bufferinfo/legacy/BufferInfoImagination.cpp:COARSE  \
+    bufferinfo/legacy/BufferInfoLibdrm.cpp:COARSE       \
+    bufferinfo/legacy/BufferInfoMaliHisi.cpp:COARSE     \
+    bufferinfo/legacy/BufferInfoMaliMediatek.cpp:COARSE \
+    bufferinfo/legacy/BufferInfoMaliMeson.cpp:COARSE    \
+    bufferinfo/legacy/BufferInfoMinigbm.cpp:COARSE      \
+    compositor/DrmDisplayComposition.cpp:COARSE         \
+    compositor/DrmDisplayComposition.h:COARSE           \
+    compositor/DrmDisplayCompositor.cpp:COARSE          \
+    compositor/DrmDisplayCompositor.h:COARSE            \
+    drm/DrmFbImporter.h:FINE                            \
+    drm/DrmMode.h:COARSE                                \
+    drm/DrmDevice.h:COARSE                              \
+    drm/DrmProperty.h:COARSE                            \
+    drm/DrmConnector.h:COARSE                           \
+    drm/DrmCrtc.h:COARSE                                \
+    drm/DrmUnique.h:FINE                                \
+    drm/DrmEncoder.h:COARSE                             \
+    drm/DrmConnector.cpp:COARSE                         \
+    drm/DrmDevice.cpp:COARSE                            \
+    drm/DrmPlane.cpp:COARSE                             \
+    drm/DrmProperty.cpp:COARSE                          \
+    drm/UEventListener.cpp:COARSE                       \
+    drm/VSyncWorker.cpp:COARSE                          \
+    tests/worker_test.cpp:COARSE                        \
+    utils/Worker.h:COARSE                               \
+    utils/UniqueFd.h:FINE                               \
+    utils/log.h:FINE                                    \
+    utils/properties.h:FINE                             \
+    DrmHwcTwo.cpp:COARSE                                \
+    DrmHwcTwo.h:COARSE                                  \
 
 TIDY_CHECKS_NORMAL := * \
     -hicpp-* -llvmlibc-* -fuchsia-* -altera-* \
@@ -89,82 +92,19 @@ TIDY_CHECKS_COARSE := \
     -readability-magic-numbers \
     -readability-use-anyofallof \
 
-TIDY_FILES := \
-    drm/UEventListener.h:NORMAL                        \
-    drm/DrmFbImporter.h:FINE                           \
-    drm/ResourceManager.h:NORMAL                       \
-    drm/DrmMode.h:COARSE                               \
-    drm/DrmDevice.h:COARSE                             \
-    drm/DrmProperty.h:COARSE                           \
-    drm/DrmConnector.h:COARSE                          \
-    drm/DrmCrtc.h:COARSE                               \
-    drm/VSyncWorker.h:NORMAL                           \
-    drm/DrmPlane.h:NORMAL                              \
-    drm/DrmUnique.h:FINE                               \
-    drm/DrmEncoder.h:COARSE                            \
-    bufferinfo/legacy/BufferInfoMinigbm.h:NORMAL       \
-    bufferinfo/legacy/BufferInfoLibdrm.h:NORMAL        \
-    bufferinfo/legacy/BufferInfoMaliMediatek.h:NORMAL  \
-    bufferinfo/legacy/BufferInfoMaliHisi.h:NORMAL      \
-    bufferinfo/legacy/BufferInfoImagination.h:NORMAL   \
-    bufferinfo/legacy/BufferInfoMaliMeson.h:NORMAL     \
-    bufferinfo/BufferInfoGetter.h:NORMAL               \
-    bufferinfo/BufferInfoMapperMetadata.h:NORMAL       \
-    include/drmhwcgralloc.h:NORMAL                     \
-    include/drmhwcomposer.h:NORMAL                     \
-    utils/Worker.h:COARSE                              \
-    utils/UniqueFd.h:FINE                              \
-    utils/autolock.h:NORMAL                            \
-    utils/log.h:FINE                                   \
-    utils/properties.h:FINE                            \
-    compositor/DrmDisplayCompositor.h:COARSE           \
-    compositor/Planner.h:NORMAL                        \
-    compositor/DrmDisplayComposition.h:COARSE          \
-    backend/BackendManager.h:COARSE                    \
-    backend/BackendClient.h:NORMAL                     \
-    backend/Backend.h:NORMAL                           \
-    backend/BackendRCarDu.h:NORMAL                     \
-    DrmHwcTwo.h:COARSE                                 \
+.PHONY: all build tidy clean
 
-TIDY_FILES += \
-    backend/BackendClient.cpp:NORMAL                       \
-    backend/Backend.cpp:NORMAL                             \
-    backend/BackendManager.cpp:NORMAL                      \
-    backend/BackendRCarDu.cpp:NORMAL                       \
-    bufferinfo/BufferInfoGetter.cpp:NORMAL                 \
-    bufferinfo/legacy/BufferInfoImagination.cpp:COARSE     \
-    bufferinfo/legacy/BufferInfoLibdrm.cpp:COARSE          \
-    bufferinfo/legacy/BufferInfoMaliHisi.cpp:COARSE        \
-    bufferinfo/legacy/BufferInfoMaliMediatek.cpp:COARSE    \
-    bufferinfo/legacy/BufferInfoMaliMeson.cpp:COARSE       \
-    bufferinfo/legacy/BufferInfoMinigbm.cpp:COARSE         \
-    compositor/DrmDisplayComposition.cpp:COARSE            \
-    compositor/DrmDisplayCompositor.cpp:COARSE             \
-    compositor/Planner.cpp:NORMAL                          \
-    drm/DrmConnector.cpp:COARSE                            \
-    drm/DrmCrtc.cpp:NORMAL                                 \
-    drm/DrmDevice.cpp:COARSE                               \
-    drm/DrmEncoder.cpp:NORMAL                              \
-    drm/DrmFbImporter.cpp:NORMAL                           \
-    drm/DrmMode.cpp:NORMAL                                 \
-    drm/DrmPlane.cpp:COARSE                                \
-    drm/DrmProperty.cpp:COARSE                             \
-    DrmHwcTwo.cpp:COARSE                                   \
-    drm/ResourceManager.cpp:NORMAL                         \
-    drm/UEventListener.cpp:COARSE                          \
-    drm/VSyncWorker.cpp:COARSE                             \
-    tests/worker_test.cpp:COARSE                           \
-    utils/autolock.cpp:NORMAL                              \
-    utils/Worker.cpp:NORMAL                                \
-    utils/hwcutils.cpp:NORMAL                              \
-
-
-.PHONY: all build tidy tidy-fine clean
-
-all: build tidy tidy-fine
+all: build tidy
 
 clean:
 	rm -rf $(OUT_DIR)/
+
+# Build
+
+BUILD_FILES_AUTO := $(shell find -L $(SRC_DIR) -not -path '*/\.*' -not -path '*/tests/*' -path '*.cpp')
+SKIP_FILES_path := $(foreach file,$(SKIP_FILES),$(SRC_DIR)/$(file))
+
+BUILD_FILES := $(subst ./,,$(filter-out $(SKIP_FILES_path),$(BUILD_FILES_AUTO)))
 
 _OBJ := $(BUILD_FILES:.cpp=.o)
 OBJ  := $(patsubst %,$(OUT_DIR)/%,$(_OBJ))
@@ -184,6 +124,16 @@ $(OUT_DIR)/%.d: $(SRC_DIR)/%.cpp
 	$(CLANG) $(CXXARGS) $< -MM -MT $(OUT_DIR)/$(patsubst %.cpp,%.o,$<) -o $@
 
 # TIDY
+TIDY_FILES_AUTO := $(shell find -L $(SRC_DIR) -not -path '*/\.*' -not -path '*/tests/*' \( -path '*.cpp' -o -path '*.h' \))
+
+TIDY_FILES_AUTO_filtered := $(filter-out $(SKIP_FILES_path),$(TIDY_FILES_AUTO))
+
+TIDY_FILES_OVERRIDE_path := $(foreach pair,$(TIDY_FILES_OVERRIDE),$(SRC_DIR)/$(pair))
+
+TIDY_FILES_OVERRIDE_name_only := $(foreach pair,$(TIDY_FILES_OVERRIDE_path),$(word 1, $(subst :, ,$(pair))))
+
+TIDY_FILES := $(sort $(TIDY_FILES_AUTO_filtered) $(TIDY_FILES_OVERRIDE_name_only))
+
 space := $(subst ,, )
 comma := ,
 
@@ -200,18 +150,23 @@ _DEP := $(SRC_DIR)/$1
 
 TIDY_DEPS += $(_TARG)
 
-TIDY_ARGS:=$(TIDY_ARGS_$2)
+TIDY_LEVEL_1 := $$(strip $$(foreach pair,$$(TIDY_FILES_OVERRIDE_path),$$(if $$(filter $$(word 1, $$(subst :, ,$$(pair))),$1),$$(word 2, $$(subst :, ,$$(pair))),)))
 
-$(_TARG): $(_DEP)
-	mkdir -p $(dir $(_TARG))
-	$(CLANG_TIDY) $(_DEP) $(TIDY_ARGS) -- -x c++ $(CXXARGS)
-	touch $(_TARG)
+TIDY_LEVEL_2 := $$(if $$(TIDY_LEVEL_1),$$(TIDY_LEVEL_1),NORMAL)
+
+TIDY_ARGS := $$(TIDY_ARGS_$$(TIDY_LEVEL_2))
+
+$$(_TARG): _DEP := $$(_DEP)
+$$(_TARG): _TARG := $$(_TARG)
+$$(_TARG): TIDY_ARGS := $$(TIDY_ARGS)
+$$(_TARG): $$(_DEP)
+	mkdir -p $$(dir $$(_TARG))
+	$$(CLANG_TIDY) $$(_DEP) $$(TIDY_ARGS) -- -x c++ $$(CXXARGS)
+	touch $$(_TARG)
 
 endef
 
-$(foreach pair,$(TIDY_FILES),$(eval $(call process-tidy,$(word 1, $(subst :, ,$(pair))),$(word 2, $(subst :, ,$(pair))))))
-
-#$(warning $(TIDY_DEPS))
+$(foreach file,$(TIDY_FILES),$(eval $(call process-tidy,$(file))))
 
 tidy: $(TIDY_DEPS)
 
