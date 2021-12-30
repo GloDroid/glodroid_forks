@@ -240,12 +240,6 @@ void DrmHwcTwo::HwcDisplay::ClearDisplay() {
 }
 
 HWC2::Error DrmHwcTwo::HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
-  planner_ = Planner::CreateInstance(drm_);
-  if (!planner_) {
-    ALOGE("Failed to create planner instance for composition");
-    return HWC2::Error::NoResources;
-  }
-
   int display = static_cast<int>(handle_);
   int ret = compositor_.Init(resource_manager_, display);
   if (ret) {
@@ -737,8 +731,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     composition_layers.emplace_back(std::move(layer));
   }
 
-  auto composition = std::make_shared<DrmDisplayComposition>(crtc_,
-                                                             planner_.get());
+  auto composition = std::make_shared<DrmDisplayComposition>(crtc_);
 
   // TODO(nobody): Don't always assume geometry changed
   int ret = composition->SetLayers(composition_layers.data(),

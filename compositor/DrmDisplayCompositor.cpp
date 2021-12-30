@@ -49,7 +49,6 @@ auto DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display)
     ALOGE("Could not find drmdevice for display");
     return -EINVAL;
   }
-  planner_ = Planner::CreateInstance(drm);
 
   initialized_ = true;
   return 0;
@@ -64,7 +63,7 @@ DrmDisplayCompositor::CreateInitializedComposition() const {
     return std::unique_ptr<DrmDisplayComposition>();
   }
 
-  return std::make_unique<DrmDisplayComposition>(crtc, planner_.get());
+  return std::make_unique<DrmDisplayComposition>(crtc);
 }
 
 // NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme

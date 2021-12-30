@@ -25,7 +25,6 @@
 #include <optional>
 
 #include "compositor/DrmDisplayCompositor.h"
-#include "compositor/Planner.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "drmhwcomposer.h"
@@ -349,7 +348,6 @@ class DrmHwcTwo : public hwc2_device_t {
     ResourceManager *resource_manager_;
     DrmDevice *drm_;
     DrmDisplayCompositor compositor_;
-    std::unique_ptr<Planner> planner_;
 
     std::vector<DrmPlane *> primary_planes_;
     std::vector<DrmPlane *> overlay_planes_;

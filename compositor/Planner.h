@@ -72,9 +72,6 @@ class Planner {
       std::map<size_t, DrmHwcLayer *> &layers, std::vector<DrmPlane *> *planes);
 
  public:
-  // Creates a planner instance
-  static std::unique_ptr<Planner> CreateInstance(DrmDevice *drm);
-
   // Takes a stack of layers and provisions hardware planes for them. If the
   // entire stack can't fit in hardware, FIXME
   //

@@ -32,9 +32,9 @@
 
 namespace android {
 
-DrmDisplayComposition::DrmDisplayComposition(DrmCrtc *crtc, Planner *planner)
-    : crtc_(crtc),  // Can be NULL if we haven't modeset yet
-      planner_(planner) {
+DrmDisplayComposition::DrmDisplayComposition(DrmCrtc *crtc)
+    : crtc_(crtc)  // Can be NULL if we haven't modeset yet
+{
 }
 
 int DrmDisplayComposition::SetLayers(DrmHwcLayer *layers, size_t num_layers) {
@@ -58,10 +58,10 @@ int DrmDisplayComposition::Plan(std::vector<DrmPlane *> *primary_planes,
     to_composite.emplace(std::make_pair(i, &layers_[i]));
 
   int ret = 0;
-  std::tie(ret,
-           composition_planes_) = planner_->ProvisionPlanes(to_composite, crtc_,
-                                                            primary_planes,
-                                                            overlay_planes);
+  std::tie(ret, composition_planes_) = Planner::ProvisionPlanes(to_composite,
+                                                                crtc_,
+                                                                primary_planes,
+                                                                overlay_planes);
   if (ret) {
     ALOGV("Planner failed provisioning planes ret=%d", ret);
     return ret;

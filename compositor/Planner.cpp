@@ -25,11 +25,6 @@
 
 namespace android {
 
-std::unique_ptr<Planner> Planner::CreateInstance(DrmDevice * /*device*/) {
-  std::unique_ptr<Planner> planner(new Planner);
-  return planner;
-}
-
 std::vector<DrmPlane *> Planner::GetUsablePlanes(
     DrmCrtc *crtc, std::vector<DrmPlane *> *primary_planes,
     std::vector<DrmPlane *> *overlay_planes) {

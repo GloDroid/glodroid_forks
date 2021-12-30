@@ -28,7 +28,6 @@
 #include <tuple>
 
 #include "DrmDisplayComposition.h"
-#include "Planner.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "drmhwcomposer.h"
@@ -90,7 +89,6 @@ class DrmDisplayCompositor {
   }
 
   ResourceManager *resource_manager_ = nullptr;
-  std::unique_ptr<Planner> planner_;
   bool initialized_{};
   int display_ = -1;
 };
