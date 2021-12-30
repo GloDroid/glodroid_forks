@@ -206,6 +206,12 @@ static uint64_t ToDrmRotation(DrmHwcTransform transform) {
   return rotation;
 }
 
+/* Convert float to 16.16 fixed point */
+static int To1616FixPt(float in) {
+  constexpr int kBitShift = 16;
+  return int(in * (1 << kBitShift));
+}
+
 auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
                               uint32_t zpos, uint32_t crtc_id) -> int {
   if (!layer.fb_id_handle) {
@@ -237,14 +243,12 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer,
                                             layer.display_frame.left) ||
       !crtc_h_property_.AtomicSet(pset, layer.display_frame.bottom -
                                             layer.display_frame.top) ||
-      !src_x_property_.AtomicSet(pset, (int)(layer.source_crop.left) << 16) ||
-      !src_y_property_.AtomicSet(pset, (int)(layer.source_crop.top) << 16) ||
-      !src_w_property_.AtomicSet(pset, (int)(layer.source_crop.right -
-                                             layer.source_crop.left)
-                                           << 16) ||
-      !src_h_property_.AtomicSet(pset, (int)(layer.source_crop.bottom -
-                                             layer.source_crop.top)
-                                           << 16)) {
+      !src_x_property_.AtomicSet(pset, To1616FixPt(layer.source_crop.left)) ||
+      !src_y_property_.AtomicSet(pset, To1616FixPt(layer.source_crop.top)) ||
+      !src_w_property_.AtomicSet(pset, To1616FixPt(layer.source_crop.right -
+                                                   layer.source_crop.left)) ||
+      !src_h_property_.AtomicSet(pset, To1616FixPt(layer.source_crop.bottom -
+                                                   layer.source_crop.top))) {
     return -EINVAL;
   }
 
