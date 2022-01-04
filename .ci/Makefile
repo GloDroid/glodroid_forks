@@ -81,7 +81,6 @@ TIDY_CHECKS_COARSE := \
     -readability-implicit-bool-conversion \
     -readability-identifier-naming \
     -readability-magic-numbers \
-    -readability-use-anyofallof \
 
 .PHONY: all build tidy clean
 

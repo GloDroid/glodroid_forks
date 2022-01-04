@@ -78,6 +78,7 @@ static uint32_t get_fourcc_yuv(uint32_t native, enum chroma_order chroma_order,
 }
 
 static bool is_yuv(uint32_t native) {
+  // NOLINTNEXTLINE(readability-use-anyofallof)
   for (auto droid_yuv_format : kDroidYuvFormats)
     if (droid_yuv_format.native == native)
       return true;
