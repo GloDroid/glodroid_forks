@@ -328,8 +328,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::ChosePreferredConfig() {
 }
 
 HWC2::Error DrmHwcTwo::HwcDisplay::AcceptDisplayChanges() {
-  for (std::pair<const hwc2_layer_t, DrmHwcTwo::HwcLayer> &l : layers_)
-    l.second.accept_type_change();
+  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_)
+    l.second.AcceptTypeChange();
   return HWC2::Error::None;
 }
 
@@ -360,12 +360,12 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetActiveConfig(
 HWC2::Error DrmHwcTwo::HwcDisplay::GetChangedCompositionTypes(
     uint32_t *num_elements, hwc2_layer_t *layers, int32_t *types) {
   uint32_t num_changes = 0;
-  for (std::pair<const hwc2_layer_t, DrmHwcTwo::HwcLayer> &l : layers_) {
-    if (l.second.type_changed()) {
+  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
+    if (l.second.IsTypeChanged()) {
       if (layers && num_changes < *num_elements)
         layers[num_changes] = l.first;
       if (types && num_changes < *num_elements)
-        types[num_changes] = static_cast<int32_t>(l.second.validated_type());
+        types[num_changes] = static_cast<int32_t>(l.second.GetValidatedType());
       ++num_changes;
     }
   }
@@ -669,7 +669,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetReleaseFences(uint32_t *num_elements,
                                                     int32_t *fences) {
   uint32_t num_layers = 0;
 
-  for (std::pair<const hwc2_layer_t, DrmHwcTwo::HwcLayer> &l : layers_) {
+  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
     ++num_layers;
     if (layers == nullptr || fences == nullptr)
       continue;
@@ -680,7 +680,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::GetReleaseFences(uint32_t *num_elements,
     }
 
     layers[num_layers - 1] = l.first;
-    fences[num_layers - 1] = l.second.release_fence_.Release();
+    fences[num_layers - 1] = l.second.GetReleaseFence().Release();
   }
   *num_elements = num_layers;
   return HWC2::Error::None;
@@ -690,16 +690,16 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   // order the layers by z-order
   bool use_client_layer = false;
   uint32_t client_z_order = UINT32_MAX;
-  std::map<uint32_t, DrmHwcTwo::HwcLayer *> z_map;
-  for (std::pair<const hwc2_layer_t, DrmHwcTwo::HwcLayer> &l : layers_) {
-    switch (l.second.validated_type()) {
+  std::map<uint32_t, HwcLayer *> z_map;
+  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
+    switch (l.second.GetValidatedType()) {
       case HWC2::Composition::Device:
-        z_map.emplace(std::make_pair(l.second.z_order(), &l.second));
+        z_map.emplace(std::make_pair(l.second.GetZOrder(), &l.second));
         break;
       case HWC2::Composition::Client:
         // Place it at the z_order of the lowest client layer
         use_client_layer = true;
-        client_z_order = std::min(client_z_order, l.second.z_order());
+        client_z_order = std::min(client_z_order, l.second.GetZOrder());
         break;
       default:
         continue;
@@ -714,7 +714,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   std::vector<DrmHwcLayer> composition_layers;
 
   // now that they're ordered by z, add them to the composition
-  for (std::pair<const uint32_t, DrmHwcTwo::HwcLayer *> &l : z_map) {
+  for (std::pair<const uint32_t, HwcLayer *> &l : z_map) {
     DrmHwcLayer layer;
     l.second->PopulateDrmLayer(&layer);
     int ret = layer.ImportBuffer(drm_);
@@ -821,9 +821,17 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetClientTarget(buffer_handle_t target,
                                                    int32_t acquire_fence,
                                                    int32_t dataspace,
                                                    hwc_region_t /*damage*/) {
-  client_layer_.set_buffer(target);
-  client_layer_.acquire_fence_ = UniqueFd(acquire_fence);
+  client_layer_.SetLayerBuffer(target, acquire_fence);
   client_layer_.SetLayerDataspace(dataspace);
+
+  /*
+   * target can be nullptr, this does mean the Composer Service is calling
+   * cleanDisplayResources() on after receiving HOTPLUG event. See more at:
+   * https://cs.android.com/android/platform/superproject/+/master:hardware/interfaces/graphics/composer/2.1/utils/hal/include/composer-hal/2.1/ComposerClient.h;l=350;drc=944b68180b008456ed2eb4d4d329e33b19bd5166
+   */
+  if (target == nullptr) {
+    return HWC2::Error::None;
+  }
 
   /* TODO: Do not update source_crop every call.
    * It makes sense to do it once after every hotplug event. */
@@ -915,9 +923,8 @@ HWC2::Error DrmHwcTwo::HwcDisplay::ValidateDisplay(uint32_t *num_types,
   return backend_->ValidateDisplay(this, num_types, num_requests);
 }
 
-std::vector<DrmHwcTwo::HwcLayer *>
-DrmHwcTwo::HwcDisplay::GetOrderLayersByZPos() {
-  std::vector<DrmHwcTwo::HwcLayer *> ordered_layers;
+std::vector<HwcLayer *> DrmHwcTwo::HwcDisplay::GetOrderLayersByZPos() {
+  std::vector<HwcLayer *> ordered_layers;
   ordered_layers.reserve(layers_.size());
 
   for (auto &[handle, layer] : layers_) {
@@ -925,8 +932,8 @@ DrmHwcTwo::HwcDisplay::GetOrderLayersByZPos() {
   }
 
   std::sort(std::begin(ordered_layers), std::end(ordered_layers),
-            [](const DrmHwcTwo::HwcLayer *lhs, const DrmHwcTwo::HwcLayer *rhs) {
-              return lhs->z_order() < rhs->z_order();
+            [](const HwcLayer *lhs, const HwcLayer *rhs) {
+              return lhs->GetZOrder() < rhs->GetZOrder();
             });
 
   return ordered_layers;
@@ -1076,158 +1083,6 @@ const Backend *DrmHwcTwo::HwcDisplay::backend() const {
 
 void DrmHwcTwo::HwcDisplay::set_backend(std::unique_ptr<Backend> backend) {
   backend_ = std::move(backend);
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetCursorPosition(int32_t /*x*/,
-                                                   int32_t /*y*/) {
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerBlendMode(int32_t mode) {
-  switch (static_cast<HWC2::BlendMode>(mode)) {
-    case HWC2::BlendMode::None:
-      blending_ = DrmHwcBlending::kNone;
-      break;
-    case HWC2::BlendMode::Premultiplied:
-      blending_ = DrmHwcBlending::kPreMult;
-      break;
-    case HWC2::BlendMode::Coverage:
-      blending_ = DrmHwcBlending::kCoverage;
-      break;
-    default:
-      ALOGE("Unknown blending mode b=%d", blending_);
-      blending_ = DrmHwcBlending::kNone;
-      break;
-  }
-  return HWC2::Error::None;
-}
-
-/* Find API details at:
- * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=2314
- */
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerBuffer(buffer_handle_t buffer,
-                                                int32_t acquire_fence) {
-  set_buffer(buffer);
-  acquire_fence_ = UniqueFd(acquire_fence);
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerColor(hwc_color_t /*color*/) {
-  // TODO(nobody): Put to client composition here?
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerCompositionType(int32_t type) {
-  sf_type_ = static_cast<HWC2::Composition>(type);
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerDataspace(int32_t dataspace) {
-  switch (dataspace & HAL_DATASPACE_STANDARD_MASK) {
-    case HAL_DATASPACE_STANDARD_BT709:
-      color_space_ = DrmHwcColorSpace::kItuRec709;
-      break;
-    case HAL_DATASPACE_STANDARD_BT601_625:
-    case HAL_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
-    case HAL_DATASPACE_STANDARD_BT601_525:
-    case HAL_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
-      color_space_ = DrmHwcColorSpace::kItuRec601;
-      break;
-    case HAL_DATASPACE_STANDARD_BT2020:
-    case HAL_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
-      color_space_ = DrmHwcColorSpace::kItuRec2020;
-      break;
-    default:
-      color_space_ = DrmHwcColorSpace::kUndefined;
-  }
-
-  switch (dataspace & HAL_DATASPACE_RANGE_MASK) {
-    case HAL_DATASPACE_RANGE_FULL:
-      sample_range_ = DrmHwcSampleRange::kFullRange;
-      break;
-    case HAL_DATASPACE_RANGE_LIMITED:
-      sample_range_ = DrmHwcSampleRange::kLimitedRange;
-      break;
-    default:
-      sample_range_ = DrmHwcSampleRange::kUndefined;
-  }
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerDisplayFrame(hwc_rect_t frame) {
-  display_frame_ = frame;
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerPlaneAlpha(float alpha) {
-  alpha_ = alpha;
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerSidebandStream(
-    const native_handle_t * /*stream*/) {
-  // TODO(nobody): We don't support sideband
-  return HWC2::Error::Unsupported;
-  ;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerSourceCrop(hwc_frect_t crop) {
-  source_crop_ = crop;
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerSurfaceDamage(
-    hwc_region_t /*damage*/) {
-  // TODO(nobody): We don't use surface damage, marking as unsupported
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerTransform(int32_t transform) {
-  uint32_t l_transform = 0;
-
-  // 270* and 180* cannot be combined with flips. More specifically, they
-  // already contain both horizontal and vertical flips, so those fields are
-  // redundant in this case. 90* rotation can be combined with either horizontal
-  // flip or vertical flip, so treat it differently
-  if (transform == HWC_TRANSFORM_ROT_270) {
-    l_transform = DrmHwcTransform::kRotate270;
-  } else if (transform == HWC_TRANSFORM_ROT_180) {
-    l_transform = DrmHwcTransform::kRotate180;
-  } else {
-    if (transform & HWC_TRANSFORM_FLIP_H)
-      l_transform |= DrmHwcTransform::kFlipH;
-    if (transform & HWC_TRANSFORM_FLIP_V)
-      l_transform |= DrmHwcTransform::kFlipV;
-    if (transform & HWC_TRANSFORM_ROT_90)
-      l_transform |= DrmHwcTransform::kRotate90;
-  }
-
-  transform_ = static_cast<DrmHwcTransform>(l_transform);
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerVisibleRegion(
-    hwc_region_t /*visible*/) {
-  // TODO(nobody): We don't use this information, marking as unsupported
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::HwcLayer::SetLayerZOrder(uint32_t order) {
-  z_order_ = order;
-  return HWC2::Error::None;
-}
-
-void DrmHwcTwo::HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
-  layer->sf_handle = buffer_;
-  // TODO(rsglobal): Avoid extra fd duplication
-  layer->acquire_fence = UniqueFd(fcntl(acquire_fence_.Get(), F_DUPFD_CLOEXEC));
-  layer->display_frame = display_frame_;
-  layer->alpha = std::lround(65535.0F * alpha_);
-  layer->blending = blending_;
-  layer->source_crop = source_crop_;
-  layer->transform = transform_;
-  layer->color_space = color_space_;
-  layer->sample_range = sample_range_;
 }
 
 void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {

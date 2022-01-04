@@ -23,8 +23,7 @@ namespace android {
 
 class BackendRCarDu : public Backend {
  public:
-  bool IsClientLayer(DrmHwcTwo::HwcDisplay *display,
-                     DrmHwcTwo::HwcLayer *layer) override;
+  bool IsClientLayer(DrmHwcTwo::HwcDisplay *display, HwcLayer *layer) override;
 };
 }  // namespace android
 

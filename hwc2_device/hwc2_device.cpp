@@ -63,7 +63,7 @@ static int32_t LayerHook(hwc2_device_t *dev, hwc2_display_t display_handle,
   if (!display)
     return static_cast<int32_t>(HWC2::Error::BadDisplay);
 
-  DrmHwcTwo::HwcLayer *layer = display->get_layer(layer_handle);
+  HwcLayer *layer = display->get_layer(layer_handle);
   if (!layer)
     return static_cast<int32_t>(HWC2::Error::BadLayer);
 
@@ -292,62 +292,61 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
     // Layer functions
     case HWC2::FunctionDescriptor::SetCursorPosition:
       return ToHook<HWC2_PFN_SET_CURSOR_POSITION>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetCursorPosition),
-                    &DrmHwcTwo::HwcLayer::SetCursorPosition, int32_t, int32_t>);
+          LayerHook<decltype(&HwcLayer::SetCursorPosition),
+                    &HwcLayer::SetCursorPosition, int32_t, int32_t>);
     case HWC2::FunctionDescriptor::SetLayerBlendMode:
       return ToHook<HWC2_PFN_SET_LAYER_BLEND_MODE>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerBlendMode),
-                    &DrmHwcTwo::HwcLayer::SetLayerBlendMode, int32_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerBlendMode),
+                    &HwcLayer::SetLayerBlendMode, int32_t>);
     case HWC2::FunctionDescriptor::SetLayerBuffer:
       return ToHook<HWC2_PFN_SET_LAYER_BUFFER>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerBuffer),
-                    &DrmHwcTwo::HwcLayer::SetLayerBuffer, buffer_handle_t,
-                    int32_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerBuffer),
+                    &HwcLayer::SetLayerBuffer, buffer_handle_t, int32_t>);
     case HWC2::FunctionDescriptor::SetLayerColor:
       return ToHook<HWC2_PFN_SET_LAYER_COLOR>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerColor),
-                    &DrmHwcTwo::HwcLayer::SetLayerColor, hwc_color_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerColor),
+                    &HwcLayer::SetLayerColor, hwc_color_t>);
     case HWC2::FunctionDescriptor::SetLayerCompositionType:
       return ToHook<HWC2_PFN_SET_LAYER_COMPOSITION_TYPE>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerCompositionType),
-                    &DrmHwcTwo::HwcLayer::SetLayerCompositionType, int32_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerCompositionType),
+                    &HwcLayer::SetLayerCompositionType, int32_t>);
     case HWC2::FunctionDescriptor::SetLayerDataspace:
       return ToHook<HWC2_PFN_SET_LAYER_DATASPACE>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerDataspace),
-                    &DrmHwcTwo::HwcLayer::SetLayerDataspace, int32_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerDataspace),
+                    &HwcLayer::SetLayerDataspace, int32_t>);
     case HWC2::FunctionDescriptor::SetLayerDisplayFrame:
       return ToHook<HWC2_PFN_SET_LAYER_DISPLAY_FRAME>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerDisplayFrame),
-                    &DrmHwcTwo::HwcLayer::SetLayerDisplayFrame, hwc_rect_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerDisplayFrame),
+                    &HwcLayer::SetLayerDisplayFrame, hwc_rect_t>);
     case HWC2::FunctionDescriptor::SetLayerPlaneAlpha:
       return ToHook<HWC2_PFN_SET_LAYER_PLANE_ALPHA>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerPlaneAlpha),
-                    &DrmHwcTwo::HwcLayer::SetLayerPlaneAlpha, float>);
+          LayerHook<decltype(&HwcLayer::SetLayerPlaneAlpha),
+                    &HwcLayer::SetLayerPlaneAlpha, float>);
     case HWC2::FunctionDescriptor::SetLayerSidebandStream:
       return ToHook<HWC2_PFN_SET_LAYER_SIDEBAND_STREAM>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerSidebandStream),
-                    &DrmHwcTwo::HwcLayer::SetLayerSidebandStream,
+          LayerHook<decltype(&HwcLayer::SetLayerSidebandStream),
+                    &HwcLayer::SetLayerSidebandStream,
                     const native_handle_t *>);
     case HWC2::FunctionDescriptor::SetLayerSourceCrop:
       return ToHook<HWC2_PFN_SET_LAYER_SOURCE_CROP>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerSourceCrop),
-                    &DrmHwcTwo::HwcLayer::SetLayerSourceCrop, hwc_frect_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerSourceCrop),
+                    &HwcLayer::SetLayerSourceCrop, hwc_frect_t>);
     case HWC2::FunctionDescriptor::SetLayerSurfaceDamage:
       return ToHook<HWC2_PFN_SET_LAYER_SURFACE_DAMAGE>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerSurfaceDamage),
-                    &DrmHwcTwo::HwcLayer::SetLayerSurfaceDamage, hwc_region_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerSurfaceDamage),
+                    &HwcLayer::SetLayerSurfaceDamage, hwc_region_t>);
     case HWC2::FunctionDescriptor::SetLayerTransform:
       return ToHook<HWC2_PFN_SET_LAYER_TRANSFORM>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerTransform),
-                    &DrmHwcTwo::HwcLayer::SetLayerTransform, int32_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerTransform),
+                    &HwcLayer::SetLayerTransform, int32_t>);
     case HWC2::FunctionDescriptor::SetLayerVisibleRegion:
       return ToHook<HWC2_PFN_SET_LAYER_VISIBLE_REGION>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerVisibleRegion),
-                    &DrmHwcTwo::HwcLayer::SetLayerVisibleRegion, hwc_region_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerVisibleRegion),
+                    &HwcLayer::SetLayerVisibleRegion, hwc_region_t>);
     case HWC2::FunctionDescriptor::SetLayerZOrder:
       return ToHook<HWC2_PFN_SET_LAYER_Z_ORDER>(
-          LayerHook<decltype(&DrmHwcTwo::HwcLayer::SetLayerZOrder),
-                    &DrmHwcTwo::HwcLayer::SetLayerZOrder, uint32_t>);
+          LayerHook<decltype(&HwcLayer::SetLayerZOrder),
+                    &HwcLayer::SetLayerZOrder, uint32_t>);
     case HWC2::FunctionDescriptor::Invalid:
     default:
       return nullptr;

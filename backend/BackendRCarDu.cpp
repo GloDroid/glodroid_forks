@@ -23,10 +23,10 @@
 namespace android {
 
 bool BackendRCarDu::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
-                                  DrmHwcTwo::HwcLayer *layer) {
+                                  HwcLayer *layer) {
   hwc_drm_bo_t bo;
 
-  int ret = BufferInfoGetter::GetInstance()->ConvertBoInfo(layer->buffer(),
+  int ret = BufferInfoGetter::GetInstance()->ConvertBoInfo(layer->GetBuffer(),
                                                            &bo);
   if (ret != 0)
     return true;

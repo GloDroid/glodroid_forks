@@ -110,6 +110,7 @@ filegroup {
         "backend/BackendManager.cpp",
         "backend/BackendRCarDu.cpp",
 
+        "hwc2_device/HwcLayer.cpp",
         "hwc2_device/hwc2_device.cpp",
     ],
 }

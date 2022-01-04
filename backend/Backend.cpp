@@ -67,8 +67,7 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
 }
 
 std::tuple<int, size_t> Backend::GetClientLayers(
-    DrmHwcTwo::HwcDisplay *display,
-    const std::vector<DrmHwcTwo::HwcLayer *> &layers) {
+    DrmHwcTwo::HwcDisplay *display, const std::vector<HwcLayer *> &layers) {
   int client_start = -1;
   size_t client_size = 0;
 
@@ -83,10 +82,9 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   return GetExtraClientRange(display, layers, client_start, client_size);
 }
 
-bool Backend::IsClientLayer(DrmHwcTwo::HwcDisplay *display,
-                            DrmHwcTwo::HwcLayer *layer) {
-  return !HardwareSupportsLayerType(layer->sf_type()) ||
-         !BufferInfoGetter::GetInstance()->IsHandleUsable(layer->buffer()) ||
+bool Backend::IsClientLayer(DrmHwcTwo::HwcDisplay *display, HwcLayer *layer) {
+  return !HardwareSupportsLayerType(layer->GetSfType()) ||
+         !BufferInfoGetter::GetInstance()->IsHandleUsable(layer->GetBuffer()) ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->RequireScalingOrPhasing() &&
           display->resource_manager()->ForcedScalingWithGpu());
@@ -97,32 +95,31 @@ bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
          comp_type == HWC2::Composition::Cursor;
 }
 
-uint32_t Backend::CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
+uint32_t Backend::CalcPixOps(const std::vector<HwcLayer *> &layers,
                              size_t first_z, size_t size) {
   uint32_t pixops = 0;
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (z_order >= first_z && z_order < first_z + size) {
-      hwc_rect_t df = layers[z_order]->display_frame();
+      hwc_rect_t df = layers[z_order]->GetDisplayFrame();
       pixops += (df.right - df.left) * (df.bottom - df.top);
     }
   }
   return pixops;
 }
 
-void Backend::MarkValidated(std::vector<DrmHwcTwo::HwcLayer *> &layers,
+void Backend::MarkValidated(std::vector<HwcLayer *> &layers,
                             size_t client_first_z, size_t client_size) {
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (z_order >= client_first_z && z_order < client_first_z + client_size)
-      layers[z_order]->set_validated_type(HWC2::Composition::Client);
+      layers[z_order]->SetValidatedType(HWC2::Composition::Client);
     else
-      layers[z_order]->set_validated_type(HWC2::Composition::Device);
+      layers[z_order]->SetValidatedType(HWC2::Composition::Device);
   }
 }
 
 std::tuple<int, int> Backend::GetExtraClientRange(
-    DrmHwcTwo::HwcDisplay *display,
-    const std::vector<DrmHwcTwo::HwcLayer *> &layers, int client_start,
-    size_t client_size) {
+    DrmHwcTwo::HwcDisplay *display, const std::vector<HwcLayer *> &layers,
+    int client_start, size_t client_size) {
   size_t avail_planes = display->primary_planes().size() +
                         display->overlay_planes().size();
 

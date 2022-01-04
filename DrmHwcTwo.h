@@ -28,6 +28,7 @@
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "drmhwcomposer.h"
+#include "hwc2_device/HwcLayer.h"
 
 namespace android {
 
@@ -48,97 +49,6 @@ class DrmHwcTwo {
 
   std::mutex callback_lock_;
 
-  class HwcLayer {
-   public:
-    HWC2::Composition sf_type() const {
-      return sf_type_;
-    }
-    HWC2::Composition validated_type() const {
-      return validated_type_;
-    }
-    void accept_type_change() {
-      sf_type_ = validated_type_;
-    }
-    void set_validated_type(HWC2::Composition type) {
-      validated_type_ = type;
-    }
-    bool type_changed() const {
-      return sf_type_ != validated_type_;
-    }
-
-    uint32_t z_order() const {
-      return z_order_;
-    }
-
-    buffer_handle_t buffer() {
-      return buffer_;
-    }
-    void set_buffer(buffer_handle_t buffer) {
-      buffer_ = buffer;
-    }
-
-    hwc_rect_t display_frame() {
-      return display_frame_;
-    }
-
-    void PopulateDrmLayer(DrmHwcLayer *layer);
-
-    bool RequireScalingOrPhasing() const {
-      float src_width = source_crop_.right - source_crop_.left;
-      float src_height = source_crop_.bottom - source_crop_.top;
-
-      auto dest_width = float(display_frame_.right - display_frame_.left);
-      auto dest_height = float(display_frame_.bottom - display_frame_.top);
-
-      bool scaling = src_width != dest_width || src_height != dest_height;
-      bool phasing = (source_crop_.left - std::floor(source_crop_.left) != 0) ||
-                     (source_crop_.top - std::floor(source_crop_.top) != 0);
-      return scaling || phasing;
-    }
-
-    // Layer hooks
-    HWC2::Error SetCursorPosition(int32_t /*x*/, int32_t /*y*/);
-    HWC2::Error SetLayerBlendMode(int32_t mode);
-    HWC2::Error SetLayerBuffer(buffer_handle_t buffer, int32_t acquire_fence);
-    HWC2::Error SetLayerColor(hwc_color_t /*color*/);
-    HWC2::Error SetLayerCompositionType(int32_t type);
-    HWC2::Error SetLayerDataspace(int32_t dataspace);
-    HWC2::Error SetLayerDisplayFrame(hwc_rect_t frame);
-    HWC2::Error SetLayerPlaneAlpha(float alpha);
-    HWC2::Error SetLayerSidebandStream(const native_handle_t *stream);
-    HWC2::Error SetLayerSourceCrop(hwc_frect_t crop);
-    HWC2::Error SetLayerSurfaceDamage(hwc_region_t damage);
-    HWC2::Error SetLayerTransform(int32_t transform);
-    HWC2::Error SetLayerVisibleRegion(hwc_region_t visible);
-    HWC2::Error SetLayerZOrder(uint32_t order);
-
-    UniqueFd acquire_fence_;
-
-    /*
-     * Release fence is not used.
-     * There is no release fence support available in the DRM/KMS. In case no
-     * release fence provided application will use this buffer for writing when
-     * the next frame present fence is signaled.
-     */
-    UniqueFd release_fence_;
-
-   private:
-    // sf_type_ stores the initial type given to us by surfaceflinger,
-    // validated_type_ stores the type after running ValidateDisplay
-    HWC2::Composition sf_type_ = HWC2::Composition::Invalid;
-    HWC2::Composition validated_type_ = HWC2::Composition::Invalid;
-
-    buffer_handle_t buffer_ = nullptr;
-    hwc_rect_t display_frame_;
-    float alpha_ = 1.0F;
-    hwc_frect_t source_crop_;
-    DrmHwcTransform transform_ = DrmHwcTransform::kIdentity;
-    uint32_t z_order_ = 0;
-    DrmHwcBlending blending_ = DrmHwcBlending::kNone;
-    DrmHwcColorSpace color_space_ = DrmHwcColorSpace::kUndefined;
-    DrmHwcSampleRange sample_range_ = DrmHwcSampleRange::kUndefined;
-  };
-
   class HwcDisplay {
    public:
     HwcDisplay(ResourceManager *resource_manager, DrmDevice *drm,
@@ -147,7 +57,7 @@ class DrmHwcTwo {
     HWC2::Error Init(std::vector<DrmPlane *> *planes);
 
     HWC2::Error CreateComposition(AtomicCommitArgs &a_args);
-    std::vector<DrmHwcTwo::HwcLayer *> GetOrderLayersByZPos();
+    std::vector<HwcLayer *> GetOrderLayersByZPos();
 
     void ClearDisplay();
 

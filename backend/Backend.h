@@ -28,21 +28,18 @@ class Backend {
                                       uint32_t *num_types,
                                       uint32_t *num_requests);
   virtual std::tuple<int, size_t> GetClientLayers(
-      DrmHwcTwo::HwcDisplay *display,
-      const std::vector<DrmHwcTwo::HwcLayer *> &layers);
-  virtual bool IsClientLayer(DrmHwcTwo::HwcDisplay *display,
-                             DrmHwcTwo::HwcLayer *layer);
+      DrmHwcTwo::HwcDisplay *display, const std::vector<HwcLayer *> &layers);
+  virtual bool IsClientLayer(DrmHwcTwo::HwcDisplay *display, HwcLayer *layer);
 
  protected:
   static bool HardwareSupportsLayerType(HWC2::Composition comp_type);
-  static uint32_t CalcPixOps(const std::vector<DrmHwcTwo::HwcLayer *> &layers,
+  static uint32_t CalcPixOps(const std::vector<HwcLayer *> &layers,
                              size_t first_z, size_t size);
-  static void MarkValidated(std::vector<DrmHwcTwo::HwcLayer *> &layers,
+  static void MarkValidated(std::vector<HwcLayer *> &layers,
                             size_t client_first_z, size_t client_size);
   static std::tuple<int, int> GetExtraClientRange(
-      DrmHwcTwo::HwcDisplay *display,
-      const std::vector<DrmHwcTwo::HwcLayer *> &layers, int client_start,
-      size_t client_size);
+      DrmHwcTwo::HwcDisplay *display, const std::vector<HwcLayer *> &layers,
+      int client_start, size_t client_size);
 };
 }  // namespace android
 
