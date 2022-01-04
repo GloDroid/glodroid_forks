@@ -21,6 +21,7 @@
 
 #include <optional>
 
+#include "HwcDisplayConfigs.h"
 #include "compositor/DrmDisplayCompositor.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
@@ -138,22 +139,6 @@ class HwcDisplay {
     uint32_t frames_flattened_ = 0;
   };
 
-  struct HwcDisplayConfig {
-    int id{};
-    int group_id{};
-    DrmMode mode;
-    bool disabled{};
-
-    bool IsInterlaced() const {
-      return (mode.flags() & DRM_MODE_FLAG_INTERLACE) != 0;
-    }
-  };
-
-  std::map<int /*config_id*/, struct HwcDisplayConfig> hwc_configs_;
-
-  int active_config_id_ = 0;
-  int preferred_config_id_ = 0;
-
   const Backend *backend() const;
   void set_backend(std::unique_ptr<Backend> backend);
 
@@ -228,6 +213,8 @@ class HwcDisplay {
   VSyncWorker flattening_vsync_worker_;
 
   constexpr static size_t MATRIX_SIZE = 16;
+
+  HwcDisplayConfigs configs_;
 
   DrmHwcTwo *hwc2_;
 

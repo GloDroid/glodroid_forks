@@ -110,6 +110,7 @@ filegroup {
 
         "hwc2_device/DrmHwcTwo.cpp",
         "hwc2_device/HwcDisplay.cpp",
+        "hwc2_device/HwcDisplayConfigs.cpp",
         "hwc2_device/HwcLayer.cpp",
         "hwc2_device/hwc2_device.cpp",
     ],
