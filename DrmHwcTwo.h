@@ -33,11 +33,8 @@ namespace android {
 
 class Backend;
 
-class DrmHwcTwo : public hwc2_device_t {
+class DrmHwcTwo {
  public:
-  static int HookDevOpen(const struct hw_module_t *module, const char *name,
-                         struct hw_device_t **dev);
-
   DrmHwcTwo();
 
   HWC2::Error Init();
@@ -372,23 +369,6 @@ class DrmHwcTwo : public hwc2_device_t {
     std::string DumpDelta(DrmHwcTwo::HwcDisplay::Stats delta);
   };
 
- private:
-  static DrmHwcTwo *toDrmHwcTwo(hwc2_device_t *dev) {
-    return static_cast<DrmHwcTwo *>(dev);
-  }
-
-  template <typename PFN, typename T>
-  static hwc2_function_pointer_t ToHook(T function) {
-    static_assert(std::is_same<PFN, T>::value, "Incompatible fn pointer");
-    return reinterpret_cast<hwc2_function_pointer_t>(function);
-  }
-
-  template <typename T, typename HookType, HookType func, typename... Args>
-  static T DeviceHook(hwc2_device_t *dev, Args... args) {
-    DrmHwcTwo *hwc = toDrmHwcTwo(dev);
-    return static_cast<T>(((*hwc).*func)(std::forward<Args>(args)...));
-  }
-
   static HwcDisplay *GetDisplay(DrmHwcTwo *hwc, hwc2_display_t display_handle) {
     auto it = hwc->displays_.find(display_handle);
     if (it == hwc->displays_.end())
@@ -396,37 +376,6 @@ class DrmHwcTwo : public hwc2_device_t {
 
     return &it->second;
   }
-
-  template <typename HookType, HookType func, typename... Args>
-  static int32_t DisplayHook(hwc2_device_t *dev, hwc2_display_t display_handle,
-                             Args... args) {
-    HwcDisplay *display = GetDisplay(toDrmHwcTwo(dev), display_handle);
-    if (!display)
-      return static_cast<int32_t>(HWC2::Error::BadDisplay);
-
-    return static_cast<int32_t>((display->*func)(std::forward<Args>(args)...));
-  }
-
-  template <typename HookType, HookType func, typename... Args>
-  static int32_t LayerHook(hwc2_device_t *dev, hwc2_display_t display_handle,
-                           hwc2_layer_t layer_handle, Args... args) {
-    HwcDisplay *display = GetDisplay(toDrmHwcTwo(dev), display_handle);
-    if (!display)
-      return static_cast<int32_t>(HWC2::Error::BadDisplay);
-
-    HwcLayer *layer = display->get_layer(layer_handle);
-    if (!layer)
-      return static_cast<int32_t>(HWC2::Error::BadLayer);
-
-    return static_cast<int32_t>((layer->*func)(std::forward<Args>(args)...));
-  }
-
-  // hwc2_device_t hooks
-  static int HookDevClose(hw_device_t *dev);
-  static void HookDevGetCapabilities(hwc2_device_t *dev, uint32_t *out_count,
-                                     int32_t *out_capabilities);
-  static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device *device,
-                                                    int32_t descriptor);
 
   // Device functions
   HWC2::Error CreateVirtualDisplay(uint32_t width, uint32_t height,
@@ -437,6 +386,8 @@ class DrmHwcTwo : public hwc2_device_t {
   HWC2::Error RegisterCallback(int32_t descriptor, hwc2_callback_data_t data,
                                hwc2_function_pointer_t function);
   HWC2::Error CreateDisplay(hwc2_display_t displ, HWC2::DisplayType type);
+
+ private:
   void HandleDisplayHotplug(hwc2_display_t displayid, int state);
   void HandleInitialHotplugState(DrmDevice *drmDevice);
 
