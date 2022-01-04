@@ -37,6 +37,8 @@ TIDY_FILES_OVERRIDE := \
     drm/DrmProperty.cpp:COARSE                          \
     drm/UEventListener.cpp:COARSE                       \
     drm/VSyncWorker.cpp:COARSE                          \
+    hwc2_device/DrmHwcTwo.cpp:COARSE                    \
+    hwc2_device/DrmHwcTwo.h:COARSE                      \
     hwc2_device/HwcDisplay.cpp:COARSE                   \
     hwc2_device/HwcDisplay.h:COARSE                     \
     tests/worker_test.cpp:COARSE                        \
@@ -44,8 +46,6 @@ TIDY_FILES_OVERRIDE := \
     utils/UniqueFd.h:FINE                               \
     utils/log.h:FINE                                    \
     utils/properties.h:FINE                             \
-    DrmHwcTwo.cpp:COARSE                                \
-    DrmHwcTwo.h:COARSE                                  \
 
 TIDY_CHECKS_FINE := *                                   \
     -llvmlibc* -fuchsia-* -altera-*                     \

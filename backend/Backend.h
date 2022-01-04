@@ -17,7 +17,7 @@
 #ifndef ANDROID_BACKEND_H
 #define ANDROID_BACKEND_H
 
-#include "DrmHwcTwo.h"
+#include "hwc2_device/DrmHwcTwo.h"
 
 namespace android {
 
