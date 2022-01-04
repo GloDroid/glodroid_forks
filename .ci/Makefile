@@ -37,6 +37,8 @@ TIDY_FILES_OVERRIDE := \
     drm/DrmProperty.cpp:COARSE                          \
     drm/UEventListener.cpp:COARSE                       \
     drm/VSyncWorker.cpp:COARSE                          \
+    hwc2_device/HwcDisplay.cpp:COARSE                   \
+    hwc2_device/HwcDisplay.h:COARSE                     \
     tests/worker_test.cpp:COARSE                        \
     utils/Worker.h:COARSE                               \
     utils/UniqueFd.h:FINE                               \

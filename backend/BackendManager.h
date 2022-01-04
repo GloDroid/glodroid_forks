@@ -41,10 +41,10 @@ class BackendManager {
   static BackendManager &GetInstance();
   int RegisterBackend(const std::string &name,
                       BackendConstructorT backend_constructor);
-  int SetBackendForDisplay(DrmHwcTwo::HwcDisplay *display);
+  int SetBackendForDisplay(HwcDisplay *display);
   std::unique_ptr<Backend> GetBackendByName(std::string &name);
-  HWC2::Error ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
-                              uint32_t *num_types, uint32_t *num_requests);
+  HWC2::Error ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
+                              uint32_t *num_requests);
 
  private:
   BackendManager() = default;

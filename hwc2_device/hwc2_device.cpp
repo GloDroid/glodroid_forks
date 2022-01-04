@@ -47,8 +47,7 @@ static T DeviceHook(hwc2_device_t *dev, Args... args) {
 template <typename HookType, HookType func, typename... Args>
 static int32_t DisplayHook(hwc2_device_t *dev, hwc2_display_t display_handle,
                            Args... args) {
-  DrmHwcTwo::HwcDisplay *display = DrmHwcTwo::GetDisplay(ToDrmHwcTwo(dev),
-                                                         display_handle);
+  HwcDisplay *display = DrmHwcTwo::GetDisplay(ToDrmHwcTwo(dev), display_handle);
   if (!display)
     return static_cast<int32_t>(HWC2::Error::BadDisplay);
 
@@ -58,8 +57,7 @@ static int32_t DisplayHook(hwc2_device_t *dev, hwc2_display_t display_handle,
 template <typename HookType, HookType func, typename... Args>
 static int32_t LayerHook(hwc2_device_t *dev, hwc2_display_t display_handle,
                          hwc2_layer_t layer_handle, Args... args) {
-  DrmHwcTwo::HwcDisplay *display = DrmHwcTwo::GetDisplay(ToDrmHwcTwo(dev),
-                                                         display_handle);
+  HwcDisplay *display = DrmHwcTwo::GetDisplay(ToDrmHwcTwo(dev), display_handle);
   if (!display)
     return static_cast<int32_t>(HWC2::Error::BadDisplay);
 
@@ -113,181 +111,168 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
     // Display functions
     case HWC2::FunctionDescriptor::AcceptDisplayChanges:
       return ToHook<HWC2_PFN_ACCEPT_DISPLAY_CHANGES>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::AcceptDisplayChanges),
-                      &DrmHwcTwo::HwcDisplay::AcceptDisplayChanges>);
+          DisplayHook<decltype(&HwcDisplay::AcceptDisplayChanges),
+                      &HwcDisplay::AcceptDisplayChanges>);
     case HWC2::FunctionDescriptor::CreateLayer:
       return ToHook<HWC2_PFN_CREATE_LAYER>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::CreateLayer),
-                      &DrmHwcTwo::HwcDisplay::CreateLayer, hwc2_layer_t *>);
+          DisplayHook<decltype(&HwcDisplay::CreateLayer),
+                      &HwcDisplay::CreateLayer, hwc2_layer_t *>);
     case HWC2::FunctionDescriptor::DestroyLayer:
       return ToHook<HWC2_PFN_DESTROY_LAYER>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::DestroyLayer),
-                      &DrmHwcTwo::HwcDisplay::DestroyLayer, hwc2_layer_t>);
+          DisplayHook<decltype(&HwcDisplay::DestroyLayer),
+                      &HwcDisplay::DestroyLayer, hwc2_layer_t>);
     case HWC2::FunctionDescriptor::GetActiveConfig:
       return ToHook<HWC2_PFN_GET_ACTIVE_CONFIG>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetActiveConfig),
-                      &DrmHwcTwo::HwcDisplay::GetActiveConfig,
-                      hwc2_config_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetActiveConfig),
+                      &HwcDisplay::GetActiveConfig, hwc2_config_t *>);
     case HWC2::FunctionDescriptor::GetChangedCompositionTypes:
       return ToHook<HWC2_PFN_GET_CHANGED_COMPOSITION_TYPES>(
-          DisplayHook<
-              decltype(&DrmHwcTwo::HwcDisplay::GetChangedCompositionTypes),
-              &DrmHwcTwo::HwcDisplay::GetChangedCompositionTypes, uint32_t *,
-              hwc2_layer_t *, int32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetChangedCompositionTypes),
+                      &HwcDisplay::GetChangedCompositionTypes, uint32_t *,
+                      hwc2_layer_t *, int32_t *>);
     case HWC2::FunctionDescriptor::GetClientTargetSupport:
       return ToHook<HWC2_PFN_GET_CLIENT_TARGET_SUPPORT>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetClientTargetSupport),
-                      &DrmHwcTwo::HwcDisplay::GetClientTargetSupport, uint32_t,
-                      uint32_t, int32_t, int32_t>);
+          DisplayHook<decltype(&HwcDisplay::GetClientTargetSupport),
+                      &HwcDisplay::GetClientTargetSupport, uint32_t, uint32_t,
+                      int32_t, int32_t>);
     case HWC2::FunctionDescriptor::GetColorModes:
       return ToHook<HWC2_PFN_GET_COLOR_MODES>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetColorModes),
-                      &DrmHwcTwo::HwcDisplay::GetColorModes, uint32_t *,
-                      int32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetColorModes),
+                      &HwcDisplay::GetColorModes, uint32_t *, int32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayAttribute:
       return ToHook<HWC2_PFN_GET_DISPLAY_ATTRIBUTE>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetDisplayAttribute),
-                      &DrmHwcTwo::HwcDisplay::GetDisplayAttribute,
-                      hwc2_config_t, int32_t, int32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetDisplayAttribute),
+                      &HwcDisplay::GetDisplayAttribute, hwc2_config_t, int32_t,
+                      int32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayConfigs:
       return ToHook<HWC2_PFN_GET_DISPLAY_CONFIGS>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetDisplayConfigs),
-                      &DrmHwcTwo::HwcDisplay::GetDisplayConfigs, uint32_t *,
+          DisplayHook<decltype(&HwcDisplay::GetDisplayConfigs),
+                      &HwcDisplay::GetDisplayConfigs, uint32_t *,
                       hwc2_config_t *>);
     case HWC2::FunctionDescriptor::GetDisplayName:
       return ToHook<HWC2_PFN_GET_DISPLAY_NAME>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetDisplayName),
-                      &DrmHwcTwo::HwcDisplay::GetDisplayName, uint32_t *,
-                      char *>);
+          DisplayHook<decltype(&HwcDisplay::GetDisplayName),
+                      &HwcDisplay::GetDisplayName, uint32_t *, char *>);
     case HWC2::FunctionDescriptor::GetDisplayRequests:
       return ToHook<HWC2_PFN_GET_DISPLAY_REQUESTS>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetDisplayRequests),
-                      &DrmHwcTwo::HwcDisplay::GetDisplayRequests, int32_t *,
-                      uint32_t *, hwc2_layer_t *, int32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetDisplayRequests),
+                      &HwcDisplay::GetDisplayRequests, int32_t *, uint32_t *,
+                      hwc2_layer_t *, int32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayType:
       return ToHook<HWC2_PFN_GET_DISPLAY_TYPE>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetDisplayType),
-                      &DrmHwcTwo::HwcDisplay::GetDisplayType, int32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetDisplayType),
+                      &HwcDisplay::GetDisplayType, int32_t *>);
     case HWC2::FunctionDescriptor::GetDozeSupport:
       return ToHook<HWC2_PFN_GET_DOZE_SUPPORT>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetDozeSupport),
-                      &DrmHwcTwo::HwcDisplay::GetDozeSupport, int32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetDozeSupport),
+                      &HwcDisplay::GetDozeSupport, int32_t *>);
     case HWC2::FunctionDescriptor::GetHdrCapabilities:
       return ToHook<HWC2_PFN_GET_HDR_CAPABILITIES>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetHdrCapabilities),
-                      &DrmHwcTwo::HwcDisplay::GetHdrCapabilities, uint32_t *,
-                      int32_t *, float *, float *, float *>);
+          DisplayHook<decltype(&HwcDisplay::GetHdrCapabilities),
+                      &HwcDisplay::GetHdrCapabilities, uint32_t *, int32_t *,
+                      float *, float *, float *>);
     case HWC2::FunctionDescriptor::GetReleaseFences:
       return ToHook<HWC2_PFN_GET_RELEASE_FENCES>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetReleaseFences),
-                      &DrmHwcTwo::HwcDisplay::GetReleaseFences, uint32_t *,
-                      hwc2_layer_t *, int32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetReleaseFences),
+                      &HwcDisplay::GetReleaseFences, uint32_t *, hwc2_layer_t *,
+                      int32_t *>);
     case HWC2::FunctionDescriptor::PresentDisplay:
       return ToHook<HWC2_PFN_PRESENT_DISPLAY>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::PresentDisplay),
-                      &DrmHwcTwo::HwcDisplay::PresentDisplay, int32_t *>);
+          DisplayHook<decltype(&HwcDisplay::PresentDisplay),
+                      &HwcDisplay::PresentDisplay, int32_t *>);
     case HWC2::FunctionDescriptor::SetActiveConfig:
       return ToHook<HWC2_PFN_SET_ACTIVE_CONFIG>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetActiveConfig),
-                      &DrmHwcTwo::HwcDisplay::SetActiveConfig, hwc2_config_t>);
+          DisplayHook<decltype(&HwcDisplay::SetActiveConfig),
+                      &HwcDisplay::SetActiveConfig, hwc2_config_t>);
     case HWC2::FunctionDescriptor::SetClientTarget:
       return ToHook<HWC2_PFN_SET_CLIENT_TARGET>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetClientTarget),
-                      &DrmHwcTwo::HwcDisplay::SetClientTarget, buffer_handle_t,
-                      int32_t, int32_t, hwc_region_t>);
+          DisplayHook<decltype(&HwcDisplay::SetClientTarget),
+                      &HwcDisplay::SetClientTarget, buffer_handle_t, int32_t,
+                      int32_t, hwc_region_t>);
     case HWC2::FunctionDescriptor::SetColorMode:
       return ToHook<HWC2_PFN_SET_COLOR_MODE>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetColorMode),
-                      &DrmHwcTwo::HwcDisplay::SetColorMode, int32_t>);
+          DisplayHook<decltype(&HwcDisplay::SetColorMode),
+                      &HwcDisplay::SetColorMode, int32_t>);
     case HWC2::FunctionDescriptor::SetColorTransform:
       return ToHook<HWC2_PFN_SET_COLOR_TRANSFORM>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetColorTransform),
-                      &DrmHwcTwo::HwcDisplay::SetColorTransform, const float *,
-                      int32_t>);
+          DisplayHook<decltype(&HwcDisplay::SetColorTransform),
+                      &HwcDisplay::SetColorTransform, const float *, int32_t>);
     case HWC2::FunctionDescriptor::SetOutputBuffer:
       return ToHook<HWC2_PFN_SET_OUTPUT_BUFFER>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetOutputBuffer),
-                      &DrmHwcTwo::HwcDisplay::SetOutputBuffer, buffer_handle_t,
-                      int32_t>);
+          DisplayHook<decltype(&HwcDisplay::SetOutputBuffer),
+                      &HwcDisplay::SetOutputBuffer, buffer_handle_t, int32_t>);
     case HWC2::FunctionDescriptor::SetPowerMode:
       return ToHook<HWC2_PFN_SET_POWER_MODE>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetPowerMode),
-                      &DrmHwcTwo::HwcDisplay::SetPowerMode, int32_t>);
+          DisplayHook<decltype(&HwcDisplay::SetPowerMode),
+                      &HwcDisplay::SetPowerMode, int32_t>);
     case HWC2::FunctionDescriptor::SetVsyncEnabled:
       return ToHook<HWC2_PFN_SET_VSYNC_ENABLED>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetVsyncEnabled),
-                      &DrmHwcTwo::HwcDisplay::SetVsyncEnabled, int32_t>);
+          DisplayHook<decltype(&HwcDisplay::SetVsyncEnabled),
+                      &HwcDisplay::SetVsyncEnabled, int32_t>);
     case HWC2::FunctionDescriptor::ValidateDisplay:
       return ToHook<HWC2_PFN_VALIDATE_DISPLAY>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::ValidateDisplay),
-                      &DrmHwcTwo::HwcDisplay::ValidateDisplay, uint32_t *,
-                      uint32_t *>);
+          DisplayHook<decltype(&HwcDisplay::ValidateDisplay),
+                      &HwcDisplay::ValidateDisplay, uint32_t *, uint32_t *>);
 #if PLATFORM_SDK_VERSION > 27
     case HWC2::FunctionDescriptor::GetRenderIntents:
       return ToHook<HWC2_PFN_GET_RENDER_INTENTS>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetRenderIntents),
-                      &DrmHwcTwo::HwcDisplay::GetRenderIntents, int32_t,
-                      uint32_t *, int32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetRenderIntents),
+                      &HwcDisplay::GetRenderIntents, int32_t, uint32_t *,
+                      int32_t *>);
     case HWC2::FunctionDescriptor::SetColorModeWithRenderIntent:
       return ToHook<HWC2_PFN_SET_COLOR_MODE_WITH_RENDER_INTENT>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetColorModeWithIntent),
-                      &DrmHwcTwo::HwcDisplay::SetColorModeWithIntent, int32_t,
-                      int32_t>);
+          DisplayHook<decltype(&HwcDisplay::SetColorModeWithIntent),
+                      &HwcDisplay::SetColorModeWithIntent, int32_t, int32_t>);
 #endif
 #if PLATFORM_SDK_VERSION > 28
     case HWC2::FunctionDescriptor::GetDisplayIdentificationData:
       return ToHook<HWC2_PFN_GET_DISPLAY_IDENTIFICATION_DATA>(
-          DisplayHook<
-              decltype(&DrmHwcTwo::HwcDisplay::GetDisplayIdentificationData),
-              &DrmHwcTwo::HwcDisplay::GetDisplayIdentificationData, uint8_t *,
-              uint32_t *, uint8_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetDisplayIdentificationData),
+                      &HwcDisplay::GetDisplayIdentificationData, uint8_t *,
+                      uint32_t *, uint8_t *>);
     case HWC2::FunctionDescriptor::GetDisplayCapabilities:
       return ToHook<HWC2_PFN_GET_DISPLAY_CAPABILITIES>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetDisplayCapabilities),
-                      &DrmHwcTwo::HwcDisplay::GetDisplayCapabilities,
-                      uint32_t *, uint32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetDisplayCapabilities),
+                      &HwcDisplay::GetDisplayCapabilities, uint32_t *,
+                      uint32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayBrightnessSupport:
       return ToHook<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(
-          DisplayHook<
-              decltype(&DrmHwcTwo::HwcDisplay::GetDisplayBrightnessSupport),
-              &DrmHwcTwo::HwcDisplay::GetDisplayBrightnessSupport, bool *>);
+          DisplayHook<decltype(&HwcDisplay::GetDisplayBrightnessSupport),
+                      &HwcDisplay::GetDisplayBrightnessSupport, bool *>);
     case HWC2::FunctionDescriptor::SetDisplayBrightness:
       return ToHook<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetDisplayBrightness),
-                      &DrmHwcTwo::HwcDisplay::SetDisplayBrightness, float>);
+          DisplayHook<decltype(&HwcDisplay::SetDisplayBrightness),
+                      &HwcDisplay::SetDisplayBrightness, float>);
 #endif /* PLATFORM_SDK_VERSION > 28 */
 #if PLATFORM_SDK_VERSION > 29
     case HWC2::FunctionDescriptor::GetDisplayConnectionType:
       return ToHook<HWC2_PFN_GET_DISPLAY_CONNECTION_TYPE>(
-          DisplayHook<
-              decltype(&DrmHwcTwo::HwcDisplay::GetDisplayConnectionType),
-              &DrmHwcTwo::HwcDisplay::GetDisplayConnectionType, uint32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetDisplayConnectionType),
+                      &HwcDisplay::GetDisplayConnectionType, uint32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayVsyncPeriod:
       return ToHook<HWC2_PFN_GET_DISPLAY_VSYNC_PERIOD>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::GetDisplayVsyncPeriod),
-                      &DrmHwcTwo::HwcDisplay::GetDisplayVsyncPeriod,
+          DisplayHook<decltype(&HwcDisplay::GetDisplayVsyncPeriod),
+                      &HwcDisplay::GetDisplayVsyncPeriod,
                       hwc2_vsync_period_t *>);
     case HWC2::FunctionDescriptor::SetActiveConfigWithConstraints:
       return ToHook<HWC2_PFN_SET_ACTIVE_CONFIG_WITH_CONSTRAINTS>(
-          DisplayHook<
-              decltype(&DrmHwcTwo::HwcDisplay::SetActiveConfigWithConstraints),
-              &DrmHwcTwo::HwcDisplay::SetActiveConfigWithConstraints,
-              hwc2_config_t, hwc_vsync_period_change_constraints_t *,
-              hwc_vsync_period_change_timeline_t *>);
+          DisplayHook<decltype(&HwcDisplay::SetActiveConfigWithConstraints),
+                      &HwcDisplay::SetActiveConfigWithConstraints,
+                      hwc2_config_t, hwc_vsync_period_change_constraints_t *,
+                      hwc_vsync_period_change_timeline_t *>);
     case HWC2::FunctionDescriptor::SetAutoLowLatencyMode:
       return ToHook<HWC2_PFN_SET_AUTO_LOW_LATENCY_MODE>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetAutoLowLatencyMode),
-                      &DrmHwcTwo::HwcDisplay::SetAutoLowLatencyMode, bool>);
+          DisplayHook<decltype(&HwcDisplay::SetAutoLowLatencyMode),
+                      &HwcDisplay::SetAutoLowLatencyMode, bool>);
     case HWC2::FunctionDescriptor::GetSupportedContentTypes:
       return ToHook<HWC2_PFN_GET_SUPPORTED_CONTENT_TYPES>(
-          DisplayHook<
-              decltype(&DrmHwcTwo::HwcDisplay::GetSupportedContentTypes),
-              &DrmHwcTwo::HwcDisplay::GetSupportedContentTypes, uint32_t *,
-              uint32_t *>);
+          DisplayHook<decltype(&HwcDisplay::GetSupportedContentTypes),
+                      &HwcDisplay::GetSupportedContentTypes, uint32_t *,
+                      uint32_t *>);
     case HWC2::FunctionDescriptor::SetContentType:
       return ToHook<HWC2_PFN_SET_CONTENT_TYPE>(
-          DisplayHook<decltype(&DrmHwcTwo::HwcDisplay::SetContentType),
-                      &DrmHwcTwo::HwcDisplay::SetContentType, int32_t>);
+          DisplayHook<decltype(&HwcDisplay::SetContentType),
+                      &HwcDisplay::SetContentType, int32_t>);
 #endif
     // Layer functions
     case HWC2::FunctionDescriptor::SetCursorPosition:

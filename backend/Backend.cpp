@@ -23,8 +23,7 @@
 
 namespace android {
 
-HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
-                                     uint32_t *num_types,
+HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
                                      uint32_t *num_requests) {
   *num_types = 0;
   *num_requests = 0;
@@ -67,7 +66,7 @@ HWC2::Error Backend::ValidateDisplay(DrmHwcTwo::HwcDisplay *display,
 }
 
 std::tuple<int, size_t> Backend::GetClientLayers(
-    DrmHwcTwo::HwcDisplay *display, const std::vector<HwcLayer *> &layers) {
+    HwcDisplay *display, const std::vector<HwcLayer *> &layers) {
   int client_start = -1;
   size_t client_size = 0;
 
@@ -82,7 +81,7 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   return GetExtraClientRange(display, layers, client_start, client_size);
 }
 
-bool Backend::IsClientLayer(DrmHwcTwo::HwcDisplay *display, HwcLayer *layer) {
+bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
   return !HardwareSupportsLayerType(layer->GetSfType()) ||
          !BufferInfoGetter::GetInstance()->IsHandleUsable(layer->GetBuffer()) ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
@@ -118,7 +117,7 @@ void Backend::MarkValidated(std::vector<HwcLayer *> &layers,
 }
 
 std::tuple<int, int> Backend::GetExtraClientRange(
-    DrmHwcTwo::HwcDisplay *display, const std::vector<HwcLayer *> &layers,
+    HwcDisplay *display, const std::vector<HwcLayer *> &layers,
     int client_start, size_t client_size) {
   size_t avail_planes = display->primary_planes().size() +
                         display->overlay_planes().size();

@@ -41,7 +41,7 @@ int BackendManager::RegisterBackend(const std::string &name,
   return 0;
 }
 
-int BackendManager::SetBackendForDisplay(DrmHwcTwo::HwcDisplay *display) {
+int BackendManager::SetBackendForDisplay(HwcDisplay *display) {
   std::string driver_name(display->drm()->GetName());
   char backend_override[PROPERTY_VALUE_MAX];
   property_get("vendor.hwc.backend_override", backend_override,
