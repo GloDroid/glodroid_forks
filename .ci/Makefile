@@ -45,10 +45,17 @@ TIDY_FILES_OVERRIDE := \
     DrmHwcTwo.cpp:COARSE                                \
     DrmHwcTwo.h:COARSE                                  \
 
-TIDY_CHECKS_NORMAL := * \
-    -hicpp-* -llvmlibc-* -fuchsia-* -altera-* \
+TIDY_CHECKS_FINE := *                                   \
+    -llvmlibc* -fuchsia-* -altera-*                     \
+    -llvm-header-guard                                  \
+    -cppcoreguidelines-pro-type-vararg                  \
+    -hicpp-vararg                                       \
+    -hicpp-signed-bitwise                               \
+
+TIDY_CHECKS_NORMAL :=                                   \
+    $(TIDY_CHECKS_FINE)                                 \
+    -hicpp*                                             \
     -cppcoreguidelines-special-member-functions \
-    -llvm-header-guard \
     -cppcoreguidelines-avoid-c-arrays \
     -cppcoreguidelines-pro-type-vararg \
     -cppcoreguidelines-pro-bounds-array-to-pointer-decay \
@@ -134,9 +141,9 @@ TIDY_FILES := $(sort $(TIDY_FILES_AUTO_filtered) $(TIDY_FILES_OVERRIDE_name_only
 space := $(subst ,, )
 comma := ,
 
-TIDY_ARGS_FINE :=
 TIDY_ARGS_NONE := --checks="-*,llvm-include-order"
 TIDY_ARGS_     := --checks="-*,llvm-include-order"
+TIDY_ARGS_FINE := --checks="$(subst $(space),$(comma),$(strip $(TIDY_CHECKS_FINE)))"
 TIDY_ARGS_NORMAL := --checks="$(subst $(space),$(comma),$(strip $(TIDY_CHECKS_NORMAL)))"
 TIDY_ARGS_COARSE := --checks="$(subst $(space),$(comma),$(strip $(TIDY_CHECKS_COARSE)))"
 
