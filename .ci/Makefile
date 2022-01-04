@@ -57,7 +57,6 @@ TIDY_CHECKS_NORMAL :=                                   \
     -hicpp*                                             \
     -cppcoreguidelines-special-member-functions \
     -cppcoreguidelines-avoid-c-arrays \
-    -cppcoreguidelines-pro-type-vararg \
     -cppcoreguidelines-pro-bounds-array-to-pointer-decay \
     -cppcoreguidelines-pro-bounds-constant-array-index \
     -cppcoreguidelines-avoid-magic-numbers \
@@ -72,24 +71,12 @@ TIDY_CHECKS_NORMAL :=                                   \
 TIDY_CHECKS_COARSE := \
     $(TIDY_CHECKS_NORMAL) \
     -cppcoreguidelines-non-private-member-variables-in-classes \
-    -cppcoreguidelines-pro-bounds-array-to-pointer-decay \
-    -cppcoreguidelines-pro-bounds-constant-array-index \
     -cppcoreguidelines-pro-bounds-pointer-arithmetic \
     -cppcoreguidelines-pro-type-cstyle-cast \
     -cppcoreguidelines-pro-type-reinterpret-cast \
     -cppcoreguidelines-pro-type-static-cast-downcast \
     -cppcoreguidelines-pro-type-union-access \
-    -cppcoreguidelines-pro-type-vararg \
-    -cppcoreguidelines-avoid-magic-numbers \
     -cppcoreguidelines-macro-usage \
-    -cppcoreguidelines-avoid-c-arrays \
-    -google-readability-braces-around-statements \
-    -google-readability-casting \
-    -misc-non-private-member-variables-in-classes \
-    -modernize-avoid-c-arrays \
-    -modernize-use-trailing-return-type \
-    -modernize-use-nodiscard \
-    -readability-braces-around-statements \
     -readability-convert-member-functions-to-static \
     -readability-implicit-bool-conversion \
     -readability-identifier-naming \
