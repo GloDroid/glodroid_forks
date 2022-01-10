@@ -1008,7 +1008,7 @@ static int sun50i_a64_ccu_probe(struct platform_device *pdev)
 	val &= ~GENMASK(26, 24);
 	writel(val | (0 << 24), reg + SUN50I_A64_TCON0_REG);
 
-	ret = sunxi_ccu_probe(pdev->dev.of_node, reg, &sun50i_a64_ccu_desc);
+	ret = devm_sunxi_ccu_probe(&pdev->dev, reg, &sun50i_a64_ccu_desc);
 	if (ret)
 		return ret;
 

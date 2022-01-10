@@ -1146,7 +1146,7 @@ static void __init sunxi_h3_h5_ccu_init(struct device_node *node,
 	val &= ~GENMASK(19, 16);
 	writel(val | (0 << 16), reg + SUN8I_H3_PLL_AUDIO_REG);
 
-	sunxi_ccu_probe(node, reg, desc);
+	of_sunxi_ccu_probe(node, reg, desc);
 }
 
 static void __init sun8i_h3_ccu_setup(struct device_node *node)

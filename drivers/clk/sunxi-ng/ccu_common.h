@@ -75,7 +75,9 @@ struct ccu_rate_reset_nb {
 
 int ccu_rate_reset_notifier_register(struct ccu_rate_reset_nb *rate_reset_nb);
 
-int sunxi_ccu_probe(struct device_node *node, void __iomem *reg,
-		    const struct sunxi_ccu_desc *desc);
+int devm_sunxi_ccu_probe(struct device *dev, void __iomem *reg,
+			 const struct sunxi_ccu_desc *desc);
+void of_sunxi_ccu_probe(struct device_node *node, void __iomem *reg,
+			const struct sunxi_ccu_desc *desc);
 
 #endif /* _COMMON_H_ */
