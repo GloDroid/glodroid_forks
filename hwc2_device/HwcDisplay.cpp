@@ -505,7 +505,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
  */
 HWC2::Error HwcDisplay::PresentDisplay(int32_t *present_fence) {
-  HWC2::Error ret;
+  HWC2::Error ret{};
 
   ++total_stats_.total_frames_;
 

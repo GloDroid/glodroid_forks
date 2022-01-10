@@ -77,7 +77,7 @@ int64_t VSyncWorker::GetPhasedVSync(int64_t frame_ns, int64_t current) const {
          last_timestamp_;
 }
 
-static const int64_t kOneSecondNs = 1 * 1000 * 1000 * 1000;
+static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
 
 int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
   struct timespec vsync {};

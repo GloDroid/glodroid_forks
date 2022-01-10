@@ -60,7 +60,7 @@ DrmDisplayCompositor::CreateInitializedComposition() const {
   DrmCrtc *crtc = drm->GetCrtcForDisplay(display_);
   if (!crtc) {
     ALOGE("Failed to find crtc for display = %d", display_);
-    return std::unique_ptr<DrmDisplayComposition>();
+    return {};
   }
 
   return std::make_unique<DrmDisplayComposition>(crtc);

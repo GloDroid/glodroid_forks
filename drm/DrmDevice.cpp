@@ -494,7 +494,7 @@ auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const
   int ret = drmIoctl(fd(), DRM_IOCTL_MODE_CREATEPROPBLOB, &create_blob);
   if (ret) {
     ALOGE("Failed to create mode property blob %d", ret);
-    return DrmModeUserPropertyBlobUnique();
+    return {};
   }
 
   return DrmModeUserPropertyBlobUnique(

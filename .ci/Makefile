@@ -2,8 +2,8 @@
 INCLUDE_DIRS := . ../libdrm/include/drm include ./.ci/android_headers ./tests/test_include
 SYSTEM_INCLUDE_DIRS := /usr/include/libdrm
 
-CLANG := clang++-12
-CLANG_TIDY := clang-tidy-12
+CLANG := clang++-13
+CLANG_TIDY := clang-tidy-13
 OUT_DIR := /tmp/drm_hwcomposer/build
 SRC_DIR := .
 
@@ -57,6 +57,7 @@ TIDY_CHECKS_FINE := *                                   \
 TIDY_CHECKS_NORMAL :=                                   \
     $(TIDY_CHECKS_FINE)                                 \
     -hicpp*                                             \
+    -bugprone-easily-swappable-parameters               \
     -cppcoreguidelines-special-member-functions \
     -cppcoreguidelines-avoid-c-arrays \
     -cppcoreguidelines-pro-bounds-array-to-pointer-decay \

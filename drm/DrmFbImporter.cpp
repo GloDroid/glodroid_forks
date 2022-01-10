@@ -124,7 +124,7 @@ auto DrmFbImporter::GetOrCreateFbId(hwc_drm_bo_t *bo)
 
   if (err != 0) {
     ALOGE("Failed to import prime fd %d ret=%d", bo->prime_fds[0], err);
-    return std::shared_ptr<DrmFbIdHandle>();
+    return {};
   }
 
   auto drm_fb_id_cached = drm_fb_id_handle_cache_.find(first_handle);

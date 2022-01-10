@@ -102,12 +102,12 @@ auto DrmConnector::GetEdidBlob() -> DrmModePropertyBlobUnique {
   uint64_t blob_id = 0;
   int ret = UpdateEdidProperty();
   if (ret != 0) {
-    return DrmModePropertyBlobUnique();
+    return {};
   }
 
   std::tie(ret, blob_id) = edid_property().value();
   if (ret != 0) {
-    return DrmModePropertyBlobUnique();
+    return {};
   }
 
   return MakeDrmModePropertyBlobUnique(drm_->fd(), blob_id);
