@@ -22,6 +22,7 @@
 
 #include <array>
 #include <map>
+#include <optional>
 
 #include "compositor/DrmDisplayCompositor.h"
 #include "compositor/Planner.h"
@@ -346,6 +347,8 @@ class DrmHwcTwo : public hwc2_device_t {
     constexpr static size_t MATRIX_SIZE = 16;
 
     DrmHwcTwo *hwc2_;
+
+    std::optional<DrmMode> staged_mode;
 
     ResourceManager *resource_manager_;
     DrmDevice *drm_;

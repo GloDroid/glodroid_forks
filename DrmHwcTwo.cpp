@@ -757,6 +757,9 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   }
 
   a_args.composition = composition;
+  if (staged_mode) {
+    a_args.display_mode = *staged_mode;
+  }
   ret = compositor_.ExecuteAtomicCommit(a_args);
 
   if (ret) {
@@ -764,6 +767,11 @@ HWC2::Error DrmHwcTwo::HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
       ALOGE("Failed to apply the frame composition ret=%d", ret);
     return HWC2::Error::BadParameter;
   }
+
+  if (!a_args.test_only) {
+    staged_mode.reset();
+  }
+
   return HWC2::Error::None;
 }
 
@@ -805,16 +813,7 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetActiveConfig(hwc2_config_t config) {
 
   auto &mode = hwc_configs_[conf].mode;
 
-  AtomicCommitArgs a_args = {
-      .display_mode = mode,
-      .clear_active_composition = true,
-  };
-
-  int err = compositor_.ExecuteAtomicCommit(a_args);
-  if (err != 0) {
-    ALOGE("Failed to queue mode changing commit %d", err);
-    return HWC2::Error::BadConfig;
-  }
+  staged_mode = mode;
 
   active_config_id_ = conf;
 
@@ -895,7 +894,13 @@ HWC2::Error DrmHwcTwo::HwcDisplay::SetPowerMode(int32_t mode_in) {
       a_args.active = false;
       break;
     case HWC2::PowerMode::On:
-      a_args.active = true;
+      /*
+       * Setting the display to active before we have a composition
+       * can break some drivers, so skip setting a_args.active to
+       * true, as the next composition frame will implicitly activate
+       * the display
+       */
+      return HWC2::Error::None;
       break;
     case HWC2::PowerMode::Doze:
     case HWC2::PowerMode::DozeSuspend:
