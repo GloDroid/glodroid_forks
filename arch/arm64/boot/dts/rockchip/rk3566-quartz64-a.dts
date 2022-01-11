@@ -5,6 +5,9 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/rockchip.h>
 #include "rk3566.dtsi"
+#define USE_SATA
+//#define USE_WIFI
+//#define USE_EMMC
 
 / {
 	model = "Pine64 RK3566 Quartz64-A Board";
@@ -93,6 +96,7 @@
 		};
 	};
 
+#ifdef USE_WIFI
 	sdio_pwrseq: sdio-pwrseq {
 		status = "okay";
 		compatible = "mmc-pwrseq-simple";
@@ -104,6 +108,7 @@
 		post-power-on-delay-ms = <100>;
 		power-off-delay-us = <5000000>;
 	};
+#endif
 
 	vcc12v_dcin: vcc12v_dcin {
 		compatible = "regulator-fixed";
@@ -603,16 +608,19 @@
 	vccio7-supply = <&vcc_3v3>;
 };
 
+#ifdef USE_SATA
 /* sata1 is muxed with the usb3 port */
 &sata1 {
 	status = "okay";
 };
+#endif
 
 /* sata2 is muxed with the pcie2 slot*/
 &sata2 {
 	status = "disabled";
 };
 
+#ifdef USE_EMMC
 &sdhci {
 	bus-width = <8>;
 	mmc-hs200-1_8v;
@@ -621,6 +629,7 @@
 	vqmmc-supply = <&vcc_1v8>;
 	status = "okay";
 };
+#endif
 
 &sdmmc0 {
 	bus-width = <4>;
@@ -644,6 +653,7 @@
 	pinctrl-0 = <&spi1m1_cs0 &spi1m1_pins>;
 };
 
+#ifdef USE_WIFI
 &sdmmc1 {
 	bus-width = <4>;
 	cap-sd-highspeed;
@@ -659,6 +669,7 @@
 	vqmmc-supply = <&vcc_1v8>;
 	status = "okay";
 };
+#endif
 
 &sfc {
 	#address-cells = <1>;
@@ -688,6 +699,7 @@
 	status = "okay";
 };
 
+#ifdef USE_WIFI
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1m0_xfer &uart1m0_ctsn>;
@@ -707,6 +719,7 @@
 		vddio-supply = <&vcca1v8_pmu>;
 	};
 };
+#endif
 
 &uart2 {
 	status = "okay";
@@ -740,6 +753,7 @@
 	status = "okay";
 };
 
+#ifndef USE_SATA
 &usbdrd_dwc3 {
 	status = "okay";
 };
@@ -750,13 +764,14 @@
 
 /* usb3 controller is muxed with sata1 */
 &usbhost_dwc3 {
-	status = "disabled";
+	status = "okay";
 };
 
 /* usb3 controller is muxed with sata1 */
 &usbhost30 {
-	status = "disabled";
+	status = "okay";
 };
+#endif
 
 &usb_host0_ehci {
 	status = "okay";
