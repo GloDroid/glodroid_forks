@@ -20,32 +20,36 @@
 #include <cstring>
 
 #include "DrmDevice.h"
+#include "DrmDisplayPipeline.h"
 #include "DrmFbImporter.h"
 #include "UEventListener.h"
 
 namespace android {
 
+class PipelineToFrontendBindingInterface {
+ public:
+  virtual ~PipelineToFrontendBindingInterface() = default;
+  virtual bool BindDisplay(DrmDisplayPipeline *);
+  virtual bool UnbindDisplay(DrmDisplayPipeline *);
+  virtual void FinalizeDisplayBinding();
+};
+
 class ResourceManager {
  public:
-  ResourceManager();
+  explicit ResourceManager(
+      PipelineToFrontendBindingInterface *p2f_bind_interface);
   ResourceManager(const ResourceManager &) = delete;
   ResourceManager &operator=(const ResourceManager &) = delete;
+  ResourceManager(const ResourceManager &&) = delete;
+  ResourceManager &&operator=(const ResourceManager &&) = delete;
   ~ResourceManager();
 
-  int Init();
-  auto GetPipeline(int display) -> DrmDisplayPipeline *;
-  auto &GetDrmDevices() const {
-    return drms_;
-  }
-  int GetDisplayCount() const {
-    return num_displays_;
-  }
+  void Init();
+
+  void DeInit();
+
   bool ForcedScalingWithGpu() const {
     return scale_with_gpu_;
-  }
-
-  UEventListener *GetUEventListener() {
-    return &uevent_listener_;
   }
 
   auto &GetMainLock() {
@@ -53,9 +57,11 @@ class ResourceManager {
   }
 
  private:
-  int AddDrmDevice(std::string const &path);
+  auto AddDrmDevice(std::string const &path) -> int;
+  auto GetOrderedConnectors() -> std::vector<DrmConnector *>;
+  void UpdateFrontendDisplays();
+  void DetachAllFrontendDisplays();
 
-  int num_displays_;
   std::vector<std::unique_ptr<DrmDevice>> drms_;
 
   bool scale_with_gpu_{};
@@ -63,6 +69,13 @@ class ResourceManager {
   UEventListener uevent_listener_;
 
   std::mutex main_lock_;
+
+  std::map<DrmConnector *, std::unique_ptr<DrmDisplayPipeline>>
+      attached_pipelines_;
+
+  PipelineToFrontendBindingInterface *const frontend_interface_;
+
+  bool initialized_{};
 };
 }  // namespace android
 

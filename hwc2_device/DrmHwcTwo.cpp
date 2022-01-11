@@ -18,51 +18,96 @@
 
 #include "DrmHwcTwo.h"
 
+#include <cinttypes>
+
 #include "backend/Backend.h"
 #include "utils/log.h"
 
 namespace android {
 
-DrmHwcTwo::DrmHwcTwo() = default;
+DrmHwcTwo::DrmHwcTwo() : resource_manager_(this){};
 
-HWC2::Error DrmHwcTwo::CreateDisplay(hwc2_display_t displ,
-                                     HWC2::DisplayType type) {
-  auto *pipe = resource_manager_.GetPipeline(static_cast<int>(displ));
-  if (!pipe) {
-    ALOGE("Failed to get a valid drmresource");
-    return HWC2::Error::NoResources;
-  }
-  displays_.emplace(std::piecewise_construct, std::forward_as_tuple(displ),
-                    std::forward_as_tuple(&resource_manager_, pipe, displ, type,
-                                          this));
+/* Must be called after every display attach/detach cycle */
+void DrmHwcTwo::FinalizeDisplayBinding() {
+  if (displays_.count(kPrimaryDisplay) == 0) {
+    /* Create/update new headless display if no other displays exists
+     * or reattach different display to make it primary
+     */
 
-  displays_.at(displ).Init();
-  return HWC2::Error::None;
-}
-
-HWC2::Error DrmHwcTwo::Init() {
-  int rv = resource_manager_.Init();
-  if (rv) {
-    ALOGE("Can't initialize the resource manager %d", rv);
-    return HWC2::Error::NoResources;
-  }
-
-  HWC2::Error ret = HWC2::Error::None;
-  for (int i = 0; i < resource_manager_.GetDisplayCount(); i++) {
-    ret = CreateDisplay(i, HWC2::DisplayType::Physical);
-    if (ret != HWC2::Error::None) {
-      ALOGE("Failed to create display %d with error %d", i, ret);
-      return ret;
+    if (display_handles_.empty()) {
+      /* Enable headless mode */
+      ALOGI("No pipelines available. Creating null-display for headless mode");
+      displays_[kPrimaryDisplay] = std::make_unique<
+          HwcDisplay>(nullptr, kPrimaryDisplay, HWC2::DisplayType::Physical,
+                      this);
+    } else {
+      auto *pipe = display_handles_.begin()->first;
+      ALOGI("Primary display was disconnected, reattaching '%s' as new primary",
+            pipe->connector->Get()->GetName().c_str());
+      UnbindDisplay(pipe);
+      BindDisplay(pipe);
+      if (displays_.count(kPrimaryDisplay) == 0) {
+        ALOGE("FIXME!!! Still no primary display after reattaching...");
+      }
     }
   }
 
-  resource_manager_.GetUEventListener()->RegisterHotplugHandler([this] {
-    const std::lock_guard<std::mutex> lock(GetResMan().GetMainLock());
+  // Finally, send hotplug events to the client
+  for (auto &dhe : deferred_hotplug_events_) {
+    SendHotplugEventToClient(dhe.first, dhe.second);
+  }
+  deferred_hotplug_events_.clear();
+}
 
-    HandleHotplugUEvent();
-  });
+bool DrmHwcTwo::BindDisplay(DrmDisplayPipeline *pipeline) {
+  if (display_handles_.count(pipeline) != 0) {
+    ALOGE("%s, pipeline is already used by another display, FIXME!!!: %p",
+          __func__, pipeline);
+    return false;
+  }
 
-  return ret;
+  uint32_t disp_handle = kPrimaryDisplay;
+
+  if (displays_.count(kPrimaryDisplay) != 0 &&
+      !displays_[kPrimaryDisplay]->IsInHeadlessMode()) {
+    disp_handle = ++last_display_handle_;
+  }
+
+  auto disp = std::make_unique<HwcDisplay>(pipeline, disp_handle,
+                                           HWC2::DisplayType::Physical, this);
+
+  if (disp_handle == kPrimaryDisplay) {
+    displays_.erase(disp_handle);
+  }
+
+  ALOGI("Attaching pipeline '%s' to the display #%d%s",
+        pipeline->connector->Get()->GetName().c_str(), (int)disp_handle,
+        disp_handle == kPrimaryDisplay ? " (Primary)" : "");
+
+  displays_[disp_handle] = std::move(disp);
+  display_handles_[pipeline] = disp_handle;
+
+  return true;
+}
+
+bool DrmHwcTwo::UnbindDisplay(DrmDisplayPipeline *pipeline) {
+  if (display_handles_.count(pipeline) == 0) {
+    ALOGE("%s, can't find the display, pipeline: %p", __func__, pipeline);
+    return false;
+  }
+  auto handle = display_handles_[pipeline];
+
+  ALOGI("Detaching the pipeline '%s' from the display #%i%s",
+        pipeline->connector->Get()->GetName().c_str(), (int)handle,
+        handle == kPrimaryDisplay ? " (Primary)" : "");
+
+  display_handles_.erase(pipeline);
+  if (displays_.count(handle) == 0) {
+    ALOGE("%s, can't find the display, handle: %" PRIu64, __func__, handle);
+    return false;
+  }
+  displays_.erase(handle);
+  return true;
 }
 
 HWC2::Error DrmHwcTwo::CreateVirtualDisplay(uint32_t /*width*/,
@@ -89,8 +134,8 @@ void DrmHwcTwo::Dump(uint32_t *outSize, char *outBuffer) {
 
   output << "-- drm_hwcomposer --\n\n";
 
-  for (std::pair<const hwc2_display_t, HwcDisplay> &dp : displays_)
-    output << dp.second.Dump();
+  for (auto &disp : displays_)
+    output << disp.second->Dump();
 
   mDumpString = output.str();
   *outSize = static_cast<uint32_t>(mDumpString.size());
@@ -107,9 +152,13 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
   switch (static_cast<HWC2::Callback>(descriptor)) {
     case HWC2::Callback::Hotplug: {
       hotplug_callback_ = std::make_pair(HWC2_PFN_HOTPLUG(function), data);
-      const auto &drm_devices = resource_manager_.GetDrmDevices();
-      for (const auto &device : drm_devices)
-        HandleInitialHotplugState(device.get());
+      if (function != nullptr) {
+        resource_manager_.Init();
+      } else {
+        resource_manager_.DeInit();
+        /* Headless display may still be here, remove it */
+        displays_.erase(kPrimaryDisplay);
+      }
       break;
     }
     case HWC2::Callback::Refresh: {
@@ -132,7 +181,8 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
   return HWC2::Error::None;
 }
 
-void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {
+void DrmHwcTwo::SendHotplugEventToClient(hwc2_display_t displayid,
+                                         bool connected) {
   auto &mutex = GetResMan().GetMainLock();
   if (mutex.try_lock()) {
     ALOGE("FIXME!!!: Main mutex must be locked in %s", __func__);
@@ -147,49 +197,9 @@ void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {
      */
     mutex.unlock();
     hc.first(hc.second, displayid,
-             state == DRM_MODE_CONNECTED ? HWC2_CONNECTION_CONNECTED
-                                         : HWC2_CONNECTION_DISCONNECTED);
+             connected == DRM_MODE_CONNECTED ? HWC2_CONNECTION_CONNECTED
+                                             : HWC2_CONNECTION_DISCONNECTED);
     mutex.lock();
-  }
-}
-
-void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {
-  for (const auto &conn : drmDevice->GetConnectors()) {
-    int display_id = drmDevice->GetDisplayId(conn.get());
-    auto &display = displays_.at(display_id);
-
-    if (!conn->IsConnected() && !display.IsInHeadlessMode())
-      continue;
-    HandleDisplayHotplug(display_id, display.IsInHeadlessMode()
-                                         ? 1
-                                         : (conn->IsConnected() ? 1 : 0));
-  }
-}
-
-void DrmHwcTwo::HandleHotplugUEvent() {
-  for (const auto &drm : resource_manager_.GetDrmDevices()) {
-    for (const auto &conn : drm->GetConnectors()) {
-      int display_id = drm->GetDisplayId(conn.get());
-
-      bool old_state = conn->IsConnected();
-      bool cur_state = conn->UpdateModes() ? false : conn->IsConnected();
-      if (cur_state == old_state)
-        continue;
-
-      ALOGI("%s event for connector %u on display %d",
-            cur_state == DRM_MODE_CONNECTED ? "Plug" : "Unplug", conn->GetId(),
-            display_id);
-
-      auto &display = displays_.at(display_id);
-      display.ChosePreferredConfig();
-      if (cur_state) {
-        display.ClearDisplay();
-      }
-
-      HandleDisplayHotplug(display_id, display.IsInHeadlessMode()
-                                           ? DRM_MODE_CONNECTED
-                                           : (cur_state ? 1 : 0));
-    }
   }
 }
 

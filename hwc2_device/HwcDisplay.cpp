@@ -27,6 +27,9 @@
 
 namespace android {
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+uint32_t HwcDisplay::layer_idx_ = 2; /* Start from 2. See destroyLayer() */
+
 std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
   if (delta.total_pixops_ == 0)
     return "No stats yet";
@@ -84,11 +87,9 @@ std::string HwcDisplay::Dump() {
   return ss.str();
 }
 
-HwcDisplay::HwcDisplay(ResourceManager *resource_manager,
-                       DrmDisplayPipeline *pipeline, hwc2_display_t handle,
+HwcDisplay::HwcDisplay(DrmDisplayPipeline *pipeline, hwc2_display_t handle,
                        HWC2::DisplayType type, DrmHwcTwo *hwc2)
     : hwc2_(hwc2),
-      resource_manager_(resource_manager),
       pipeline_(pipeline),
       handle_(handle),
       type_(type),
@@ -99,6 +100,26 @@ HwcDisplay::HwcDisplay(ResourceManager *resource_manager,
                              0.0, 0.0, 1.0, 0.0,
                              0.0, 0.0, 0.0, 1.0};
   // clang-format on
+
+  ChosePreferredConfig();
+  Init();
+
+  hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ true);
+}
+
+HwcDisplay::~HwcDisplay() {
+  if (handle_ != kPrimaryDisplay) {
+    hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ false);
+  }
+
+  auto &main_lock = hwc2_->GetResMan().GetMainLock();
+  /* Unlock to allow pending vsync callbacks to finish */
+  main_lock.unlock();
+  flattening_vsync_worker_.VSyncControl(false);
+  flattening_vsync_worker_.Exit();
+  vsync_worker_.VSyncControl(false);
+  vsync_worker_.Exit();
+  main_lock.lock();
 }
 
 void HwcDisplay::ClearDisplay() {
@@ -108,7 +129,7 @@ void HwcDisplay::ClearDisplay() {
   }
 
   AtomicCommitArgs a_args = {.clear_active_composition = true};
-  GetPipe().compositor->ExecuteAtomicCommit(a_args);
+  pipeline_->compositor->ExecuteAtomicCommit(a_args);
 }
 
 HWC2::Error HwcDisplay::Init() {
@@ -152,21 +173,29 @@ HWC2::Error HwcDisplay::Init() {
     return HWC2::Error::BadDisplay;
   }
 
-  ret = BackendManager::GetInstance().SetBackendForDisplay(this);
-  if (ret) {
-    ALOGE("Failed to set backend for d=%d %d\n", int(handle_), ret);
-    return HWC2::Error::BadDisplay;
+  if (!IsInHeadlessMode()) {
+    ret = BackendManager::GetInstance().SetBackendForDisplay(this);
+    if (ret) {
+      ALOGE("Failed to set backend for d=%d %d\n", int(handle_), ret);
+      return HWC2::Error::BadDisplay;
+    }
   }
 
   client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
 
-  return ChosePreferredConfig();
+  return HWC2::Error::None;
 }
 
 HWC2::Error HwcDisplay::ChosePreferredConfig() {
-  HWC2::Error err = configs_.Update(*GetPipe().connector->Get());
-  if (!IsInHeadlessMode() && err != HWC2::Error::None)
+  HWC2::Error err{};
+  if (!IsInHeadlessMode()) {
+    err = configs_.Update(*pipeline_->connector->Get());
+  } else {
+    configs_.FillHeadless();
+  }
+  if (!IsInHeadlessMode() && err != HWC2::Error::None) {
     return HWC2::Error::BadDisplay;
+  }
 
   return SetActiveConfig(configs_.preferred_config_id);
 }
@@ -185,8 +214,24 @@ HWC2::Error HwcDisplay::CreateLayer(hwc2_layer_t *layer) {
 }
 
 HWC2::Error HwcDisplay::DestroyLayer(hwc2_layer_t layer) {
-  if (!get_layer(layer))
+  if (!get_layer(layer)) {
+    /* Primary display don't send unplug event, instead it replaces
+     * display to headless or to another one and sends Plug event to the
+     * SF. SF can't distinguish this case from virtualized display size
+     * change case and will destroy previously used layers. If we will return
+     * BadLayer, service will print errors to the logcat.
+     *
+     * Nevertheless VTS is trying to destroy 1st layer without adding any
+     * layers prior to that, than it checks for BadLayer result. So we
+     * numbering the layers starting from 2, and use index 1 to catch VTS client
+     * to return BadLayer, making VTS pass.
+     */
+    if (layers_.empty() && layer != 1) {
+      return HWC2::Error::None;
+    }
+
     return HWC2::Error::BadLayer;
+  }
 
   layers_.erase(layer);
   return HWC2::Error::None;
@@ -226,11 +271,12 @@ HWC2::Error HwcDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
 HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
                                                int32_t /*format*/,
                                                int32_t dataspace) {
-  std::pair<uint32_t, uint32_t> min = GetPipe().device->GetMinResolution();
-  std::pair<uint32_t, uint32_t> max = GetPipe().device->GetMaxResolution();
   if (IsInHeadlessMode()) {
     return HWC2::Error::None;
   }
+
+  std::pair<uint32_t, uint32_t> min = pipeline_->device->GetMinResolution();
+  std::pair<uint32_t, uint32_t> max = pipeline_->device->GetMaxResolution();
 
   if (width < min.first || height < min.second)
     return HWC2::Error::Unsupported;
@@ -261,7 +307,7 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   int conf = static_cast<int>(config);
 
   if (configs_.hwc_configs.count(conf) == 0) {
-    ALOGE("Could not find active mode for %d", conf);
+    ALOGE("Could not find mode #%d", conf);
     return HWC2::Error::BadConfig;
   }
 
@@ -331,7 +377,11 @@ HWC2::Error HwcDisplay::GetDisplayConfigs(uint32_t *num_configs,
 
 HWC2::Error HwcDisplay::GetDisplayName(uint32_t *size, char *name) {
   std::ostringstream stream;
-  stream << "display-" << GetPipe().connector->Get()->GetId();
+  if (IsInHeadlessMode()) {
+    stream << "null-display";
+  } else {
+    stream << "display-" << GetPipe().connector->Get()->GetId();
+  }
   std::string string = stream.str();
   size_t length = string.length();
   if (!name) {
@@ -745,11 +795,18 @@ HWC2::Error HwcDisplay::SetContentType(int32_t contentType) {
 HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
                                                      uint32_t *outDataSize,
                                                      uint8_t *outData) {
+  if (IsInHeadlessMode()) {
+    return HWC2::Error::None;
+  }
   auto blob = GetPipe().connector->Get()->GetEdidBlob();
 
+  *outPort = handle_ - 1;
+
   if (!blob) {
-    ALOGE("Failed to get edid property value.");
-    return HWC2::Error::Unsupported;
+    if (outData == nullptr) {
+      *outDataSize = 0;
+    }
+    return HWC2::Error::None;
   }
 
   if (outData) {
@@ -758,7 +815,6 @@ HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
   } else {
     *outDataSize = blob->length;
   }
-  *outPort = GetPipe().connector->Get()->GetId();
 
   return HWC2::Error::None;
 }

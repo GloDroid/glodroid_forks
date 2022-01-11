@@ -40,13 +40,15 @@ struct HwcDisplayConfig {
 
 struct HwcDisplayConfigs {
   HWC2::Error Update(DrmConnector &conn);
+  void FillHeadless();
 
   std::map<int /*config_id*/, struct HwcDisplayConfig> hwc_configs;
 
   int active_config_id = 0;
   int preferred_config_id = 0;
 
-  int last_config_id = 1;
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+  static int last_config_id;
 
   uint32_t mm_width = 0;
   uint32_t mm_height = 0;

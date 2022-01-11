@@ -390,12 +390,6 @@ static int HookDevOpen(const struct hw_module_t *module, const char *name,
   ctx->getCapabilities = HookDevGetCapabilities;
   ctx->getFunction = HookDevGetFunction;
 
-  HWC2::Error err = ctx->drmhwctwo.Init();
-  if (err != HWC2::Error::None) {
-    ALOGE("Failed to initialize DrmHwcTwo err=%d\n", err);
-    return -EINVAL;
-  }
-
   *dev = &ctx.release()->common;
 
   return 0;

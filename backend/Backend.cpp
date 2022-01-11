@@ -86,7 +86,7 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
          !BufferInfoGetter::GetInstance()->IsHandleUsable(layer->GetBuffer()) ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->RequireScalingOrPhasing() &&
-          display->resource_manager()->ForcedScalingWithGpu());
+          display->GetHwc2()->GetResMan().ForcedScalingWithGpu());
 }
 
 bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {

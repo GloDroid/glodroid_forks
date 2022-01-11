@@ -37,7 +37,7 @@ class DrmDevice {
   DrmDevice();
   ~DrmDevice() = default;
 
-  std::tuple<int, int> Init(const char *path, int num_displays);
+  auto Init(const char *path) -> int;
 
   auto GetFd() const {
     return fd_.Get();
@@ -56,19 +56,12 @@ class DrmDevice {
     return max_resolution_;
   }
 
-  auto *GetPipelineForDisplay(int display) {
-    return pipelines_.count(display) != 0 ? pipelines_.at(display).get()
-                                          : nullptr;
-  }
-
   std::string GetName() const;
 
   auto RegisterUserPropertyBlob(void *data, size_t length) const
       -> DrmModeUserPropertyBlobUnique;
 
-  bool HandlesDisplay(int display) const;
-
-  bool HasAddFb2ModifiersSupport() const {
+  auto HasAddFb2ModifiersSupport() const {
     return HasAddFb2ModifiersSupport_;
   }
 
@@ -98,8 +91,6 @@ class DrmDevice {
     return nullptr;
   }
 
-  auto GetDisplayId(DrmConnector *conn) -> int;
-
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
 
@@ -114,8 +105,6 @@ class DrmDevice {
 
   std::pair<uint32_t, uint32_t> min_resolution_;
   std::pair<uint32_t, uint32_t> max_resolution_;
-
-  std::map<int /*display*/, std::unique_ptr<DrmDisplayPipeline>> pipelines_;
 
   bool HasAddFb2ModifiersSupport_{};
 

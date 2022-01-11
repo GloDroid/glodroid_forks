@@ -22,12 +22,8 @@
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
-#include <algorithm>
-#include <array>
-#include <cerrno>
 #include <cinttypes>
 #include <cstdint>
-#include <sstream>
 #include <string>
 
 #include "compositor/DrmDisplayCompositor.h"
@@ -41,26 +37,25 @@ DrmDevice::DrmDevice() {
   drm_fb_importer_ = std::make_unique<DrmFbImporter>(*this);
 }
 
-// NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
-std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
+auto DrmDevice::Init(const char *path) -> int {
   /* TODO: Use drmOpenControl here instead */
   fd_ = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
   if (!fd_) {
     // NOLINTNEXTLINE(concurrency-mt-unsafe): Fixme
     ALOGE("Failed to open dri %s: %s", path, strerror(errno));
-    return std::make_tuple(-ENODEV, 0);
+    return -ENODEV;
   }
 
   int ret = drmSetClientCap(GetFd(), DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
   if (ret != 0) {
     ALOGE("Failed to set universal plane cap %d", ret);
-    return std::make_tuple(ret, 0);
+    return ret;
   }
 
   ret = drmSetClientCap(GetFd(), DRM_CLIENT_CAP_ATOMIC, 1);
   if (ret != 0) {
     ALOGE("Failed to set atomic cap %d", ret);
-    return std::make_tuple(ret, 0);
+    return ret;
   }
 
 #ifdef DRM_CLIENT_CAP_WRITEBACK_CONNECTORS
@@ -80,13 +75,13 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   drmSetMaster(GetFd());
   if (drmIsMaster(GetFd()) == 0) {
     ALOGE("DRM/KMS master access required");
-    return std::make_tuple(-EACCES, 0);
+    return -EACCES;
   }
 
   auto res = MakeDrmModeResUnique(GetFd());
   if (!res) {
     ALOGE("Failed to get DrmDevice resources");
-    return std::make_tuple(-ENODEV, 0);
+    return -ENODEV;
   }
 
   min_resolution_ = std::pair<uint32_t, uint32_t>(res->min_width,
@@ -128,7 +123,7 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   auto plane_res = MakeDrmModePlaneResUnique(GetFd());
   if (!plane_res) {
     ALOGE("Failed to get plane resources");
-    return std::make_tuple(-ENOENT, 0);
+    return -ENOENT;
   }
 
   for (uint32_t i = 0; i < plane_res->count_planes; ++i) {
@@ -140,42 +135,7 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
     }
   }
 
-  auto add_displays = [this, &num_displays](bool internal, bool connected) {
-    for (auto &conn : connectors_) {
-      bool is_connected = conn->IsConnected();
-      if ((internal ? conn->IsInternal() : conn->IsExternal()) &&
-          (connected ? is_connected : !is_connected)) {
-        auto pipe = DrmDisplayPipeline::CreatePipeline(*conn);
-        if (pipe) {
-          pipelines_[num_displays] = std::move(pipe);
-          ++num_displays;
-        }
-      }
-    }
-  };
-
-  /* Put internal first to ensure Primary display will be internal
-   * in case at least 1 internal is available
-   */
-  add_displays(/*internal = */ true, /*connected = */ true);
-  add_displays(/*internal = */ false, /*connected = */ true);
-  add_displays(/*internal = */ true, /*connected = */ false);
-  add_displays(/*internal = */ false, /*connected = */ false);
-
-  return std::make_tuple(0, pipelines_.size());
-}
-
-bool DrmDevice::HandlesDisplay(int display) const {
-  return pipelines_.count(display) != 0;
-}
-
-auto DrmDevice::GetDisplayId(DrmConnector *conn) -> int {
-  for (auto &dpipe : pipelines_) {
-    if (dpipe.second->connector->Get() == conn) {
-      return dpipe.first;
-    }
-  }
-  return -1;
+  return 0;
 }
 
 auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const
