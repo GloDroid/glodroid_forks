@@ -233,4 +233,20 @@ auto DrmDisplayCompositor::ExecuteAtomicCommit(AtomicCommitArgs &args) -> int {
   return err;
 }  // namespace android
 
+auto DrmDisplayCompositor::ActivateDisplayUsingDPMS() -> int {
+  auto *drm = resource_manager_->GetDrmDevice(display_);
+  auto *connector = drm->GetConnectorForDisplay(display_);
+  if (connector == nullptr) {
+    ALOGE("Could not locate connector for display %d", display_);
+    return -ENODEV;
+  }
+
+  if (connector->dpms_property()) {
+    drmModeConnectorSetProperty(drm->fd(), connector->id(),
+                                connector->dpms_property().id(),
+                                DRM_MODE_DPMS_ON);
+  }
+  return 0;
+}
+
 }  // namespace android

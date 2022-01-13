@@ -64,6 +64,8 @@ class DrmDisplayCompositor {
 
   DrmDisplayCompositor(const DrmDisplayCompositor &) = delete;
 
+  auto ActivateDisplayUsingDPMS() -> int;
+
  private:
   auto CommitFrame(AtomicCommitArgs &args) -> int;
 

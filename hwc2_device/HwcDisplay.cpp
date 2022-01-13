@@ -633,7 +633,9 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
        * true, as the next composition frame will implicitly activate
        * the display
        */
-      return HWC2::Error::None;
+      return compositor_.ActivateDisplayUsingDPMS() == 0
+                 ? HWC2::Error::None
+                 : HWC2::Error::BadParameter;
       break;
     case HWC2::PowerMode::Doze:
     case HWC2::PowerMode::DozeSuspend:
