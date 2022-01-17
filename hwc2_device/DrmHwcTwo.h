@@ -37,8 +37,6 @@ class DrmHwcTwo {
 #endif
   std::pair<HWC2_PFN_REFRESH, hwc2_callback_data_t> refresh_callback_{};
 
-  std::mutex callback_lock_;
-
   static HwcDisplay *GetDisplay(DrmHwcTwo *hwc, hwc2_display_t display_handle) {
     auto it = hwc->displays_.find(display_handle);
     if (it == hwc->displays_.end())
@@ -56,6 +54,10 @@ class DrmHwcTwo {
   HWC2::Error RegisterCallback(int32_t descriptor, hwc2_callback_data_t data,
                                hwc2_function_pointer_t function);
   HWC2::Error CreateDisplay(hwc2_display_t displ, HWC2::DisplayType type);
+
+  auto &GetResMan() {
+    return resource_manager_;
+  }
 
  private:
   void HandleDisplayHotplug(hwc2_display_t displayid, int state);

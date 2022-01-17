@@ -136,7 +136,7 @@ HWC2::Error HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
   }
 
   ret = vsync_worker_.Init(drm_, display, [this](int64_t timestamp) {
-    const std::lock_guard<std::mutex> lock(hwc2_->callback_lock_);
+    const std::lock_guard<std::mutex> lock(hwc2_->GetResMan().GetMainLock());
     /* vsync callback */
 #if PLATFORM_SDK_VERSION > 29
     if (hwc2_->vsync_2_4_callback_.first != nullptr &&
@@ -160,7 +160,8 @@ HWC2::Error HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
 
   ret = flattening_vsync_worker_
             .Init(drm_, display, [this](int64_t /*timestamp*/) {
-              const std::lock_guard<std::mutex> lock(hwc2_->callback_lock_);
+              const std::lock_guard<std::mutex> lock(
+                  hwc2_->GetResMan().GetMainLock());
               /* Frontend flattening */
               if (flattenning_state_ >
                       ClientFlattenningState::ClientRefreshRequested &&

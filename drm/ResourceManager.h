@@ -48,6 +48,10 @@ class ResourceManager {
     return &uevent_listener_;
   }
 
+  auto &GetMainLock() {
+    return main_lock_;
+  }
+
  private:
   int AddDrmDevice(std::string const &path);
 
@@ -57,6 +61,8 @@ class ResourceManager {
   bool scale_with_gpu_{};
 
   UEventListener uevent_listener_;
+
+  std::mutex main_lock_;
 };
 }  // namespace android
 

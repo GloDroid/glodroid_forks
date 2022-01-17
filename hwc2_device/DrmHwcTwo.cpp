@@ -66,8 +66,11 @@ HWC2::Error DrmHwcTwo::Init() {
     }
   }
 
-  resource_manager_.GetUEventListener()->RegisterHotplugHandler(
-      [this] { HandleHotplugUEvent(); });
+  resource_manager_.GetUEventListener()->RegisterHotplugHandler([this] {
+    const std::lock_guard<std::mutex> lock(GetResMan().GetMainLock());
+
+    HandleHotplugUEvent();
+  });
 
   return ret;
 }
@@ -111,12 +114,9 @@ uint32_t DrmHwcTwo::GetMaxVirtualDisplayCount() {
 HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
                                         hwc2_callback_data_t data,
                                         hwc2_function_pointer_t function) {
-  std::unique_lock<std::mutex> lock(callback_lock_);
-
   switch (static_cast<HWC2::Callback>(descriptor)) {
     case HWC2::Callback::Hotplug: {
       hotplug_callback_ = std::make_pair(HWC2_PFN_HOTPLUG(function), data);
-      lock.unlock();
       const auto &drm_devices = resource_manager_.GetDrmDevices();
       for (const auto &device : drm_devices)
         HandleInitialHotplugState(device.get());
@@ -143,14 +143,23 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
 }
 
 void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {
-  const std::lock_guard<std::mutex> lock(callback_lock_);
+  auto &mutex = GetResMan().GetMainLock();
+  if (mutex.try_lock()) {
+    ALOGE("FIXME!!!: Main mutex must be locked in %s", __func__);
+    mutex.unlock();
+    return;
+  }
 
-  if (hotplug_callback_.first != nullptr &&
-      hotplug_callback_.second != nullptr) {
-    hotplug_callback_.first(hotplug_callback_.second, displayid,
-                            state == DRM_MODE_CONNECTED
-                                ? HWC2_CONNECTION_CONNECTED
-                                : HWC2_CONNECTION_DISCONNECTED);
+  auto hc = hotplug_callback_;
+  if (hc.first != nullptr && hc.second != nullptr) {
+    /* For some reason CLIENT will call HWC2 API in hotplug callback handler,
+     * which will cause deadlock . Unlock main mutex to prevent this.
+     */
+    mutex.unlock();
+    hc.first(hc.second, displayid,
+             state == DRM_MODE_CONNECTED ? HWC2_CONNECTION_CONNECTED
+                                         : HWC2_CONNECTION_DISCONNECTED);
+    mutex.lock();
   }
 }
 
