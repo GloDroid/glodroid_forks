@@ -175,6 +175,8 @@ int DrmConnector::UpdateModes() {
     return -ENODEV;
   }
 
+  state_ = c->connection;
+
   modes_.clear();
   for (int i = 0; i < c->count_modes; ++i) {
     bool exists = false;
