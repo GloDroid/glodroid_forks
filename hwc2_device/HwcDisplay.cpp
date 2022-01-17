@@ -329,15 +329,6 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
 
 HWC2::Error HwcDisplay::GetDisplayConfigs(uint32_t *num_configs,
                                           hwc2_config_t *configs) {
-  // Since this callback is normally invoked twice (once to get the count, and
-  // once to populate configs), we don't really want to read the edid
-  // redundantly. Instead, only update the modes on the first invocation. While
-  // it's possible this will result in stale modes, it'll all come out in the
-  // wash when we try to set the active config later.
-  if (!configs) {
-    configs_.Update(*connector_);
-  }
-
   uint32_t idx = 0;
   for (auto &hwc_config : configs_.hwc_configs) {
     if (hwc_config.second.disabled) {

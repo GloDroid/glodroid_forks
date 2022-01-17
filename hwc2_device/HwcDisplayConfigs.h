@@ -45,6 +45,8 @@ struct HwcDisplayConfigs {
 
   int active_config_id = 0;
   int preferred_config_id = 0;
+
+  int last_config_id = 1;
 };
 
 }  // namespace android
