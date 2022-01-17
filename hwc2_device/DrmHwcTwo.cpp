@@ -165,9 +165,14 @@ void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {
 
 void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {
   for (const auto &conn : drmDevice->connectors()) {
-    if (conn->state() != DRM_MODE_CONNECTED)
+    int display_id = conn->display();
+    auto &display = displays_.at(display_id);
+
+    if (conn->state() != DRM_MODE_CONNECTED && !display.IsInHeadlessMode())
       continue;
-    HandleDisplayHotplug(conn->display(), conn->state());
+    HandleDisplayHotplug(conn->display(), display.IsInHeadlessMode()
+                                              ? DRM_MODE_CONNECTED
+                                              : conn->state());
   }
 }
 
@@ -187,15 +192,15 @@ void DrmHwcTwo::HandleHotplugUEvent() {
             conn->display());
 
       int display_id = conn->display();
-      if (cur_state == DRM_MODE_CONNECTED) {
-        auto &display = displays_.at(display_id);
-        display.ChosePreferredConfig();
-      } else {
-        auto &display = displays_.at(display_id);
+      auto &display = displays_.at(display_id);
+      display.ChosePreferredConfig();
+      if (cur_state != DRM_MODE_CONNECTED) {
         display.ClearDisplay();
       }
 
-      HandleDisplayHotplug(display_id, cur_state);
+      HandleDisplayHotplug(display_id, display.IsInHeadlessMode()
+                                           ? DRM_MODE_CONNECTED
+                                           : cur_state);
     }
   }
 }

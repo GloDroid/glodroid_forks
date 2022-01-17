@@ -200,6 +200,16 @@ class HwcDisplay {
     return false;
   }
 
+  /* Headless mode required to keep SurfaceFlinger alive when all display are
+   * disconnected, Without headless mode Android will continuously crash.
+   * Only single internal (primary) display is required to be in HEADLESS mode
+   * to prevent the crash. See:
+   * https://source.android.com/devices/graphics/hotplug#handling-common-scenarios
+   */
+  bool IsInHeadlessMode() {
+    return handle_ == 0 && connector_->state() != DRM_MODE_CONNECTED;
+  }
+
  private:
   enum ClientFlattenningState : int32_t {
     Disabled = -3,

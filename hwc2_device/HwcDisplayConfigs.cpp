@@ -23,10 +23,38 @@
 #include "drm/DrmConnector.h"
 #include "utils/log.h"
 
+constexpr uint32_t kHeadlessModeDisplayWidthMm = 163;
+constexpr uint32_t kHeadlessModeDisplayHeightMm = 122;
+constexpr uint32_t kHeadlessModeDisplayWidthPx = 1024;
+constexpr uint32_t kHeadlessModeDisplayHeightPx = 768;
+constexpr uint32_t kHeadlessModeDisplayVRefresh = 60;
+
 namespace android {
 
 // NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
 HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
+  /* In case UpdateModes will fail we will still have one mode for headless
+   * mode*/
+  hwc_configs.clear();
+
+  last_config_id++;
+  preferred_config_id = active_config_id = last_config_id;
+  auto headless_drm_mode_info = (drmModeModeInfo){
+      .hdisplay = kHeadlessModeDisplayWidthPx,
+      .vdisplay = kHeadlessModeDisplayHeightPx,
+      .vrefresh = kHeadlessModeDisplayVRefresh,
+      .name = "HEADLESS-MODE",
+  };
+  hwc_configs[active_config_id] = (HwcDisplayConfig){
+      .id = active_config_id,
+      .group_id = 1,
+      .mode = DrmMode(&headless_drm_mode_info),
+  };
+
+  mm_width = kHeadlessModeDisplayWidthMm;
+  mm_height = kHeadlessModeDisplayHeightMm;
+
+  /* Read real configs */
   int ret = connector.UpdateModes();
   if (ret != 0) {
     ALOGE("Failed to update display modes %d", ret);
@@ -39,6 +67,9 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
   }
 
   hwc_configs.clear();
+  mm_width = connector.mm_width();
+  mm_height = connector.mm_height();
+
   preferred_config_id = 0;
   int preferred_config_group_id = 0;
 
@@ -159,6 +190,8 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
     }
   }
 
+  /* Set active mode to be valid mode */
+  active_config_id = preferred_config_id;
   return HWC2::Error::None;
 }
 

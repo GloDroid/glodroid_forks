@@ -94,6 +94,9 @@ uint16_t DrmMode::v_scan() const {
 }
 
 float DrmMode::v_refresh() const {
+  if (clock_ == 0) {
+    return v_refresh_;
+  }
   // Always recalculate refresh to report correct float rate
   return static_cast<float>(clock_) / (float)(v_total_ * h_total_) * 1000.0F;
 }

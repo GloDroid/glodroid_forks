@@ -98,6 +98,11 @@ HwcDisplay::HwcDisplay(ResourceManager *resource_manager, DrmDevice *drm,
 }
 
 void HwcDisplay::ClearDisplay() {
+  if (IsInHeadlessMode()) {
+    ALOGE("%s: Headless mode, should never reach here: ", __func__);
+    return;
+  }
+
   AtomicCommitArgs a_args = {.clear_active_composition = true};
   compositor_.ExecuteAtomicCommit(a_args);
 }
@@ -192,7 +197,7 @@ HWC2::Error HwcDisplay::Init(std::vector<DrmPlane *> *planes) {
 
 HWC2::Error HwcDisplay::ChosePreferredConfig() {
   HWC2::Error err = configs_.Update(*connector_);
-  if (err != HWC2::Error::None)
+  if (!IsInHeadlessMode() && err != HWC2::Error::None)
     return HWC2::Error::BadDisplay;
 
   return SetActiveConfig(configs_.preferred_config_id);
@@ -230,6 +235,11 @@ HWC2::Error HwcDisplay::GetActiveConfig(hwc2_config_t *config) const {
 HWC2::Error HwcDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
                                                    hwc2_layer_t *layers,
                                                    int32_t *types) {
+  if (IsInHeadlessMode()) {
+    *num_elements = 0;
+    return HWC2::Error::None;
+  }
+
   uint32_t num_changes = 0;
   for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
     if (l.second.IsTypeChanged()) {
@@ -250,6 +260,9 @@ HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
                                                int32_t dataspace) {
   std::pair<uint32_t, uint32_t> min = drm_->min_resolution();
   std::pair<uint32_t, uint32_t> max = drm_->max_resolution();
+  if (IsInHeadlessMode()) {
+    return HWC2::Error::None;
+  }
 
   if (width < min.first || height < min.second)
     return HWC2::Error::Unsupported;
@@ -287,8 +300,8 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   auto &hwc_config = configs_.hwc_configs[conf];
 
   static const int32_t kUmPerInch = 25400;
-  uint32_t mm_width = connector_->mm_width();
-  uint32_t mm_height = connector_->mm_height();
+  uint32_t mm_width = configs_.mm_width;
+  uint32_t mm_height = configs_.mm_height;
   auto attribute = static_cast<HWC2::Attribute>(attribute_in);
   switch (attribute) {
     case HWC2::Attribute::Width:
@@ -398,6 +411,11 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types,
 HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
                                          hwc2_layer_t *layers,
                                          int32_t *fences) {
+  if (IsInHeadlessMode()) {
+    *num_elements = 0;
+    return HWC2::Error::None;
+  }
+
   uint32_t num_layers = 0;
 
   for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
@@ -418,6 +436,11 @@ HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
 }
 
 HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
+  if (IsInHeadlessMode()) {
+    ALOGE("%s: Display is in headless mode, should never reach here", __func__);
+    return HWC2::Error::None;
+  }
+
   // order the layers by z-order
   bool use_client_layer = false;
   uint32_t client_z_order = UINT32_MAX;
@@ -497,6 +520,10 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
  */
 HWC2::Error HwcDisplay::PresentDisplay(int32_t *present_fence) {
+  if (IsInHeadlessMode()) {
+    *present_fence = -1;
+    return HWC2::Error::None;
+  }
   HWC2::Error ret{};
 
   ++total_stats_.total_frames_;
@@ -611,6 +638,10 @@ HWC2::Error HwcDisplay::SetOutputBuffer(buffer_handle_t /*buffer*/,
 }
 
 HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
+  if (IsInHeadlessMode()) {
+    return HWC2::Error::None;
+  }
+
   auto mode = static_cast<HWC2::PowerMode>(mode_in);
   AtomicCommitArgs a_args{};
 
@@ -652,6 +683,10 @@ HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
 
 HWC2::Error HwcDisplay::ValidateDisplay(uint32_t *num_types,
                                         uint32_t *num_requests) {
+  if (IsInHeadlessMode()) {
+    *num_types = *num_requests = 0;
+    return HWC2::Error::None;
+  }
   return backend_->ValidateDisplay(this, num_types, num_requests);
 }
 
