@@ -35,7 +35,6 @@
 #include "drm/DrmDevice.h"
 #include "drm/DrmPlane.h"
 #include "drm/DrmUnique.h"
-#include "utils/autolock.h"
 #include "utils/log.h"
 
 namespace android {
