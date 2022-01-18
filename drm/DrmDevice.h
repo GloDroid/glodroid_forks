@@ -60,8 +60,6 @@ class DrmDevice {
   }
 
   DrmConnector *GetConnectorForDisplay(int display) const;
-  DrmConnector *GetWritebackConnectorForDisplay(int display) const;
-  DrmConnector *AvailableWritebackConnector(int display) const;
   DrmCrtc *GetCrtcForDisplay(int display) const;
 
   int GetCrtcProperty(const DrmCrtc &crtc, const char *prop_name,
@@ -96,7 +94,6 @@ class DrmDevice {
   int TryEncoderForDisplay(int display, DrmEncoder *enc);
 
   int CreateDisplayPipe(DrmConnector *connector);
-  int AttachWriteback(DrmConnector *display_conn);
 
   UniqueFd fd_;
   uint32_t mode_id_ = 0;
