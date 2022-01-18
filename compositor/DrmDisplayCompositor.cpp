@@ -54,18 +54,6 @@ auto DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display)
   return 0;
 }
 
-std::unique_ptr<DrmDisplayComposition>
-DrmDisplayCompositor::CreateInitializedComposition() const {
-  DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
-  DrmCrtc *crtc = drm->GetCrtcForDisplay(display_);
-  if (!crtc) {
-    ALOGE("Failed to find crtc for display = %d", display_);
-    return {};
-  }
-
-  return std::make_unique<DrmDisplayComposition>(crtc);
-}
-
 // NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
 auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   ATRACE_CALL();
