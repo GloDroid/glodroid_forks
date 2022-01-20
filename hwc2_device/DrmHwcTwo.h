@@ -64,6 +64,9 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
   bool UnbindDisplay(DrmDisplayPipeline *pipeline) override;
   void FinalizeDisplayBinding() override;
 
+  void SendVsyncEventToClient(hwc2_display_t displayid, int64_t timestamp,
+                              uint32_t vsync_period) const;
+
  private:
   void SendHotplugEventToClient(hwc2_display_t displayid, bool connected);
 

@@ -203,4 +203,21 @@ void DrmHwcTwo::SendHotplugEventToClient(hwc2_display_t displayid,
   }
 }
 
+void DrmHwcTwo::SendVsyncEventToClient(
+    hwc2_display_t displayid, int64_t timestamp,
+    [[maybe_unused]] uint32_t vsync_period) const {
+  /* vsync callback */
+#if PLATFORM_SDK_VERSION > 29
+  if (vsync_2_4_callback_.first != nullptr &&
+      vsync_2_4_callback_.second != nullptr) {
+    vsync_2_4_callback_.first(vsync_2_4_callback_.second, displayid, timestamp,
+                              vsync_period);
+  } else
+#endif
+      if (vsync_callback_.first != nullptr &&
+          vsync_callback_.second != nullptr) {
+    vsync_callback_.first(vsync_callback_.second, displayid, timestamp);
+  }
+}
+
 }  // namespace android

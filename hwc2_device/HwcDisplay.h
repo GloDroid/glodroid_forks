@@ -83,7 +83,6 @@ class HwcDisplay {
 #endif
 #if PLATFORM_SDK_VERSION > 29
   HWC2::Error GetDisplayConnectionType(uint32_t *outType);
-  HWC2::Error GetDisplayVsyncPeriod(hwc2_vsync_period_t *outVsyncPeriod);
 
   HWC2::Error SetActiveConfigWithConstraints(
       hwc2_config_t config,
@@ -96,6 +95,7 @@ class HwcDisplay {
 
   HWC2::Error SetContentType(int32_t contentType);
 #endif
+  HWC2::Error GetDisplayVsyncPeriod(uint32_t *outVsyncPeriod);
 
   HWC2::Error GetDozeSupport(int32_t *support);
   HWC2::Error GetHdrCapabilities(uint32_t *num_types, int32_t *types,
@@ -165,26 +165,8 @@ class HwcDisplay {
   }
 
   /* returns true if composition should be sent to client */
-  bool ProcessClientFlatteningState(bool skip) {
-    int flattenning_state = flattenning_state_;
-    if (flattenning_state == ClientFlattenningState::Disabled) {
-      return false;
-    }
-
-    if (skip) {
-      flattenning_state_ = ClientFlattenningState::NotRequired;
-      return false;
-    }
-
-    if (flattenning_state == ClientFlattenningState::ClientRefreshRequested) {
-      flattenning_state_ = ClientFlattenningState::Flattened;
-      return true;
-    }
-
-    flattening_vsync_worker_.VSyncControl(true);
-    flattenning_state_ = ClientFlattenningState::VsyncCountdownMax;
-    return false;
-  }
+  bool ProcessClientFlatteningState(bool skip);
+  void ProcessFlatenningVsyncInternal();
 
   /* Headless mode required to keep SurfaceFlinger alive when all display are
    * disconnected, Without headless mode Android will continuously crash.
@@ -206,7 +188,6 @@ class HwcDisplay {
   };
 
   std::atomic_int flattenning_state_{ClientFlattenningState::NotRequired};
-  VSyncWorker flattening_vsync_worker_;
 
   constexpr static size_t MATRIX_SIZE = 16;
 
@@ -221,6 +202,8 @@ class HwcDisplay {
   std::unique_ptr<Backend> backend_;
 
   VSyncWorker vsync_worker_;
+  bool vsync_event_en_{};
+  bool vsync_flattening_en_{};
 
   const hwc2_display_t handle_;
   HWC2::DisplayType type_;

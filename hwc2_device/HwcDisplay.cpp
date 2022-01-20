@@ -115,8 +115,6 @@ HwcDisplay::~HwcDisplay() {
   auto &main_lock = hwc2_->GetResMan().GetMainLock();
   /* Unlock to allow pending vsync callbacks to finish */
   main_lock.unlock();
-  flattening_vsync_worker_.VSyncControl(false);
-  flattening_vsync_worker_.Exit();
   vsync_worker_.VSyncControl(false);
   vsync_worker_.Exit();
   main_lock.lock();
@@ -135,37 +133,16 @@ void HwcDisplay::ClearDisplay() {
 HWC2::Error HwcDisplay::Init() {
   int ret = vsync_worker_.Init(pipeline_, [this](int64_t timestamp) {
     const std::lock_guard<std::mutex> lock(hwc2_->GetResMan().GetMainLock());
-    /* vsync callback */
-#if PLATFORM_SDK_VERSION > 29
-    if (hwc2_->vsync_2_4_callback_.first != nullptr &&
-        hwc2_->vsync_2_4_callback_.second != nullptr) {
-      hwc2_vsync_period_t period_ns{};
+    if (vsync_event_en_) {
+      uint32_t period_ns{};
       GetDisplayVsyncPeriod(&period_ns);
-      hwc2_->vsync_2_4_callback_.first(hwc2_->vsync_2_4_callback_.second,
-                                       handle_, timestamp, period_ns);
-    } else
-#endif
-        if (hwc2_->vsync_callback_.first != nullptr &&
-            hwc2_->vsync_callback_.second != nullptr) {
-      hwc2_->vsync_callback_.first(hwc2_->vsync_callback_.second, handle_,
-                                   timestamp);
+      hwc2_->SendVsyncEventToClient(handle_, timestamp, period_ns);
     }
-  });
-  if (ret) {
-    ALOGE("Failed to create event worker for d=%d %d\n", int(handle_), ret);
-    return HWC2::Error::BadDisplay;
-  }
-
-  ret = flattening_vsync_worker_.Init(pipeline_, [this](int64_t /*timestamp*/) {
-    const std::lock_guard<std::mutex> lock(hwc2_->GetResMan().GetMainLock());
-    /* Frontend flattening */
-    if (flattenning_state_ > ClientFlattenningState::ClientRefreshRequested &&
-        --flattenning_state_ ==
-            ClientFlattenningState::ClientRefreshRequested &&
-        hwc2_->refresh_callback_.first != nullptr &&
-        hwc2_->refresh_callback_.second != nullptr) {
-      hwc2_->refresh_callback_.first(hwc2_->refresh_callback_.second, handle_);
-      flattening_vsync_worker_.VSyncControl(false);
+    if (vsync_flattening_en_) {
+      ProcessFlatenningVsyncInternal();
+    }
+    if (!vsync_event_en_ && !vsync_flattening_en_) {
+      vsync_worker_.VSyncControl(false);
     }
   });
   if (ret) {
@@ -700,7 +677,10 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
 }
 
 HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
-  vsync_worker_.VSyncControl(HWC2_VSYNC_ENABLE == enabled);
+  vsync_event_en_ = HWC2_VSYNC_ENABLE == enabled;
+  if (vsync_event_en_) {
+    vsync_worker_.VSyncControl(true);
+  }
   return HWC2::Error::None;
 }
 
@@ -729,6 +709,13 @@ std::vector<HwcLayer *> HwcDisplay::GetOrderLayersByZPos() {
   return ordered_layers;
 }
 
+HWC2::Error HwcDisplay::GetDisplayVsyncPeriod(
+    uint32_t *outVsyncPeriod /* ns */) {
+  return GetDisplayAttribute(configs_.active_config_id,
+                             HWC2_ATTRIBUTE_VSYNC_PERIOD,
+                             (int32_t *)(outVsyncPeriod));
+}
+
 #if PLATFORM_SDK_VERSION > 29
 HWC2::Error HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
   if (IsInHeadlessMode()) {
@@ -746,13 +733,6 @@ HWC2::Error HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
     return HWC2::Error::BadConfig;
 
   return HWC2::Error::None;
-}
-
-HWC2::Error HwcDisplay::GetDisplayVsyncPeriod(
-    hwc2_vsync_period_t *outVsyncPeriod /* ns */) {
-  return GetDisplayAttribute(configs_.active_config_id,
-                             HWC2_ATTRIBUTE_VSYNC_PERIOD,
-                             (int32_t *)(outVsyncPeriod));
 }
 
 HWC2::Error HwcDisplay::SetActiveConfigWithConstraints(
@@ -885,6 +865,39 @@ const Backend *HwcDisplay::backend() const {
 
 void HwcDisplay::set_backend(std::unique_ptr<Backend> backend) {
   backend_ = std::move(backend);
+}
+
+/* returns true if composition should be sent to client */
+bool HwcDisplay::ProcessClientFlatteningState(bool skip) {
+  int flattenning_state = flattenning_state_;
+  if (flattenning_state == ClientFlattenningState::Disabled) {
+    return false;
+  }
+
+  if (skip) {
+    flattenning_state_ = ClientFlattenningState::NotRequired;
+    return false;
+  }
+
+  if (flattenning_state == ClientFlattenningState::ClientRefreshRequested) {
+    flattenning_state_ = ClientFlattenningState::Flattened;
+    return true;
+  }
+
+  vsync_flattening_en_ = true;
+  vsync_worker_.VSyncControl(true);
+  flattenning_state_ = ClientFlattenningState::VsyncCountdownMax;
+  return false;
+}
+
+void HwcDisplay::ProcessFlatenningVsyncInternal() {
+  if (flattenning_state_ > ClientFlattenningState::ClientRefreshRequested &&
+      --flattenning_state_ == ClientFlattenningState::ClientRefreshRequested &&
+      hwc2_->refresh_callback_.first != nullptr &&
+      hwc2_->refresh_callback_.second != nullptr) {
+    hwc2_->refresh_callback_.first(hwc2_->refresh_callback_.second, handle_);
+    vsync_flattening_en_ = false;
+  }
 }
 
 }  // namespace android
