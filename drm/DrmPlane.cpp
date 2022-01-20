@@ -144,6 +144,12 @@ int DrmPlane::Init() {
     }
   }
 
+  /* Feature: docs/features/drmhwc-feature-001.md */
+  AddToFormatResolutionTable(DRM_FORMAT_ABGR8888, DRM_FORMAT_XBGR8888);
+  AddToFormatResolutionTable(DRM_FORMAT_ARGB8888, DRM_FORMAT_XRGB8888);
+  AddToFormatResolutionTable(DRM_FORMAT_RGBA8888, DRM_FORMAT_RGBX8888);
+  AddToFormatResolutionTable(DRM_FORMAT_BGRA8888, DRM_FORMAT_BGRX8888);
+
   return 0;
 }
 
@@ -151,7 +157,7 @@ bool DrmPlane::IsCrtcSupported(const DrmCrtc &crtc) const {
   return ((1 << crtc.GetIndexInResArray()) & plane_->possible_crtcs) != 0;
 }
 
-bool DrmPlane::IsValidForLayer(LayerData *layer) {
+bool DrmPlane::IsValidForLayer(LayerData *layer, bool most_bottom) {
   if (!rotation_property_) {
     if (layer->pi.transform != LayerTransform::kIdentity) {
       ALOGV("No rotation property on plane %d", GetId());
@@ -169,14 +175,17 @@ bool DrmPlane::IsValidForLayer(LayerData *layer) {
     return false;
   }
 
-  if (blending_enum_map_.count(layer->bi->blend_mode) == 0 &&
-      layer->bi->blend_mode != BufferBlendMode::kNone &&
-      layer->bi->blend_mode != BufferBlendMode::kPreMult) {
+  if (blending_enum_map_.count(layer->bi->blend_mode) == 0 && !most_bottom) {
     ALOGV("Blending is not supported on plane %d", GetId());
     return false;
   }
 
+  /* Feature: docs/features/drmhwc-feature-001.md */
   uint32_t format = layer->bi->format;
+  if (most_bottom && BottomLayerFormatResolutionTable_.count(format) != 0) {
+    format = BottomLayerFormatResolutionTable_[format];
+  }
+
   if (!IsFormatSupported(format)) {
     ALOGV("Plane %d does not supports %c%c%c%c format", GetId(), format,
           format >> 8, format >> 16, format >> 24);
@@ -189,6 +198,14 @@ bool DrmPlane::IsValidForLayer(LayerData *layer) {
 bool DrmPlane::IsFormatSupported(uint32_t format) const {
   return std::find(std::begin(formats_), std::end(formats_), format) !=
          std::end(formats_);
+}
+
+/* Feature: docs/features/drmhwc-feature-001.md */
+void DrmPlane::AddToFormatResolutionTable(uint32_t original_fourcc,
+                                          uint32_t resolved_fourcc) {
+  if (!IsFormatSupported(original_fourcc)) {
+    BottomLayerFormatResolutionTable_[original_fourcc] = resolved_fourcc;
+  }
 }
 
 bool DrmPlane::HasNonRgbFormat() const {
@@ -223,7 +240,8 @@ static int To1616FixPt(float in) {
 }
 
 auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
-                              uint32_t zpos, uint32_t crtc_id) -> int {
+                              uint32_t zpos, uint32_t crtc_id, bool most_bottom)
+    -> int {
   if (!layer.fb) {
     ALOGE("Expected a valid framebuffer for pset");
     return -EINVAL;
@@ -245,10 +263,19 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
     return -EINVAL;
   }
 
+  uint32_t fb_id = layer.fb->GetFbId();
+
+  /* Feature: docs/features/drmhwc-feature-001.md */
+  if (most_bottom &&
+      BottomLayerFormatResolutionTable_.count(layer.bi->format) != 0) {
+    fb_id = layer.fb->GetFbIdForFormat(
+        BottomLayerFormatResolutionTable_[layer.bi->format]);
+  }
+
   auto &disp = layer.pi.display_frame;
   auto &src = layer.pi.source_crop;
   if (!crtc_property_.AtomicSet(pset, crtc_id) ||
-      !fb_property_.AtomicSet(pset, layer.fb->GetFbId()) ||
+      !fb_property_.AtomicSet(pset, fb_id) ||
       !crtc_x_property_.AtomicSet(pset, disp.left) ||
       !crtc_y_property_.AtomicSet(pset, disp.top) ||
       !crtc_w_property_.AtomicSet(pset, disp.right - disp.left) ||

@@ -40,7 +40,7 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
   ATRACE_NAME("Import dmabufs and register FB");
 
   // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): priv. constructor usage
-  std::shared_ptr<DrmFbIdHandle> local(new DrmFbIdHandle(drm));
+  std::shared_ptr<DrmFbIdHandle> local(new DrmFbIdHandle(drm, *bo));
 
   local->gem_handles_[0] = first_gem_handle;
   int32_t err = 0;
@@ -67,28 +67,35 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
   if (!drm.HasAddFb2ModifiersSupport() && has_modifiers) {
     ALOGE("No ADDFB2 with modifier support. Can't import modifier %" PRIu64,
           bo->modifiers[0]);
-    local.reset();
-    return local;
+    return {};
   }
 
-  /* Create framebuffer object */
-  if (!has_modifiers) {
-    err = drmModeAddFB2(drm.GetFd(), bo->width, bo->height, bo->format,
-                        local->gem_handles_.data(), &bo->pitches[0],
-                        &bo->offsets[0], &local->fb_id_, 0);
-  } else {
-    err = drmModeAddFB2WithModifiers(drm.GetFd(), bo->width, bo->height,
-                                     bo->format, local->gem_handles_.data(),
-                                     &bo->pitches[0], &bo->offsets[0],
-                                     &bo->modifiers[0], &local->fb_id_,
-                                     DRM_MODE_FB_MODIFIERS);
-  }
+  err = local->CreateFb(bo->format, &local->fb_id_);
   if (err != 0) {
     ALOGE("could not create drm fb %d", err);
-    local.reset();
+    return {};
   }
 
   return local;
+}
+
+/* Creates framebuffer object */
+auto DrmFbIdHandle::CreateFb(uint32_t fourcc, uint32_t *out_fb_id) -> int {
+  bool has_modifiers = bo_.modifiers[0] != DRM_FORMAT_MOD_NONE &&
+                       bo_.modifiers[0] != DRM_FORMAT_MOD_INVALID;
+
+  /* Create framebuffer object */
+  if (!has_modifiers) {
+    return drmModeAddFB2(drm_->GetFd(), bo_.width, bo_.height, fourcc,
+                         gem_handles_.data(), &bo_.pitches[0], &bo_.offsets[0],
+                         out_fb_id, 0);
+  }
+
+  return drmModeAddFB2WithModifiers(drm_->GetFd(), bo_.width, bo_.height,
+                                    fourcc, gem_handles_.data(),
+                                    &bo_.pitches[0], &bo_.offsets[0],
+                                    &bo_.modifiers[0], out_fb_id,
+                                    DRM_MODE_FB_MODIFIERS);
 }
 
 DrmFbIdHandle::~DrmFbIdHandle() {
@@ -96,17 +103,19 @@ DrmFbIdHandle::~DrmFbIdHandle() {
 
   /* Destroy framebuffer object */
   if (drmModeRmFB(drm_->GetFd(), fb_id_) != 0) {
-    ALOGE("Failed to rm fb");
+    ALOGE("Failed to remove framebuffer fb_id=%i", fb_id_);
   }
 
-  /* Close GEM handles.
-   *
-   * WARNING: TODO(nobody):
-   * From Linux side libweston relies on libgbm to get KMS handle and never
-   * closes it (handle is closed by libgbm on buffer destruction)
-   * Probably we should offer similar approach to users (at least on user
-   * request via system properties)
+  /* Destroy framebuffer created for resolved formats
+   * Feature: docs/features/drmhwc-feature-001.md
    */
+  for (auto &rf : fb_id_resolved_format_) {
+    if (drmModeRmFB(drm_->GetFd(), rf.second) != 0) {
+      ALOGE("Failed to remove framebuffer fb_id=%i", rf.second);
+    }
+  }
+
+  /* Close GEM handles */
   struct drm_gem_close gem_close {};
   for (size_t i = 0; i < gem_handles_.size(); i++) {
     /* Don't close invalid handle. Close handle only once in cases

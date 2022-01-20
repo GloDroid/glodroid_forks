@@ -107,6 +107,8 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   if (args.composition) {
     new_frame_state.used_planes.clear();
 
+    bool most_bottom = true;
+
     for (auto &joining : args.composition->plan) {
       DrmPlane *plane = joining.plane->Get();
       LayerData &layer = joining.layer;
@@ -118,10 +120,11 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       auto &v = unused_planes;
       v.erase(std::remove(v.begin(), v.end(), joining.plane), v.end());
 
-      if (plane->AtomicSetState(*pset, layer, joining.z_pos, crtc->GetId()) !=
-          0) {
+      if (plane->AtomicSetState(*pset, layer, joining.z_pos, crtc->GetId(),
+                                most_bottom) != 0) {
         return -EINVAL;
       }
+      most_bottom = false;
     }
   }
 

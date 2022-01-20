@@ -49,12 +49,32 @@ class DrmFbIdHandle {
     return fb_id_;
   }
 
+  /* Feature: docs/features/drmhwc-feature-001.md */
+  auto GetFbIdForFormat [[nodiscard]] (uint32_t fourcc) -> uint32_t {
+    if (fb_id_resolved_format_.count(fourcc) == 0) {
+      uint32_t fb_id{};
+      int err = CreateFb(fourcc, &fb_id);
+      if (err == 0) {
+        fb_id_resolved_format_[fourcc] = fb_id;
+      } else {
+        return 0;
+      }
+    }
+    return fb_id_resolved_format_[fourcc];
+  }
+
  private:
-  explicit DrmFbIdHandle(DrmDevice &drm) : drm_(&drm){};
+  explicit DrmFbIdHandle(DrmDevice &drm, BufferInfo &bo)
+      : drm_(&drm), bo_(bo){};
 
   DrmDevice *const drm_;
 
+  const BufferInfo bo_;
+
+  auto CreateFb(uint32_t fourcc, uint32_t *out_fb_id) -> int;
+
   uint32_t fb_id_{};
+  std::map<uint32_t /*fourcc*/, uint32_t /*fb_id*/> fb_id_resolved_format_{};
   std::array<GemHandle, kBufferMaxPlanes> gem_handles_{};
 };
 
