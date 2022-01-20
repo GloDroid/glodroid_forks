@@ -42,7 +42,7 @@ auto DrmKmsPlan::CreateDrmKmsPlan(DrmDisplayPipeline &pipe,
 
       plane = *avail_planes.begin();
       avail_planes.erase(avail_planes.begin());
-    } while (!plane->Get()->IsValidForLayer(&dhl));
+    } while (!plane->Get()->IsValidForLayer(&dhl, z_pos == 0));
 
     LayerToPlaneJoining joining = {
         .layer = std::move(dhl),

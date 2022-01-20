@@ -33,24 +33,23 @@ struct LayerData;
 
 class DrmPlane : public PipelineBindable<DrmPlane> {
  public:
-  DrmPlane(const DrmPlane &) = delete;
-  DrmPlane &operator=(const DrmPlane &) = delete;
-
   static auto CreateInstance(DrmDevice &dev, uint32_t plane_id)
       -> std::unique_ptr<DrmPlane>;
 
+  DrmPlane(const DrmPlane &) = delete;
+  DrmPlane &operator=(const DrmPlane &) = delete;
+
   bool IsCrtcSupported(const DrmCrtc &crtc) const;
-  bool IsValidForLayer(LayerData *layer);
+  bool IsValidForLayer(LayerData *layer, bool most_bottom);
 
   auto GetType() const {
     return type_;
   }
 
-  bool IsFormatSupported(uint32_t format) const;
   bool HasNonRgbFormat() const;
 
   auto AtomicSetState(drmModeAtomicReq &pset, LayerData &layer, uint32_t zpos,
-                      uint32_t crtc_id) -> int;
+                      uint32_t crtc_id, bool most_bottom) -> int;
   auto AtomicDisablePlane(drmModeAtomicReq &pset) -> int;
   auto &GetZPosProperty() const {
     return zpos_property_;
@@ -72,7 +71,15 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
   auto GetPlaneProperty(const char *prop_name, DrmProperty &property,
                         Presence presence = Presence::kMandatory) -> bool;
 
+  bool IsFormatSupported(uint32_t format) const;
+
   uint32_t type_{};
+
+  /* Feature: docs/features/drmhwc-feature-001.md */
+  std::map<uint32_t /*ReqDrmFormat*/, uint32_t /*ResolvedDrmFormat*/>
+      BottomLayerFormatResolutionTable_;
+  void AddToFormatResolutionTable(uint32_t original_fourcc,
+                                  uint32_t resolved_fourcc);
 
   std::vector<uint32_t> formats_;
 
