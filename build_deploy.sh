@@ -14,10 +14,10 @@ mm
 adb root && adb remount && adb sync vendor
 
 adb shell stop
-adb shell stop vendor.hwcomposer-2-1 || true
-adb shell stop vendor.hwcomposer-2-2 || true
-adb shell stop vendor.hwcomposer-2-3 || true
-adb shell stop vendor.hwcomposer-2-4 || true
+adb shell stop vendor.hwcomposer-2-1 && adb shell start vendor.hwcomposer-2-1 || true
+adb shell stop vendor.hwcomposer-2-2 && adb shell start vendor.hwcomposer-2-2 || true
+adb shell stop vendor.hwcomposer-2-3 && adb shell start vendor.hwcomposer-2-3 || true
+adb shell stop vendor.hwcomposer-2-4 && adb shell start vendor.hwcomposer-2-4 || true
 
 [ $HWCLOG -eq "1" ] && adb logcat -c
 
