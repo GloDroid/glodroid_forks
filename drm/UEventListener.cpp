@@ -90,6 +90,10 @@ void UEventListener::Routine() {
     }
 
     if (drm_event && hotplug_event && hotplug_handler_) {
+      constexpr useconds_t delay_after_uevent_us = 200000;
+      /* We need some delay to ensure DrmConnector::UpdateModes() will query
+       * correct modes list, otherwise at least RPI4 board may report 0 modes */
+      usleep(delay_after_uevent_us);
       hotplug_handler_();
     }
   }
