@@ -75,7 +75,10 @@
 #define IP5XXX_BATOCV_DAT1		0xa9
 
 struct ip5xxx {
+	struct device *dev;
 	struct regmap *regmap;
+	struct delayed_work wd_work;
+	bool initialized;
 };
 
 static const enum power_supply_property ip5xxx_boost_properties[] = {
@@ -480,6 +483,74 @@ static const struct regmap_config ip5xxx_regmap_config = {
 	.max_register		= IP5XXX_BATOCV_DAT1,
 };
 
+static void ip5xxx_power_wd_work(struct work_struct *work)
+{
+	struct ip5xxx *ip5xxx = container_of(work, struct ip5xxx, wd_work.work);
+	int ret;
+
+	if (ip5xxx->initialized) {
+		//XXX: perform some checks?
+		//- charger may reset some of its state when it's powered down
+		//  by the user and not accessible
+		schedule_delayed_work(&ip5xxx->wd_work, msecs_to_jiffies(5000));
+		return;
+	}
+
+	/*
+	 * Disable shutdown under light load (it turns off the keyboard).
+	 * Disable power on when under load (wait until I2C is pulled up).
+	 */
+	ret = regmap_update_bits(ip5xxx->regmap, IP5XXX_SYS_CTL1,
+				 IP5XXX_SYS_CTL1_LIGHT_SHDN_EN |
+				 IP5XXX_SYS_CTL1_LOAD_PWRUP_EN, 0);
+	if (ret)
+		goto err;
+
+	/*
+	 * Enable shutdown after two short button presses within 1 second.
+	 */
+	ret = regmap_update_bits(ip5xxx->regmap, IP5XXX_SYS_CTL3,
+				 IP5XXX_SYS_CTL3_BTN_SHDN_EN,
+				 IP5XXX_SYS_CTL3_BTN_SHDN_EN);
+	if (ret)
+		goto err;
+
+	/*
+	 * Disable power on when VIN is removed (wait until the phone is on).
+	 */
+	ret = regmap_update_bits(ip5xxx->regmap, IP5XXX_SYS_CTL4,
+				 IP5XXX_SYS_CTL4_VIN_PULLOUT_BOOST_EN, 0);
+	if (ret)
+		goto err;
+
+	/*
+	 * Enable the NTC.
+	 * Configure the button for long press => LED, two press => shutdown.
+	 */
+	ret = regmap_update_bits(ip5xxx->regmap, IP5XXX_SYS_CTL5,
+				 IP5XXX_SYS_CTL5_NTC_EN |
+				 IP5XXX_SYS_CTL5_WLED_MODE_SEL |
+				 IP5XXX_SYS_CTL5_BTN_SHDN_SEL, 0);
+	if (ret)
+		goto err;
+
+	ip5xxx->initialized = true;
+	schedule_delayed_work(&ip5xxx->wd_work, msecs_to_jiffies(5000));
+	dev_info(ip5xxx->dev, "Charger is initialized\n");
+	return;
+
+err:
+	dev_err(ip5xxx->dev, "Failed to initialize the charger\n");
+	schedule_delayed_work(&ip5xxx->wd_work, msecs_to_jiffies(5000));
+}
+
+static void ip5xxx_power_cleanup(void* data)
+{
+	struct ip5xxx *ip5xxx = data;
+
+	cancel_delayed_work_sync(&ip5xxx->wd_work);
+}
+
 int ip5xxx_power_probe_with_regmap(struct device* dev, struct regmap *regmap)
 {
 	struct power_supply_config psy_cfg = {};
@@ -491,45 +562,9 @@ int ip5xxx_power_probe_with_regmap(struct device* dev, struct regmap *regmap)
 	if (!ip5xxx)
 		return -ENOMEM;
 
+	ip5xxx->dev = dev;
 	ip5xxx->regmap = regmap;
-
-	/*
-	 * Disable shutdown under light load (it turns off the keyboard).
-	 * Disable power on when under load (wait until I2C is pulled up).
-	 */
-	ret = regmap_update_bits(ip5xxx->regmap, IP5XXX_SYS_CTL1,
-				 IP5XXX_SYS_CTL1_LIGHT_SHDN_EN |
-				 IP5XXX_SYS_CTL1_LOAD_PWRUP_EN, 0);
-	if (ret)
-		return ret;
-
-	/*
-	 * Enable shutdown after two short button presses within 1 second.
-	 */
-	ret = regmap_update_bits(ip5xxx->regmap, IP5XXX_SYS_CTL3,
-				 IP5XXX_SYS_CTL3_BTN_SHDN_EN,
-				 IP5XXX_SYS_CTL3_BTN_SHDN_EN);
-	if (ret)
-		return ret;
-
-	/*
-	 * Disable power on when VIN is removed (wait until the phone is on).
-	 */
-	ret = regmap_update_bits(ip5xxx->regmap, IP5XXX_SYS_CTL4,
-				 IP5XXX_SYS_CTL4_VIN_PULLOUT_BOOST_EN, 0);
-	if (ret)
-		return ret;
-
-	/*
-	 * Enable the NTC.
-	 * Configure the button for long press => LED, two press => shutdown.
-	 */
-	ret = regmap_update_bits(ip5xxx->regmap, IP5XXX_SYS_CTL5,
-				 IP5XXX_SYS_CTL5_NTC_EN |
-				 IP5XXX_SYS_CTL5_WLED_MODE_SEL |
-				 IP5XXX_SYS_CTL5_BTN_SHDN_SEL, 0);
-	if (ret)
-		return ret;
+	INIT_DELAYED_WORK(&ip5xxx->wd_work, ip5xxx_power_wd_work);
 
 	psy_cfg.of_node = dev->of_node;
 	psy_cfg.drv_data = ip5xxx;
@@ -541,6 +576,15 @@ int ip5xxx_power_probe_with_regmap(struct device* dev, struct regmap *regmap)
 	psy = devm_power_supply_register(dev, &ip5xxx_charger_desc, &psy_cfg);
 	if (IS_ERR(psy))
 		return PTR_ERR(psy);
+
+	ret = devm_add_action(dev, ip5xxx_power_cleanup, ip5xxx);
+	if (ret) {
+		ip5xxx_power_cleanup(ip5xxx);
+		dev_err(dev, "Failed to add cleanup action (%d)\n", ret);
+		return ret;
+	}
+
+	schedule_delayed_work(&ip5xxx->wd_work, msecs_to_jiffies(500));
 
 	return 0;
 }
