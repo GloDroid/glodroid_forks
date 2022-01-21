@@ -33,6 +33,8 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
   std::pair<HWC2_PFN_VSYNC, hwc2_callback_data_t> vsync_callback_{};
 #if PLATFORM_SDK_VERSION > 29
   std::pair<HWC2_PFN_VSYNC_2_4, hwc2_callback_data_t> vsync_2_4_callback_{};
+  std::pair<HWC2_PFN_VSYNC_PERIOD_TIMING_CHANGED, hwc2_callback_data_t>
+      period_timing_changed_callback_{};
 #endif
   std::pair<HWC2_PFN_REFRESH, hwc2_callback_data_t> refresh_callback_{};
 
@@ -66,6 +68,8 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
 
   void SendVsyncEventToClient(hwc2_display_t displayid, int64_t timestamp,
                               uint32_t vsync_period) const;
+  void SendVsyncPeriodTimingChangedEventToClient(hwc2_display_t displayid,
+                                                 int64_t timestamp) const;
 
  private:
   void SendHotplugEventToClient(hwc2_display_t displayid, bool connected);

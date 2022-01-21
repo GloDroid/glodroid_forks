@@ -195,7 +195,9 @@ class HwcDisplay {
 
   DrmHwcTwo *const hwc2_;
 
-  std::optional<DrmMode> staged_mode;
+  std::optional<DrmMode> staged_mode_;
+  int64_t staged_mode_change_time_{};
+  uint32_t staged_mode_config_id_{};
 
   DrmDisplayPipeline *const pipeline_;
 
@@ -204,6 +206,8 @@ class HwcDisplay {
   VSyncWorker vsync_worker_;
   bool vsync_event_en_{};
   bool vsync_flattening_en_{};
+  bool vsync_tracking_en_{};
+  int64_t last_vsync_ts_{};
 
   const hwc2_display_t handle_;
   HWC2::DisplayType type_;
@@ -223,6 +227,8 @@ class HwcDisplay {
   std::string DumpDelta(HwcDisplay::Stats delta);
 
   HWC2::Error Init();
+
+  HWC2::Error SetActiveConfigInternal(uint32_t config, int64_t change_time);
 };
 
 }  // namespace android

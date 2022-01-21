@@ -28,8 +28,8 @@ namespace android {
 class DrmConnector;
 
 struct HwcDisplayConfig {
-  int id{};
-  int group_id{};
+  uint32_t id{};
+  uint32_t group_id{};
   DrmMode mode;
   bool disabled{};
 
@@ -42,13 +42,13 @@ struct HwcDisplayConfigs {
   HWC2::Error Update(DrmConnector &conn);
   void FillHeadless();
 
-  std::map<int /*config_id*/, struct HwcDisplayConfig> hwc_configs;
+  std::map<uint32_t /*config_id*/, struct HwcDisplayConfig> hwc_configs;
 
-  int active_config_id = 0;
-  int preferred_config_id = 0;
+  uint32_t active_config_id = 0;
+  uint32_t preferred_config_id = 0;
 
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-  static int last_config_id;
+  static uint32_t last_config_id;
 
   uint32_t mm_width = 0;
   uint32_t mm_height = 0;

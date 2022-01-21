@@ -174,6 +174,11 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
       vsync_2_4_callback_ = std::make_pair(HWC2_PFN_VSYNC_2_4(function), data);
       break;
     }
+    case HWC2::Callback::VsyncPeriodTimingChanged: {
+      period_timing_changed_callback_ = std::
+          make_pair(HWC2_PFN_VSYNC_PERIOD_TIMING_CHANGED(function), data);
+      break;
+    }
 #endif
     default:
       break;
@@ -218,6 +223,23 @@ void DrmHwcTwo::SendVsyncEventToClient(
           vsync_callback_.second != nullptr) {
     vsync_callback_.first(vsync_callback_.second, displayid, timestamp);
   }
+}
+
+void DrmHwcTwo::SendVsyncPeriodTimingChangedEventToClient(
+    [[maybe_unused]] hwc2_display_t displayid,
+    [[maybe_unused]] int64_t timestamp) const {
+#if PLATFORM_SDK_VERSION > 29
+  hwc_vsync_period_change_timeline_t timeline = {
+      .newVsyncAppliedTimeNanos = timestamp,
+      .refreshRequired = false,
+      .refreshTimeNanos = 0,
+  };
+  if (period_timing_changed_callback_.first != nullptr &&
+      period_timing_changed_callback_.second != nullptr) {
+    period_timing_changed_callback_
+        .first(period_timing_changed_callback_.second, displayid, &timeline);
+  }
+#endif
 }
 
 }  // namespace android

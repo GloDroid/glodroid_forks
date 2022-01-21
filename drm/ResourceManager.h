@@ -56,6 +56,8 @@ class ResourceManager {
     return main_lock_;
   }
 
+  static auto GetTimeMonotonicNs() -> int64_t;
+
  private:
   auto AddDrmDevice(std::string const &path) -> int;
   auto GetOrderedConnectors() -> std::vector<DrmConnector *>;

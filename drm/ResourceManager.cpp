@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include <ctime>
 #include <sstream>
 
 #include "bufferinfo/BufferInfoGetter.h"
@@ -112,6 +113,13 @@ int ResourceManager::AddDrmDevice(const std::string &path) {
   int ret = drm->Init(path.c_str());
   drms_.push_back(std::move(drm));
   return ret;
+}
+
+auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
+  struct timespec ts {};
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  constexpr int64_t kNsInSec = 1000000000LL;
+  return int64_t(ts.tv_sec) * kNsInSec + int64_t(ts.tv_nsec);
 }
 
 void ResourceManager::UpdateFrontendDisplays() {
