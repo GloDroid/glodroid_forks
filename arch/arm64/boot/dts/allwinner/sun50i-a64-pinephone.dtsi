@@ -525,6 +525,15 @@
 /* Connected to pogo pins (external spring based pinheader for user addons) */
 &i2c2 {
 	status = "okay";
+
+	keyboard@15 {
+		compatible = "pine64,kb151";
+		reg = <0x15>;
+		interrupt-parent = <&r_pio>;
+		interrupts = <0 12 IRQ_TYPE_EDGE_FALLING>; /* PL12 */
+		vbat-supply = <&reg_usb_5v>;
+		wakeup-source;
+	};
 };
 
 &i2s2 {
