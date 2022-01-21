@@ -961,6 +961,15 @@
 	i2c-scl-falling-time-ns = <15>;
 	pinctrl-0 = <&i2c5_xfer &pogo_int_pin>;
 	status = "okay";
+
+	keyboard@15 {
+		compatible = "pine64,kb151";
+		reg = <0x15>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <RK_PA0 IRQ_TYPE_EDGE_FALLING>;
+		vbat-supply = <&vcc5v0_sys>;
+		wakeup-source;
+	};
 };
 
 &i2s0 {
