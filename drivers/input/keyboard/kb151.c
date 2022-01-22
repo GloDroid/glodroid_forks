@@ -82,6 +82,10 @@
 #define DEFAULT_MAP_ROWS 12
 #define DEFAULT_MAP_COLS 12
 
+static bool disable_input;
+module_param(disable_input, bool, S_IRUGO);
+MODULE_PARM_DESC(disable_input, "Disable the keyboard part of the driver");
+
 static const u32 kb151_default_keymap[] = {
 	MATRIX_KEY(0,  0, KEY_ESC),
 	MATRIX_KEY(0,  1, KEY_1),
@@ -492,6 +496,9 @@ static int kb151_probe(struct i2c_client *client)
 	kb151->rows = kb_rows;
 	kb151->cols = kb_cols;
 
+	if (disable_input)
+		goto charger;
+
 	kb151->input = devm_input_allocate_device(dev);
 	if (!kb151->input)
 		return -ENOMEM;
@@ -523,6 +530,7 @@ static int kb151_probe(struct i2c_client *client)
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to register input\n");
 
+charger:
 #ifdef CONFIG_IP5XXX_POWER
 	// we need to create a custom regmap_bus that will proxy
 	// charger register reads/writes via a keyboard MCU
