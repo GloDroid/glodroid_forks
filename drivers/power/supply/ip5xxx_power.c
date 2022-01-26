@@ -293,7 +293,10 @@ static int ip5xxx_charger_read_adc(struct ip5xxx *ip5xxx,
 	if (ret)
 		return ret;
 
-	*val = sign_extend32(hi << 8 | lo, 13);
+	if (hi & 0x20)
+		*val = -(int)((~lo & 0xff) + ((~hi & 0x1f) << 8) + 1);
+	else
+		*val = hi << 8 | lo;
 
 	return 0;
 }
@@ -322,22 +325,28 @@ static int ip5xxx_charger_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = ip5xxx_charger_read_adc(ip5xxx, IP5XXX_BATVADC_DAT0,
 					      IP5XXX_BATVADC_DAT1, &raw);
+		if (ret)
+			return ret;
 
-		val->intval = 2600000 + DIV_ROUND_CLOSEST(raw * 26855, 100);
+		val->intval = (2600 + DIV_ROUND_CLOSEST(raw * 1000, 3724)) * 1000;
 		return 0;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
 		ret = ip5xxx_charger_read_adc(ip5xxx, IP5XXX_BATOCV_DAT0,
 					      IP5XXX_BATOCV_DAT1, &raw);
+		if (ret)
+			return ret;
 
-		val->intval = 2600000 + DIV_ROUND_CLOSEST(raw * 26855, 100);
+		val->intval = (2600 + DIV_ROUND_CLOSEST(raw * 1000, 3724)) * 1000;
 		return 0;
 
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		ret = ip5xxx_charger_read_adc(ip5xxx, IP5XXX_BATIADC_DAT0,
 					      IP5XXX_BATIADC_DAT1, &raw);
+		if (ret)
+			return ret;
 
-		val->intval = DIV_ROUND_CLOSEST(raw * 745985, 1000);
+		val->intval = DIV_ROUND_CLOSEST(raw * 1000, 1341) * 1000;
 		return 0;
 
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
