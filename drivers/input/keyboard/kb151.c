@@ -86,6 +86,10 @@ static bool disable_input;
 module_param(disable_input, bool, S_IRUGO);
 MODULE_PARM_DESC(disable_input, "Disable the keyboard part of the driver");
 
+static bool disable_fn_layer;
+module_param(disable_fn_layer, bool, 0644);
+MODULE_PARM_DESC(disable_fn_layer, "Disable the keyboard's Fn key layer map");
+
 static const u32 kb151_default_keymap[] = {
 	MATRIX_KEY(0,  0, KEY_ESC),
 	MATRIX_KEY(0,  1, KEY_1),
@@ -237,7 +241,7 @@ static void kb151_update(struct i2c_client *client)
 
 			dev_dbg(&client->dev, "row %u col %u %sed\n",
 				map_row, col, pressed ? "press" : "releas");
-			if (keymap[code] == KEY_FN) {
+			if (keymap[code] == KEY_FN && !disable_fn_layer) {
 				dev_dbg(&client->dev, "FN is now %s\n",
 					pressed ? "pressed" : "released");
 				kb151->fn_state = pressed;
