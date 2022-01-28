@@ -708,7 +708,14 @@ std::vector<HwcLayer *> HwcDisplay::GetOrderLayersByZPos() {
 
 #if PLATFORM_SDK_VERSION > 29
 HWC2::Error HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
-  if (connector_->internal())
+  if (IsInHeadlessMode()) {
+    *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
+    return HWC2::Error::None;
+  }
+  /* Primary display should be always internal,
+   * otherwise SF will be unhappy and will crash
+   */
+  if (connector_->internal() || handle_ == kPrimaryDisplay)
     *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
   else if (connector_->external())
     *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::External);
