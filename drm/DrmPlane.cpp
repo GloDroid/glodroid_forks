@@ -29,15 +29,28 @@
 
 namespace android {
 
-DrmPlane::DrmPlane(DrmDevice *drm, drmModePlanePtr p)
-    : drm_(drm),
-      id_(p->plane_id),
-      possible_crtc_mask_(p->possible_crtcs),
-      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-      formats_(p->formats, p->formats + p->count_formats) {
+auto DrmPlane::CreateInstance(DrmDevice &dev, uint32_t plane_id)
+    -> std::unique_ptr<DrmPlane> {
+  auto p = MakeDrmModePlaneUnique(dev.fd(), plane_id);
+  if (!p) {
+    ALOGE("Failed to get plane %d", plane_id);
+    return {};
+  }
+
+  auto plane = std::unique_ptr<DrmPlane>(new DrmPlane(dev, std::move(p)));
+
+  if (plane->Init() != 0) {
+    ALOGE("Failed to init plane %d", plane_id);
+    return {};
+  }
+
+  return plane;
 }
 
 int DrmPlane::Init() {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+  formats_ = {plane_->formats, plane_->formats + plane_->count_formats};
+
   DrmProperty p;
 
   if (!GetPlaneProperty("type", p)) {
@@ -134,47 +147,43 @@ int DrmPlane::Init() {
   return 0;
 }
 
-bool DrmPlane::GetCrtcSupported(const DrmCrtc &crtc) const {
-  return ((1 << crtc.pipe()) & possible_crtc_mask_) != 0;
+bool DrmPlane::IsCrtcSupported(const DrmCrtc &crtc) const {
+  return ((1 << crtc.pipe()) & plane_->possible_crtcs) != 0;
 }
 
 bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {
   if (!rotation_property_) {
     if (layer->transform != DrmHwcTransform::kIdentity) {
-      ALOGV("No rotation property on plane %d", id_);
+      ALOGV("No rotation property on plane %d", GetId());
       return false;
     }
   } else {
     if (transform_enum_map_.count(layer->transform) == 0) {
-      ALOGV("Transform is not supported on plane %d", id_);
+      ALOGV("Transform is not supported on plane %d", GetId());
       return false;
     }
   }
 
   if (alpha_property_.id() == 0 && layer->alpha != UINT16_MAX) {
-    ALOGV("Alpha is not supported on plane %d", id_);
+    ALOGV("Alpha is not supported on plane %d", GetId());
     return false;
   }
 
   if (blending_enum_map_.count(layer->blending) == 0 &&
       layer->blending != DrmHwcBlending::kNone &&
       layer->blending != DrmHwcBlending::kPreMult) {
-    ALOGV("Blending is not supported on plane %d", id_);
+    ALOGV("Blending is not supported on plane %d", GetId());
     return false;
   }
 
   uint32_t format = layer->buffer_info.format;
   if (!IsFormatSupported(format)) {
-    ALOGV("Plane %d does not supports %c%c%c%c format", id_, format,
+    ALOGV("Plane %d does not supports %c%c%c%c format", GetId(), format,
           format >> 8, format >> 16, format >> 24);
     return false;
   }
 
   return true;
-}
-
-uint32_t DrmPlane::GetType() const {
-  return type_;
 }
 
 bool DrmPlane::IsFormatSupported(uint32_t format) const {
@@ -290,20 +299,17 @@ auto DrmPlane::AtomicDisablePlane(drmModeAtomicReq &pset) -> int {
   return 0;
 }
 
-const DrmProperty &DrmPlane::GetZPosProperty() const {
-  return zpos_property_;
-}
-
 auto DrmPlane::GetPlaneProperty(const char *prop_name, DrmProperty &property,
                                 Presence presence) -> bool {
-  int err = drm_->GetProperty(id_, DRM_MODE_OBJECT_PLANE, prop_name, &property);
+  int err = drm_->GetProperty(GetId(), DRM_MODE_OBJECT_PLANE, prop_name,
+                              &property);
   if (err != 0) {
     if (presence == Presence::kMandatory) {
       ALOGE("Could not get mandatory property \"%s\" from plane %d", prop_name,
-            id_);
+            GetId());
     } else {
       ALOGV("Could not get optional property \"%s\" from plane %d", prop_name,
-            id_);
+            GetId());
     }
     return false;
   }

@@ -33,16 +33,18 @@ struct DrmHwcLayer;
 
 class DrmPlane {
  public:
-  DrmPlane(DrmDevice *drm, drmModePlanePtr p);
   DrmPlane(const DrmPlane &) = delete;
   DrmPlane &operator=(const DrmPlane &) = delete;
 
-  int Init();
+  static auto CreateInstance(DrmDevice &dev, uint32_t plane_id)
+      -> std::unique_ptr<DrmPlane>;
 
-  bool GetCrtcSupported(const DrmCrtc &crtc) const;
+  bool IsCrtcSupported(const DrmCrtc &crtc) const;
   bool IsValidForLayer(DrmHwcLayer *layer);
 
-  uint32_t GetType() const;
+  auto GetType() const {
+    return type_;
+  }
 
   bool IsFormatSupported(uint32_t format) const;
   bool HasNonRgbFormat() const;
@@ -50,18 +52,25 @@ class DrmPlane {
   auto AtomicSetState(drmModeAtomicReq &pset, DrmHwcLayer &layer, uint32_t zpos,
                       uint32_t crtc_id) -> int;
   auto AtomicDisablePlane(drmModeAtomicReq &pset) -> int;
-  const DrmProperty &GetZPosProperty() const;
+  auto &GetZPosProperty() const {
+    return zpos_property_;
+  }
+
+  auto GetId() const {
+    return plane_->plane_id;
+  }
 
  private:
-  DrmDevice *drm_;
-  uint32_t id_;
+  DrmPlane(DrmDevice &dev, DrmModePlaneUnique plane)
+      : drm_(&dev), plane_(std::move(plane)){};
+  DrmDevice *const drm_;
+  DrmModePlaneUnique plane_;
 
   enum class Presence { kOptional, kMandatory };
 
+  auto Init() -> int;
   auto GetPlaneProperty(const char *prop_name, DrmProperty &property,
                         Presence presence = Presence::kMandatory) -> bool;
-
-  uint32_t possible_crtc_mask_;
 
   uint32_t type_{};
 

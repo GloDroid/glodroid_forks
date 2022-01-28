@@ -305,25 +305,13 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   }
 
   for (uint32_t i = 0; i < plane_res->count_planes; ++i) {
-    auto p = MakeDrmModePlaneUnique(fd(), plane_res->planes[i]);
-    if (!p) {
-      ALOGE("Failed to get plane %d", plane_res->planes[i]);
-      ret = -ENODEV;
-      break;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    auto plane = DrmPlane::CreateInstance(*this, plane_res->planes[i]);
+
+    if (plane) {
+      planes_.emplace_back(std::move(plane));
     }
-
-    std::unique_ptr<DrmPlane> plane(new DrmPlane(this, p.get()));
-
-    ret = plane->Init();
-    if (ret) {
-      ALOGE("Init plane %d failed", plane_res->planes[i]);
-      break;
-    }
-
-    planes_.emplace_back(std::move(plane));
   }
-  if (ret)
-    return std::make_tuple(ret, 0);
 
   for (auto &conn : connectors_) {
     ret = CreateDisplayPipe(conn.get());

@@ -31,10 +31,10 @@ std::vector<DrmPlane *> Planner::GetUsablePlanes(
   std::vector<DrmPlane *> usable_planes;
   std::copy_if(primary_planes->begin(), primary_planes->end(),
                std::back_inserter(usable_planes),
-               [=](DrmPlane *plane) { return plane->GetCrtcSupported(*crtc); });
+               [=](DrmPlane *plane) { return plane->IsCrtcSupported(*crtc); });
   std::copy_if(overlay_planes->begin(), overlay_planes->end(),
                std::back_inserter(usable_planes),
-               [=](DrmPlane *plane) { return plane->GetCrtcSupported(*crtc); });
+               [=](DrmPlane *plane) { return plane->IsCrtcSupported(*crtc); });
   return usable_planes;
 }
 

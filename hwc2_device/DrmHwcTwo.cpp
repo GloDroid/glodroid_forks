@@ -43,7 +43,7 @@ HWC2::Error DrmHwcTwo::CreateDisplay(hwc2_display_t displ,
   }
   auto display_planes = std::vector<DrmPlane *>();
   for (const auto &plane : drm->planes()) {
-    if (plane->GetCrtcSupported(*crtc))
+    if (plane->IsCrtcSupported(*crtc))
       display_planes.push_back(plane.get());
   }
   displays_.at(displ).Init(&display_planes);
