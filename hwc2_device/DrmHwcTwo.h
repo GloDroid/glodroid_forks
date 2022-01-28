@@ -37,14 +37,6 @@ class DrmHwcTwo {
 #endif
   std::pair<HWC2_PFN_REFRESH, hwc2_callback_data_t> refresh_callback_{};
 
-  static HwcDisplay *GetDisplay(DrmHwcTwo *hwc, hwc2_display_t display_handle) {
-    auto it = hwc->displays_.find(display_handle);
-    if (it == hwc->displays_.end())
-      return nullptr;
-
-    return &it->second;
-  }
-
   // Device functions
   HWC2::Error CreateVirtualDisplay(uint32_t width, uint32_t height,
                                    int32_t *format, hwc2_display_t *display);
@@ -54,6 +46,11 @@ class DrmHwcTwo {
   HWC2::Error RegisterCallback(int32_t descriptor, hwc2_callback_data_t data,
                                hwc2_function_pointer_t function);
   HWC2::Error CreateDisplay(hwc2_display_t displ, HWC2::DisplayType type);
+
+  auto GetDisplay(hwc2_display_t display_handle) {
+    return displays_.count(display_handle) != 0 ? &displays_.at(display_handle)
+                                                : nullptr;
+  }
 
   auto &GetResMan() {
     return resource_manager_;

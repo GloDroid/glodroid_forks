@@ -74,8 +74,8 @@ static int32_t DisplayHook(hwc2_device_t *dev, hwc2_display_t display_handle,
         GetFuncName(__PRETTY_FUNCTION__).c_str());
   DrmHwcTwo *hwc = ToDrmHwcTwo(dev);
   const std::lock_guard<std::mutex> lock(hwc->GetResMan().GetMainLock());
-  HwcDisplay *display = DrmHwcTwo::GetDisplay(hwc, display_handle);
-  if (!display)
+  auto *display = hwc->GetDisplay(display_handle);
+  if (display == nullptr)
     return static_cast<int32_t>(HWC2::Error::BadDisplay);
 
   return static_cast<int32_t>((display->*func)(std::forward<Args>(args)...));
@@ -88,8 +88,8 @@ static int32_t LayerHook(hwc2_device_t *dev, hwc2_display_t display_handle,
         layer_handle, GetFuncName(__PRETTY_FUNCTION__).c_str());
   DrmHwcTwo *hwc = ToDrmHwcTwo(dev);
   const std::lock_guard<std::mutex> lock(hwc->GetResMan().GetMainLock());
-  HwcDisplay *display = DrmHwcTwo::GetDisplay(hwc, display_handle);
-  if (!display)
+  auto *display = hwc->GetDisplay(display_handle);
+  if (display == nullptr)
     return static_cast<int32_t>(HWC2::Error::BadDisplay);
 
   HwcLayer *layer = display->get_layer(layer_handle);
