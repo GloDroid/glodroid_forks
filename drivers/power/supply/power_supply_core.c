@@ -376,7 +376,7 @@ int power_supply_is_system_supplied(void)
 }
 EXPORT_SYMBOL_GPL(power_supply_is_system_supplied);
 
-int power_supply_set_input_current_limit_from_supplier(struct power_supply *psy)
+int power_supply_set_input_current_limit_from_supplier_min(struct power_supply *psy, int minimum)
 {
 	union power_supply_propval val = {0,};
 	struct class_dev_iter iter;
@@ -405,8 +405,16 @@ int power_supply_set_input_current_limit_from_supplier(struct power_supply *psy)
 	if (ret)
 		return ret;
 
+	val.intval = max(val.intval, minimum);
+
 	return psy->desc->set_property(psy,
 				POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT, &val);
+}
+EXPORT_SYMBOL_GPL(power_supply_set_input_current_limit_from_supplier_min);
+
+int power_supply_set_input_current_limit_from_supplier(struct power_supply *psy)
+{
+	return power_supply_set_input_current_limit_from_supplier_min(psy, 0);
 }
 EXPORT_SYMBOL_GPL(power_supply_set_input_current_limit_from_supplier);
 

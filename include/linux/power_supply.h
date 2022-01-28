@@ -599,6 +599,8 @@ extern void power_supply_changed(struct power_supply *psy);
 extern int power_supply_am_i_supplied(struct power_supply *psy);
 extern int power_supply_set_input_current_limit_from_supplier(
 					 struct power_supply *psy);
+extern int power_supply_set_input_current_limit_from_supplier_min(
+					 struct power_supply *psy, int minimum);
 extern int power_supply_set_battery_charged(struct power_supply *psy);
 
 #ifdef CONFIG_POWER_SUPPLY

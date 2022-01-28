@@ -234,7 +234,7 @@ static void rk818_usb_power_external_power_changed(struct power_supply *psy)
 {
         struct rk818_charger *cg = power_supply_get_drvdata(psy);
 
-	power_supply_set_input_current_limit_from_supplier(cg->usb_psy);
+	power_supply_set_input_current_limit_from_supplier_min(cg->usb_psy, 500000);
 }
 
 static enum power_supply_property rk818_usb_power_props[] = {
