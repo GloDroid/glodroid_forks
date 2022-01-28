@@ -362,7 +362,7 @@ static int kb151_charger_regmap_read(void *context,
 			dev_err(&client->dev,
 				"Charger read failed - MCU returned 0x%hhx\n",
 				buf3[1]);
-			return -EIO;
+			return -EXDEV;
 		}
 	}
 
@@ -415,7 +415,7 @@ static int kb151_charger_regmap_write(void *context, unsigned int reg, unsigned 
 			dev_err(&client->dev,
 				"Charger write failed - MCU returned 0x%hhx\n",
 				buf2[1]);
-			return -EIO;
+			return -EXDEV;
 		}
 	}
 
