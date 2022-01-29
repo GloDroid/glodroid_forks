@@ -34,83 +34,7 @@
 #include "utils/log.h"
 #include "utils/properties.h"
 
-static void trim_left(std::string *str) {
-  str->erase(std::begin(*str),
-             std::find_if(std::begin(*str), std::end(*str),
-                          [](int ch) { return std::isspace(ch) == 0; }));
-}
-
-static void trim_right(std::string *str) {
-  str->erase(std::find_if(std::rbegin(*str), std::rend(*str),
-                          [](int ch) { return std::isspace(ch) == 0; })
-                 .base(),
-             std::end(*str));
-}
-
-static void trim(std::string *str) {
-  trim_left(str);
-  trim_right(str);
-}
-
 namespace android {
-
-static std::vector<std::string> read_primary_display_order_prop() {
-  std::array<char, PROPERTY_VALUE_MAX> display_order_buf{};
-  property_get("vendor.hwc.drm.primary_display_order", display_order_buf.data(),
-               "...");
-
-  std::vector<std::string> display_order;
-  std::istringstream str(display_order_buf.data());
-  for (std::string conn_name; std::getline(str, conn_name, ',');) {
-    trim(&conn_name);
-    display_order.push_back(std::move(conn_name));
-  }
-  return display_order;
-}
-
-static std::vector<DrmConnector *> make_primary_display_candidates(
-    const std::vector<std::unique_ptr<DrmConnector>> &connectors) {
-  std::vector<DrmConnector *> primary_candidates;
-  std::transform(std::begin(connectors), std::end(connectors),
-                 std::back_inserter(primary_candidates),
-                 [](const std::unique_ptr<DrmConnector> &conn) {
-                   return conn.get();
-                 });
-  primary_candidates.erase(std::remove_if(std::begin(primary_candidates),
-                                          std::end(primary_candidates),
-                                          [](const DrmConnector *conn) {
-                                            return conn->state() !=
-                                                   DRM_MODE_CONNECTED;
-                                          }),
-                           std::end(primary_candidates));
-
-  std::vector<std::string> display_order = read_primary_display_order_prop();
-  bool use_other = display_order.back() == "...";
-
-  // putting connectors from primary_display_order first
-  auto curr_connector = std::begin(primary_candidates);
-  for (const std::string &display_name : display_order) {
-    auto it = std::find_if(std::begin(primary_candidates),
-                           std::end(primary_candidates),
-                           [&display_name](const DrmConnector *conn) {
-                             return conn->name() == display_name;
-                           });
-    if (it != std::end(primary_candidates)) {
-      std::iter_swap(it, curr_connector);
-      ++curr_connector;
-    }
-  }
-
-  if (use_other) {
-    // then putting internal connectors second, everything else afterwards
-    std::partition(curr_connector, std::end(primary_candidates),
-                   [](const DrmConnector *conn) { return conn->internal(); });
-  } else {
-    primary_candidates.erase(curr_connector, std::end(primary_candidates));
-  }
-
-  return primary_candidates;
-}
 
 DrmDevice::DrmDevice() {
   self.reset(this);
@@ -170,10 +94,6 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
                                                   res->min_height);
   max_resolution_ = std::pair<uint32_t, uint32_t>(res->max_width,
                                                   res->max_height);
-
-  // Assumes that the primary display will always be in the first
-  // drm_device opened.
-  bool found_primary = num_displays != 0;
 
   for (int i = 0; !ret && i < res->count_crtcs; ++i) {
     auto c = MakeDrmModeCrtcUnique(fd(), res->crtcs[i]);
@@ -259,40 +179,25 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
       connectors_.emplace_back(std::move(conn));
   }
 
-  // Primary display priority:
-  // 1) vendor.hwc.drm.primary_display_order property
-  // 2) internal connectors
-  // 3) anything else
-  std::vector<DrmConnector *>
-      primary_candidates = make_primary_display_candidates(connectors_);
-  if (!primary_candidates.empty() && !found_primary) {
-    DrmConnector &conn = **std::begin(primary_candidates);
-    conn.set_display(num_displays);
-    displays_[num_displays] = num_displays;
-    ++num_displays;
-    found_primary = true;
-  } else {
-    ALOGE(
-        "Failed to find primary display from "
-        "\"vendor.hwc.drm.primary_display_order\" property");
-  }
-
-  // If no priority display were found then pick first available as primary and
-  // for the others assign consecutive display_numbers.
-  for (auto &conn : connectors_) {
-    if (conn->external() || conn->internal()) {
-      if (!found_primary) {
-        conn->set_display(num_displays);
-        displays_[num_displays] = num_displays;
-        found_primary = true;
-        ++num_displays;
-      } else if (conn->display() < 0) {
+  auto add_displays = [this, &num_displays](bool internal, bool connected) {
+    for (auto &conn : connectors_) {
+      bool is_connected = conn->state() == DRM_MODE_CONNECTED;
+      if ((internal ? conn->internal() : conn->external()) &&
+          (connected ? is_connected : !is_connected)) {
         conn->set_display(num_displays);
         displays_[num_displays] = num_displays;
         ++num_displays;
       }
     }
-  }
+  };
+
+  /* Put internal first to ensure Primary display will be internal
+   * in case at least 1 internal is available
+   */
+  add_displays(/*internal = */ true, /*connected = */ true);
+  add_displays(/*internal = */ false, /*connected = */ true);
+  add_displays(/*internal = */ true, /*connected = */ false);
+  add_displays(/*internal = */ false, /*connected = */ false);
 
   // Catch-all for the above loops
   if (ret)
