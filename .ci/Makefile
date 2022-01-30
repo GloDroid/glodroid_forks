@@ -30,7 +30,6 @@ TIDY_FILES_OVERRIDE := \
     drm/DrmProperty.h:COARSE                            \
     drm/DrmConnector.h:COARSE                           \
     drm/DrmUnique.h:FINE                                \
-    drm/DrmEncoder.h:COARSE                             \
     drm/DrmConnector.cpp:COARSE                         \
     drm/DrmDevice.cpp:COARSE                            \
     drm/DrmProperty.cpp:COARSE                          \

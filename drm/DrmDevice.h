@@ -85,6 +85,16 @@ class DrmDevice {
 
   static auto IsKMSDev(const char *path) -> bool;
 
+  auto FindCrtcById(uint32_t id) const -> DrmCrtc * {
+    for (const auto &crtc : crtcs_) {
+      if (crtc->GetId() == id) {
+        return crtc.get();
+      }
+    };
+
+    return nullptr;
+  }
+
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
 
@@ -107,6 +117,7 @@ class DrmDevice {
   std::map<int, int> displays_;
 
   std::map<int /*display*/, DrmCrtc *> bound_crtcs_;
+  std::map<DrmCrtc *, DrmEncoder *> bound_encoders_;
 
   bool HasAddFb2ModifiersSupport_{};
 

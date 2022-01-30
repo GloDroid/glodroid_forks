@@ -103,36 +103,12 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
     }
   }
 
-  std::vector<uint32_t> possible_clones;
-  for (int i = 0; !ret && i < res->count_encoders; ++i) {
-    auto e = MakeDrmModeEncoderUnique(fd(), res->encoders[i]);
-    if (!e) {
-      ALOGE("Failed to get encoder %d", res->encoders[i]);
-      ret = -ENODEV;
-      break;
+  for (int i = 0; i < res->count_encoders; ++i) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    auto enc = DrmEncoder::CreateInstance(*this, res->encoders[i], i);
+    if (enc) {
+      encoders_.emplace_back(std::move(enc));
     }
-
-    std::vector<DrmCrtc *> possible_crtcs;
-    DrmCrtc *current_crtc = nullptr;
-    for (auto &crtc : crtcs_) {
-      if ((1 << crtc->GetIndexInResArray()) & e->possible_crtcs)
-        possible_crtcs.push_back(crtc.get());
-
-      if (crtc->GetId() == e->crtc_id)
-        current_crtc = crtc.get();
-    }
-
-    std::unique_ptr<DrmEncoder> enc(
-        new DrmEncoder(e.get(), current_crtc, possible_crtcs));
-    possible_clones.push_back(e->possible_clones);
-
-    encoders_.emplace_back(std::move(enc));
-  }
-
-  for (unsigned int i = 0; i < encoders_.size(); i++) {
-    for (unsigned int j = 0; j < encoders_.size(); j++)
-      if (possible_clones[i] & (1 << j))
-        encoders_[i]->AddPossibleClone(encoders_[j].get());
   }
 
   for (int i = 0; !ret && i < res->count_connectors; ++i) {
@@ -147,9 +123,9 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
     DrmEncoder *current_encoder = nullptr;
     for (int j = 0; j < c->count_encoders; ++j) {
       for (auto &encoder : encoders_) {
-        if (encoder->id() == c->encoders[j])
+        if (encoder->GetId() == c->encoders[j])
           possible_encoders.push_back(encoder.get());
-        if (encoder->id() == c->encoder_id)
+        if (encoder->GetId() == c->encoder_id)
           current_encoder = encoder.get();
       }
     }
@@ -244,22 +220,23 @@ uint32_t DrmDevice::next_mode_id() {
 
 int DrmDevice::TryEncoderForDisplay(int display, DrmEncoder *enc) {
   /* First try to use the currently-bound crtc */
-  DrmCrtc *crtc = enc->crtc();
+  auto *crtc = FindCrtcById(enc->GetCurrentCrtcId());
   if (crtc && bound_crtcs_.count(display) == 0) {
     bound_crtcs_[display] = crtc;
-    enc->set_crtc(crtc, display);
+    bound_encoders_[crtc] = enc;
     return 0;
   }
 
   /* Try to find a possible crtc which will work */
-  for (DrmCrtc *crtc : enc->possible_crtcs()) {
-    /* We've already tried this earlier */
-    if (crtc == enc->crtc())
+  for (auto &crtc : crtcs_) {
+    /* Crtc not supported or we've already tried this earlier */
+    if (!enc->SupportsCrtc(*crtc) || crtc->GetId() == enc->GetCurrentCrtcId()) {
       continue;
+    }
 
     if (bound_crtcs_.count(display) == 0) {
-      bound_crtcs_[display] = crtc;
-      enc->set_crtc(crtc, display);
+      bound_crtcs_[display] = crtc.get();
+      bound_encoders_[crtc.get()] = enc;
       return 0;
     }
   }
