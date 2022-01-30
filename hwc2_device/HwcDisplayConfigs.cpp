@@ -61,14 +61,14 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
     return HWC2::Error::BadDisplay;
   }
 
-  if (connector.modes().empty()) {
+  if (connector.GetModes().empty()) {
     ALOGE("No modes reported by KMS");
     return HWC2::Error::BadDisplay;
   }
 
   hwc_configs.clear();
-  mm_width = connector.mm_width();
-  mm_height = connector.mm_height();
+  mm_width = connector.GetMmWidth();
+  mm_height = connector.GetMmHeight();
 
   preferred_config_id = 0;
   int preferred_config_group_id = 0;
@@ -77,7 +77,7 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
   int last_group_id = 1;
 
   /* Group modes */
-  for (const auto &mode : connector.modes()) {
+  for (const auto &mode : connector.GetModes()) {
     /* Find group for the new mode or create new group */
     int group_found = 0;
     for (auto &hwc_config : hwc_configs) {

@@ -209,8 +209,7 @@ class HwcDisplay {
    * https://source.android.com/devices/graphics/hotplug#handling-common-scenarios
    */
   bool IsInHeadlessMode() {
-    return handle_ == kPrimaryDisplay &&
-           connector_->state() != DRM_MODE_CONNECTED;
+    return handle_ == kPrimaryDisplay && !connector_->IsConnected();
   }
 
  private:

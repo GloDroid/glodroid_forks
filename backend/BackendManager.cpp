@@ -51,13 +51,13 @@ int BackendManager::SetBackendForDisplay(HwcDisplay *display) {
   display->set_backend(GetBackendByName(backend_name));
   if (display->backend() == nullptr) {
     ALOGE("Failed to set backend '%s' for '%s' and driver '%s'",
-          backend_name.c_str(), display->connector()->name().c_str(),
+          backend_name.c_str(), display->connector()->GetName().c_str(),
           driver_name.c_str());
     return -EINVAL;
   }
 
   ALOGI("Backend '%s' for '%s' and driver '%s' was successfully set",
-        backend_name.c_str(), display->connector()->name().c_str(),
+        backend_name.c_str(), display->connector()->GetName().c_str(),
         driver_name.c_str());
 
   return 0;

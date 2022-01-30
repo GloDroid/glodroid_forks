@@ -111,47 +111,28 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
     }
   }
 
-  for (int i = 0; !ret && i < res->count_connectors; ++i) {
-    auto c = MakeDrmModeConnectorUnique(fd(), res->connectors[i]);
-    if (!c) {
-      ALOGE("Failed to get connector %d", res->connectors[i]);
-      ret = -ENODEV;
-      break;
+  for (int i = 0; i < res->count_connectors; ++i) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    auto conn = DrmConnector::CreateInstance(*this, res->connectors[i], i);
+
+    if (!conn) {
+      continue;
     }
 
-    std::vector<DrmEncoder *> possible_encoders;
-    DrmEncoder *current_encoder = nullptr;
-    for (int j = 0; j < c->count_encoders; ++j) {
-      for (auto &encoder : encoders_) {
-        if (encoder->GetId() == c->encoders[j])
-          possible_encoders.push_back(encoder.get());
-        if (encoder->GetId() == c->encoder_id)
-          current_encoder = encoder.get();
-      }
-    }
-
-    std::unique_ptr<DrmConnector> conn(
-        new DrmConnector(this, c.get(), current_encoder, possible_encoders));
-
-    ret = conn->Init();
-    if (ret) {
-      ALOGE("Init connector %d failed", res->connectors[i]);
-      break;
-    }
-
-    if (conn->writeback())
+    if (conn->IsWriteback()) {
       writeback_connectors_.emplace_back(std::move(conn));
-    else
+    } else {
       connectors_.emplace_back(std::move(conn));
+    }
   }
 
   auto add_displays = [this, &num_displays](bool internal, bool connected) {
     for (auto &conn : connectors_) {
-      bool is_connected = conn->state() == DRM_MODE_CONNECTED;
-      if ((internal ? conn->internal() : conn->external()) &&
+      bool is_connected = conn->IsConnected();
+      if ((internal ? conn->IsInternal() : conn->IsExternal()) &&
           (connected ? is_connected : !is_connected)) {
-        conn->set_display(num_displays);
-        displays_[num_displays] = num_displays;
+        bound_connectors_[num_displays] = conn.get();
+        connectors_to_display_id_[conn.get()] = num_displays;
         ++num_displays;
       }
     }
@@ -187,23 +168,19 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   for (auto &conn : connectors_) {
     ret = CreateDisplayPipe(conn.get());
     if (ret) {
-      ALOGE("Failed CreateDisplayPipe %d with %d", conn->id(), ret);
+      ALOGE("Failed CreateDisplayPipe %d with %d", conn->GetId(), ret);
       return std::make_tuple(ret, 0);
     }
   }
-  return std::make_tuple(ret, displays_.size());
+  return std::make_tuple(ret, bound_connectors_.size());
 }
 
 bool DrmDevice::HandlesDisplay(int display) const {
-  return displays_.find(display) != displays_.end();
+  return bound_connectors_.count(display) != 0;
 }
 
 DrmConnector *DrmDevice::GetConnectorForDisplay(int display) const {
-  for (const auto &conn : connectors_) {
-    if (conn->display() == display)
-      return conn.get();
-  }
-  return nullptr;
+  return bound_connectors_.at(display);
 }
 
 DrmCrtc *DrmDevice::GetCrtcForDisplay(int display) const {
@@ -246,11 +223,13 @@ int DrmDevice::TryEncoderForDisplay(int display, DrmEncoder *enc) {
 }
 
 int DrmDevice::CreateDisplayPipe(DrmConnector *connector) {
-  int display = connector->display();
+  int display = connectors_to_display_id_.at(connector);
   /* Try to use current setup first */
-  if (connector->encoder()) {
-    int ret = TryEncoderForDisplay(display, connector->encoder());
+  auto *enc0 = FindEncoderById(connector->GetCurrentEncoderId());
+  if (enc0 != nullptr && encoders_to_display_id_.count(enc0) == 0) {
+    int ret = TryEncoderForDisplay(display, enc0);
     if (!ret) {
+      encoders_to_display_id_[enc0] = display;
       return 0;
     }
 
@@ -260,10 +239,15 @@ int DrmDevice::CreateDisplayPipe(DrmConnector *connector) {
     }
   }
 
-  for (DrmEncoder *enc : connector->possible_encoders()) {
-    int ret = TryEncoderForDisplay(display, enc);
+  for (auto &enc : encoders_) {
+    if (!connector->SupportsEncoder(*enc) ||
+        encoders_to_display_id_.count(enc.get()) != 0) {
+      continue;
+    }
+
+    int ret = TryEncoderForDisplay(display, enc.get());
     if (!ret) {
-      connector->set_encoder(enc);
+      encoders_to_display_id_[enc.get()] = display;
       return 0;
     }
 
@@ -272,8 +256,7 @@ int DrmDevice::CreateDisplayPipe(DrmConnector *connector) {
       return ret;
     }
   }
-  ALOGE("Could not find a suitable encoder/crtc for display %d",
-        connector->display());
+  ALOGE("Could not find a suitable encoder/crtc for display %d", display);
   return -ENODEV;
 }
 
@@ -325,13 +308,6 @@ int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
 
   drmModeFreeObjectProperties(props);
   return found ? 0 : -ENOENT;
-}
-
-int DrmDevice::GetConnectorProperty(const DrmConnector &connector,
-                                    const char *prop_name,
-                                    DrmProperty *property) const {
-  return GetProperty(connector.id(), DRM_MODE_OBJECT_CONNECTOR, prop_name,
-                     property);
 }
 
 std::string DrmDevice::GetName() const {

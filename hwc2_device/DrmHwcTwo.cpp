@@ -165,42 +165,40 @@ void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {
 
 void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {
   for (const auto &conn : drmDevice->connectors()) {
-    int display_id = conn->display();
+    int display_id = drmDevice->GetDisplayId(conn.get());
     auto &display = displays_.at(display_id);
 
-    if (conn->state() != DRM_MODE_CONNECTED && !display.IsInHeadlessMode())
+    if (!conn->IsConnected() && !display.IsInHeadlessMode())
       continue;
-    HandleDisplayHotplug(conn->display(), display.IsInHeadlessMode()
-                                              ? DRM_MODE_CONNECTED
-                                              : conn->state());
+    HandleDisplayHotplug(display_id, display.IsInHeadlessMode()
+                                         ? 1
+                                         : (conn->IsConnected() ? 1 : 0));
   }
 }
 
 void DrmHwcTwo::HandleHotplugUEvent() {
   for (const auto &drm : resource_manager_.GetDrmDevices()) {
     for (const auto &conn : drm->connectors()) {
-      drmModeConnection old_state = conn->state();
-      drmModeConnection cur_state = conn->UpdateModes()
-                                        ? DRM_MODE_UNKNOWNCONNECTION
-                                        : conn->state();
+      int display_id = drm->GetDisplayId(conn.get());
 
+      bool old_state = conn->IsConnected();
+      bool cur_state = conn->UpdateModes() ? false : conn->IsConnected();
       if (cur_state == old_state)
         continue;
 
       ALOGI("%s event for connector %u on display %d",
-            cur_state == DRM_MODE_CONNECTED ? "Plug" : "Unplug", conn->id(),
-            conn->display());
+            cur_state == DRM_MODE_CONNECTED ? "Plug" : "Unplug", conn->GetId(),
+            display_id);
 
-      int display_id = conn->display();
       auto &display = displays_.at(display_id);
       display.ChosePreferredConfig();
-      if (cur_state != DRM_MODE_CONNECTED) {
+      if (cur_state) {
         display.ClearDisplay();
       }
 
       HandleDisplayHotplug(display_id, display.IsInHeadlessMode()
                                            ? DRM_MODE_CONNECTED
-                                           : cur_state);
+                                           : (cur_state ? 1 : 0));
     }
   }
 }

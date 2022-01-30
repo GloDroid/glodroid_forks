@@ -87,11 +87,11 @@ int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
 
   float refresh = 60.0F;  // Default to 60Hz refresh rate
   DrmConnector *conn = drm_->GetConnectorForDisplay(display_);
-  if (conn && conn->active_mode().v_refresh() != 0.0F)
-    refresh = conn->active_mode().v_refresh();
+  if (conn && conn->GetActiveMode().v_refresh() != 0.0F)
+    refresh = conn->GetActiveMode().v_refresh();
   else
     ALOGW("Vsync worker active with conn=%p refresh=%f\n", conn,
-          conn ? conn->active_mode().v_refresh() : 0.0F);
+          conn ? conn->GetActiveMode().v_refresh() : 0.0F);
 
   int64_t phased_timestamp = GetPhasedVSync(kOneSecondNs /
                                                 static_cast<int>(refresh),

@@ -107,7 +107,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   if (args.active) {
     new_frame_state.crtc_active_state = *args.active;
     if (!crtc->GetActiveProperty().AtomicSet(*pset, *args.active) ||
-        !connector->crtc_id_property().AtomicSet(*pset, crtc->GetId())) {
+        !connector->GetCrtcIdProperty().AtomicSet(*pset, crtc->GetId())) {
       return -EINVAL;
     }
   }
@@ -189,7 +189,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     if (args.display_mode) {
       /* TODO(nobody): we still need this for synthetic vsync, remove after
        * vsync reworked */
-      connector->set_active_mode(*args.display_mode);
+      connector->SetActiveMode(*args.display_mode);
     }
 
     active_frame_state_ = std::move(new_frame_state);
@@ -229,9 +229,9 @@ auto DrmDisplayCompositor::ActivateDisplayUsingDPMS() -> int {
     return -ENODEV;
   }
 
-  if (connector->dpms_property()) {
-    drmModeConnectorSetProperty(drm->fd(), connector->id(),
-                                connector->dpms_property().id(),
+  if (connector->GetDpmsProperty()) {
+    drmModeConnectorSetProperty(drm->fd(), connector->GetId(),
+                                connector->GetDpmsProperty().id(),
                                 DRM_MODE_DPMS_ON);
   }
   return 0;

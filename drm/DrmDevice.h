@@ -62,9 +62,6 @@ class DrmDevice {
   DrmConnector *GetConnectorForDisplay(int display) const;
   DrmCrtc *GetCrtcForDisplay(int display) const;
 
-  int GetConnectorProperty(const DrmConnector &connector, const char *prop_name,
-                           DrmProperty *property) const;
-
   std::string GetName() const;
 
   const std::vector<std::unique_ptr<DrmCrtc>> &crtcs() const;
@@ -95,6 +92,20 @@ class DrmDevice {
     return nullptr;
   }
 
+  auto FindEncoderById(uint32_t id) const -> DrmEncoder * {
+    for (const auto &enc : encoders_) {
+      if (enc->GetId() == id) {
+        return enc.get();
+      }
+    };
+
+    return nullptr;
+  }
+
+  auto GetDisplayId(DrmConnector *conn) {
+    return connectors_to_display_id_.at(conn);
+  }
+
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
 
@@ -114,9 +125,11 @@ class DrmDevice {
 
   std::pair<uint32_t, uint32_t> min_resolution_;
   std::pair<uint32_t, uint32_t> max_resolution_;
-  std::map<int, int> displays_;
 
   std::map<int /*display*/, DrmCrtc *> bound_crtcs_;
+  std::map<int /*display*/, DrmConnector *> bound_connectors_;
+  std::map<DrmConnector *, int /*display*/> connectors_to_display_id_;
+  std::map<DrmEncoder *, int /*display*/> encoders_to_display_id_;
   std::map<DrmCrtc *, DrmEncoder *> bound_encoders_;
 
   bool HasAddFb2ModifiersSupport_{};

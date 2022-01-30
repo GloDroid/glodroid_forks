@@ -69,7 +69,7 @@ std::string HwcDisplay::Dump() {
   }
 
   std::stringstream ss;
-  ss << "- Display on: " << connector_->name() << "\n"
+  ss << "- Display on: " << connector_->GetName() << "\n"
      << "  Flattening state: " << flattening_state_str << "\n"
      << "Statistics since system boot:\n"
      << DumpDelta(total_stats_) << "\n\n"
@@ -363,7 +363,7 @@ HWC2::Error HwcDisplay::GetDisplayConfigs(uint32_t *num_configs,
 
 HWC2::Error HwcDisplay::GetDisplayName(uint32_t *size, char *name) {
   std::ostringstream stream;
-  stream << "display-" << connector_->id();
+  stream << "display-" << connector_->GetId();
   std::string string = stream.str();
   size_t length = string.length();
   if (!name) {
@@ -715,9 +715,9 @@ HWC2::Error HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
   /* Primary display should be always internal,
    * otherwise SF will be unhappy and will crash
    */
-  if (connector_->internal() || handle_ == kPrimaryDisplay)
+  if (connector_->IsInternal() || handle_ == kPrimaryDisplay)
     *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
-  else if (connector_->external())
+  else if (connector_->IsExternal())
     *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::External);
   else
     return HWC2::Error::BadConfig;
@@ -785,7 +785,7 @@ HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
   } else {
     *outDataSize = blob->length;
   }
-  *outPort = connector_->id();
+  *outPort = connector_->GetId();
 
   return HWC2::Error::None;
 }
