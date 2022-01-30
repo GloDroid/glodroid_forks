@@ -29,7 +29,6 @@ TIDY_FILES_OVERRIDE := \
     drm/DrmDevice.h:COARSE                              \
     drm/DrmProperty.h:COARSE                            \
     drm/DrmConnector.h:COARSE                           \
-    drm/DrmCrtc.h:COARSE                                \
     drm/DrmUnique.h:FINE                                \
     drm/DrmEncoder.h:COARSE                             \
     drm/DrmConnector.cpp:COARSE                         \

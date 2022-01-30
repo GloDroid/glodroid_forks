@@ -148,7 +148,7 @@ int DrmPlane::Init() {
 }
 
 bool DrmPlane::IsCrtcSupported(const DrmCrtc &crtc) const {
-  return ((1 << crtc.pipe()) & plane_->possible_crtcs) != 0;
+  return ((1 << crtc.GetIndexInResArray()) & plane_->possible_crtcs) != 0;
 }
 
 bool DrmPlane::IsValidForLayer(DrmHwcLayer *layer) {

@@ -37,7 +37,7 @@ class DrmEncoder {
   uint32_t id() const;
 
   DrmCrtc *crtc() const;
-  void set_crtc(DrmCrtc *crtc);
+  void set_crtc(DrmCrtc *crtc, int display);
   bool can_bind(int display) const;
   int display() const;
 

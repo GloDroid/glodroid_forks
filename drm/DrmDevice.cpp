@@ -95,22 +95,12 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   max_resolution_ = std::pair<uint32_t, uint32_t>(res->max_width,
                                                   res->max_height);
 
-  for (int i = 0; !ret && i < res->count_crtcs; ++i) {
-    auto c = MakeDrmModeCrtcUnique(fd(), res->crtcs[i]);
-    if (!c) {
-      ALOGE("Failed to get crtc %d", res->crtcs[i]);
-      ret = -ENODEV;
-      break;
+  for (int i = 0; i < res->count_crtcs; ++i) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    auto crtc = DrmCrtc::CreateInstance(*this, res->crtcs[i], i);
+    if (crtc) {
+      crtcs_.emplace_back(std::move(crtc));
     }
-
-    std::unique_ptr<DrmCrtc> crtc(new DrmCrtc(this, c.get(), i));
-
-    ret = crtc->Init();
-    if (ret) {
-      ALOGE("Failed to initialize crtc %d", res->crtcs[i]);
-      break;
-    }
-    crtcs_.emplace_back(std::move(crtc));
   }
 
   std::vector<uint32_t> possible_clones;
@@ -125,10 +115,10 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
     std::vector<DrmCrtc *> possible_crtcs;
     DrmCrtc *current_crtc = nullptr;
     for (auto &crtc : crtcs_) {
-      if ((1 << crtc->pipe()) & e->possible_crtcs)
+      if ((1 << crtc->GetIndexInResArray()) & e->possible_crtcs)
         possible_crtcs.push_back(crtc.get());
 
-      if (crtc->id() == e->crtc_id)
+      if (crtc->GetId() == e->crtc_id)
         current_crtc = crtc.get();
     }
 
@@ -241,11 +231,7 @@ DrmConnector *DrmDevice::GetConnectorForDisplay(int display) const {
 }
 
 DrmCrtc *DrmDevice::GetCrtcForDisplay(int display) const {
-  for (const auto &crtc : crtcs_) {
-    if (crtc->display() == display)
-      return crtc.get();
-  }
-  return nullptr;
+  return bound_crtcs_.at(display);
 }
 
 const std::vector<std::unique_ptr<DrmCrtc>> &DrmDevice::crtcs() const {
@@ -259,9 +245,9 @@ uint32_t DrmDevice::next_mode_id() {
 int DrmDevice::TryEncoderForDisplay(int display, DrmEncoder *enc) {
   /* First try to use the currently-bound crtc */
   DrmCrtc *crtc = enc->crtc();
-  if (crtc && crtc->can_bind(display)) {
-    crtc->set_display(display);
-    enc->set_crtc(crtc);
+  if (crtc && bound_crtcs_.count(display) == 0) {
+    bound_crtcs_[display] = crtc;
+    enc->set_crtc(crtc, display);
     return 0;
   }
 
@@ -271,9 +257,9 @@ int DrmDevice::TryEncoderForDisplay(int display, DrmEncoder *enc) {
     if (crtc == enc->crtc())
       continue;
 
-    if (crtc->can_bind(display)) {
-      crtc->set_display(display);
-      enc->set_crtc(crtc);
+    if (bound_crtcs_.count(display) == 0) {
+      bound_crtcs_[display] = crtc;
+      enc->set_crtc(crtc, display);
       return 0;
     }
   }
@@ -362,11 +348,6 @@ int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
 
   drmModeFreeObjectProperties(props);
   return found ? 0 : -ENOENT;
-}
-
-int DrmDevice::GetCrtcProperty(const DrmCrtc &crtc, const char *prop_name,
-                               DrmProperty *property) const {
-  return GetProperty(crtc.id(), DRM_MODE_OBJECT_CRTC, prop_name, property);
 }
 
 int DrmDevice::GetConnectorProperty(const DrmConnector &connector,

@@ -46,7 +46,7 @@ std::tuple<int, std::vector<DrmCompositionPlane>> Planner::ProvisionPlanes(
   std::vector<DrmPlane *> planes = GetUsablePlanes(crtc, primary_planes,
                                                    overlay_planes);
   if (planes.empty()) {
-    ALOGE("Display %d has no usable planes", crtc->display());
+    ALOGE("Crtc %d has no usable planes", crtc->GetId());
     return std::make_tuple(-ENODEV, std::vector<DrmCompositionPlane>());
   }
 

@@ -48,9 +48,9 @@ void DrmEncoder::AddPossibleClone(DrmEncoder *possible_clone) {
   possible_clones_.insert(possible_clone);
 }
 
-void DrmEncoder::set_crtc(DrmCrtc *crtc) {
+void DrmEncoder::set_crtc(DrmCrtc *crtc, int display) {
   crtc_ = crtc;
-  display_ = crtc->display();
+  display_ = display;
 }
 
 int DrmEncoder::display() const {

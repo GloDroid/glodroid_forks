@@ -62,8 +62,6 @@ class DrmDevice {
   DrmConnector *GetConnectorForDisplay(int display) const;
   DrmCrtc *GetCrtcForDisplay(int display) const;
 
-  int GetCrtcProperty(const DrmCrtc &crtc, const char *prop_name,
-                      DrmProperty *property) const;
   int GetConnectorProperty(const DrmConnector &connector, const char *prop_name,
                            DrmProperty *property) const;
 
@@ -107,6 +105,8 @@ class DrmDevice {
   std::pair<uint32_t, uint32_t> min_resolution_;
   std::pair<uint32_t, uint32_t> max_resolution_;
   std::map<int, int> displays_;
+
+  std::map<int /*display*/, DrmCrtc *> bound_crtcs_;
 
   bool HasAddFb2ModifiersSupport_{};
 

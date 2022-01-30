@@ -99,15 +99,15 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   int64_t out_fence = -1;
-  if (crtc->out_fence_ptr_property() &&
-      !crtc->out_fence_ptr_property().AtomicSet(*pset, (uint64_t)&out_fence)) {
+  if (crtc->GetOutFencePtrProperty() &&
+      !crtc->GetOutFencePtrProperty().AtomicSet(*pset, (uint64_t)&out_fence)) {
     return -EINVAL;
   }
 
   if (args.active) {
     new_frame_state.crtc_active_state = *args.active;
-    if (!crtc->active_property().AtomicSet(*pset, *args.active) ||
-        !connector->crtc_id_property().AtomicSet(*pset, crtc->id())) {
+    if (!crtc->GetActiveProperty().AtomicSet(*pset, *args.active) ||
+        !connector->crtc_id_property().AtomicSet(*pset, crtc->GetId())) {
       return -EINVAL;
     }
   }
@@ -121,7 +121,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
       return -EINVAL;
     }
 
-    if (!crtc->mode_property().AtomicSet(*pset, *new_frame_state.mode_blob)) {
+    if (!crtc->GetModeProperty().AtomicSet(*pset, *new_frame_state.mode_blob)) {
       return -EINVAL;
     }
   }
@@ -154,7 +154,8 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
       auto &v = unused_planes;
       v.erase(std::remove(v.begin(), v.end(), plane), v.end());
 
-      if (plane->AtomicSetState(*pset, layer, source_layer, crtc->id()) != 0) {
+      if (plane->AtomicSetState(*pset, layer, source_layer, crtc->GetId()) !=
+          0) {
         return -EINVAL;
       }
     }
@@ -193,7 +194,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
 
     active_frame_state_ = std::move(new_frame_state);
 
-    if (crtc->out_fence_ptr_property()) {
+    if (crtc->GetOutFencePtrProperty()) {
       args.out_fence = UniqueFd((int)out_fence);
     }
   }

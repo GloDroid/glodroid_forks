@@ -129,7 +129,8 @@ void VSyncWorker::Routine() {
     ALOGE("Failed to get crtc for display");
     return;
   }
-  uint32_t high_crtc = (crtc->pipe() << DRM_VBLANK_HIGH_CRTC_SHIFT);
+  uint32_t high_crtc = (crtc->GetIndexInResArray()
+                        << DRM_VBLANK_HIGH_CRTC_SHIFT);
 
   drmVBlank vblank;
   memset(&vblank, 0, sizeof(vblank));
