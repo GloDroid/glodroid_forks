@@ -29,7 +29,7 @@ namespace android {
 
 auto DrmEncoder::CreateInstance(DrmDevice &dev, uint32_t encoder_id,
                                 uint32_t index) -> std::unique_ptr<DrmEncoder> {
-  auto e = MakeDrmModeEncoderUnique(dev.fd(), encoder_id);
+  auto e = MakeDrmModeEncoderUnique(dev.GetFd(), encoder_id);
   if (!e) {
     ALOGE("Failed to get encoder %d", encoder_id);
     return {};

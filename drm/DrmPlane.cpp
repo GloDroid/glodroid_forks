@@ -31,7 +31,7 @@ namespace android {
 
 auto DrmPlane::CreateInstance(DrmDevice &dev, uint32_t plane_id)
     -> std::unique_ptr<DrmPlane> {
-  auto p = MakeDrmModePlaneUnique(dev.fd(), plane_id);
+  auto p = MakeDrmModePlaneUnique(dev.GetFd(), plane_id);
   if (!p) {
     ALOGE("Failed to get plane %d", plane_id);
     return {};

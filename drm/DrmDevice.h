@@ -39,23 +39,20 @@ class DrmDevice {
 
   std::tuple<int, int> Init(const char *path, int num_displays);
 
-  int fd() const {
+  auto GetFd() const {
     return fd_.Get();
   }
 
-  const std::vector<std::unique_ptr<DrmConnector>> &connectors() const {
-    return connectors_;
-  }
+  auto GetConnectors() -> const std::vector<std::unique_ptr<DrmConnector>> &;
+  auto GetPlanes() -> const std::vector<std::unique_ptr<DrmPlane>> &;
+  auto GetCrtcs() -> const std::vector<std::unique_ptr<DrmCrtc>> &;
+  auto GetEncoders() -> const std::vector<std::unique_ptr<DrmEncoder>> &;
 
-  const std::vector<std::unique_ptr<DrmPlane>> &planes() const {
-    return planes_;
-  }
-
-  std::pair<uint32_t, uint32_t> min_resolution() const {
+  auto GetMinResolution() const {
     return min_resolution_;
   }
 
-  std::pair<uint32_t, uint32_t> max_resolution() const {
+  auto GetMaxResolution() const {
     return max_resolution_;
   }
 
@@ -63,9 +60,6 @@ class DrmDevice {
   DrmCrtc *GetCrtcForDisplay(int display) const;
 
   std::string GetName() const;
-
-  const std::vector<std::unique_ptr<DrmCrtc>> &crtcs() const;
-  uint32_t next_mode_id();
 
   auto RegisterUserPropertyBlob(void *data, size_t length) const
       -> DrmModeUserPropertyBlobUnique;
@@ -76,8 +70,8 @@ class DrmDevice {
     return HasAddFb2ModifiersSupport_;
   }
 
-  DrmFbImporter &GetDrmFbImporter() {
-    return *mDrmFbImporter;
+  auto &GetDrmFbImporter() {
+    return *drm_fb_importer_;
   }
 
   static auto IsKMSDev(const char *path) -> bool;
@@ -115,7 +109,6 @@ class DrmDevice {
   int CreateDisplayPipe(DrmConnector *connector);
 
   UniqueFd fd_;
-  uint32_t mode_id_ = 0;
 
   std::vector<std::unique_ptr<DrmConnector>> connectors_;
   std::vector<std::unique_ptr<DrmConnector>> writeback_connectors_;
@@ -134,9 +127,7 @@ class DrmDevice {
 
   bool HasAddFb2ModifiersSupport_{};
 
-  std::shared_ptr<DrmDevice> self;
-
-  std::unique_ptr<DrmFbImporter> mDrmFbImporter;
+  std::unique_ptr<DrmFbImporter> drm_fb_importer_;
 };
 }  // namespace android
 

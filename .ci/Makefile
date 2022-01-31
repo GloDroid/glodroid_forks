@@ -26,10 +26,8 @@ TIDY_FILES_OVERRIDE := \
     compositor/DrmDisplayCompositor.cpp:COARSE          \
     drm/DrmFbImporter.h:FINE                            \
     drm/DrmMode.h:COARSE                                \
-    drm/DrmDevice.h:COARSE                              \
     drm/DrmProperty.h:COARSE                            \
     drm/DrmUnique.h:FINE                                \
-    drm/DrmDevice.cpp:COARSE                            \
     drm/DrmProperty.cpp:COARSE                          \
     drm/UEventListener.cpp:COARSE                       \
     drm/VSyncWorker.cpp:COARSE                          \

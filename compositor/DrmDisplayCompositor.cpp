@@ -178,7 +178,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   if (args.test_only)
     flags |= DRM_MODE_ATOMIC_TEST_ONLY;
 
-  int err = drmModeAtomicCommit(drm->fd(), pset.get(), flags, drm);
+  int err = drmModeAtomicCommit(drm->GetFd(), pset.get(), flags, drm);
   if (err) {
     if (!args.test_only)
       ALOGE("Failed to commit pset ret=%d\n", err);
@@ -230,7 +230,7 @@ auto DrmDisplayCompositor::ActivateDisplayUsingDPMS() -> int {
   }
 
   if (connector->GetDpmsProperty()) {
-    drmModeConnectorSetProperty(drm->fd(), connector->GetId(),
+    drmModeConnectorSetProperty(drm->GetFd(), connector->GetId(),
                                 connector->GetDpmsProperty().id(),
                                 DRM_MODE_DPMS_ON);
   }

@@ -140,7 +140,7 @@ void VSyncWorker::Routine() {
   vblank.request.sequence = 1;
 
   int64_t timestamp = 0;
-  ret = drmWaitVBlank(drm_->fd(), &vblank);
+  ret = drmWaitVBlank(drm_->GetFd(), &vblank);
   if (ret == -EINTR)
     return;
 

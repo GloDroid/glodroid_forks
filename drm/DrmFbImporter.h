@@ -37,8 +37,7 @@ namespace android {
 class DrmFbIdHandle {
  public:
   static auto CreateInstance(hwc_drm_bo_t *bo, GemHandle first_gem_handle,
-                             const std::shared_ptr<DrmDevice> &drm)
-      -> std::shared_ptr<DrmFbIdHandle>;
+                             DrmDevice &drm) -> std::shared_ptr<DrmFbIdHandle>;
 
   ~DrmFbIdHandle();
   DrmFbIdHandle(DrmFbIdHandle &&) = delete;
@@ -51,10 +50,9 @@ class DrmFbIdHandle {
   }
 
  private:
-  explicit DrmFbIdHandle(std::shared_ptr<DrmDevice> drm)
-      : drm_(std::move(drm)){};
+  explicit DrmFbIdHandle(DrmDevice &drm) : drm_(&drm){};
 
-  const std::shared_ptr<DrmDevice> drm_;
+  DrmDevice *const drm_;
 
   uint32_t fb_id_{};
   std::array<GemHandle, kHwcDrmBoMaxPlanes> gem_handles_{};
@@ -62,8 +60,7 @@ class DrmFbIdHandle {
 
 class DrmFbImporter {
  public:
-  explicit DrmFbImporter(std::shared_ptr<DrmDevice> drm)
-      : drm_(std::move(drm)){};
+  explicit DrmFbImporter(DrmDevice &drm) : drm_(&drm){};
   ~DrmFbImporter() = default;
   DrmFbImporter(const DrmFbImporter &) = delete;
   DrmFbImporter(DrmFbImporter &&) = delete;
@@ -84,7 +81,7 @@ class DrmFbImporter {
     }
   }
 
-  const std::shared_ptr<DrmDevice> drm_;
+  DrmDevice *const drm_;
 
   std::map<GemHandle, std::weak_ptr<DrmFbIdHandle>> drm_fb_id_handle_cache_;
 };

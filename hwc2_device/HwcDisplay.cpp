@@ -258,8 +258,8 @@ HWC2::Error HwcDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
 HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
                                                int32_t /*format*/,
                                                int32_t dataspace) {
-  std::pair<uint32_t, uint32_t> min = drm_->min_resolution();
-  std::pair<uint32_t, uint32_t> max = drm_->max_resolution();
+  std::pair<uint32_t, uint32_t> min = drm_->GetMinResolution();
+  std::pair<uint32_t, uint32_t> max = drm_->GetMaxResolution();
   if (IsInHeadlessMode()) {
     return HWC2::Error::None;
   }

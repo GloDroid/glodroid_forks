@@ -42,7 +42,7 @@ HWC2::Error DrmHwcTwo::CreateDisplay(hwc2_display_t displ,
     return HWC2::Error::BadDisplay;
   }
   auto display_planes = std::vector<DrmPlane *>();
-  for (const auto &plane : drm->planes()) {
+  for (const auto &plane : drm->GetPlanes()) {
     if (plane->IsCrtcSupported(*crtc))
       display_planes.push_back(plane.get());
   }
@@ -164,7 +164,7 @@ void DrmHwcTwo::HandleDisplayHotplug(hwc2_display_t displayid, int state) {
 }
 
 void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {
-  for (const auto &conn : drmDevice->connectors()) {
+  for (const auto &conn : drmDevice->GetConnectors()) {
     int display_id = drmDevice->GetDisplayId(conn.get());
     auto &display = displays_.at(display_id);
 
@@ -178,7 +178,7 @@ void DrmHwcTwo::HandleInitialHotplugState(DrmDevice *drmDevice) {
 
 void DrmHwcTwo::HandleHotplugUEvent() {
   for (const auto &drm : resource_manager_.GetDrmDevices()) {
-    for (const auto &conn : drm->connectors()) {
+    for (const auto &conn : drm->GetConnectors()) {
       int display_id = drm->GetDisplayId(conn.get());
 
       bool old_state = conn->IsConnected();
