@@ -21,6 +21,7 @@
 
 #include <cstdint>
 
+#include "DrmDisplayPipeline.h"
 #include "DrmMode.h"
 #include "DrmProperty.h"
 #include "DrmUnique.h"
@@ -29,7 +30,7 @@ namespace android {
 
 class DrmDevice;
 
-class DrmCrtc {
+class DrmCrtc : public PipelineBindable<DrmCrtc> {
  public:
   static auto CreateInstance(DrmDevice &dev, uint32_t crtc_id, uint32_t index)
       -> std::unique_ptr<DrmCrtc>;

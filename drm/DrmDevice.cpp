@@ -66,7 +66,6 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
   ret = drmSetClientCap(GetFd(), DRM_CLIENT_CAP_WRITEBACK_CONNECTORS, 1);
   if (ret != 0) {
     ALOGI("Failed to set writeback cap %d", ret);
-    ret = 0;
   }
 #endif
 
@@ -125,30 +124,6 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
     }
   }
 
-  auto add_displays = [this, &num_displays](bool internal, bool connected) {
-    for (auto &conn : connectors_) {
-      bool is_connected = conn->IsConnected();
-      if ((internal ? conn->IsInternal() : conn->IsExternal()) &&
-          (connected ? is_connected : !is_connected)) {
-        bound_connectors_[num_displays] = conn.get();
-        connectors_to_display_id_[conn.get()] = num_displays;
-        ++num_displays;
-      }
-    }
-  };
-
-  /* Put internal first to ensure Primary display will be internal
-   * in case at least 1 internal is available
-   */
-  add_displays(/*internal = */ true, /*connected = */ true);
-  add_displays(/*internal = */ false, /*connected = */ true);
-  add_displays(/*internal = */ true, /*connected = */ false);
-  add_displays(/*internal = */ false, /*connected = */ false);
-
-  // Catch-all for the above loops
-  if (ret != 0)
-    return std::make_tuple(ret, 0);
-
   auto plane_res = MakeDrmModePlaneResUnique(GetFd());
   if (!plane_res) {
     ALOGE("Failed to get plane resources");
@@ -164,91 +139,50 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
     }
   }
 
-  for (auto &conn : connectors_) {
-    ret = CreateDisplayPipe(conn.get());
-    if (ret != 0) {
-      ALOGE("Failed CreateDisplayPipe %d with %d", conn->GetId(), ret);
-      return std::make_tuple(ret, 0);
+  auto add_displays = [this, &num_displays](bool internal, bool connected) {
+    for (auto &conn : connectors_) {
+      bool is_connected = conn->IsConnected();
+      if ((internal ? conn->IsInternal() : conn->IsExternal()) &&
+          (connected ? is_connected : !is_connected)) {
+        auto pipe = DrmDisplayPipeline::CreatePipeline(*conn);
+        if (pipe) {
+          pipelines_[num_displays] = std::move(pipe);
+          ++num_displays;
+        }
+      }
     }
-  }
-  return std::make_tuple(ret, bound_connectors_.size());
+  };
+
+  /* Put internal first to ensure Primary display will be internal
+   * in case at least 1 internal is available
+   */
+  add_displays(/*internal = */ true, /*connected = */ true);
+  add_displays(/*internal = */ false, /*connected = */ true);
+  add_displays(/*internal = */ true, /*connected = */ false);
+  add_displays(/*internal = */ false, /*connected = */ false);
+
+  return std::make_tuple(0, pipelines_.size());
 }
 
 bool DrmDevice::HandlesDisplay(int display) const {
-  return bound_connectors_.count(display) != 0;
+  return pipelines_.count(display) != 0;
 }
 
 DrmConnector *DrmDevice::GetConnectorForDisplay(int display) const {
-  return bound_connectors_.at(display);
+  return pipelines_.at(display)->connector->Get();
 }
 
 DrmCrtc *DrmDevice::GetCrtcForDisplay(int display) const {
-  return bound_crtcs_.at(display);
+  return pipelines_.at(display)->crtc->Get();
 }
 
-int DrmDevice::TryEncoderForDisplay(int display, DrmEncoder *enc) {
-  /* First try to use the currently-bound crtc */
-  auto *crtc = FindCrtcById(enc->GetCurrentCrtcId());
-  if (crtc != nullptr && bound_crtcs_.count(display) == 0) {
-    bound_crtcs_[display] = crtc;
-    bound_encoders_[crtc] = enc;
-    return 0;
-  }
-
-  /* Try to find a possible crtc which will work */
-  for (auto &crtc : crtcs_) {
-    /* Crtc not supported or we've already tried this earlier */
-    if (!enc->SupportsCrtc(*crtc) || crtc->GetId() == enc->GetCurrentCrtcId()) {
-      continue;
-    }
-
-    if (bound_crtcs_.count(display) == 0) {
-      bound_crtcs_[display] = crtc.get();
-      bound_encoders_[crtc.get()] = enc;
-      return 0;
+auto DrmDevice::GetDisplayId(DrmConnector *conn) -> int {
+  for (auto &dpipe : pipelines_) {
+    if (dpipe.second->connector->Get() == conn) {
+      return dpipe.first;
     }
   }
-
-  /* We can't use the encoder, but nothing went wrong, try another one */
-  return -EAGAIN;
-}
-
-int DrmDevice::CreateDisplayPipe(DrmConnector *connector) {
-  int display = connectors_to_display_id_.at(connector);
-  /* Try to use current setup first */
-  auto *enc0 = FindEncoderById(connector->GetCurrentEncoderId());
-  if (enc0 != nullptr && encoders_to_display_id_.count(enc0) == 0) {
-    int ret = TryEncoderForDisplay(display, enc0);
-    if (ret == 0) {
-      encoders_to_display_id_[enc0] = display;
-      return 0;
-    }
-
-    if (ret != -EAGAIN) {
-      ALOGE("Could not set mode %d/%d", display, ret);
-      return ret;
-    }
-  }
-
-  for (auto &enc : encoders_) {
-    if (!connector->SupportsEncoder(*enc) ||
-        encoders_to_display_id_.count(enc.get()) != 0) {
-      continue;
-    }
-
-    int ret = TryEncoderForDisplay(display, enc.get());
-    if (ret == 0) {
-      encoders_to_display_id_[enc.get()] = display;
-      return 0;
-    }
-
-    if (ret != -EAGAIN) {
-      ALOGE("Could not set mode %d/%d", display, ret);
-      return ret;
-    }
-  }
-  ALOGE("Could not find a suitable encoder/crtc for display %d", display);
-  return -ENODEV;
+  return -1;
 }
 
 auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const

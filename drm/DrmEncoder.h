@@ -24,10 +24,11 @@
 #include <vector>
 
 #include "DrmCrtc.h"
+#include "DrmDisplayPipeline.h"
 
 namespace android {
 
-class DrmEncoder {
+class DrmEncoder : public PipelineBindable<DrmEncoder> {
  public:
   static auto CreateInstance(DrmDevice &dev, uint32_t encoder_id,
                              uint32_t index) -> std::unique_ptr<DrmEncoder>;

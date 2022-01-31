@@ -31,7 +31,7 @@ namespace android {
 class DrmDevice;
 struct DrmHwcLayer;
 
-class DrmPlane {
+class DrmPlane : public PipelineBindable<DrmPlane> {
  public:
   DrmPlane(const DrmPlane &) = delete;
   DrmPlane &operator=(const DrmPlane &) = delete;

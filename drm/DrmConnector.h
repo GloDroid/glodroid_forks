@@ -32,7 +32,7 @@ namespace android {
 
 class DrmDevice;
 
-class DrmConnector {
+class DrmConnector : public PipelineBindable<DrmConnector> {
  public:
   static auto CreateInstance(DrmDevice &dev, uint32_t connector_id,
                              uint32_t index) -> std::unique_ptr<DrmConnector>;

@@ -96,9 +96,7 @@ class DrmDevice {
     return nullptr;
   }
 
-  auto GetDisplayId(DrmConnector *conn) {
-    return connectors_to_display_id_.at(conn);
-  }
+  auto GetDisplayId(DrmConnector *conn) -> int;
 
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
@@ -119,11 +117,7 @@ class DrmDevice {
   std::pair<uint32_t, uint32_t> min_resolution_;
   std::pair<uint32_t, uint32_t> max_resolution_;
 
-  std::map<int /*display*/, DrmCrtc *> bound_crtcs_;
-  std::map<int /*display*/, DrmConnector *> bound_connectors_;
-  std::map<DrmConnector *, int /*display*/> connectors_to_display_id_;
-  std::map<DrmEncoder *, int /*display*/> encoders_to_display_id_;
-  std::map<DrmCrtc *, DrmEncoder *> bound_encoders_;
+  std::map<int /*display*/, std::unique_ptr<DrmDisplayPipeline>> pipelines_;
 
   bool HasAddFb2ModifiersSupport_{};
 
