@@ -79,6 +79,8 @@ struct DrmDisplayPipeline {
   std::shared_ptr<BindingOwner<DrmCrtc>> crtc;
   std::shared_ptr<BindingOwner<DrmPlane>> primary_plane;
   std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> overlay_planes;
+
+  std::unique_ptr<DrmDisplayCompositor> compositor;
 };
 
 }  // namespace android

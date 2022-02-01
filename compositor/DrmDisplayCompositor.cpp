@@ -39,20 +39,6 @@
 
 namespace android {
 
-auto DrmDisplayCompositor::Init(ResourceManager *resource_manager, int display)
-    -> int {
-  resource_manager_ = resource_manager;
-  display_ = display;
-  DrmDevice *drm = resource_manager_->GetDrmDevice(display);
-  if (!drm) {
-    ALOGE("Could not find drmdevice for display");
-    return -EINVAL;
-  }
-
-  initialized_ = true;
-  return 0;
-}
-
 // NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
 auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   ATRACE_CALL();
@@ -79,18 +65,9 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
 
   auto new_frame_state = NewFrameState();
 
-  DrmDevice *drm = resource_manager_->GetDrmDevice(display_);
-
-  DrmConnector *connector = drm->GetConnectorForDisplay(display_);
-  if (!connector) {
-    ALOGE("Could not locate connector for display %d", display_);
-    return -ENODEV;
-  }
-  DrmCrtc *crtc = drm->GetCrtcForDisplay(display_);
-  if (!crtc) {
-    ALOGE("Could not locate crtc for display %d", display_);
-    return -ENODEV;
-  }
+  auto *drm = pipe_->device;
+  auto *connector = pipe_->connector->Get();
+  auto *crtc = pipe_->crtc->Get();
 
   auto pset = MakeDrmModeAtomicReqUnique();
   if (!pset) {
@@ -113,8 +90,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   if (args.display_mode) {
-    new_frame_state.mode_blob = args.display_mode.value().CreateModeBlob(
-        *resource_manager_->GetDrmDevice(display_));
+    new_frame_state.mode_blob = args.display_mode.value().CreateModeBlob(*drm);
 
     if (!new_frame_state.mode_blob) {
       ALOGE("Failed to create mode_blob");
@@ -207,12 +183,14 @@ auto DrmDisplayCompositor::ExecuteAtomicCommit(AtomicCommitArgs &args) -> int {
 
   if (!args.test_only) {
     if (err) {
-      ALOGE("Composite failed for display %d", display_);
+      ALOGE("Composite failed for pipeline %s",
+            pipe_->connector->Get()->GetName().c_str());
       // Disable the hw used by the last active composition. This allows us to
       // signal the release fences from that composition to avoid hanging.
       AtomicCommitArgs cl_args = {.clear_active_composition = true};
       if (CommitFrame(cl_args)) {
-        ALOGE("Failed to clean-up active composition for display %d", display_);
+        ALOGE("Failed to clean-up active composition for pipeline %s",
+              pipe_->connector->Get()->GetName().c_str());
       }
       return err;
     }
@@ -222,19 +200,12 @@ auto DrmDisplayCompositor::ExecuteAtomicCommit(AtomicCommitArgs &args) -> int {
 }  // namespace android
 
 auto DrmDisplayCompositor::ActivateDisplayUsingDPMS() -> int {
-  auto *drm = resource_manager_->GetDrmDevice(display_);
-  auto *connector = drm->GetConnectorForDisplay(display_);
-  if (connector == nullptr) {
-    ALOGE("Could not locate connector for display %d", display_);
-    return -ENODEV;
-  }
-
-  if (connector->GetDpmsProperty()) {
-    drmModeConnectorSetProperty(drm->GetFd(), connector->GetId(),
-                                connector->GetDpmsProperty().id(),
-                                DRM_MODE_DPMS_ON);
-  }
-  return 0;
+  return drmModeConnectorSetProperty(pipe_->device->GetFd(),
+                                     pipe_->connector->Get()->GetId(),
+                                     pipe_->connector->Get()
+                                         ->GetDpmsProperty()
+                                         .id(),
+                                     DRM_MODE_DPMS_ON);
 }
 
 }  // namespace android

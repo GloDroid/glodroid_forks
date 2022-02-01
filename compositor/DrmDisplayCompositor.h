@@ -54,9 +54,8 @@ struct AtomicCommitArgs {
 
 class DrmDisplayCompositor {
  public:
-  DrmDisplayCompositor() = default;
+  explicit DrmDisplayCompositor(DrmDisplayPipeline *pipe) : pipe_(pipe){};
   ~DrmDisplayCompositor() = default;
-  auto Init(ResourceManager *resource_manager, int display) -> int;
 
   auto ExecuteAtomicCommit(AtomicCommitArgs &args) -> int;
 
@@ -88,9 +87,7 @@ class DrmDisplayCompositor {
     };
   }
 
-  ResourceManager *resource_manager_ = nullptr;
-  bool initialized_{};
-  int display_ = -1;
+  DrmDisplayPipeline *const pipe_;
 };
 }  // namespace android
 

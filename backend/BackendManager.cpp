@@ -42,7 +42,7 @@ int BackendManager::RegisterBackend(const std::string &name,
 }
 
 int BackendManager::SetBackendForDisplay(HwcDisplay *display) {
-  std::string driver_name(display->drm()->GetName());
+  std::string driver_name(display->GetPipe().device->GetName());
   char backend_override[PROPERTY_VALUE_MAX];
   property_get("vendor.hwc.backend_override", backend_override,
                driver_name.c_str());
@@ -51,13 +51,15 @@ int BackendManager::SetBackendForDisplay(HwcDisplay *display) {
   display->set_backend(GetBackendByName(backend_name));
   if (display->backend() == nullptr) {
     ALOGE("Failed to set backend '%s' for '%s' and driver '%s'",
-          backend_name.c_str(), display->connector()->GetName().c_str(),
+          backend_name.c_str(),
+          display->GetPipe().connector->Get()->GetName().c_str(),
           driver_name.c_str());
     return -EINVAL;
   }
 
   ALOGI("Backend '%s' for '%s' and driver '%s' was successfully set",
-        backend_name.c_str(), display->connector()->GetName().c_str(),
+        backend_name.c_str(),
+        display->GetPipe().connector->Get()->GetName().c_str(),
         driver_name.c_str());
 
   return 0;

@@ -56,8 +56,10 @@ class DrmDevice {
     return max_resolution_;
   }
 
-  DrmConnector *GetConnectorForDisplay(int display) const;
-  DrmCrtc *GetCrtcForDisplay(int display) const;
+  auto *GetPipelineForDisplay(int display) {
+    return pipelines_.count(display) != 0 ? pipelines_.at(display).get()
+                                          : nullptr;
+  }
 
   std::string GetName() const;
 
@@ -102,10 +104,6 @@ class DrmDevice {
                   DrmProperty *property) const;
 
  private:
-  int TryEncoderForDisplay(int display, DrmEncoder *enc);
-
-  int CreateDisplayPipe(DrmConnector *connector);
-
   UniqueFd fd_;
 
   std::vector<std::unique_ptr<DrmConnector>> connectors_;

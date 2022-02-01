@@ -24,7 +24,9 @@
 #include <sstream>
 
 #include "bufferinfo/BufferInfoGetter.h"
+#include "compositor/DrmDisplayCompositor.h"
 #include "drm/DrmDevice.h"
+#include "drm/DrmDisplayPipeline.h"
 #include "drm/DrmPlane.h"
 #include "utils/log.h"
 #include "utils/properties.h"
@@ -95,10 +97,12 @@ int ResourceManager::AddDrmDevice(const std::string &path) {
   return ret;
 }
 
-DrmDevice *ResourceManager::GetDrmDevice(int display) {
+DrmDisplayPipeline *ResourceManager::GetPipeline(int display) {
   for (auto &drm : drms_) {
-    if (drm->HandlesDisplay(display))
-      return drm.get();
+    auto *pipe = drm->GetPipelineForDisplay(display);
+    if (pipe != nullptr) {
+      return pipe;
+    }
   }
   return nullptr;
 }

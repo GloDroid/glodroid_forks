@@ -36,7 +36,7 @@ class VSyncWorker : public Worker {
   VSyncWorker();
   ~VSyncWorker() override = default;
 
-  auto Init(DrmDevice *drm, int display,
+  auto Init(DrmDisplayPipeline *pipe,
             std::function<void(uint64_t /*timestamp*/)> callback) -> int;
 
   void VSyncControl(bool enabled);
@@ -48,13 +48,11 @@ class VSyncWorker : public Worker {
   int64_t GetPhasedVSync(int64_t frame_ns, int64_t current) const;
   int SyntheticWaitVBlank(int64_t *timestamp);
 
-  DrmDevice *drm_;
-
   std::function<void(uint64_t /*timestamp*/)> callback_;
 
-  int display_;
-  std::atomic_bool enabled_;
-  int64_t last_timestamp_;
+  DrmDisplayPipeline *pipe_ = nullptr;
+  std::atomic_bool enabled_ = false;
+  int64_t last_timestamp_ = -1;
 };
 }  // namespace android
 

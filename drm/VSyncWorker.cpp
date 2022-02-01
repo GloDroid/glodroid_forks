@@ -29,19 +29,12 @@
 
 namespace android {
 
-VSyncWorker::VSyncWorker()
-    : Worker("vsync", HAL_PRIORITY_URGENT_DISPLAY),
-      drm_(nullptr),
-      display_(-1),
-      enabled_(false),
-      last_timestamp_(-1) {
-}
+VSyncWorker::VSyncWorker() : Worker("vsync", HAL_PRIORITY_URGENT_DISPLAY){};
 
-auto VSyncWorker::Init(DrmDevice *drm, int display,
+auto VSyncWorker::Init(DrmDisplayPipeline *pipe,
                        std::function<void(uint64_t /*timestamp*/)> callback)
     -> int {
-  drm_ = drm;
-  display_ = display;
+  pipe_ = pipe;
   callback_ = std::move(callback);
 
   return InitWorker();
@@ -86,12 +79,10 @@ int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
     return ret;
 
   float refresh = 60.0F;  // Default to 60Hz refresh rate
-  DrmConnector *conn = drm_->GetConnectorForDisplay(display_);
-  if (conn && conn->GetActiveMode().v_refresh() != 0.0F)
-    refresh = conn->GetActiveMode().v_refresh();
-  else
-    ALOGW("Vsync worker active with conn=%p refresh=%f\n", conn,
-          conn ? conn->GetActiveMode().v_refresh() : 0.0F);
+  if (pipe_ != nullptr &&
+      pipe_->connector->Get()->GetActiveMode().v_refresh() != 0.0F) {
+    refresh = pipe_->connector->Get()->GetActiveMode().v_refresh();
+  }
 
   int64_t phased_timestamp = GetPhasedVSync(kOneSecondNs /
                                                 static_cast<int>(refresh),
@@ -121,28 +112,26 @@ void VSyncWorker::Routine() {
     }
   }
 
-  int display = display_;
+  auto *pipe = pipe_;
   Unlock();
 
-  DrmCrtc *crtc = drm_->GetCrtcForDisplay(display);
-  if (!crtc) {
-    ALOGE("Failed to get crtc for display");
-    return;
-  }
-  uint32_t high_crtc = (crtc->GetIndexInResArray()
-                        << DRM_VBLANK_HIGH_CRTC_SHIFT);
-
-  drmVBlank vblank;
-  memset(&vblank, 0, sizeof(vblank));
-  vblank.request.type = (drmVBlankSeqType)(DRM_VBLANK_RELATIVE |
-                                           (high_crtc &
-                                            DRM_VBLANK_HIGH_CRTC_MASK));
-  vblank.request.sequence = 1;
-
+  ret = -EAGAIN;
   int64_t timestamp = 0;
-  ret = drmWaitVBlank(drm_->GetFd(), &vblank);
-  if (ret == -EINTR)
-    return;
+  drmVBlank vblank{};
+
+  if (pipe != nullptr) {
+    uint32_t high_crtc = (pipe->crtc->Get()->GetIndexInResArray()
+                          << DRM_VBLANK_HIGH_CRTC_SHIFT);
+
+    vblank.request.type = (drmVBlankSeqType)(DRM_VBLANK_RELATIVE |
+                                             (high_crtc &
+                                              DRM_VBLANK_HIGH_CRTC_MASK));
+    vblank.request.sequence = 1;
+
+    ret = drmWaitVBlank(pipe->device->GetFd(), &vblank);
+    if (ret == -EINTR)
+      return;
+  }
 
   if (ret) {
     ret = SyntheticWaitVBlank(&timestamp);

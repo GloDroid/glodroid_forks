@@ -25,6 +25,7 @@
 #include "DrmPlane.h"
 #include "compositor/DrmDisplayCompositor.h"
 #include "utils/log.h"
+#include "utils/properties.h"
 
 namespace android {
 
@@ -97,9 +98,13 @@ static auto TryCreatePipeline(DrmDevice &dev, DrmConnector &connector,
     return {};
   }
 
-  bool use_overlay_planes = true;  // TODO(rsglobal): restore
-                                   // strtol(use_overlay_planes_prop, nullptr,
-                                   // 10);
+  char use_overlay_planes_prop[PROPERTY_VALUE_MAX];
+  property_get("vendor.hwc.drm.use_overlay_planes", use_overlay_planes_prop,
+               "1");
+  constexpr int kStrtolBase = 10;
+  bool use_overlay_planes = strtol(use_overlay_planes_prop, nullptr,
+                                   kStrtolBase) != 0;
+
   if (use_overlay_planes) {
     for (auto *plane : overlay_planes) {
       auto op = plane->BindPipeline(pipe.get());
@@ -108,6 +113,8 @@ static auto TryCreatePipeline(DrmDevice &dev, DrmConnector &connector,
       }
     }
   }
+
+  pipe->compositor = std::make_unique<DrmDisplayCompositor>(pipe.get());
 
   return pipe;
 }

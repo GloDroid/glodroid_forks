@@ -30,6 +30,7 @@
 #include <sstream>
 #include <string>
 
+#include "compositor/DrmDisplayCompositor.h"
 #include "drm/DrmPlane.h"
 #include "utils/log.h"
 #include "utils/properties.h"
@@ -166,14 +167,6 @@ std::tuple<int, int> DrmDevice::Init(const char *path, int num_displays) {
 
 bool DrmDevice::HandlesDisplay(int display) const {
   return pipelines_.count(display) != 0;
-}
-
-DrmConnector *DrmDevice::GetConnectorForDisplay(int display) const {
-  return pipelines_.at(display)->connector->Get();
-}
-
-DrmCrtc *DrmDevice::GetCrtcForDisplay(int display) const {
-  return pipelines_.at(display)->crtc->Get();
 }
 
 auto DrmDevice::GetDisplayId(DrmConnector *conn) -> int {

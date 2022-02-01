@@ -33,8 +33,8 @@ class ResourceManager {
   ~ResourceManager();
 
   int Init();
-  DrmDevice *GetDrmDevice(int display);
-  const std::vector<std::unique_ptr<DrmDevice>> &GetDrmDevices() const {
+  auto GetPipeline(int display) -> DrmDisplayPipeline *;
+  auto &GetDrmDevices() const {
     return drms_;
   }
   int GetDisplayCount() const {

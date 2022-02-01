@@ -27,26 +27,16 @@ DrmHwcTwo::DrmHwcTwo() = default;
 
 HWC2::Error DrmHwcTwo::CreateDisplay(hwc2_display_t displ,
                                      HWC2::DisplayType type) {
-  DrmDevice *drm = resource_manager_.GetDrmDevice(static_cast<int>(displ));
-  if (!drm) {
+  auto *pipe = resource_manager_.GetPipeline(static_cast<int>(displ));
+  if (!pipe) {
     ALOGE("Failed to get a valid drmresource");
     return HWC2::Error::NoResources;
   }
   displays_.emplace(std::piecewise_construct, std::forward_as_tuple(displ),
-                    std::forward_as_tuple(&resource_manager_, drm, displ, type,
+                    std::forward_as_tuple(&resource_manager_, pipe, displ, type,
                                           this));
 
-  DrmCrtc *crtc = drm->GetCrtcForDisplay(static_cast<int>(displ));
-  if (!crtc) {
-    ALOGE("Failed to get crtc for display %d", static_cast<int>(displ));
-    return HWC2::Error::BadDisplay;
-  }
-  auto display_planes = std::vector<DrmPlane *>();
-  for (const auto &plane : drm->GetPlanes()) {
-    if (plane->IsCrtcSupported(*crtc))
-      display_planes.push_back(plane.get());
-  }
-  displays_.at(displ).Init(&display_planes);
+  displays_.at(displ).Init();
   return HWC2::Error::None;
 }
 
