@@ -42,6 +42,7 @@ auto PipelineBindable<O>::BindPipeline(DrmDisplayPipeline *pipeline,
   }
   owner_object = std::make_shared<BindingOwner<O>>(static_cast<O *>(this));
 
+  owner_object_ = owner_object;
   bound_pipeline_ = pipeline;
   return owner_object;
 }
