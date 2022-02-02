@@ -17,8 +17,6 @@
 #ifndef ANDROID_DRM_DISPLAY_COMPOSITOR_H_
 #define ANDROID_DRM_DISPLAY_COMPOSITOR_H_
 
-#include <hardware/hardware.h>
-#include <hardware/hwcomposer.h>
 #include <pthread.h>
 
 #include <functional>
@@ -27,7 +25,8 @@
 #include <sstream>
 #include <tuple>
 
-#include "DrmDisplayComposition.h"
+#include "DrmKmsPlan.h"
+#include "drm/DrmPlane.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "drmhwcomposer.h"
@@ -39,7 +38,7 @@ struct AtomicCommitArgs {
   bool test_only = false;
   std::optional<DrmMode> display_mode;
   std::optional<bool> active;
-  std::shared_ptr<DrmDisplayComposition> composition;
+  std::shared_ptr<DrmKmsPlan> composition;
   /* 'clear' should never be used together with 'composition' */
   bool clear_active_composition = false;
 
@@ -68,7 +67,7 @@ class DrmDisplayCompositor {
 
   struct KmsState {
     /* Required to cleanup unused planes */
-    std::vector<DrmPlane *> used_planes;
+    std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> used_planes;
     /* We have to hold a reference to framebuffer while displaying it ,
      * otherwise picture will blink */
     std::vector<std::shared_ptr<DrmFbIdHandle>> used_framebuffers;

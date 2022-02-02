@@ -72,13 +72,15 @@ struct DrmDisplayPipeline {
   static auto CreatePipeline(DrmConnector &connector)
       -> std::unique_ptr<DrmDisplayPipeline>;
 
+  auto GetUsablePlanes()
+      -> std::vector<std::shared_ptr<BindingOwner<DrmPlane>>>;
+
   DrmDevice *device;
 
   std::shared_ptr<BindingOwner<DrmConnector>> connector;
   std::shared_ptr<BindingOwner<DrmEncoder>> encoder;
   std::shared_ptr<BindingOwner<DrmCrtc>> crtc;
   std::shared_ptr<BindingOwner<DrmPlane>> primary_plane;
-  std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> overlay_planes;
 
   std::unique_ptr<DrmDisplayCompositor> compositor;
 };

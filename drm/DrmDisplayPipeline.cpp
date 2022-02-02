@@ -98,22 +98,6 @@ static auto TryCreatePipeline(DrmDevice &dev, DrmConnector &connector,
     return {};
   }
 
-  char use_overlay_planes_prop[PROPERTY_VALUE_MAX];
-  property_get("vendor.hwc.drm.use_overlay_planes", use_overlay_planes_prop,
-               "1");
-  constexpr int kStrtolBase = 10;
-  bool use_overlay_planes = strtol(use_overlay_planes_prop, nullptr,
-                                   kStrtolBase) != 0;
-
-  if (use_overlay_planes) {
-    for (auto *plane : overlay_planes) {
-      auto op = plane->BindPipeline(pipe.get());
-      if (op) {
-        pipe->overlay_planes.emplace_back(op);
-      }
-    }
-  }
-
   pipe->compositor = std::make_unique<DrmDisplayCompositor>(pipe.get());
 
   return pipe;
@@ -171,6 +155,37 @@ auto DrmDisplayPipeline::CreatePipeline(DrmConnector &connector)
         connector.GetName().c_str());
 
   return {};
+}
+
+static bool ReadUseOverlayProperty() {
+  char use_overlay_planes_prop[PROPERTY_VALUE_MAX];
+  property_get("vendor.hwc.drm.use_overlay_planes", use_overlay_planes_prop,
+               "1");
+  constexpr int kStrtolBase = 10;
+  return strtol(use_overlay_planes_prop, nullptr, kStrtolBase) != 0;
+}
+
+auto DrmDisplayPipeline::GetUsablePlanes()
+    -> std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> {
+  std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> planes;
+  planes.emplace_back(primary_plane);
+
+  static bool use_overlay_planes = ReadUseOverlayProperty();
+
+  if (use_overlay_planes) {
+    for (const auto &plane : device->GetPlanes()) {
+      if (plane->IsCrtcSupported(*crtc->Get())) {
+        if (plane->GetType() == DRM_PLANE_TYPE_OVERLAY) {
+          auto op = plane->BindPipeline(this, true);
+          if (op) {
+            planes.emplace_back(op);
+          }
+        }
+      }
+    }
+  }
+
+  return planes;
 }
 
 }  // namespace android

@@ -497,31 +497,21 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     composition_layers.emplace_back(std::move(layer));
   }
 
-  auto composition = std::make_shared<DrmDisplayComposition>(
-      GetPipe().crtc->Get());
-
-  // TODO(nobody): Don't always assume geometry changed
-  int ret = composition->SetLayers(composition_layers.data(),
-                                   composition_layers.size());
-  if (ret) {
-    ALOGE("Failed to set layers in the composition ret=%d", ret);
-    return HWC2::Error::BadLayer;
-  }
-
-  std::vector<DrmPlane *> primary_planes;
-  primary_planes.emplace_back(pipeline_->primary_plane->Get());
-  std::vector<DrmPlane *> overlay_planes;
-  for (const auto &owned_plane : pipeline_->overlay_planes) {
-    overlay_planes.emplace_back(owned_plane->Get());
-  }
-  ret = composition->Plan(&primary_planes, &overlay_planes);
-  if (ret) {
-    ALOGV("Failed to plan the composition ret=%d", ret);
+  /* Store plan to ensure shared planes won't be stolen by other display
+   * in between of ValidateDisplay() and PresentDisplay() calls
+   */
+  current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(GetPipe(),
+                                               std::move(composition_layers));
+  if (!current_plan_) {
+    if (!a_args.test_only) {
+      ALOGE("Failed to create DrmKmsPlan");
+    }
     return HWC2::Error::BadConfig;
   }
 
-  a_args.composition = composition;
-  ret = GetPipe().compositor->ExecuteAtomicCommit(a_args);
+  a_args.composition = current_plan_;
+
+  int ret = GetPipe().compositor->ExecuteAtomicCommit(a_args);
 
   if (ret) {
     if (!a_args.test_only)

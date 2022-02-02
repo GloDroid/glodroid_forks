@@ -221,6 +221,8 @@ class HwcDisplay {
   std::array<float, MATRIX_SIZE> color_transform_matrix_{};
   android_color_transform_t color_transform_hint_;
 
+  std::shared_ptr<DrmKmsPlan> current_plan_;
+
   uint32_t frame_no_ = 0;
   Stats total_stats_;
   Stats prev_stats_;

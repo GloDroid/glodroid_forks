@@ -108,29 +108,18 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     new_frame_state.used_framebuffers.clear();
     new_frame_state.used_planes.clear();
 
-    std::vector<DrmHwcLayer> &layers = args.composition->layers();
-    std::vector<DrmCompositionPlane> &comp_planes = args.composition
-                                                        ->composition_planes();
-
-    for (DrmCompositionPlane &comp_plane : comp_planes) {
-      DrmPlane *plane = comp_plane.plane();
-      size_t source_layer = comp_plane.source_layer();
-
-      if (source_layer >= layers.size()) {
-        ALOGE("Source layer index %zu out of bounds %zu", source_layer,
-              layers.size());
-        return -EINVAL;
-      }
-      DrmHwcLayer &layer = layers[source_layer];
+    for (auto &joining : args.composition->plan) {
+      DrmPlane *plane = joining.plane->Get();
+      DrmHwcLayer &layer = joining.layer;
 
       new_frame_state.used_framebuffers.emplace_back(layer.fb_id_handle);
-      new_frame_state.used_planes.emplace_back(plane);
+      new_frame_state.used_planes.emplace_back(joining.plane);
 
       /* Remove from 'unused' list, since plane is re-used */
       auto &v = unused_planes;
-      v.erase(std::remove(v.begin(), v.end(), plane), v.end());
+      v.erase(std::remove(v.begin(), v.end(), joining.plane), v.end());
 
-      if (plane->AtomicSetState(*pset, layer, source_layer, crtc->GetId()) !=
+      if (plane->AtomicSetState(*pset, layer, joining.z_pos, crtc->GetId()) !=
           0) {
         return -EINVAL;
       }
@@ -143,8 +132,8 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   if (args.clear_active_composition || args.composition) {
-    for (auto *plane : unused_planes) {
-      if (plane->AtomicDisablePlane(*pset) != 0) {
+    for (auto &plane : unused_planes) {
+      if (plane->Get()->AtomicDisablePlane(*pset) != 0) {
         return -EINVAL;
       }
     }
