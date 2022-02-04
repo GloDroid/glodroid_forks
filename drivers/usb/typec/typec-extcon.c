@@ -96,11 +96,6 @@ static int typec_extcon_sync_extcon(struct typec_extcon *tce)
 		typec_extcon_set_cable(tce, EXTCON_USB_HOST, false, prop_ss, prop_or);
 		typec_extcon_set_cable(tce, EXTCON_DISP_DP, false, prop_ss, prop_or);
 
-		extcon_set_state_sync(tce->extcon, EXTCON_CHG_USB_SDP, false);
-		extcon_set_state_sync(tce->extcon, EXTCON_CHG_USB_DCP, false);
-		extcon_set_state_sync(tce->extcon, EXTCON_CHG_USB_CDP, false);
-		extcon_set_state_sync(tce->extcon, EXTCON_CHG_USB_ACA, false);
-
                 goto out_unlock;
 	}
 
