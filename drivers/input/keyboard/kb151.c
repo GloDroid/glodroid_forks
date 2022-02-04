@@ -12,6 +12,7 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/pm_wakeirq.h>
+#include <linux/regulator/consumer.h>
 
 #define KB151_CRC8_POLYNOMIAL		0x07
 
@@ -184,6 +185,7 @@ static const struct matrix_keymap_data kb151_default_keymap_data = {
 
 struct kb151 {
 	struct input_dev *input;
+	struct regulator *vbat_supply;
 	u8 crc_table[CRC8_TABLE_SIZE];
 	u8 row_shift;
 	u8 rows;
@@ -492,6 +494,11 @@ static int kb151_probe(struct i2c_client *client)
 	if (!kb151)
 		return -ENOMEM;
 
+	kb151->vbat_supply = devm_regulator_get(dev, "vbat");
+	if (IS_ERR(kb151->vbat_supply))
+		return dev_err_probe(dev, PTR_ERR(kb151->vbat_supply),
+				     "Failed to get vbat_supply\n");
+
 	i2c_set_clientdata(client, kb151);
 
 	crc8_populate_msb(kb151->crc_table, KB151_CRC8_POLYNOMIAL);
@@ -557,6 +564,21 @@ charger:
 	dev_warn(dev, "Your kernel doesn't have CONFIG_IP5XXX_POWER enabled, keyboard charger support is disabled.\n");
 #endif
 
+	ret = regulator_enable(kb151->vbat_supply);
+	if (ret) {
+		dev_err(dev, "Failed to enable keyboard vbat supply (%d)\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int kb151_remove(struct i2c_client *client)
+{
+	struct kb151 *kb151 = i2c_get_clientdata(client);
+
+	regulator_disable(kb151->vbat_supply);
+
 	return 0;
 }
 
@@ -568,6 +590,7 @@ MODULE_DEVICE_TABLE(of, kb151_of_match);
 
 static struct i2c_driver kb151_driver = {
 	.probe_new	= kb151_probe,
+	.remove		= kb151_remove,
 	.driver		= {
 		.name		= "kb151",
 		.of_match_table = kb151_of_match,
