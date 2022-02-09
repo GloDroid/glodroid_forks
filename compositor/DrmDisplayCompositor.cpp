@@ -58,11 +58,6 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     args.active = true;
   }
 
-  if (args.clear_active_composition && args.composition) {
-    ALOGE("%s: Invalid arguments", __func__);
-    return -EINVAL;
-  }
-
   auto new_frame_state = NewFrameState();
 
   auto *drm = pipe_->device;
@@ -126,12 +121,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     }
   }
 
-  if (args.clear_active_composition) {
-    new_frame_state.used_framebuffers.clear();
-    new_frame_state.used_planes.clear();
-  }
-
-  if (args.clear_active_composition || args.composition) {
+  if (args.composition) {
     for (auto &plane : unused_planes) {
       if (plane->Get()->AtomicDisablePlane(*pset) != 0) {
         return -EINVAL;
@@ -176,7 +166,8 @@ auto DrmDisplayCompositor::ExecuteAtomicCommit(AtomicCommitArgs &args) -> int {
             pipe_->connector->Get()->GetName().c_str());
       // Disable the hw used by the last active composition. This allows us to
       // signal the release fences from that composition to avoid hanging.
-      AtomicCommitArgs cl_args = {.clear_active_composition = true};
+      AtomicCommitArgs cl_args{};
+      cl_args.composition = std::make_shared<DrmKmsPlan>();
       if (CommitFrame(cl_args)) {
         ALOGE("Failed to clean-up active composition for pipeline %s",
               pipe_->connector->Get()->GetName().c_str());

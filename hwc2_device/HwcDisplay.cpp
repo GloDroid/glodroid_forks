@@ -120,16 +120,6 @@ HwcDisplay::~HwcDisplay() {
   main_lock.lock();
 }
 
-void HwcDisplay::ClearDisplay() {
-  if (IsInHeadlessMode()) {
-    ALOGE("%s: Headless mode, should never reach here: ", __func__);
-    return;
-  }
-
-  AtomicCommitArgs a_args = {.clear_active_composition = true};
-  pipeline_->compositor->ExecuteAtomicCommit(a_args);
-}
-
 HWC2::Error HwcDisplay::Init() {
   int ret = vsync_worker_.Init(pipeline_, [this](int64_t timestamp) {
     const std::lock_guard<std::mutex> lock(hwc2_->GetResMan().GetMainLock());

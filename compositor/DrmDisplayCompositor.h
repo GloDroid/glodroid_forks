@@ -39,15 +39,13 @@ struct AtomicCommitArgs {
   std::optional<DrmMode> display_mode;
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
-  /* 'clear' should never be used together with 'composition' */
-  bool clear_active_composition = false;
 
   /* out */
   UniqueFd out_fence;
 
   /* helpers */
   auto HasInputs() -> bool {
-    return display_mode || active || composition || clear_active_composition;
+    return display_mode || active || composition;
   }
 };
 
