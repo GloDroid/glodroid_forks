@@ -25,7 +25,7 @@
 #include <sstream>
 
 #include "bufferinfo/BufferInfoGetter.h"
-#include "compositor/DrmDisplayCompositor.h"
+#include "drm/DrmAtomicStateManager.h"
 #include "drm/DrmDevice.h"
 #include "drm/DrmDisplayPipeline.h"
 #include "drm/DrmPlane.h"

@@ -84,9 +84,9 @@ filegroup {
         "bufferinfo/BufferInfoGetter.cpp",
         "bufferinfo/BufferInfoMapperMetadata.cpp",
 
-        "compositor/DrmDisplayCompositor.cpp",
         "compositor/DrmKmsPlan.cpp",
 
+        "drm/DrmAtomicStateManager.cpp",
         "drm/DrmConnector.cpp",
         "drm/DrmCrtc.cpp",
         "drm/DrmDevice.cpp",

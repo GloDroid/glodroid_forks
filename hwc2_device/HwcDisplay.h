@@ -22,7 +22,7 @@
 #include <optional>
 
 #include "HwcDisplayConfigs.h"
-#include "compositor/DrmDisplayCompositor.h"
+#include "drm/DrmAtomicStateManager.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "drmhwcomposer.h"

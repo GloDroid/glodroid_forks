@@ -15,9 +15,9 @@
  */
 
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
-#define LOG_TAG "hwc-drm-display-compositor"
+#define LOG_TAG "hwc-drm-atomic-state-manager"
 
-#include "DrmDisplayCompositor.h"
+#include "DrmAtomicStateManager.h"
 
 #include <drm/drm_mode.h>
 #include <pthread.h>
@@ -40,7 +40,7 @@
 namespace android {
 
 // NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
-auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
+auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   ATRACE_CALL();
 
   if (args.active && *args.active == active_frame_state_.crtc_active_state) {
@@ -72,13 +72,13 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
 
   int64_t out_fence = -1;
   if (crtc->GetOutFencePtrProperty() &&
-      !crtc->GetOutFencePtrProperty().AtomicSet(*pset, (uint64_t)&out_fence)) {
+      !crtc->GetOutFencePtrProperty().AtomicSet(*pset, uint64_t(&out_fence))) {
     return -EINVAL;
   }
 
   if (args.active) {
     new_frame_state.crtc_active_state = *args.active;
-    if (!crtc->GetActiveProperty().AtomicSet(*pset, *args.active) ||
+    if (!crtc->GetActiveProperty().AtomicSet(*pset, *args.active ? 1 : 0) ||
         !connector->GetCrtcIdProperty().AtomicSet(*pset, crtc->GetId())) {
       return -EINVAL;
     }
@@ -134,7 +134,7 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
     flags |= DRM_MODE_ATOMIC_TEST_ONLY;
 
   int err = drmModeAtomicCommit(drm->GetFd(), pset.get(), flags, drm);
-  if (err) {
+  if (err != 0) {
     if (!args.test_only)
       ALOGE("Failed to commit pset ret=%d\n", err);
     return err;
@@ -157,18 +157,18 @@ auto DrmDisplayCompositor::CommitFrame(AtomicCommitArgs &args) -> int {
   return 0;
 }
 
-auto DrmDisplayCompositor::ExecuteAtomicCommit(AtomicCommitArgs &args) -> int {
+auto DrmAtomicStateManager::ExecuteAtomicCommit(AtomicCommitArgs &args) -> int {
   int err = CommitFrame(args);
 
   if (!args.test_only) {
-    if (err) {
+    if (err != 0) {
       ALOGE("Composite failed for pipeline %s",
             pipe_->connector->Get()->GetName().c_str());
       // Disable the hw used by the last active composition. This allows us to
       // signal the release fences from that composition to avoid hanging.
       AtomicCommitArgs cl_args{};
       cl_args.composition = std::make_shared<DrmKmsPlan>();
-      if (CommitFrame(cl_args)) {
+      if (CommitFrame(cl_args) != 0) {
         ALOGE("Failed to clean-up active composition for pipeline %s",
               pipe_->connector->Get()->GetName().c_str());
       }
@@ -179,7 +179,7 @@ auto DrmDisplayCompositor::ExecuteAtomicCommit(AtomicCommitArgs &args) -> int {
   return err;
 }  // namespace android
 
-auto DrmDisplayCompositor::ActivateDisplayUsingDPMS() -> int {
+auto DrmAtomicStateManager::ActivateDisplayUsingDPMS() -> int {
   return drmModeConnectorSetProperty(pipe_->device->GetFd(),
                                      pipe_->connector->Get()->GetId(),
                                      pipe_->connector->Get()

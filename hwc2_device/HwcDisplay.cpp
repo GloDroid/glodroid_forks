@@ -501,7 +501,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 
   a_args.composition = current_plan_;
 
-  int ret = GetPipe().compositor->ExecuteAtomicCommit(a_args);
+  int ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
 
   if (ret) {
     if (!a_args.test_only)
@@ -655,7 +655,7 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
        * true, as the next composition frame will implicitly activate
        * the display
        */
-      return GetPipe().compositor->ActivateDisplayUsingDPMS() == 0
+      return GetPipe().atomic_state_manager->ActivateDisplayUsingDPMS() == 0
                  ? HWC2::Error::None
                  : HWC2::Error::BadParameter;
       break;
@@ -667,7 +667,7 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
       return HWC2::Error::BadParameter;
   };
 
-  int err = GetPipe().compositor->ExecuteAtomicCommit(a_args);
+  int err = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
   if (err) {
     ALOGE("Failed to apply the dpms composition err=%d", err);
     return HWC2::Error::BadParameter;

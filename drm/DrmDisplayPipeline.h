@@ -27,7 +27,7 @@ class DrmDevice;
 class DrmPlane;
 class DrmCrtc;
 class DrmEncoder;
-class DrmDisplayCompositor;
+class DrmAtomicStateManager;
 
 struct DrmDisplayPipeline;
 
@@ -82,7 +82,7 @@ struct DrmDisplayPipeline {
   std::shared_ptr<BindingOwner<DrmCrtc>> crtc;
   std::shared_ptr<BindingOwner<DrmPlane>> primary_plane;
 
-  std::unique_ptr<DrmDisplayCompositor> compositor;
+  std::unique_ptr<DrmAtomicStateManager> atomic_state_manager;
 };
 
 }  // namespace android

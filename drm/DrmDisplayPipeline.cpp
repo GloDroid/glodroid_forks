@@ -18,12 +18,12 @@
 
 #include "DrmDisplayPipeline.h"
 
+#include "DrmAtomicStateManager.h"
 #include "DrmConnector.h"
 #include "DrmCrtc.h"
 #include "DrmDevice.h"
 #include "DrmEncoder.h"
 #include "DrmPlane.h"
-#include "compositor/DrmDisplayCompositor.h"
 #include "utils/log.h"
 #include "utils/properties.h"
 
@@ -98,7 +98,8 @@ static auto TryCreatePipeline(DrmDevice &dev, DrmConnector &connector,
     return {};
   }
 
-  pipe->compositor = std::make_unique<DrmDisplayCompositor>(pipe.get());
+  pipe->atomic_state_manager = std::make_unique<DrmAtomicStateManager>(
+      pipe.get());
 
   return pipe;
 }

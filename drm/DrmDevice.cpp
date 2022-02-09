@@ -26,7 +26,7 @@
 #include <cstdint>
 #include <string>
 
-#include "compositor/DrmDisplayCompositor.h"
+#include "drm/DrmAtomicStateManager.h"
 #include "drm/DrmPlane.h"
 #include "utils/log.h"
 #include "utils/properties.h"

@@ -21,7 +21,6 @@ TIDY_FILES_OVERRIDE := \
     bufferinfo/legacy/BufferInfoMaliMediatek.cpp:COARSE \
     bufferinfo/legacy/BufferInfoMaliMeson.cpp:COARSE    \
     bufferinfo/legacy/BufferInfoMinigbm.cpp:COARSE      \
-    compositor/DrmDisplayCompositor.cpp:COARSE          \
     drm/DrmFbImporter.h:FINE                            \
     drm/DrmMode.h:COARSE                                \
     drm/DrmProperty.h:COARSE                            \
