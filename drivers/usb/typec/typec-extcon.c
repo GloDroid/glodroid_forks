@@ -23,8 +23,8 @@ struct typec_extcon {
 
 	/* consumers */
 	struct usb_role_switch *role_sw;
-        struct typec_switch *sw;
-        struct typec_mux *mux;
+        struct typec_switch_dev *sw;
+        struct typec_mux_dev *mux;
 
 	/* providers */
 	struct extcon_dev *extcon;
@@ -134,7 +134,7 @@ out_unlock:
 	return 0;
 }
 
-static int typec_extcon_sw_set(struct typec_switch *sw,
+static int typec_extcon_sw_set(struct typec_switch_dev *sw,
 			       enum typec_orientation orientation)
 {
         struct typec_extcon *tce = typec_switch_get_drvdata(sw);
@@ -150,7 +150,7 @@ static int typec_extcon_sw_set(struct typec_switch *sw,
         return 0;
 }
 
-static int typec_extcon_mux_set(struct typec_mux *mux,
+static int typec_extcon_mux_set(struct typec_mux_dev *mux,
 				struct typec_mux_state *state)
 {
         struct typec_extcon *tce = typec_mux_get_drvdata(mux);
