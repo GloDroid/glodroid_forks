@@ -47,6 +47,11 @@ struct DroidYuvFormat {
   int fourcc; /* DRM_FORMAT_ */
 };
 
+#ifndef DRM_FORMAT_XYUV8888
+#define DRM_FORMAT_XYUV8888 \
+  fourcc_code('X', 'Y', 'U', 'V') /* [31:0] X:Y:Cb:Cr 8:8:8:8 little endian */
+#endif
+
 /* The following table is used to look up a DRI image FourCC based
  * on native format and information contained in android_ycbcr struct. */
 static const struct DroidYuvFormat kDroidYuvFormats[] = {
