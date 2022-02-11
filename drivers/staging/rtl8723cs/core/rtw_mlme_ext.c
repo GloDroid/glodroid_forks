@@ -10249,7 +10249,7 @@ static int issue_action_ba(_adapter *padapter, unsigned char *raddr, unsigned ch
 	u16	start_seq;
 	u16	BA_para_set;
 	u16	BA_timeout_value;
-	u16	BA_starting_seqctrl;
+	u16	BA_starting_seqctrl = 0;
 	struct xmit_frame		*pmgntframe;
 	struct pkt_attrib		*pattrib;
 	u8					*pframe;
@@ -12654,7 +12654,7 @@ void linked_status_chk_tdls(_adapter *padapter)
 	_rtw_memset(checkalive, 0x00, sizeof(checkalive));
 	_rtw_memset(teardown, 0x00, sizeof(teardown));
 
-	if ((padapter->tdlsinfo.link_established == _TRUE)) {
+	if (padapter->tdlsinfo.link_established == _TRUE) {
 		_enter_critical_bh(&pstapriv->sta_hash_lock, &irqL);
 		for (i = 0; i < NUM_STA; i++) {
 			phead = &(pstapriv->sta_hash[i]);
@@ -14875,7 +14875,7 @@ operation_by_state:
 
 #ifdef CONFIG_SCAN_BACKOP
 	case SCAN_BACKING_OP: {
-		u8 back_ch, back_bw, back_ch_offset;
+		u8 back_ch = 0, back_bw = 0, back_ch_offset = 0;
 		u8 need_ch_setting_union = _TRUE;
 
 #ifdef CONFIG_MCC_MODE

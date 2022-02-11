@@ -1075,7 +1075,7 @@ u8 *rtw_tdls_set_wmm_params(_adapter *padapter, u8 *pframe, struct pkt_attrib *p
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 	u8 wmm_param_ele[24] = {0};
 
-	if (&pmlmeinfo->WMM_param) {
+	if (pmlmeinfo) {
 		_rtw_memcpy(wmm_param_ele, WMM_PARA_OUI, 6);
 		if (_rtw_memcmp(&pmlmeinfo->WMM_param, &wmm_param_ele[6], 18) == _TRUE)
 			/* Use default WMM Param */
