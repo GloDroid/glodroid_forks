@@ -30,26 +30,22 @@ DrmHwcTwo::DrmHwcTwo() : resource_manager_(this){};
 /* Must be called after every display attach/detach cycle */
 void DrmHwcTwo::FinalizeDisplayBinding() {
   if (displays_.count(kPrimaryDisplay) == 0) {
-    /* Create/update new headless display if no other displays exists
-     * or reattach different display to make it primary
-     */
+    /* Primary display MUST always exist */
+    ALOGI("No pipelines available. Creating null-display for headless mode");
+    displays_[kPrimaryDisplay] = std::make_unique<
+        HwcDisplay>(kPrimaryDisplay, HWC2::DisplayType::Physical, this);
+    /* Initializes null-display */
+    displays_[kPrimaryDisplay]->SetPipeline(nullptr);
+  }
 
-    if (display_handles_.empty()) {
-      /* Enable headless mode */
-      ALOGI("No pipelines available. Creating null-display for headless mode");
-      displays_[kPrimaryDisplay] = std::make_unique<
-          HwcDisplay>(nullptr, kPrimaryDisplay, HWC2::DisplayType::Physical,
-                      this);
-    } else {
-      auto *pipe = display_handles_.begin()->first;
-      ALOGI("Primary display was disconnected, reattaching '%s' as new primary",
-            pipe->connector->Get()->GetName().c_str());
-      UnbindDisplay(pipe);
-      BindDisplay(pipe);
-      if (displays_.count(kPrimaryDisplay) == 0) {
-        ALOGE("FIXME!!! Still no primary display after reattaching...");
-      }
-    }
+  if (displays_[kPrimaryDisplay]->IsInHeadlessMode() &&
+      !display_handles_.empty()) {
+    /* Reattach first secondary display to take place of the primary */
+    auto *pipe = display_handles_.begin()->first;
+    ALOGI("Primary display was disconnected, reattaching '%s' as new primary",
+          pipe->connector->Get()->GetName().c_str());
+    UnbindDisplay(pipe);
+    BindDisplay(pipe);
   }
 
   // Finally, send hotplug events to the client
@@ -57,6 +53,24 @@ void DrmHwcTwo::FinalizeDisplayBinding() {
     SendHotplugEventToClient(dhe.first, dhe.second);
   }
   deferred_hotplug_events_.clear();
+
+  /* Wait 0.2s before removing the displays to flush pending HWC2 transactions
+   */
+  auto &mutex = GetResMan().GetMainLock();
+  mutex.unlock();
+  const int kTimeForSFToDisposeDisplayUs = 200000;
+  usleep(kTimeForSFToDisposeDisplayUs);
+  mutex.lock();
+  std::vector<std::unique_ptr<HwcDisplay>> for_disposal;
+  for (auto handle : displays_for_removal_list_) {
+    for_disposal.emplace_back(
+        std::unique_ptr<HwcDisplay>(displays_[handle].release()));
+    displays_.erase(handle);
+  }
+  /* Destroy HwcDisplays while unlocked to avoid vsyncworker deadlocks */
+  mutex.unlock();
+  for_disposal.clear();
+  mutex.lock();
 }
 
 bool DrmHwcTwo::BindDisplay(DrmDisplayPipeline *pipeline) {
@@ -73,18 +87,17 @@ bool DrmHwcTwo::BindDisplay(DrmDisplayPipeline *pipeline) {
     disp_handle = ++last_display_handle_;
   }
 
-  auto disp = std::make_unique<HwcDisplay>(pipeline, disp_handle,
-                                           HWC2::DisplayType::Physical, this);
-
-  if (disp_handle == kPrimaryDisplay) {
-    displays_.erase(disp_handle);
+  if (displays_.count(disp_handle) == 0) {
+    auto disp = std::make_unique<HwcDisplay>(disp_handle,
+                                             HWC2::DisplayType::Physical, this);
+    displays_[disp_handle] = std::move(disp);
   }
 
   ALOGI("Attaching pipeline '%s' to the display #%d%s",
         pipeline->connector->Get()->GetName().c_str(), (int)disp_handle,
         disp_handle == kPrimaryDisplay ? " (Primary)" : "");
 
-  displays_[disp_handle] = std::move(disp);
+  displays_[disp_handle]->SetPipeline(pipeline);
   display_handles_[pipeline] = disp_handle;
 
   return true;
@@ -96,17 +109,25 @@ bool DrmHwcTwo::UnbindDisplay(DrmDisplayPipeline *pipeline) {
     return false;
   }
   auto handle = display_handles_[pipeline];
+  display_handles_.erase(pipeline);
 
   ALOGI("Detaching the pipeline '%s' from the display #%i%s",
         pipeline->connector->Get()->GetName().c_str(), (int)handle,
         handle == kPrimaryDisplay ? " (Primary)" : "");
 
-  display_handles_.erase(pipeline);
   if (displays_.count(handle) == 0) {
     ALOGE("%s, can't find the display, handle: %" PRIu64, __func__, handle);
     return false;
   }
-  displays_.erase(handle);
+  displays_[handle]->SetPipeline(nullptr);
+
+  /* We must defer display disposal and removal, since it may still have pending
+   * HWC_API calls scheduled and waiting until ueventlistener thread releases
+   * main lock, otherwise transaction may fail and SF may crash
+   */
+  if (handle != kPrimaryDisplay) {
+    displays_for_removal_list_.emplace_back(handle);
+  }
   return true;
 }
 

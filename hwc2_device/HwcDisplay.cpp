@@ -20,15 +20,13 @@
 #include "HwcDisplay.h"
 
 #include "DrmHwcTwo.h"
+#include "backend/Backend.h"
 #include "backend/BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
 #include "utils/properties.h"
 
 namespace android {
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-uint32_t HwcDisplay::layer_idx_ = 2; /* Start from 2. See destroyLayer() */
 
 std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
   if (delta.total_pixops_ == 0)
@@ -87,10 +85,9 @@ std::string HwcDisplay::Dump() {
   return ss.str();
 }
 
-HwcDisplay::HwcDisplay(DrmDisplayPipeline *pipeline, hwc2_display_t handle,
-                       HWC2::DisplayType type, DrmHwcTwo *hwc2)
+HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
+                       DrmHwcTwo *hwc2)
     : hwc2_(hwc2),
-      pipeline_(pipeline),
       handle_(handle),
       type_(type),
       color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
@@ -100,24 +97,26 @@ HwcDisplay::HwcDisplay(DrmDisplayPipeline *pipeline, hwc2_display_t handle,
                              0.0, 0.0, 1.0, 0.0,
                              0.0, 0.0, 0.0, 1.0};
   // clang-format on
-
-  ChosePreferredConfig();
-  Init();
-
-  hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ true);
 }
 
-HwcDisplay::~HwcDisplay() {
-  if (handle_ != kPrimaryDisplay) {
-    hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ false);
-  }
+HwcDisplay::~HwcDisplay() = default;
 
-  auto &main_lock = hwc2_->GetResMan().GetMainLock();
-  /* Unlock to allow pending vsync callbacks to finish */
-  main_lock.unlock();
-  vsync_worker_.VSyncControl(false);
-  vsync_worker_.Exit();
-  main_lock.lock();
+void HwcDisplay::SetPipeline(DrmDisplayPipeline *pipeline) {
+  pipeline_ = pipeline;
+
+  if (pipeline != nullptr) {
+    ChosePreferredConfig();
+    Init();
+
+    hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ true);
+  } else {
+    backend_.reset();
+    vsync_worker_.Init(nullptr, [](int64_t) {});
+    SetClientTarget(nullptr, -1, 0, {});
+    if (handle_ != kPrimaryDisplay) {
+      hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ false);
+    }
+  }
 }
 
 HWC2::Error HwcDisplay::Init() {
@@ -138,7 +137,7 @@ HWC2::Error HwcDisplay::Init() {
       vsync_worker_.VSyncControl(false);
     }
   });
-  if (ret) {
+  if (ret && ret != -EALREADY) {
     ALOGE("Failed to create event worker for d=%d %d\n", int(handle_), ret);
     return HWC2::Error::BadDisplay;
   }
@@ -185,21 +184,6 @@ HWC2::Error HwcDisplay::CreateLayer(hwc2_layer_t *layer) {
 
 HWC2::Error HwcDisplay::DestroyLayer(hwc2_layer_t layer) {
   if (!get_layer(layer)) {
-    /* Primary display don't send unplug event, instead it replaces
-     * display to headless or to another one and sends Plug event to the
-     * SF. SF can't distinguish this case from virtualized display size
-     * change case and will destroy previously used layers. If we will return
-     * BadLayer, service will print errors to the logcat.
-     *
-     * Nevertheless VTS is trying to destroy 1st layer without adding any
-     * layers prior to that, than it checks for BadLayer result. So we
-     * numbering the layers starting from 2, and use index 1 to catch VTS client
-     * to return BadLayer, making VTS pass.
-     */
-    if (layers_.empty() && layer != 1) {
-      return HWC2::Error::None;
-    }
-
     return HWC2::Error::BadLayer;
   }
 

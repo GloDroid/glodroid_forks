@@ -37,10 +37,12 @@ inline constexpr uint32_t kPrimaryDisplay = 0;
 
 class HwcDisplay {
  public:
-  HwcDisplay(DrmDisplayPipeline *pipeline, hwc2_display_t handle,
-             HWC2::DisplayType type, DrmHwcTwo *hwc2);
+  HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwcTwo *hwc2);
   HwcDisplay(const HwcDisplay &) = delete;
   ~HwcDisplay();
+
+  /* SetPipeline should be carefully used only by DrmHwcTwo hotplug handlers */
+  void SetPipeline(DrmDisplayPipeline *pipeline);
 
   HWC2::Error CreateComposition(AtomicCommitArgs &a_args);
   std::vector<HwcLayer *> GetOrderLayersByZPos();
@@ -199,7 +201,7 @@ class HwcDisplay {
   int64_t staged_mode_change_time_{};
   uint32_t staged_mode_config_id_{};
 
-  DrmDisplayPipeline *const pipeline_;
+  DrmDisplayPipeline *pipeline_{};
 
   std::unique_ptr<Backend> backend_;
 
@@ -212,8 +214,7 @@ class HwcDisplay {
   const hwc2_display_t handle_;
   HWC2::DisplayType type_;
 
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-  static uint32_t layer_idx_;
+  uint32_t layer_idx_{};
 
   std::map<hwc2_layer_t, HwcLayer> layers_;
   HwcLayer client_layer_;

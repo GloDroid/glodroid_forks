@@ -81,6 +81,7 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
   std::string mDumpString;
 
   std::map<hwc2_display_t, bool> deferred_hotplug_events_;
+  std::vector<hwc2_display_t> displays_for_removal_list_;
 
   uint32_t last_display_handle_ = kPrimaryDisplay;
 };
