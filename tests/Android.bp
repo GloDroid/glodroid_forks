@@ -33,3 +33,17 @@ cc_test {
         "external/drm_hwcomposer/include",
     ],
 }
+
+// Tool for listening and dumping uevents
+cc_test {
+    name: "hwc-drm-uevent-print",
+
+    srcs: ["uevent_print.cpp"],
+
+    vendor: true,
+    header_libs: ["libhardware_headers"],
+    shared_libs: ["liblog"],
+    include_dirs: [
+        "external/drm_hwcomposer",
+    ],
+}

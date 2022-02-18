@@ -19,7 +19,7 @@
 
 #include <functional>
 
-#include "utils/UniqueFd.h"
+#include "utils/UEvent.h"
 #include "utils/Worker.h"
 
 namespace android {
@@ -39,7 +39,7 @@ class UEventListener : public Worker {
   void Routine() override;
 
  private:
-  UniqueFd uevent_fd_;
+  std::unique_ptr<UEvent> uevent_;
 
   std::function<void()> hotplug_handler_;
 };

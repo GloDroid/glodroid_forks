@@ -18,82 +18,43 @@
 
 #include "UEventListener.h"
 
-#include <linux/netlink.h>
-#include <sys/socket.h>
-#include <xf86drm.h>
-
-#include <cassert>
 #include <cerrno>
-#include <cstring>
 
 #include "utils/log.h"
 
-/* Originally defined in system/core/libsystem/include/system/graphics.h */
-#define HAL_PRIORITY_URGENT_DISPLAY (-8)
+/* Originally defined in system/core/libsystem/include/system/graphics.h as
+ * #define HAL_PRIORITY_URGENT_DISPLAY (-8)*/
+constexpr int kHalPriorityUrgentDisplay = -8;
 
 namespace android {
 
 UEventListener::UEventListener()
-    : Worker("uevent-listener", HAL_PRIORITY_URGENT_DISPLAY){};
+    : Worker("uevent-listener", kHalPriorityUrgentDisplay){};
 
 int UEventListener::Init() {
-  uevent_fd_ = UniqueFd(
-      socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_KOBJECT_UEVENT));
-  if (!uevent_fd_) {
-    // NOLINTNEXTLINE(concurrency-mt-unsafe): Fixme
-    ALOGE("Failed to open uevent socket: %s", strerror(errno));
-    return -errno;
-  }
-
-  struct sockaddr_nl addr {};
-  addr.nl_family = AF_NETLINK;
-  addr.nl_pid = 0;
-  addr.nl_groups = 0xFFFFFFFF;
-
-  int ret = bind(uevent_fd_.Get(), (struct sockaddr *)&addr, sizeof(addr));
-  if (ret) {
-    // NOLINTNEXTLINE(concurrency-mt-unsafe): Fixme
-    ALOGE("Failed to bind uevent socket: %s", strerror(errno));
-    return -errno;
+  uevent_ = UEvent::CreateInstance();
+  if (!uevent_) {
+    return -ENODEV;
   }
 
   return InitWorker();
 }
 
 void UEventListener::Routine() {
-  char buffer[1024];
-  ssize_t ret = 0;
-
   while (true) {
-    ret = read(uevent_fd_.Get(), &buffer, sizeof(buffer));
-    if (ret == 0)
-      return;
+    auto uevent_str = uevent_->ReadNext();
 
-    if (ret < 0) {
-      ALOGE("Got error reading uevent %zd", ret);
-      return;
-    }
-
-    if (!hotplug_handler_)
+    if (!hotplug_handler_ || !uevent_str)
       continue;
 
-    bool drm_event = false;
-    bool hotplug_event = false;
-    for (uint32_t i = 0; (ssize_t)i < ret;) {
-      char *event = buffer + i;
-      if (strcmp(event, "DEVTYPE=drm_minor") != 0)
-        drm_event = true;
-      else if (strcmp(event, "HOTPLUG=1") != 0)
-        hotplug_event = true;
+    bool drm_event = uevent_str->find("DEVTYPE=drm_minor") != std::string::npos;
+    bool hotplug_event = uevent_str->find("HOTPLUG=1") != std::string::npos;
 
-      i += strlen(event) + 1;
-    }
-
-    if (drm_event && hotplug_event && hotplug_handler_) {
-      constexpr useconds_t delay_after_uevent_us = 200000;
+    if (drm_event && hotplug_event) {
+      constexpr useconds_t kDelayAfterUeventUs = 200000;
       /* We need some delay to ensure DrmConnector::UpdateModes() will query
        * correct modes list, otherwise at least RPI4 board may report 0 modes */
-      usleep(delay_after_uevent_us);
+      usleep(kDelayAfterUeventUs);
       hotplug_handler_();
     }
   }
