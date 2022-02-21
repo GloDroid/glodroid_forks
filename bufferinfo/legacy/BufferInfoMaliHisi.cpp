@@ -66,8 +66,7 @@ uint64_t BufferInfoMaliHisi::ConvertGrallocFormatToDrmModifiers(
 }
 #endif
 
-int BufferInfoMaliHisi::ConvertBoInfo(buffer_handle_t handle,
-                                      hwc_drm_bo_t *bo) {
+int BufferInfoMaliHisi::ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) {
   bool is_rgb = false;
 
   const auto *hnd = (private_handle_t const *)handle;
@@ -87,9 +86,7 @@ int BufferInfoMaliHisi::ConvertBoInfo(buffer_handle_t handle,
 
   bo->width = hnd->width;
   bo->height = hnd->height;
-  bo->hal_format = hnd->req_format;
   bo->format = fmt;
-  bo->usage = hnd->usage;
   bo->pitches[0] = hnd->byte_stride;
   bo->prime_fds[0] = hnd->share_fd;
   bo->offsets[0] = 0;

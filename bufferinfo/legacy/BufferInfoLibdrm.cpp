@@ -91,8 +91,8 @@ static bool is_yuv(uint32_t native) {
   return false;
 }
 
-bool BufferInfoLibdrm::GetYuvPlaneInfo(int num_fds, buffer_handle_t handle,
-                                       hwc_drm_bo_t *bo) {
+bool BufferInfoLibdrm::GetYuvPlaneInfo(uint32_t hal_format, int num_fds,
+                                       buffer_handle_t handle, BufferInfo *bo) {
   struct android_ycbcr ycbcr {};
   enum chroma_order chroma_order {};
   int ret = 0;
@@ -136,12 +136,12 @@ bool BufferInfoLibdrm::GetYuvPlaneInfo(int num_fds, buffer_handle_t handle,
 
   /* .chroma_step is the byte distance between the same chroma channel
    * values of subsequent pixels, assumed to be the same for Cb and Cr. */
-  bo->format = get_fourcc_yuv(bo->hal_format, chroma_order, ycbcr.chroma_step);
+  bo->format = get_fourcc_yuv(hal_format, chroma_order, ycbcr.chroma_step);
   if (bo->format == UINT32_MAX) {
     ALOGW(
         "unsupported YUV format, native = %x, chroma_order = %s, chroma_step = "
         "%d",
-        bo->hal_format, chroma_order == kYCbCr ? "YCbCr" : "YCrCb",
+        hal_format, chroma_order == kYCbCr ? "YCbCr" : "YCrCb",
         (int)ycbcr.chroma_step);
     return false;
   }
@@ -162,14 +162,13 @@ bool BufferInfoLibdrm::GetYuvPlaneInfo(int num_fds, buffer_handle_t handle,
   return true;
 }
 
-int BufferInfoLibdrm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
+int BufferInfoLibdrm::ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) {
   gralloc_handle_t *gr_handle = gralloc_handle(handle);
   if (!gr_handle)
     return -EINVAL;
 
   bo->width = gr_handle->width;
   bo->height = gr_handle->height;
-  bo->hal_format = gr_handle->format;
 
 #if GRALLOC_HANDLE_VERSION < 4
   static std::once_flag once;
@@ -182,11 +181,10 @@ int BufferInfoLibdrm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
   bo->modifiers[0] = gr_handle->modifier;
 #endif
 
-  bo->usage = gr_handle->usage;
   bo->prime_fds[0] = gr_handle->prime_fd;
 
   if (is_yuv(gr_handle->format)) {
-    if (!GetYuvPlaneInfo(handle->numFds, handle, bo))
+    if (!GetYuvPlaneInfo(gr_handle->format, handle->numFds, handle, bo))
       return -EINVAL;
   } else {
     bo->pitches[0] = gr_handle->stride;
@@ -195,7 +193,7 @@ int BufferInfoLibdrm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
     /* FOSS graphic components (gbm_gralloc, mesa3d) are translating
      * HAL_PIXEL_FORMAT_RGB_565 to DRM_FORMAT_RGB565 without swapping
      * the R and B components. Same must be done here. */
-    switch (bo->hal_format) {
+    switch (gr_handle->format) {
       case HAL_PIXEL_FORMAT_RGB_565:
         bo->format = DRM_FORMAT_RGB565;
         break;

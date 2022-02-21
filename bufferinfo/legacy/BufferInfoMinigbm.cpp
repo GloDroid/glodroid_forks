@@ -43,7 +43,7 @@ struct cros_gralloc0_buffer_info {
   int stride[4];
 };
 
-int BufferInfoMinigbm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
+int BufferInfoMinigbm::ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) {
   if (handle == nullptr) {
     return -EINVAL;
   }
@@ -88,10 +88,7 @@ int BufferInfoMinigbm::ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) {
   bo->width = width;
   bo->height = height;
 
-  bo->hal_format = droid_format;
-
   bo->format = info.drm_fourcc;
-  bo->usage = usage;
 
   for (int i = 0; i < info.num_fds; i++) {
     bo->modifiers[i] = info.modifier;

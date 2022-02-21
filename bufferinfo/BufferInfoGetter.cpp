@@ -49,8 +49,7 @@ BufferInfoGetter *BufferInfoGetter::GetInstance() {
 }
 
 bool BufferInfoGetter::IsHandleUsable(buffer_handle_t handle) {
-  hwc_drm_bo_t bo;
-  memset(&bo, 0, sizeof(hwc_drm_bo_t));
+  BufferInfo bo{};
 
   if (ConvertBoInfo(handle, &bo) != 0) {
     return false;

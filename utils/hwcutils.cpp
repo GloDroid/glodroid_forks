@@ -28,7 +28,7 @@
 namespace android {
 
 int DrmHwcLayer::ImportBuffer(DrmDevice *drm_device) {
-  buffer_info = hwc_drm_bo_t{};
+  buffer_info = BufferInfo{};
 
   int ret = BufferInfoGetter::GetInstance()->ConvertBoInfo(sf_handle,
                                                            &buffer_info);

@@ -30,7 +30,7 @@ namespace android {
 LEGACY_BUFFER_INFO_GETTER(BufferInfoImagination);
 
 int BufferInfoImagination::ConvertBoInfo(buffer_handle_t handle,
-                                         hwc_drm_bo_t *bo) {
+                                         BufferInfo *bo) {
   auto *hnd = (IMG_native_handle_t *)handle;
   if (!hnd)
     return -EINVAL;
@@ -43,10 +43,8 @@ int BufferInfoImagination::ConvertBoInfo(buffer_handle_t handle,
 
   bo->width = hnd->iWidth;
   bo->height = hnd->iHeight;
-  bo->usage = hnd->usage;
   bo->prime_fds[0] = hnd->fd[0];
   bo->pitches[0] = ALIGN(hnd->iWidth, HW_ALIGN) * hnd->uiBpp >> 3;
-  bo->hal_format = hnd->iFormat;
 
   switch (hnd->iFormat) {
 #ifdef HAL_PIXEL_FORMAT_BGRX_8888

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRMHWCGRALLOC_H_
-#define ANDROID_DRMHWCGRALLOC_H_
+#pragma once
 
 #include <cstdint>
 
-constexpr int kHwcDrmBoMaxPlanes = 4;
+constexpr int kBufferMaxPlanes = 4;
 
-struct HwcDrmBo {
+struct BufferInfo {
   uint32_t width;
   uint32_t height;
-  uint32_t format;     /* DRM_FORMAT_* from drm_fourcc.h */
-  uint32_t hal_format; /* HAL_PIXEL_FORMAT_* */
-  uint32_t usage;
-  uint32_t pitches[kHwcDrmBoMaxPlanes];
-  uint32_t offsets[kHwcDrmBoMaxPlanes];
+  uint32_t format; /* DRM_FORMAT_* from drm_fourcc.h */
+  uint32_t pitches[kBufferMaxPlanes];
+  uint32_t offsets[kBufferMaxPlanes];
   /* sizes[] is used only by mapper@4 metadata getter for internal purposes */
-  uint32_t sizes[kHwcDrmBoMaxPlanes];
-  int prime_fds[kHwcDrmBoMaxPlanes];
-  uint64_t modifiers[kHwcDrmBoMaxPlanes];
-  int acquire_fence_fd;
+  uint32_t sizes[kBufferMaxPlanes];
+  int prime_fds[kBufferMaxPlanes];
+  uint64_t modifiers[kBufferMaxPlanes];
 };
-
-// NOLINTNEXTLINE(readability-identifier-naming)
-using hwc_drm_bo_t = HwcDrmBo;
-
-#endif  // ANDROID_DRMHWCGRALLOC_H_

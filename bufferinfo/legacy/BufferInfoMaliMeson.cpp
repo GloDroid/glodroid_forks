@@ -61,8 +61,7 @@ uint64_t BufferInfoMaliMeson::ConvertGrallocFormatToDrmModifiers(
 }
 #endif
 
-int BufferInfoMaliMeson::ConvertBoInfo(buffer_handle_t handle,
-                                       hwc_drm_bo_t *bo) {
+int BufferInfoMaliMeson::ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) {
   const auto *hnd = (private_handle_t const *)handle;
   if (!hnd)
     return -EINVAL;
@@ -79,9 +78,7 @@ int BufferInfoMaliMeson::ConvertBoInfo(buffer_handle_t handle,
 
   bo->width = hnd->width;
   bo->height = hnd->height;
-  bo->hal_format = hnd->req_format;
   bo->format = fmt;
-  bo->usage = hnd->usage;
   bo->prime_fds[0] = hnd->share_fd;
   bo->pitches[0] = hnd->byte_stride;
   bo->offsets[0] = 0;

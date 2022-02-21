@@ -27,7 +27,7 @@ class BufferInfoMaliHisi : public LegacyBufferInfoGetter {
  public:
   using LegacyBufferInfoGetter::LegacyBufferInfoGetter;
 
-  int ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) override;
+  int ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) override;
 
  private:
   uint64_t ConvertGrallocFormatToDrmModifiers(uint64_t flags, bool is_rgb);

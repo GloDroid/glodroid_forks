@@ -46,7 +46,7 @@ BufferInfoGetter *BufferInfoMapperMetadata::CreateInstance() {
  * so that it can be overridden.
  */
 int __attribute__((weak))
-BufferInfoMapperMetadata::GetFds(buffer_handle_t handle, hwc_drm_bo_t *bo) {
+BufferInfoMapperMetadata::GetFds(buffer_handle_t handle, BufferInfo *bo) {
   int fd_index = 0;
 
   if (handle->numFds <= 0) {
@@ -54,7 +54,7 @@ BufferInfoMapperMetadata::GetFds(buffer_handle_t handle, hwc_drm_bo_t *bo) {
     return android::BAD_VALUE;
   }
 
-  for (int i = 0; i < kHwcDrmBoMaxPlanes; i++) {
+  for (int i = 0; i < kBufferMaxPlanes; i++) {
     /* If no size, we're out of usable planes */
     if (bo->sizes[i] <= 0) {
       if (i == 0) {
@@ -87,28 +87,12 @@ BufferInfoMapperMetadata::GetFds(buffer_handle_t handle, hwc_drm_bo_t *bo) {
 }
 
 int BufferInfoMapperMetadata::ConvertBoInfo(buffer_handle_t handle,
-                                            hwc_drm_bo_t *bo) {
+                                            BufferInfo *bo) {
   GraphicBufferMapper &mapper = GraphicBufferMapper::getInstance();
   if (handle == nullptr)
     return -EINVAL;
 
-  uint64_t usage = 0;
-  int err = mapper.getUsage(handle, &usage);
-  if (err != 0) {
-    ALOGE("Failed to get usage err=%d", err);
-    return err;
-  }
-  bo->usage = static_cast<uint32_t>(usage);
-
-  ui::PixelFormat hal_format;
-  err = mapper.getPixelFormatRequested(handle, &hal_format);
-  if (err != 0) {
-    ALOGE("Failed to get HAL Pixel Format err=%d", err);
-    return err;
-  }
-  bo->hal_format = static_cast<uint32_t>(hal_format);
-
-  err = mapper.getPixelFormatFourCC(handle, &bo->format);
+  int err = mapper.getPixelFormatFourCC(handle, &bo->format);
   if (err != 0) {
     ALOGE("Failed to get FourCC format err=%d", err);
     return err;

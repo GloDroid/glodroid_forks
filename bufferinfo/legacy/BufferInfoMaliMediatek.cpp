@@ -33,7 +33,7 @@ namespace android {
 LEGACY_BUFFER_INFO_GETTER(BufferInfoMaliMediatek);
 
 int BufferInfoMaliMediatek::ConvertBoInfo(buffer_handle_t handle,
-                                          hwc_drm_bo_t *bo) {
+                                          BufferInfo *bo) {
   const auto *hnd = (private_handle_t const *)handle;
   if (!hnd)
     return -EINVAL;
@@ -44,9 +44,7 @@ int BufferInfoMaliMediatek::ConvertBoInfo(buffer_handle_t handle,
 
   bo->width = hnd->width;
   bo->height = hnd->height;
-  bo->hal_format = hnd->req_format;
   bo->format = fmt;
-  bo->usage = hnd->consumer_usage | hnd->producer_usage;
   bo->prime_fds[0] = hnd->share_fd;
   bo->pitches[0] = hnd->byte_stride;
   bo->offsets[0] = 0;

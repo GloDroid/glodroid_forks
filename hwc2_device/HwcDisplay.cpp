@@ -598,7 +598,7 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
 
   /* TODO: Do not update source_crop every call.
    * It makes sense to do it once after every hotplug event. */
-  HwcDrmBo bo{};
+  BufferInfo bo{};
   BufferInfoGetter::GetInstance()->ConvertBoInfo(target, &bo);
 
   hwc_frect_t source_crop = {.left = 0.0F,

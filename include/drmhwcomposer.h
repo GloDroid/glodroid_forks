@@ -24,8 +24,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "bufferinfo/BufferInfo.h"
 #include "drm/DrmFbImporter.h"
-#include "drmhwcgralloc.h"
 #include "utils/UniqueFd.h"
 
 namespace android {
@@ -62,10 +62,9 @@ enum class DrmHwcBlending : int32_t {
 
 struct DrmHwcLayer {
   buffer_handle_t sf_handle = nullptr;
-  hwc_drm_bo_t buffer_info{};
+  BufferInfo buffer_info{};
   std::shared_ptr<DrmFbIdHandle> fb_id_handle;
 
-  int gralloc_buffer_usage = 0;
   DrmHwcTransform transform{};
   DrmHwcBlending blending = DrmHwcBlending::kNone;
   uint16_t alpha = UINT16_MAX;
@@ -77,11 +76,6 @@ struct DrmHwcLayer {
   UniqueFd acquire_fence;
 
   int ImportBuffer(DrmDevice *drm_device);
-
-  bool IsProtected() const {
-    return (gralloc_buffer_usage & GRALLOC_USAGE_PROTECTED) ==
-           GRALLOC_USAGE_PROTECTED;
-  }
 };
 
 }  // namespace android

@@ -20,8 +20,8 @@
 #include <drm/drm_fourcc.h>
 #include <hardware/gralloc.h>
 
+#include "BufferInfo.h"
 #include "drm/DrmDevice.h"
-#include "drmhwcgralloc.h"
 
 #ifndef DRM_FORMAT_INVALID
 #define DRM_FORMAT_INVALID 0
@@ -33,7 +33,7 @@ class BufferInfoGetter {
  public:
   virtual ~BufferInfoGetter() = default;
 
-  virtual int ConvertBoInfo(buffer_handle_t handle, hwc_drm_bo_t *bo) = 0;
+  virtual int ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) = 0;
 
   bool IsHandleUsable(buffer_handle_t handle);
 

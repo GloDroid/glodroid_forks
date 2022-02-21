@@ -34,7 +34,7 @@
 
 namespace android {
 
-auto DrmFbIdHandle::CreateInstance(hwc_drm_bo_t *bo, GemHandle first_gem_handle,
+auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
                                    DrmDevice &drm)
     -> std::shared_ptr<DrmFbIdHandle> {
   ATRACE_NAME("Import dmabufs and register FB");
@@ -123,7 +123,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
   }
 }
 
-auto DrmFbImporter::GetOrCreateFbId(hwc_drm_bo_t *bo)
+auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
     -> std::shared_ptr<DrmFbIdHandle> {
   /* Lookup DrmFbIdHandle in cache first. First handle serves as a cache key. */
   GemHandle first_handle = 0;
