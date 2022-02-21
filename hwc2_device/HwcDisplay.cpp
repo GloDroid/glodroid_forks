@@ -90,6 +90,7 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
     : hwc2_(hwc2),
       handle_(handle),
       type_(type),
+      client_layer_(this),
       color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
   // clang-format off
   color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
@@ -188,7 +189,7 @@ HWC2::Error HwcDisplay::AcceptDisplayChanges() {
 }
 
 HWC2::Error HwcDisplay::CreateLayer(hwc2_layer_t *layer) {
-  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer());
+  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(this));
   *layer = static_cast<hwc2_layer_t>(layer_idx_);
   ++layer_idx_;
   return HWC2::Error::None;
@@ -478,18 +479,26 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   if (z_map.empty())
     return HWC2::Error::BadLayer;
 
-  std::vector<DrmHwcLayer> composition_layers;
+  std::vector<LayerData> composition_layers;
+
+  /* Import & populate */
+  for (std::pair<const uint32_t, HwcLayer *> &l : z_map) {
+    l.second->PopulateLayerData(a_args.test_only);
+  }
 
   // now that they're ordered by z, add them to the composition
   for (std::pair<const uint32_t, HwcLayer *> &l : z_map) {
-    DrmHwcLayer layer;
-    l.second->PopulateDrmLayer(&layer);
-    int ret = layer.ImportBuffer(GetPipe().device);
-    if (ret) {
-      ALOGE("Failed to import layer, ret=%d", ret);
-      return HWC2::Error::NoResources;
+    if (!l.second->IsLayerUsableAsDevice()) {
+      /* This will be normally triggered on validation of the first frame
+       * containing CLIENT layer. At this moment client buffer is not yet
+       * provided by the CLIENT.
+       * This may be triggered once in HwcLayer lifecycle in case FB can't be
+       * imported. For example when non-contiguous buffer is imported into
+       * contiguous-only DRM/KMS driver.
+       */
+      return HWC2::Error::BadLayer;
     }
-    composition_layers.emplace_back(std::move(layer));
+    composition_layers.emplace_back(l.second->GetLayerData().Clone());
   }
 
   /* Store plan to ensure shared planes won't be stolen by other display
@@ -596,14 +605,13 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
     return HWC2::Error::None;
   }
 
-  /* TODO: Do not update source_crop every call.
-   * It makes sense to do it once after every hotplug event. */
-  auto bi = BufferInfoGetter::GetInstance()->GetBoInfo(target);
-
-  if (!bi) {
-    return HWC2::Error::BadParameter;
+  client_layer_.PopulateLayerData(/*test = */ true);
+  if (!client_layer_.IsLayerUsableAsDevice()) {
+    ALOGE("Client layer must be always usable by DRM/KMS");
+    return HWC2::Error::BadLayer;
   }
 
+  auto &bi = client_layer_.GetLayerData().bi;
   hwc_frect_t source_crop = {.left = 0.0F,
                              .top = 0.0F,
                              .right = static_cast<float>(bi->width),

@@ -48,12 +48,6 @@ BufferInfoGetter *BufferInfoGetter::GetInstance() {
   return inst.get();
 }
 
-bool BufferInfoGetter::IsHandleUsable(buffer_handle_t handle) {
-  auto bo = GetBoInfo(handle);
-
-  return bo && bo->prime_fds[0] != 0;
-}
-
 int LegacyBufferInfoGetter::Init() {
   int ret = hw_get_module(
       GRALLOC_HARDWARE_MODULE_ID,

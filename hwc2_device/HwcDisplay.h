@@ -22,10 +22,10 @@
 #include <optional>
 
 #include "HwcDisplayConfigs.h"
+#include "compositor/LayerData.h"
 #include "drm/DrmAtomicStateManager.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
-#include "drmhwcomposer.h"
 #include "hwc2_device/HwcLayer.h"
 
 namespace android {

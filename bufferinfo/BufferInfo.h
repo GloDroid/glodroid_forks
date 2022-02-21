@@ -20,6 +20,26 @@
 
 constexpr int kBufferMaxPlanes = 4;
 
+enum class BufferColorSpace : int32_t {
+  kUndefined,
+  kItuRec601,
+  kItuRec709,
+  kItuRec2020,
+};
+
+enum class BufferSampleRange : int32_t {
+  kUndefined,
+  kFullRange,
+  kLimitedRange,
+};
+
+enum class BufferBlendMode : int32_t {
+  kUndefined,
+  kNone,
+  kPreMult,
+  kCoverage,
+};
+
 struct BufferInfo {
   uint32_t width;
   uint32_t height;
@@ -30,4 +50,8 @@ struct BufferInfo {
   uint32_t sizes[kBufferMaxPlanes];
   int prime_fds[kBufferMaxPlanes];
   uint64_t modifiers[kBufferMaxPlanes];
+
+  BufferColorSpace color_space;
+  BufferSampleRange sample_range;
+  BufferBlendMode blend_mode;
 };

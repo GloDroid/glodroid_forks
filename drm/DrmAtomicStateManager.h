@@ -26,10 +26,10 @@
 #include <tuple>
 
 #include "compositor/DrmKmsPlan.h"
+#include "compositor/LayerData.h"
 #include "drm/DrmPlane.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
-#include "drmhwcomposer.h"
 
 namespace android {
 

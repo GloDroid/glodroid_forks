@@ -109,9 +109,9 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
 
     for (auto &joining : args.composition->plan) {
       DrmPlane *plane = joining.plane->Get();
-      DrmHwcLayer &layer = joining.layer;
+      LayerData &layer = joining.layer;
 
-      new_frame_state.used_framebuffers.emplace_back(layer.fb_id_handle);
+      new_frame_state.used_framebuffers.emplace_back(layer.fb);
       new_frame_state.used_planes.emplace_back(joining.plane);
 
       /* Remove from 'unused' list, since plane is re-used */

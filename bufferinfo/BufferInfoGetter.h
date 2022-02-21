@@ -38,8 +38,6 @@ class BufferInfoGetter {
   virtual auto GetBoInfo(buffer_handle_t handle)
       -> std::optional<BufferInfo> = 0;
 
-  bool IsHandleUsable(buffer_handle_t handle);
-
   static BufferInfoGetter *GetInstance();
 
   static bool IsDrmFormatRgb(uint32_t drm_format);

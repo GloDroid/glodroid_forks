@@ -19,14 +19,16 @@
 
 #include <hardware/hwcomposer2.h>
 
-#include <cmath>
-
-#include "drmhwcomposer.h"
+#include "compositor/LayerData.h"
 
 namespace android {
 
+class HwcDisplay;
+
 class HwcLayer {
  public:
+  explicit HwcLayer(HwcDisplay *parent_display) : parent_(parent_display){};
+
   HWC2::Composition GetSfType() const {
     return sf_type_;
   }
@@ -55,27 +57,8 @@ class HwcLayer {
     return z_order_;
   }
 
-  buffer_handle_t GetBuffer() {
-    return buffer_;
-  }
-
-  hwc_rect_t GetDisplayFrame() {
-    return display_frame_;
-  }
-
-  void PopulateDrmLayer(DrmHwcLayer *layer);
-
-  bool RequireScalingOrPhasing() const {
-    float src_width = source_crop_.right - source_crop_.left;
-    float src_height = source_crop_.bottom - source_crop_.top;
-
-    auto dest_width = float(display_frame_.right - display_frame_.left);
-    auto dest_height = float(display_frame_.bottom - display_frame_.top);
-
-    bool scaling = src_width != dest_width || src_height != dest_height;
-    bool phasing = (source_crop_.left - std::floor(source_crop_.left) != 0) ||
-                   (source_crop_.top - std::floor(source_crop_.top) != 0);
-    return scaling || phasing;
+  auto &GetLayerData() {
+    return layer_data_;
   }
 
   // Layer hooks
@@ -100,20 +83,41 @@ class HwcLayer {
   HWC2::Composition sf_type_ = HWC2::Composition::Invalid;
   HWC2::Composition validated_type_ = HWC2::Composition::Invalid;
 
-  buffer_handle_t buffer_ = nullptr;
-  hwc_rect_t display_frame_;
-  static constexpr float kOpaqueFloat = 1.0F;
-  float alpha_ = kOpaqueFloat;
-  hwc_frect_t source_crop_;
-  DrmHwcTransform transform_ = DrmHwcTransform::kIdentity;
   uint32_t z_order_ = 0;
-  DrmHwcBlending blending_ = DrmHwcBlending::kNone;
-  DrmHwcColorSpace color_space_ = DrmHwcColorSpace::kUndefined;
-  DrmHwcSampleRange sample_range_ = DrmHwcSampleRange::kUndefined;
+  LayerData layer_data_;
+
+  /* Should be populated to layer_data_.acquire_fence only before presenting */
+  UniqueFd acquire_fence_;
+
+  /* The following buffer data can have 2 sources:
+   * 1 - Mapper@4 metadata API
+   * 2 - HWC@2 API
+   * We keep ability to have 2 sources in drm_hwc. It may be useful for CLIENT
+   * layer, at this moment HWC@2 API can't specify blending mode for this layer,
+   * but Mapper@4 can do that
+   */
+  BufferColorSpace color_space_{};
+  BufferSampleRange sample_range_{};
+  BufferBlendMode blend_mode_{};
+  buffer_handle_t buffer_handle_{};
+  bool buffer_handle_updated_{};
 
   bool prior_buffer_scanout_flag_{};
 
-  UniqueFd acquire_fence_;
+  HwcDisplay *const parent_;
+
+  /* Layer state */
+ public:
+  void PopulateLayerData(bool test);
+
+  bool IsLayerUsableAsDevice() const {
+    return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
+  }
+
+ private:
+  void ImportFb();
+  bool bi_get_failed_{};
+  bool fb_import_failed_{};
 };
 
 }  // namespace android
