@@ -27,7 +27,7 @@ class BufferInfoMaliMediatek : public LegacyBufferInfoGetter {
  public:
   using LegacyBufferInfoGetter::LegacyBufferInfoGetter;
 
-  int ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) override;
+  auto GetBoInfo(buffer_handle_t handle) -> std::optional<BufferInfo> override;
 };
 }  // namespace android
 

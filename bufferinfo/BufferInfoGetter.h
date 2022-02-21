@@ -20,6 +20,8 @@
 #include <drm/drm_fourcc.h>
 #include <hardware/gralloc.h>
 
+#include <optional>
+
 #include "BufferInfo.h"
 #include "drm/DrmDevice.h"
 
@@ -33,7 +35,8 @@ class BufferInfoGetter {
  public:
   virtual ~BufferInfoGetter() = default;
 
-  virtual int ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) = 0;
+  virtual auto GetBoInfo(buffer_handle_t handle)
+      -> std::optional<BufferInfo> = 0;
 
   bool IsHandleUsable(buffer_handle_t handle);
 

@@ -25,7 +25,7 @@ class BufferInfoMapperMetadata : public BufferInfoGetter {
  public:
   using BufferInfoGetter::BufferInfoGetter;
 
-  int ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) override;
+  auto GetBoInfo(buffer_handle_t handle) -> std::optional<BufferInfo> override;
 
   int GetFds(buffer_handle_t handle, BufferInfo *bo);
 

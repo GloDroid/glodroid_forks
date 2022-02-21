@@ -22,6 +22,7 @@
 
 #include <cstdbool>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "bufferinfo/BufferInfo.h"
@@ -62,7 +63,7 @@ enum class DrmHwcBlending : int32_t {
 
 struct DrmHwcLayer {
   buffer_handle_t sf_handle = nullptr;
-  BufferInfo buffer_info{};
+  std::optional<BufferInfo> buffer_info;
   std::shared_ptr<DrmFbIdHandle> fb_id_handle;
 
   DrmHwcTransform transform{};

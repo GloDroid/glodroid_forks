@@ -61,29 +61,32 @@ uint64_t BufferInfoMaliMeson::ConvertGrallocFormatToDrmModifiers(
 }
 #endif
 
-int BufferInfoMaliMeson::ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) {
+auto BufferInfoMaliMeson::GetBoInfo(buffer_handle_t handle)
+    -> std::optional<BufferInfo> {
   const auto *hnd = (private_handle_t const *)handle;
   if (!hnd)
-    return -EINVAL;
+    return {};
 
   if (!(hnd->usage & GRALLOC_USAGE_HW_FB))
-    return -EINVAL;
+    return {};
 
   uint32_t fmt = ConvertHalFormatToDrm(hnd->req_format);
   if (fmt == DRM_FORMAT_INVALID)
-    return -EINVAL;
+    return {};
 
-  bo->modifiers[0] = BufferInfoMaliMeson::ConvertGrallocFormatToDrmModifiers(
+  BufferInfo bi{};
+
+  bi.modifiers[0] = BufferInfoMaliMeson::ConvertGrallocFormatToDrmModifiers(
       hnd->internal_format);
 
-  bo->width = hnd->width;
-  bo->height = hnd->height;
-  bo->format = fmt;
-  bo->prime_fds[0] = hnd->share_fd;
-  bo->pitches[0] = hnd->byte_stride;
-  bo->offsets[0] = 0;
+  bi.width = hnd->width;
+  bi.height = hnd->height;
+  bi.format = fmt;
+  bi.prime_fds[0] = hnd->share_fd;
+  bi.pitches[0] = hnd->byte_stride;
+  bi.offsets[0] = 0;
 
-  return 0;
+  return {};
 }
 
 }  // namespace android

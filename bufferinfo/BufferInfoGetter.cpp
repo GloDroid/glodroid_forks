@@ -49,15 +49,9 @@ BufferInfoGetter *BufferInfoGetter::GetInstance() {
 }
 
 bool BufferInfoGetter::IsHandleUsable(buffer_handle_t handle) {
-  BufferInfo bo{};
+  auto bo = GetBoInfo(handle);
 
-  if (ConvertBoInfo(handle, &bo) != 0) {
-    return false;
-  }
-  if (bo.prime_fds[0] == 0) {
-    return false;
-  }
-  return true;
+  return bo && bo->prime_fds[0] != 0;
 }
 
 int LegacyBufferInfoGetter::Init() {

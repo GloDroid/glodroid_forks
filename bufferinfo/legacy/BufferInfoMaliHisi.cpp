@@ -66,30 +66,33 @@ uint64_t BufferInfoMaliHisi::ConvertGrallocFormatToDrmModifiers(
 }
 #endif
 
-int BufferInfoMaliHisi::ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) {
+auto BufferInfoMaliHisi::GetBoInfo(buffer_handle_t handle)
+    -> std::optional<BufferInfo> {
   bool is_rgb = false;
 
   const auto *hnd = (private_handle_t const *)handle;
   if (!hnd)
-    return -EINVAL;
+    return {};
 
   if (!(hnd->usage & GRALLOC_USAGE_HW_FB))
-    return -EINVAL;
+    return {};
 
   uint32_t fmt = ConvertHalFormatToDrm(hnd->req_format);
   if (fmt == DRM_FORMAT_INVALID)
-    return -EINVAL;
+    return {};
+
+  BufferInfo bi{};
 
   is_rgb = IsDrmFormatRgb(fmt);
-  bo->modifiers[0] = ConvertGrallocFormatToDrmModifiers(hnd->internal_format,
-                                                        is_rgb);
+  bi.modifiers[0] = ConvertGrallocFormatToDrmModifiers(hnd->internal_format,
+                                                       is_rgb);
 
-  bo->width = hnd->width;
-  bo->height = hnd->height;
-  bo->format = fmt;
-  bo->pitches[0] = hnd->byte_stride;
-  bo->prime_fds[0] = hnd->share_fd;
-  bo->offsets[0] = 0;
+  bi.width = hnd->width;
+  bi.height = hnd->height;
+  bi.format = fmt;
+  bi.pitches[0] = hnd->byte_stride;
+  bi.prime_fds[0] = hnd->share_fd;
+  bi.offsets[0] = 0;
 
   switch (fmt) {
     case DRM_FORMAT_YVU420: {
@@ -103,20 +106,20 @@ int BufferInfoMaliHisi::ConvertBoInfo(buffer_handle_t handle, BufferInfo *bo) {
       int v_size = vu_stride * (adjusted_height / 2);
 
       /* V plane*/
-      bo->prime_fds[1] = hnd->share_fd;
-      bo->pitches[1] = vu_stride;
-      bo->offsets[1] = y_size;
+      bi.prime_fds[1] = hnd->share_fd;
+      bi.pitches[1] = vu_stride;
+      bi.offsets[1] = y_size;
       /* U plane */
-      bo->prime_fds[2] = hnd->share_fd;
-      bo->pitches[2] = vu_stride;
-      bo->offsets[2] = y_size + v_size;
+      bi.prime_fds[2] = hnd->share_fd;
+      bi.pitches[2] = vu_stride;
+      bi.offsets[2] = y_size + v_size;
       break;
     }
     default:
       break;
   }
 
-  return 0;
+  return bi;
 }
 
 }  // namespace android

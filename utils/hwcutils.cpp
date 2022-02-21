@@ -28,16 +28,15 @@
 namespace android {
 
 int DrmHwcLayer::ImportBuffer(DrmDevice *drm_device) {
-  buffer_info = BufferInfo{};
+  buffer_info = BufferInfoGetter::GetInstance()->GetBoInfo(sf_handle);
 
-  int ret = BufferInfoGetter::GetInstance()->ConvertBoInfo(sf_handle,
-                                                           &buffer_info);
-  if (ret != 0) {
-    ALOGE("Failed to convert buffer info %d", ret);
-    return ret;
+  if (!buffer_info) {
+    ALOGE("Failed to convert buffer info");
+    return -EINVAL;
   }
 
-  fb_id_handle = drm_device->GetDrmFbImporter().GetOrCreateFbId(&buffer_info);
+  fb_id_handle = drm_device->GetDrmFbImporter().GetOrCreateFbId(
+      &(*buffer_info));
   if (!fb_id_handle) {
     ALOGE("Failed to import buffer");
     return -EINVAL;
