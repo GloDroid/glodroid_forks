@@ -294,3 +294,32 @@ python_test {
         },
     },
 }
+
+// Export libc++ headers for inclusion in the musl sysroot.
+genrule {
+    name: "libc_musl_sysroot_libc++_headers",
+    visibility: ["//external/musl"],
+    srcs: [
+        "NOTICE",
+        "include/**/*",
+    ],
+    out: ["libc_musl_sysroot_libc++_headers.zip"],
+    tools: [
+        "soong_zip",
+        "zip2zip",
+    ],
+    cmd: "LIBCXX_DIR=$$(dirname $(location NOTICE)) && " +
+        "$(location soong_zip) -o $(genDir)/sysroot.zip -symlinks=false" +
+        // NOTICE
+        " -j -f $(location NOTICE) " +
+        // headers
+        " -P include/c++ " +
+        "  -C $${LIBCXX_DIR}/include " +
+        "  -D $${LIBCXX_DIR}/include " +
+        " && " +
+        "$(location zip2zip) -i $(genDir)/sysroot.zip -o $(out) " +
+        " -x include/c++/CMakeLists.txt" +
+        " -x include/c++/module.modulemap " +
+        " include/**/*:include " +
+        " NOTICE:NOTICE.libc++",
+}
