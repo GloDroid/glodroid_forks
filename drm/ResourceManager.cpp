@@ -136,8 +136,10 @@ void ResourceManager::UpdateFrontendDisplays() {
 
       if (connected) {
         auto pipeline = DrmDisplayPipeline::CreatePipeline(*conn);
-        frontend_interface_->BindDisplay(pipeline.get());
-        attached_pipelines_[conn] = std::move(pipeline);
+        if (pipeline) {
+          frontend_interface_->BindDisplay(pipeline.get());
+          attached_pipelines_[conn] = std::move(pipeline);
+        }
       } else {
         auto &pipeline = attached_pipelines_[conn];
         frontend_interface_->UnbindDisplay(pipeline.get());

@@ -102,24 +102,36 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
 HwcDisplay::~HwcDisplay() = default;
 
 void HwcDisplay::SetPipeline(DrmDisplayPipeline *pipeline) {
+  Deinit();
+
   pipeline_ = pipeline;
 
-  if (pipeline != nullptr) {
-    ChosePreferredConfig();
+  if (pipeline != nullptr || handle_ == kPrimaryDisplay) {
     Init();
-
     hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ true);
   } else {
-    backend_.reset();
-    vsync_worker_.Init(nullptr, [](int64_t) {});
-    SetClientTarget(nullptr, -1, 0, {});
-    if (handle_ != kPrimaryDisplay) {
-      hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ false);
-    }
+    hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ false);
   }
 }
 
+void HwcDisplay::Deinit() {
+  if (pipeline_ != nullptr) {
+    AtomicCommitArgs a_args{};
+    a_args.active = false;
+    a_args.composition = std::make_shared<DrmKmsPlan>();
+    GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
+
+    vsync_worker_.Init(nullptr, [](int64_t) {});
+    current_plan_.reset();
+    backend_.reset();
+  }
+
+  SetClientTarget(nullptr, -1, 0, {});
+}
+
 HWC2::Error HwcDisplay::Init() {
+  ChosePreferredConfig();
+
   int ret = vsync_worker_.Init(pipeline_, [this](int64_t timestamp) {
     const std::lock_guard<std::mutex> lock(hwc2_->GetResMan().GetMainLock());
     if (vsync_event_en_) {

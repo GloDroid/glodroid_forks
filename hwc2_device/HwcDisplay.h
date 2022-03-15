@@ -180,6 +180,8 @@ class HwcDisplay {
     return !pipeline_;
   }
 
+  void Deinit();
+
  private:
   enum ClientFlattenningState : int32_t {
     Disabled = -3,
