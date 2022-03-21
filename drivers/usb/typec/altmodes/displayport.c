@@ -93,14 +93,22 @@ static int dp_altmode_configure(struct dp_altmode *dp, u8 con)
 		return 0;
 	case DP_STATUS_CON_DFP_D:
 		conf |= DP_CONF_UFP_U_AS_DFP_D;
-		pin_assign = DP_CAP_UFP_D_PIN_ASSIGN(dp->alt->vdo) &
-			     DP_CAP_DFP_D_PIN_ASSIGN(dp->port->vdo);
+		pin_assign = dp->port->vdo & DP_CAP_RECEPTACLE ?
+			DP_CAP_DFP_D_PIN_ASSIGN(dp->port->vdo) :
+			DP_CAP_UFP_D_PIN_ASSIGN(dp->port->vdo);
+		pin_assign &= dp->alt->vdo & DP_CAP_RECEPTACLE ?
+			DP_CAP_UFP_D_PIN_ASSIGN(dp->alt->vdo) :
+			DP_CAP_DFP_D_PIN_ASSIGN(dp->alt->vdo);
 		break;
 	case DP_STATUS_CON_UFP_D:
 	case DP_STATUS_CON_BOTH: /* NOTE: First acting as DP source */
 		conf |= DP_CONF_UFP_U_AS_UFP_D;
-		pin_assign = DP_CAP_DFP_D_PIN_ASSIGN(dp->alt->vdo) &
-			     DP_CAP_UFP_D_PIN_ASSIGN(dp->port->vdo);
+		pin_assign = dp->port->vdo & DP_CAP_RECEPTACLE ?
+			DP_CAP_UFP_D_PIN_ASSIGN(dp->port->vdo) :
+			DP_CAP_DFP_D_PIN_ASSIGN(dp->port->vdo);
+		pin_assign &= dp->alt->vdo & DP_CAP_RECEPTACLE ?
+			DP_CAP_DFP_D_PIN_ASSIGN(dp->alt->vdo) :
+			DP_CAP_UFP_D_PIN_ASSIGN(dp->alt->vdo);
 		break;
 	default:
 		break;
@@ -525,15 +533,37 @@ int dp_altmode_probe(struct typec_altmode *alt)
 	struct fwnode_handle *fwnode;
 	struct dp_altmode *dp;
 	int ret;
+	u32 port_pins, alt_pins;
 
 	/* FIXME: Port can only be DFP_U. */
 
-	/* Make sure we have compatiple pin configurations */
-	if (!(DP_CAP_DFP_D_PIN_ASSIGN(port->vdo) &
-	      DP_CAP_UFP_D_PIN_ASSIGN(alt->vdo)) &&
-	    !(DP_CAP_UFP_D_PIN_ASSIGN(port->vdo) &
-	      DP_CAP_DFP_D_PIN_ASSIGN(alt->vdo)))
+	/*
+	 * When port is a receptacle DP_CAP_xFP_D_PIN_ASSIGN macros have the
+	 * regular meaning. When the port is a plug, the meaning is swapped.
+	 *
+	 * Check if we have any matching DFP_D<->UFP_D or UFP_D<->DFP_D pin assignment.
+	 */
+        port_pins = port->vdo & DP_CAP_RECEPTACLE ?
+		DP_CAP_DFP_D_PIN_ASSIGN(port->vdo) | DP_CAP_UFP_D_PIN_ASSIGN(port->vdo) << 8 :
+		DP_CAP_UFP_D_PIN_ASSIGN(port->vdo) | DP_CAP_DFP_D_PIN_ASSIGN(port->vdo) << 8;
+
+        alt_pins = alt->vdo & DP_CAP_RECEPTACLE ?
+		DP_CAP_UFP_D_PIN_ASSIGN(alt->vdo) | DP_CAP_DFP_D_PIN_ASSIGN(alt->vdo) << 8 :
+		DP_CAP_DFP_D_PIN_ASSIGN(alt->vdo) | DP_CAP_UFP_D_PIN_ASSIGN(alt->vdo) << 8;
+
+	/* Can't plug plug into a plug */
+	if (!(port->vdo & DP_CAP_RECEPTACLE) && !(alt->vdo & DP_CAP_RECEPTACLE)) {
+		dev_warn(&alt->dev, "Our Alt-DP VDO 0x%06x and peer port VDO 0x%06x are not compatible (both are reported as plugs!)\n",
+			 port->vdo, alt->vdo);
 		return -ENODEV;
+	}
+
+	/* Make sure we have compatiple pin configurations */
+	if (!(port_pins & alt_pins)) {
+		dev_warn(&alt->dev, "Our Alt-DP VDO 0x%06x and peer port VDO 0x%06x are not compatible (no shared pinconf %04x<->%04x (UUDD))\n",
+			 port->vdo, alt->vdo, port_pins, alt_pins);
+		return -ENODEV;
+	}
 
 	ret = sysfs_create_group(&alt->dev.kobj, &dp_altmode_group);
 	if (ret)
