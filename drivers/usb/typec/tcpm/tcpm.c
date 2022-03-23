@@ -869,12 +869,13 @@ static int tcpm_pd_transmit(struct tcpm_port *port,
 	unsigned long timeout;
 	int ret;
 
-	/*
 	if (msg)
 		tcpm_log(port, "PD TX, header: %#x", le16_to_cpu(msg->header));
 	else
 		tcpm_log(port, "PD TX, type: %#x", type);
-          */
+
+	for (ret = 0; ret < pd_header_cnt_le(msg->header); ret++)
+		tcpm_log(port, "  tx payload[%d]: %#x", ret, le32_to_cpu(msg->payload[ret]));
 
 	reinit_completion(&port->tx_complete);
 	ret = port->tcpc->pd_transmit(port->tcpc, type, msg, port->negotiated_rev);
@@ -2920,6 +2921,10 @@ done:
 void tcpm_pd_receive(struct tcpm_port *port, const struct pd_message *msg)
 {
 	struct pd_rx_event *event;
+	int ret;
+
+	for (ret = 0; ret < pd_header_cnt_le(msg->header); ret++)
+		tcpm_log(port, "  rx payload[%d]: %#x", ret, le32_to_cpu(msg->payload[ret]));
 
 	event = kzalloc(sizeof(*event), GFP_ATOMIC);
 	if (!event)
