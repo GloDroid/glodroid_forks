@@ -2842,6 +2842,27 @@ int hci_recv_frame(struct hci_dev *hdev, struct sk_buff *skb)
 	/* Time stamp */
 	__net_timestamp(skb);
 
+	{
+		/* rtl8723cs bluetooth will return NOT_SUPPORTED(data[5]==1) for the WriteSecureConnectionsHostSupport (0xC7A) requests,
+		 * which will fail assert HERE: https://cs.android.com/android/platform/superproject/+/master:packages/modules/Bluetooth/system/gd/hci/controller.cc;l=225;drc=fe2308d15f93002e9dfb9a5f04d8178800ec83ea
+		 * Replace status with SUCCESS(data[5]=0) to bypass the assert. Bluetooth functionality will be limited of cause.
+	     */
+		struct hci_event_hdr *d = (void *)skb->data;
+		if (d->evt == HCI_EV_CMD_COMPLETE) {
+			struct hci_ev_cmd_complete *ec;
+			u16 opcode;
+
+			ec = (void *)(skb->data + HCI_EVENT_HDR_SIZE);
+			opcode = __le16_to_cpu(ec->opcode);
+			if (opcode == 0xC7A) {
+				printk(KERN_ERR
+				       "Recv EV CMD COMPLETE, opcode=0xC7A status code: %i, spoofing to 0 (SUCCESS)",
+				       skb->data[5]);
+				skb->data[5] = 0;
+			}
+		}
+	}
+
 	skb_queue_tail(&hdev->rx_q, skb);
 	queue_work(hdev->workqueue, &hdev->rx_work);
 
