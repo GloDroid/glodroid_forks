@@ -633,11 +633,8 @@ HWC2::Error HwcDisplay::SetOutputBuffer(buffer_handle_t /*buffer*/,
 }
 
 HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
-  if (IsInHeadlessMode()) {
-    return HWC2::Error::None;
-  }
-
   auto mode = static_cast<HWC2::PowerMode>(mode_in);
+
   AtomicCommitArgs a_args{};
 
   switch (mode) {
@@ -645,22 +642,30 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
       a_args.active = false;
       break;
     case HWC2::PowerMode::On:
-      /*
-       * Setting the display to active before we have a composition
-       * can break some drivers, so skip setting a_args.active to
-       * true, as the next composition frame will implicitly activate
-       * the display
-       */
-      return GetPipe().atomic_state_manager->ActivateDisplayUsingDPMS() == 0
-                 ? HWC2::Error::None
-                 : HWC2::Error::BadParameter;
+      a_args.active = true;
       break;
     case HWC2::PowerMode::Doze:
     case HWC2::PowerMode::DozeSuspend:
       return HWC2::Error::Unsupported;
     default:
-      ALOGI("Power mode %d is unsupported\n", mode);
+      ALOGE("Incorrect power mode value (%d)\n", mode);
       return HWC2::Error::BadParameter;
+  }
+
+  if (IsInHeadlessMode()) {
+    return HWC2::Error::None;
+  }
+
+  if (a_args.active) {
+    /*
+     * Setting the display to active before we have a composition
+     * can break some drivers, so skip setting a_args.active to
+     * true, as the next composition frame will implicitly activate
+     * the display
+     */
+    return GetPipe().atomic_state_manager->ActivateDisplayUsingDPMS() == 0
+               ? HWC2::Error::None
+               : HWC2::Error::BadParameter;
   };
 
   int err = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
