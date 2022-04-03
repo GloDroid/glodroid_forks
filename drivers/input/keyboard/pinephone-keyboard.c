@@ -10,6 +10,10 @@
 #include <linux/module.h>
 #include <linux/regulator/consumer.h>
 
+static bool disable_input;
+module_param(disable_input, bool, S_IRUGO);
+MODULE_PARM_DESC(disable_input, "Disable the keyboard part of the driver");
+
 #define DRV_NAME			"pinephone-keyboard"
 
 #define PPKB_CRC8_POLYNOMIAL		0x07
@@ -397,6 +401,9 @@ static int ppkb_probe(struct i2c_client *client)
 	ppkb->rows = map_rows;
 	ppkb->cols = map_cols;
 
+	if (disable_input)
+		goto enable_regulator;
+
 	ppkb->input = devm_input_allocate_device(dev);
 	if (!ppkb->input)
 		return -ENOMEM;
@@ -433,6 +440,7 @@ static int ppkb_probe(struct i2c_client *client)
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to request IRQ\n");
 
+enable_regulator:
 	ret = regulator_enable(ppkb->vbat_supply);
 	if (ret)
 		return dev_err_probe(dev, ret,
