@@ -2953,7 +2953,7 @@ unsigned int is_ap_in_tkip(_adapter *padapter)
 			case _RSN_IE_2_:
 				if (_rtw_memcmp((pIE->data + 8), RSN_TKIP_CIPHER, 4))
 					return _TRUE;
-
+				break;
 			default:
 				break;
 			}
@@ -2990,7 +2990,7 @@ unsigned int should_forbid_n_rate(_adapter *padapter)
 				if ((_rtw_memcmp((pIE->data + 8), RSN_CIPHER_SUITE_CCMP, 4))  ||
 				    (_rtw_memcmp((pIE->data + 12), RSN_CIPHER_SUITE_CCMP, 4)))
 					return _FALSE;
-
+				break;
 			default:
 				break;
 			}
