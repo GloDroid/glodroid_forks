@@ -2881,6 +2881,7 @@ void odm_cmn_info_hook(struct dm_struct *dm, enum odm_cmninfo cmn_info,
 		break;
 	case ODM_CMNINFO_EN_DYM_BW_INDICATION:
 		dm->dis_dym_bw_indication = (u8 *)value;
+		break;
 	default:
 		/*do nothing*/
 		break;
