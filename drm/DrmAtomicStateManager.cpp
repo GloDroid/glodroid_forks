@@ -76,7 +76,10 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     return -EINVAL;
   }
 
+  bool async = true;
+
   if (args.active) {
+    async = false;
     new_frame_state.crtc_active_state = *args.active;
     if (!crtc->GetActiveProperty().AtomicSet(*pset, *args.active ? 1 : 0) ||
         !connector->GetCrtcIdProperty().AtomicSet(*pset, crtc->GetId())) {
@@ -133,11 +136,45 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   if (args.test_only)
     flags |= DRM_MODE_ATOMIC_TEST_ONLY;
 
-  int err = drmModeAtomicCommit(drm->GetFd(), pset.get(), flags, drm);
-  if (err != 0) {
-    if (!args.test_only)
-      ALOGE("Failed to commit pset ret=%d\n", err);
-    return err;
+  if (async && !args.test_only) {
+    int err = drmModeAtomicCommit(drm->GetFd(), pset.get(),
+                                  flags | DRM_MODE_ATOMIC_NONBLOCK, drm);
+
+    if (err == 0) {
+      if (staged_frame_state_.used) {
+        /* Previous staged is now active, free resources held by
+         * active_frame_state_
+         * TODO(rsglobal): This transition should be triggered by DRM page swap
+         * event
+         */
+        active_frame_state_ = std::move(staged_frame_state_);
+      }
+      staged_frame_state_ = std::move(new_frame_state);
+    }
+
+    if (err == -EBUSY) {
+      /* Previous atomic commit is pending
+       * (can be for example due to acquire fences wasn't signaled in time) */
+      ALOGW(
+          "Previous commit hasn't been applied yet. Applying blocking commit "
+          "instead...");
+      async = false;
+      err = 0;
+    }
+
+    if (err != 0) {
+      return err;
+    }
+  }
+
+  if (!async) {
+    int err = drmModeAtomicCommit(drm->GetFd(), pset.get(), flags, drm);
+    if (err != 0) {
+      if (!args.test_only)
+        ALOGE("Failed to commit pset ret=%d\n", err);
+      return err;
+    }
+    active_frame_state_ = std::move(staged_frame_state_);
   }
 
   if (!args.test_only) {
@@ -147,8 +184,14 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       connector->SetActiveMode(*args.display_mode);
     }
 
-    active_frame_state_ = std::move(new_frame_state);
+    if (!async) {  // no commit staged if we use synchronous
+      active_frame_state_ = std::move(new_frame_state);
+      staged_frame_state_ = {};
+    }
 
+    /* Doesn't make much sence for synchronous commits,
+     * since fence will always be signaled at this moment
+     */
     if (crtc->GetOutFencePtrProperty()) {
       args.out_fence = UniqueFd((int)out_fence);
     }

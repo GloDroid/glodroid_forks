@@ -72,13 +72,18 @@ class DrmAtomicStateManager {
 
     /* To avoid setting the inactive state twice, which will fail the commit */
     bool crtc_active_state{};
-  } active_frame_state_;
+
+    bool used;
+  } active_frame_state_, staged_frame_state_;
 
   auto NewFrameState() -> KmsState {
+    auto *prev_frame_state = staged_frame_state_.used ? &staged_frame_state_
+                                                      : &active_frame_state_;
     return (KmsState){
-        .used_planes = active_frame_state_.used_planes,
-        .used_framebuffers = active_frame_state_.used_framebuffers,
-        .crtc_active_state = active_frame_state_.crtc_active_state,
+        .used = true,
+        .used_planes = prev_frame_state->used_planes,
+        .used_framebuffers = prev_frame_state->used_framebuffers,
+        .crtc_active_state = prev_frame_state->crtc_active_state,
     };
   }
 
