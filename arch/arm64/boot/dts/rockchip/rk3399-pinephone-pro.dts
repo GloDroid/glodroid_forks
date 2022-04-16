@@ -527,6 +527,15 @@
 			flash-max-timeout-us = <250000>;
 		};
 	};
+
+	keyboard-power {
+		compatible = "megi,pinephone-keyboard-power-manager";
+		phone-battery = "rk818-battery";
+		phone-usb = "rk818-usb";
+		kb-battery = "ip5xxx-battery";
+		kb-boost = "ip5xxx-boost";
+		kb-usb = "ip5xxx-usb";
+	};
 };
 
 &cpu_l0 {
