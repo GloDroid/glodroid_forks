@@ -50,6 +50,7 @@ LOCAL_SHARED_LIBRARIES := liblog libcutils libdl
 LOCAL_PRELINK_MODULE := false
 LOCAL_SRC_FILES := $(src_files)
 LOCAL_PROPRIETARY_MODULE := true
+LOCAL_VINTF_FRAGMENTS := iio.sensors@1.0.xml
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
