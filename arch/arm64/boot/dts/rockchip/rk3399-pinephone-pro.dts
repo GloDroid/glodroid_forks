@@ -893,6 +893,7 @@
 		reset-gpios = <&gpio1 RK_PA0 GPIO_ACTIVE_LOW>;
 		powerdown-gpios = <&gpio2 RK_PD4 GPIO_ACTIVE_HIGH>;
 		rotation = <180>;
+		orientation = <1>;
 
 		port {
 			wcam_out: endpoint {
@@ -920,6 +921,7 @@
 		powerdown-gpios = <&gpio2 RK_PB4 GPIO_ACTIVE_HIGH>;
 
 		rotation = <180>;
+		orientation = <0>;
 //		status = "disabled";
 
 		port {
