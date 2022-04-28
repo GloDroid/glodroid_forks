@@ -69,11 +69,11 @@ auto DrmFbIdHandle::CreateInstance(hwc_drm_bo_t *bo, GemHandle first_gem_handle,
   /* Create framebuffer object */
   if (!has_modifiers) {
     err = drmModeAddFB2(drm.GetFd(), bo->width, bo->height, bo->format,
-                        &local->gem_handles_[0], &bo->pitches[0],
+                        local->gem_handles_.data(), &bo->pitches[0],
                         &bo->offsets[0], &local->fb_id_, 0);
   } else {
     err = drmModeAddFB2WithModifiers(drm.GetFd(), bo->width, bo->height,
-                                     bo->format, &local->gem_handles_[0],
+                                     bo->format, local->gem_handles_.data(),
                                      &bo->pitches[0], &bo->offsets[0],
                                      &bo->modifiers[0], &local->fb_id_,
                                      DRM_MODE_FB_MODIFIERS);
