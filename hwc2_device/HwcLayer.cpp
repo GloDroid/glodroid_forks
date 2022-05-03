@@ -18,8 +18,6 @@
 
 #include "HwcLayer.h"
 
-#include <fcntl.h>
-
 #include "utils/log.h"
 
 namespace android {
@@ -167,7 +165,7 @@ HWC2::Error HwcLayer::SetLayerZOrder(uint32_t order) {
 void HwcLayer::PopulateDrmLayer(DrmHwcLayer *layer) {
   layer->sf_handle = buffer_;
   // TODO(rsglobal): Avoid extra fd duplication
-  layer->acquire_fence = UniqueFd(fcntl(acquire_fence_.Get(), F_DUPFD_CLOEXEC));
+  layer->acquire_fence = UniqueFd::Dup(acquire_fence_.Get());
   layer->display_frame = display_frame_;
   layer->alpha = std::lround(alpha_ * UINT16_MAX);
   layer->blending = blending_;

@@ -43,6 +43,14 @@ class HwcLayer {
     return sf_type_ != validated_type_;
   }
 
+  bool GetPriorBufferScanOutFlag() const {
+    return prior_buffer_scanout_flag_;
+  }
+
+  void SetPriorBufferScanOutFlag(bool state) {
+    prior_buffer_scanout_flag_ = state;
+  }
+
   uint32_t GetZOrder() const {
     return z_order_;
   }
@@ -53,10 +61,6 @@ class HwcLayer {
 
   hwc_rect_t GetDisplayFrame() {
     return display_frame_;
-  }
-
-  UniqueFd GetReleaseFence() {
-    return std::move(release_fence_);
   }
 
   void PopulateDrmLayer(DrmHwcLayer *layer);
@@ -107,15 +111,9 @@ class HwcLayer {
   DrmHwcColorSpace color_space_ = DrmHwcColorSpace::kUndefined;
   DrmHwcSampleRange sample_range_ = DrmHwcSampleRange::kUndefined;
 
-  UniqueFd acquire_fence_;
+  bool prior_buffer_scanout_flag_{};
 
-  /*
-   * Release fence is not used.
-   * There is no release fence support available in the DRM/KMS. In case no
-   * release fence provided application will use this buffer for writing when
-   * the next frame present fence is signaled.
-   */
-  UniqueFd release_fence_;
+  UniqueFd acquire_fence_;
 };
 
 }  // namespace android

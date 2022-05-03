@@ -391,6 +391,9 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types,
 
 /* Find API details at:
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1767
+ *
+ * Called after PresentDisplay(), CLIENT is expecting release fence for the
+ * prior buffer (not the one assigned to the layer at the moment).
  */
 HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
                                          hwc2_layer_t *layers,
@@ -402,8 +405,13 @@ HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
 
   uint32_t num_layers = 0;
 
-  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
+  for (auto &l : layers_) {
+    if (!l.second.GetPriorBufferScanOutFlag() || !present_fence_) {
+      continue;
+    }
+
     ++num_layers;
+
     if (layers == nullptr || fences == nullptr)
       continue;
 
@@ -413,9 +421,10 @@ HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
     }
 
     layers[num_layers - 1] = l.first;
-    fences[num_layers - 1] = l.second.GetReleaseFence().Release();
+    fences[num_layers - 1] = UniqueFd::Dup(present_fence_.Get()).Release();
   }
   *num_elements = num_layers;
+
   return HWC2::Error::None;
 }
 
@@ -520,9 +529,9 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 /* Find API details at:
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
  */
-HWC2::Error HwcDisplay::PresentDisplay(int32_t *present_fence) {
+HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
   if (IsInHeadlessMode()) {
-    *present_fence = -1;
+    *out_present_fence = -1;
     return HWC2::Error::None;
   }
   HWC2::Error ret{};
@@ -537,13 +546,14 @@ HWC2::Error HwcDisplay::PresentDisplay(int32_t *present_fence) {
 
   if (ret == HWC2::Error::BadLayer) {
     // Can we really have no client or device layers?
-    *present_fence = -1;
+    *out_present_fence = -1;
     return HWC2::Error::None;
   }
   if (ret != HWC2::Error::None)
     return ret;
 
-  *present_fence = a_args.out_fence.Release();
+  this->present_fence_ = UniqueFd::Dup(a_args.out_fence.Get());
+  *out_present_fence = a_args.out_fence.Release();
 
   ++frame_no_;
   return HWC2::Error::None;
@@ -690,6 +700,16 @@ HWC2::Error HwcDisplay::ValidateDisplay(uint32_t *num_types,
     *num_types = *num_requests = 0;
     return HWC2::Error::None;
   }
+
+  /* In current drm_hwc design in case previous frame layer was not validated as
+   * a CLIENT, it is used by display controller (Front buffer). We have to store
+   * this state to provide the CLIENT with the release fences for such buffers.
+   */
+  for (auto &l : layers_) {
+    l.second.SetPriorBufferScanOutFlag(l.second.GetValidatedType() !=
+                                       HWC2::Composition::Client);
+  }
+
   return backend_->ValidateDisplay(this, num_types, num_requests);
 }
 
