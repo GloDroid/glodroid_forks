@@ -82,7 +82,7 @@ extern void rtl871x_cedbg(const char *fmt, ...);
 	#define KERN_CONT
 	#define _seqdump(sel, fmt, arg...) _dbgdump(fmt, ##arg)
 #elif defined PLATFORM_LINUX
-	#define _dbgdump printk
+	#define _dbgdump pr_debug
 	#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24))
 	#define KERN_CONT
 	#endif
@@ -221,7 +221,7 @@ extern uint rtw_drv_log_level;
 		if (sel == RTW_DBGDUMP)\
 			RTW_PRINT(fmt, ##arg); \
 		else {\
-			_seqdump(sel, fmt, ##arg) /*rtw_warn_on(1)*/; \
+			_seqdump(sel, fmt, ##arg); \
 		} \
 	} while (0)
 
@@ -232,7 +232,7 @@ extern uint rtw_drv_log_level;
 		if (sel == RTW_DBGDUMP)\
 			_RTW_PRINT(fmt, ##arg); \
 		else {\
-			_seqdump(sel, fmt, ##arg) /*rtw_warn_on(1)*/; \
+			_seqdump(sel, fmt, ##arg); \
 		} \
 	} while (0)
 
