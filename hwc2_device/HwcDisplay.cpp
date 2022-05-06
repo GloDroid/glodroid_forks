@@ -799,18 +799,15 @@ HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
                                                      uint32_t *outDataSize,
                                                      uint8_t *outData) {
   if (IsInHeadlessMode()) {
-    return HWC2::Error::None;
+    return HWC2::Error::Unsupported;
   }
+
   auto blob = GetPipe().connector->Get()->GetEdidBlob();
-
-  *outPort = handle_ - 1;
-
   if (!blob) {
-    if (outData == nullptr) {
-      *outDataSize = 0;
-    }
-    return HWC2::Error::None;
+    return HWC2::Error::Unsupported;
   }
+
+  *outPort = handle_; /* TDOD(nobody): What should be here? */
 
   if (outData) {
     *outDataSize = std::min(*outDataSize, blob->length);
