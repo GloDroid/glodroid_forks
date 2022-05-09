@@ -14,15 +14,66 @@
 #include <linux/compiler.h>
 #include <linux/types.h>
 
+#define ANDR_GKI_PAGE_SIZE 4096
+
 #define ANDR_BOOT_MAGIC "ANDROID!"
 #define ANDR_BOOT_MAGIC_SIZE 8
 #define ANDR_BOOT_NAME_SIZE 16
 #define ANDR_BOOT_ARGS_SIZE 512
 #define ANDR_BOOT_EXTRA_ARGS_SIZE 1024
 
-/* The bootloader expects the structure of andr_img_hdr with header
- * version 0 to be as follows: */
-struct andr_img_hdr {
+#define VENDOR_BOOT_MAGIC "VNDRBOOT"
+#define ANDR_VENDOR_BOOT_MAGIC_SIZE 8
+#define ANDR_VENDOR_BOOT_ARGS_SIZE 2048
+#define ANDR_VENDOR_BOOT_NAME_SIZE 16
+
+struct andr_boot_img_hdr_v3_v4
+{
+#define BOOT_MAGIC_SIZE 8
+    uint8_t magic[ANDR_BOOT_MAGIC_SIZE];
+
+    uint32_t kernel_size;    /* size in bytes */
+    uint32_t ramdisk_size;   /* size in bytes */
+
+    uint32_t os_version;
+
+    uint32_t header_size;    /* size of boot image header in bytes */
+    uint32_t reserved[4];
+    uint32_t header_version; /* offset remains constant for version check */
+
+    uint8_t cmdline[ANDR_BOOT_ARGS_SIZE + ANDR_BOOT_EXTRA_ARGS_SIZE];
+    /* for boot image header v4 only */
+    uint32_t signature_size; /* size in bytes */
+};
+
+struct andr_vendor_boot_img_hdr_v3_v4
+{
+    uint8_t magic[ANDR_VENDOR_BOOT_MAGIC_SIZE];
+    uint32_t header_version;
+    uint32_t page_size;           /* flash page size we assume */
+
+    uint32_t kernel_addr;         /* physical load addr */
+    uint32_t ramdisk_addr;        /* physical load addr */
+
+    uint32_t vendor_ramdisk_size; /* size in bytes */
+
+    uint8_t cmdline[ANDR_VENDOR_BOOT_ARGS_SIZE];
+
+    uint32_t tags_addr;           /* physical addr for kernel tags */
+
+    uint8_t name[ANDR_VENDOR_BOOT_NAME_SIZE]; /* asciiz product name */
+    uint32_t header_size;         /* size of vendor boot image header in
+                                   * bytes */
+    uint32_t dtb_size;            /* size of dtb image */
+    uint64_t dtb_addr;            /* physical load address */
+    /* for boot image header v4 only */
+    uint32_t vendor_ramdisk_table_size; /* size in bytes for the vendor ramdisk table */
+    uint32_t vendor_ramdisk_table_entry_num; /* number of entries in the vendor ramdisk table */
+    uint32_t vendor_ramdisk_table_entry_size; /* size in bytes for a vendor ramdisk table entry */
+    uint32_t bootconfig_size; /* size in bytes for the bootconfig section */
+};
+
+struct andr_boot_img_hdr_v0_v1_v2 {
     /* Must be ANDR_BOOT_MAGIC. */
     char magic[ANDR_BOOT_MAGIC_SIZE];
 
@@ -135,5 +186,31 @@ struct andr_img_hdr {
  * 8. if second_size != 0: jump to second_addr
  *    else: jump to kernel_addr
  */
+
+/* Private struct */
+struct andr_image_data {
+	ulong kernel_ptr;
+	uint32_t kernel_size;
+	ulong ramdisk_ptr;
+	uint32_t ramdisk_size;
+	ulong second_ptr;
+	uint32_t second_size;
+	ulong dtb_ptr;
+	uint32_t dtb_size;
+	ulong recovery_dtbo_ptr;
+	uint32_t recovery_dtbo_size;
+	
+	const char *kcmdline;
+	const char *kcmdline_extra;
+	const char *image_name;
+
+	ulong kernel_load_addr;
+	ulong ramdisk_load_addr;
+	ulong dtb_load_addr;
+	ulong tags_addr;
+
+	uint32_t boot_img_total_size;
+	uint32_t vendor_boot_img_total_size;
+};
 
 #endif

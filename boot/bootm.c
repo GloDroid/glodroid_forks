@@ -186,14 +186,24 @@ static int bootm_find_os(struct cmd_tbl *cmdtp, int flag, int argc,
 #endif
 #ifdef CONFIG_ANDROID_BOOT_IMAGE
 	case IMAGE_FORMAT_ANDROID:
+	{
+		void *boot_img = os_hdr;
+		void *vendor_boot_img = 0;
+#ifdef CONFIG_CMD_ABOOTIMG
+		if (_abootimg_addr != -1) {
+			boot_img = (void *)_abootimg_addr;
+			vendor_boot_img = (void *)_avendor_bootimg_addr;
+		}
+#endif
 		images.os.type = IH_TYPE_KERNEL;
-		images.os.comp = android_image_get_kcomp(os_hdr);
+		images.os.comp = android_image_get_kcomp(boot_img, vendor_boot_img);
 		images.os.os = IH_OS_LINUX;
 
-		images.os.end = android_image_get_end(os_hdr);
-		images.os.load = android_image_get_kload(os_hdr);
+//		images.os.end = android_image_get_end(os_hdr);
+		images.os.load = android_image_get_kload(boot_img, vendor_boot_img);
 		images.ep = images.os.load;
 		ep_found = true;
+	}
 		break;
 #endif
 	default:
@@ -967,10 +977,20 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
 #endif
 #ifdef CONFIG_ANDROID_BOOT_IMAGE
 	case IMAGE_FORMAT_ANDROID:
+	{
+		void *boot_img = buf;
+		void *vendor_boot_img = 0;
+#ifdef CONFIG_CMD_ABOOTIMG
+		if (_abootimg_addr != -1) {
+			boot_img = (void *)_abootimg_addr;
+			vendor_boot_img = (void *)_avendor_bootimg_addr;
+		}
+#endif
 		printf("## Booting Android Image at 0x%08lx ...\n", img_addr);
-		if (android_image_get_kernel(buf, images->verify,
+		if (android_image_get_kernel(boot_img, vendor_boot_img, images->verify,
 					     os_data, os_len))
 			return NULL;
+	}
 		break;
 #endif
 	default:
