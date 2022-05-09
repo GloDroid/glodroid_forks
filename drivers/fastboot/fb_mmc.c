@@ -288,7 +288,7 @@ static void fb_mmc_boot_ops(struct blk_desc *dev_desc, void *buffer,
  */
 static lbaint_t fb_mmc_get_boot_header(struct blk_desc *dev_desc,
 				       struct disk_partition *info,
-				       struct andr_img_hdr *hdr,
+				       void *hdr,
 				       char *response)
 {
 	ulong sector_size;		/* boot partition sector size */
@@ -297,7 +297,7 @@ static lbaint_t fb_mmc_get_boot_header(struct blk_desc *dev_desc,
 
 	/* Calculate boot image sectors count */
 	sector_size = info->blksz;
-	hdr_sectors = DIV_ROUND_UP(sizeof(struct andr_img_hdr), sector_size);
+	hdr_sectors = DIV_ROUND_UP(ANDR_GKI_PAGE_SIZE, sector_size);
 	if (hdr_sectors == 0) {
 		pr_err("invalid number of boot sectors: 0\n");
 		fastboot_fail("invalid number of boot sectors: 0", response);
@@ -314,7 +314,7 @@ static lbaint_t fb_mmc_get_boot_header(struct blk_desc *dev_desc,
 	}
 
 	/* Check boot header magic string */
-	res = android_image_check_header(hdr);
+	res = is_android_boot_image_header(hdr);
 	if (res != 0) {
 		pr_err("bad boot image magic\n");
 		fastboot_fail("boot partition not initialized", response);
@@ -339,7 +339,7 @@ static int fb_mmc_update_zimage(struct blk_desc *dev_desc,
 				char *response)
 {
 	uintptr_t hdr_addr;			/* boot image header address */
-	struct andr_img_hdr *hdr;		/* boot image header */
+	struct andr_boot_img_hdr_v0_v1_v2 *hdr; /* boot image header */
 	lbaint_t hdr_sectors;			/* boot image header sectors */
 	u8 *ramdisk_buffer;
 	u32 ramdisk_sector_start;
@@ -362,13 +362,19 @@ static int fb_mmc_update_zimage(struct blk_desc *dev_desc,
 
 	/* Put boot image header in fastboot buffer after downloaded zImage */
 	hdr_addr = (uintptr_t)download_buffer + ALIGN(download_bytes, PAGE_SIZE);
-	hdr = (struct andr_img_hdr *)hdr_addr;
+	hdr = (struct andr_boot_img_hdr_v0_v1_v2 *)hdr_addr;
 
 	/* Read boot image header */
 	hdr_sectors = fb_mmc_get_boot_header(dev_desc, &info, hdr, response);
 	if (hdr_sectors == 0) {
 		pr_err("unable to read boot image header\n");
 		fastboot_fail("unable to read boot image header", response);
+		return -1;
+	}
+
+	if (hdr->header_version > 2) {
+		pr_err("zImage flashing supported only for boot images v2 and less\n");
+		fastboot_fail("zImage flashing supported only for boot images v2 and less", response);
 		return -1;
 	}
 
