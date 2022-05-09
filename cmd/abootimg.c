@@ -14,18 +14,20 @@
 	(_abootimg_addr == -1 ? image_load_addr : _abootimg_addr)
 
 /* Please use abootimg_addr() macro to obtain the boot image address */
-static ulong _abootimg_addr = -1;
+ulong _abootimg_addr = -1;
+
+ulong _avendor_bootimg_addr = 0;
 
 static int abootimg_get_ver(int argc, char *const argv[])
 {
-	const struct andr_img_hdr *hdr;
+	const struct andr_boot_img_hdr_v0_v1_v2 *hdr;
 	int res = CMD_RET_SUCCESS;
 
 	if (argc > 1)
 		return CMD_RET_USAGE;
 
 	hdr = map_sysmem(abootimg_addr(), sizeof(*hdr));
-	if (android_image_check_header(hdr)) {
+	if (is_android_boot_image_header(hdr)) {
 		printf("Error: Boot Image header is incorrect\n");
 		res = CMD_RET_FAILURE;
 		goto exit;
@@ -49,7 +51,7 @@ static int abootimg_get_recovery_dtbo(int argc, char *const argv[])
 	if (argc > 2)
 		return CMD_RET_USAGE;
 
-	if (!android_image_get_dtbo(abootimg_addr(), &addr, &size))
+	if (!android_image_get_dtbo((void *)abootimg_addr(), &addr, &size))
 		return CMD_RET_FAILURE;
 
 	if (argc == 0) {
@@ -65,33 +67,24 @@ static int abootimg_get_recovery_dtbo(int argc, char *const argv[])
 
 static int abootimg_get_dtb_load_addr(int argc, char *const argv[])
 {
-	const struct andr_img_hdr *hdr;
-	int res = CMD_RET_SUCCESS;
-
 	if (argc > 1)
 		return CMD_RET_USAGE;
 
-	hdr = map_sysmem(abootimg_addr(), sizeof(*hdr));
-	if (android_image_check_header(hdr)) {
-		printf("Error: Boot Image header is incorrect\n");
-		res = CMD_RET_FAILURE;
-		goto exit;
-	}
+	struct andr_image_data img_data = {0};
+	if (!android_image_get_data((void *)abootimg_addr(), (void *)_avendor_bootimg_addr, &img_data))
+		return CMD_RET_FAILURE;
 
-	if (hdr->header_version < 2) {
-		printf("Error: header_version must be >= 2 for this\n");
-		res = CMD_RET_FAILURE;
-		goto exit;
+	if (!img_data.dtb_load_addr) {
+		printf("Error: failed to read dtb_load_addr\n");
+		return CMD_RET_FAILURE;
 	}
 
 	if (argc == 0)
-		printf("%lx\n", (ulong)hdr->dtb_addr);
+		printf("%lx\n", (ulong)img_data.dtb_load_addr);
 	else
-		env_set_hex(argv[0], (ulong)hdr->dtb_addr);
+		env_set_hex(argv[0], (ulong)img_data.dtb_load_addr);
 
-exit:
-	unmap_sysmem(hdr);
-	return res;
+	return CMD_RET_SUCCESS;
 }
 
 static int abootimg_get_dtb_by_index(int argc, char *const argv[])
@@ -117,7 +110,7 @@ static int abootimg_get_dtb_by_index(int argc, char *const argv[])
 		return CMD_RET_FAILURE;
 	}
 
-	if (!android_image_get_dtb_by_index(abootimg_addr(), num,
+	if (!android_image_get_dtb_by_index((void *)abootimg_addr(), (void *)_avendor_bootimg_addr, num,
 					    &addr, &size)) {
 		return CMD_RET_FAILURE;
 	}
@@ -158,7 +151,7 @@ static int do_abootimg_addr(struct cmd_tbl *cmdtp, int flag, int argc,
 	char *endp;
 	ulong img_addr;
 
-	if (argc != 2)
+	if (argc < 2 && argc > 3)
 		return CMD_RET_USAGE;
 
 	img_addr = hextoul(argv[1], &endp);
@@ -168,6 +161,17 @@ static int do_abootimg_addr(struct cmd_tbl *cmdtp, int flag, int argc,
 	}
 
 	_abootimg_addr = img_addr;
+
+	if (argc == 3) {
+		img_addr = hextoul(argv[2], &endp);
+		if (*endp != '\0') {
+			printf("Error: Wrong image address\n");
+			return CMD_RET_FAILURE;
+		}
+
+		_avendor_bootimg_addr = img_addr;
+	}
+
 	return CMD_RET_SUCCESS;
 }
 
@@ -201,7 +205,7 @@ static int do_abootimg_dump(struct cmd_tbl *cmdtp, int flag, int argc,
 		return CMD_RET_USAGE;
 
 	if (!strcmp(argv[1], "dtb")) {
-		if (android_image_print_dtb_contents(abootimg_addr()))
+		if (android_image_print_dtb_contents((void *)abootimg_addr(), (void *)_avendor_bootimg_addr))
 			return CMD_RET_FAILURE;
 	} else {
 		return CMD_RET_USAGE;
@@ -211,7 +215,7 @@ static int do_abootimg_dump(struct cmd_tbl *cmdtp, int flag, int argc,
 }
 
 static struct cmd_tbl cmd_abootimg_sub[] = {
-	U_BOOT_CMD_MKENT(addr, 2, 1, do_abootimg_addr, "", ""),
+	U_BOOT_CMD_MKENT(addr, 3, 1, do_abootimg_addr, "", ""),
 	U_BOOT_CMD_MKENT(dump, 2, 1, do_abootimg_dump, "", ""),
 	U_BOOT_CMD_MKENT(get, 5, 1, do_abootimg_get, "", ""),
 };
@@ -239,7 +243,7 @@ static int do_abootimg(struct cmd_tbl *cmdtp, int flag, int argc,
 U_BOOT_CMD(
 	abootimg, CONFIG_SYS_MAXARGS, 0, do_abootimg,
 	"manipulate Android Boot Image",
-	"addr <addr>\n"
+	"addr <boot_img_addr> [<vendor_boot_img_addr>]\n"
 	"    - set the address in RAM where boot image is located\n"
 	"      ($loadaddr is used by default)\n"
 	"abootimg dump dtb\n"
