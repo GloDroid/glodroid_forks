@@ -265,22 +265,21 @@ int do_avb_verify_part(struct cmd_tbl *cmdtp, int flag,
 		avb_slot_verify(avb_ops,
 				requested_partitions,
 				slot_suffix,
-				unlocked,
+				unlocked ? AVB_SLOT_VERIFY_FLAGS_ALLOW_VERIFICATION_ERROR : 0,
 				AVB_HASHTREE_ERROR_MODE_RESTART_AND_INVALIDATE,
 				&out_data);
 
+	if (unlocked && slot_result == AVB_SLOT_VERIFY_RESULT_ERROR_VERIFICATION) {
+		slot_result = AVB_SLOT_VERIFY_RESULT_OK;
+	}
+
 	switch (slot_result) {
 	case AVB_SLOT_VERIFY_RESULT_OK:
-		/* Until we don't have support of changing unlock states, we
-		 * assume that we are by default in locked state.
-		 * So in this case we can boot only when verification is
-		 * successful; we also supply in cmdline GREEN boot state
-		 */
 		printf("Verification passed successfully\n");
 
 		/* export additional bootargs to AVB_BOOTARGS env var */
 
-		extra_args = avb_set_state(avb_ops, AVB_GREEN);
+		extra_args = avb_set_state(avb_ops, unlocked ? AVB_ORANGE : AVB_GREEN);
 		if (extra_args)
 			cmdline = append_cmd_line(out_data->cmdline,
 						  extra_args);
