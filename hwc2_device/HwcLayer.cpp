@@ -174,6 +174,11 @@ void HwcLayer::ImportFb() {
 
   layer_data_.fb = {};
 
+  auto unique_id = BufferInfoGetter::GetInstance()->GetUniqueId(buffer_handle_);
+  if (unique_id && SwChainGetBufferFromCache(*unique_id)) {
+    return;
+  }
+
   layer_data_.bi = BufferInfoGetter::GetInstance()->GetBoInfo(buffer_handle_);
   if (!layer_data_.bi) {
     ALOGW("Unable to get buffer information (0x%p)", buffer_handle_);
@@ -190,6 +195,10 @@ void HwcLayer::ImportFb() {
           buffer_handle_);
     fb_import_failed_ = true;
     return;
+  }
+
+  if (unique_id) {
+    SwChainAddCurrentBuffer(*unique_id);
   }
 }
 
@@ -209,6 +218,77 @@ void HwcLayer::PopulateLayerData(bool test) {
   if (!test) {
     layer_data_.acquire_fence = std::move(acquire_fence_);
   }
+}
+
+/* SwapChain Cache */
+
+bool HwcLayer::SwChainGetBufferFromCache(BufferUniqueId unique_id) {
+  if (swchain_lookup_table_.count(unique_id) == 0) {
+    return false;
+  }
+
+  int seq = swchain_lookup_table_[unique_id];
+
+  if (swchain_cache_.count(seq) == 0) {
+    return false;
+  }
+
+  auto& el = swchain_cache_[seq];
+  if (!el.bi) {
+    return false;
+  }
+
+  layer_data_.bi = el.bi;
+  layer_data_.fb = el.fb;
+
+  return true;
+}
+
+void HwcLayer::SwChainReassemble(BufferUniqueId unique_id) {
+  if (swchain_lookup_table_.count(unique_id) != 0) {
+    if (swchain_lookup_table_[unique_id] ==
+        int(swchain_lookup_table_.size()) - 1) {
+      /* Skip same buffer */
+      return;
+    }
+    if (swchain_lookup_table_[unique_id] == 0) {
+      swchain_reassembled_ = true;
+      return;
+    }
+    /* Tracking error */
+    SwChainClearCache();
+    return;
+  }
+
+  swchain_lookup_table_[unique_id] = int(swchain_lookup_table_.size());
+}
+
+void HwcLayer::SwChainAddCurrentBuffer(BufferUniqueId unique_id) {
+  if (!swchain_reassembled_) {
+    SwChainReassemble(unique_id);
+  }
+
+  if (swchain_reassembled_) {
+    if (swchain_lookup_table_.count(unique_id) == 0) {
+      SwChainClearCache();
+      return;
+    }
+
+    int seq = swchain_lookup_table_[unique_id];
+
+    if (swchain_cache_.count(seq) == 0) {
+      swchain_cache_[seq] = {};
+    }
+
+    swchain_cache_[seq].bi = layer_data_.bi;
+    swchain_cache_[seq].fb = layer_data_.fb;
+  }
+}
+
+void HwcLayer::SwChainClearCache() {
+  swchain_cache_.clear();
+  swchain_lookup_table_.clear();
+  swchain_reassembled_ = false;
 }
 
 }  // namespace android

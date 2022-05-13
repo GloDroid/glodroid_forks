@@ -19,6 +19,7 @@
 
 #include <hardware/hwcomposer2.h>
 
+#include "bufferinfo/BufferInfoGetter.h"
 #include "compositor/LayerData.h"
 
 namespace android {
@@ -118,6 +119,24 @@ class HwcLayer {
   void ImportFb();
   bool bi_get_failed_{};
   bool fb_import_failed_{};
+
+  /* SwapChain Cache */
+ public:
+  void SwChainClearCache();
+
+ private:
+  struct SwapChainElement {
+    std::optional<BufferInfo> bi;
+    std::shared_ptr<DrmFbIdHandle> fb;
+  };
+
+  bool SwChainGetBufferFromCache(BufferUniqueId unique_id);
+  void SwChainReassemble(BufferUniqueId unique_id);
+  void SwChainAddCurrentBuffer(BufferUniqueId unique_id);
+
+  std::map<int /*seq_no*/, SwapChainElement> swchain_cache_;
+  std::map<BufferUniqueId, int /*seq_no*/> swchain_lookup_table_;
+  bool swchain_reassembled_{};
 };
 
 }  // namespace android

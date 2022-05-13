@@ -602,6 +602,7 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
    * https://cs.android.com/android/platform/superproject/+/master:hardware/interfaces/graphics/composer/2.1/utils/hal/include/composer-hal/2.1/ComposerClient.h;l=350;drc=944b68180b008456ed2eb4d4d329e33b19bd5166
    */
   if (target == nullptr) {
+    client_layer_.SwChainClearCache();
     return HWC2::Error::None;
   }
 
