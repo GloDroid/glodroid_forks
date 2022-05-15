@@ -34,7 +34,7 @@ producer_sources = [
   'pps_producer.cc'
 ]
 
-executable(
+shared_library(
   'pps-producer',
   sources: producer_sources,
   include_directories: [include_pps, inc_src],
