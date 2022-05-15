@@ -70,6 +70,7 @@ $(M_TARGET_PREFIX)MESA3D_LIBGLESV1_BIN   := $(MESON_OUT_DIR)/install/usr/local/l
 $(M_TARGET_PREFIX)MESA3D_LIBGLESV2_BIN   := $(MESON_OUT_DIR)/install/usr/local/lib/libGLESv2.so.2.0.0
 $(M_TARGET_PREFIX)MESA3D_LIBGLAPI_BIN    := $(MESON_OUT_DIR)/install/usr/local/lib/libglapi.so.0.0.0
 $(M_TARGET_PREFIX)MESA3D_LIBGBM_BIN      := $(MESON_OUT_DIR)/install/usr/local/lib/libgbm.so.1.0.0
+$(M_TARGET_PREFIX)MESA3D_LIBPPS_PRODUCER := $(MESON_OUT_DIR)/install/usr/local/lib/libpps-producer.so
 
 
 MESA3D_GLES_BINS := \
@@ -77,6 +78,7 @@ MESA3D_GLES_BINS := \
     $($(M_TARGET_PREFIX)MESA3D_LIBGLESV1_BIN) \
     $($(M_TARGET_PREFIX)MESA3D_LIBGLESV2_BIN) \
     $($(M_TARGET_PREFIX)MESA3D_LIBGLAPI_BIN)  \
+    $($(M_TARGET_PREFIX)MESA3D_LIBPPS_PRODUCER) \
 
 MESON_GEN_NINJA := \
 	cd $(MESON_OUT_DIR) && PATH=/usr/bin:/usr/local/bin:$$PATH meson ./build     \
@@ -92,6 +94,7 @@ MESON_GEN_NINJA := \
 	-Degl=enabled                                                                \
 	-Dcpp_rtti=false                                                             \
 	-Dlmsensors=disabled                                                         \
+	-Dperfetto=true                                                              \
 
 MESON_BUILD := PATH=/usr/bin:/bin:/sbin:$$PATH ninja -C $(MESON_OUT_DIR)/build
 

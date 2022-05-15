@@ -11,7 +11,7 @@
 
 #include "pps_datasource.h"
 
-int main(int argc, const char **argv)
+int pps_main(int argc, const char **argv)
 {
    using namespace pps;
 
