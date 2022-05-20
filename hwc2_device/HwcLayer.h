@@ -50,8 +50,8 @@ class HwcLayer {
     return prior_buffer_scanout_flag_;
   }
 
-  void SetPriorBufferScanOutFlag(bool state) {
-    prior_buffer_scanout_flag_ = state;
+  void ClearPriorBufferScanOutFlag() {
+    prior_buffer_scanout_flag_ = false;
   }
 
   uint32_t GetZOrder() const {

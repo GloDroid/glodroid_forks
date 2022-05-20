@@ -423,6 +423,7 @@ HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
 
     layers[num_layers - 1] = l.first;
     fences[num_layers - 1] = UniqueFd::Dup(present_fence_.Get()).Release();
+    l.second.ClearPriorBufferScanOutFlag();
   }
   *num_elements = num_layers;
 
@@ -715,15 +716,6 @@ HWC2::Error HwcDisplay::ValidateDisplay(uint32_t *num_types,
   if (IsInHeadlessMode()) {
     *num_types = *num_requests = 0;
     return HWC2::Error::None;
-  }
-
-  /* In current drm_hwc design in case previous frame layer was not validated as
-   * a CLIENT, it is used by display controller (Front buffer). We have to store
-   * this state to provide the CLIENT with the release fences for such buffers.
-   */
-  for (auto &l : layers_) {
-    l.second.SetPriorBufferScanOutFlag(l.second.GetValidatedType() !=
-                                       HWC2::Composition::Client);
   }
 
   return backend_->ValidateDisplay(this, num_types, num_requests);
