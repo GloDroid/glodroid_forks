@@ -54,6 +54,13 @@ HWC2::Error HwcLayer::SetLayerBlendMode(int32_t mode) {
 HWC2::Error HwcLayer::SetLayerBuffer(buffer_handle_t buffer,
                                      int32_t acquire_fence) {
   acquire_fence_ = UniqueFd(acquire_fence);
+
+  /* In current drm_hwc design in case previous frame layer was not validated as
+   * a CLIENT, it is used by display controller (Front buffer). We have to store
+   * this state to provide the CLIENT with the release fences for such buffers.
+   */
+  prior_buffer_scanout_flag_ = validated_type_ != HWC2::Composition::Client;
+
   buffer_handle_ = buffer;
   buffer_handle_updated_ = true;
 
