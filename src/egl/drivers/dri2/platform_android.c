@@ -1030,6 +1030,12 @@ droid_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
       draw->ActiveRenderBuffer = draw->RequestedRenderBuffer;
    }
 
+   /* Optimization: Dequeue the buffer for a next frame:
+    * This reduces CPU time spent by next frame on a road
+    * from start-of-frame event to GPU job-submit event.
+    */
+   update_buffers(dri2_surf);
+
    return EGL_TRUE;
 }
 
