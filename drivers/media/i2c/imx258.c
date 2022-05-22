@@ -1024,7 +1024,22 @@ static int imx258_power_on(struct device *dev)
 {
 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
 	struct imx258 *imx258 = to_imx258(sd);
+	u32 val = 0;
 	int ret;
+
+	if (imx258->clk) {
+		ret = clk_set_rate(imx258->clk, IMX258_INPUT_CLOCK_FREQ);
+		if (ret < 0)
+			dev_warn(dev, "Failed to set clk rate\n");
+
+		val = clk_get_rate(imx258->clk);
+		if (val < IMX258_INPUT_CLOCK_FREQ_MIN ||
+		    val > IMX258_INPUT_CLOCK_FREQ_MAX) {
+			dev_err(dev, "clk mismatched, expecting %u, got %u Hz\n",
+				 IMX258_INPUT_CLOCK_FREQ, val);
+			return -EINVAL;
+		}
+	}
 
 	ret = regulator_bulk_enable(IMX258_SUPPLY_COUNT, imx258->supplies);
 	if (ret) {
@@ -1315,12 +1330,9 @@ static int imx258_probe(struct i2c_client *client)
 		val = clk_get_rate(imx258->clk);
 	}
 
-	if (val < IMX258_INPUT_CLOCK_FREQ_MIN
-		|| val > IMX258_INPUT_CLOCK_FREQ_MAX) {
-		dev_err(&client->dev, "input clock frequency %u not supported\n",
-			val);
-		return -EINVAL;
-	}
+	//XXX: the driver just checked for the clock to be as expected here
+	// but we now just configure the clock to expected value before power on
+	// if possible
 
 	/*
 	 * Check that the device is mounted upside down. The driver only
