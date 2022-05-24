@@ -180,6 +180,7 @@ struct sun8i_mixer {
 
 	struct sun4i_drv		*drv;
 	bool				hw_preconfigured;
+	int                             used_layers;
 };
 
 static inline struct sun8i_mixer *

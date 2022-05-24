@@ -58,6 +58,8 @@ struct sun8i_vi_layer {
 	struct sun8i_mixer	*mixer;
 	int			channel;
 	int			overlay;
+
+	bool			en_state;
 };
 
 static inline struct sun8i_vi_layer *
