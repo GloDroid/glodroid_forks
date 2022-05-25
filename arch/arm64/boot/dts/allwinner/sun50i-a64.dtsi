@@ -146,6 +146,13 @@
 		method = "smc";
 	};
 
+	scpi_protocol: scpi {
+		compatible = "arm,scpi";
+		mboxes = <&msgbox 2>, <&msgbox 3>;
+		mbox-names = "tx", "rx";
+		shmem = <&scpi_sram>;
+	};
+
 	sound: sound {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -373,6 +380,19 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
+
+			sram_a2: sram@40000 {
+				compatible = "mmio-sram";
+				reg = <0x00040000 0x14000>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0 0x00040000 0x14000>;
+
+				scpi_sram: scp-shmem@13c00 {
+					compatible = "arm,scp-shmem";
+					reg = <0x13c00 0x200>;
+				};
+			};
 
 			sram_c: sram@18000 {
 				compatible = "mmio-sram";
@@ -676,6 +696,7 @@
 			reg = <0x01c20000 0x400>;
 			clocks = <&osc24M>, <&rtc 0>;
 			clock-names = "hosc", "losc";
+			protected-clocks = <CLK_BUS_MSGBOX>;
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 		};
@@ -1153,8 +1174,7 @@
 		};
 
 		pwm: pwm@1c21400 {
-			compatible = "allwinner,sun50i-a64-pwm",
-				     "allwinner,sun5i-a13-pwm";
+			compatible = "allwinner,sun50i-a64-pwm";
 			reg = <0x01c21400 0x400>;
 			clocks = <&osc24M>;
 			pinctrl-names = "default";
@@ -1310,6 +1330,7 @@
 			clocks = <&osc24M>, <&rtc 0>, <&rtc 2>,
 				 <&ccu CLK_PLL_PERIPH0>;
 			clock-names = "hosc", "losc", "iosc", "pll-periph";
+			protected-clocks = <CLK_APB0_TWD>;
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 		};
@@ -1346,8 +1367,7 @@
 		};
 
 		r_pwm: pwm@1f03800 {
-			compatible = "allwinner,sun50i-a64-pwm",
-				     "allwinner,sun5i-a13-pwm";
+			compatible = "allwinner,sun50i-a64-pwm";
 			reg = <0x01f03800 0x400>;
 			clocks = <&osc24M>;
 			pinctrl-names = "default";
