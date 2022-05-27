@@ -946,7 +946,7 @@
 		port {
 			ucam_out: endpoint {
 				remote-endpoint = <&mipi_in_ucam>;
-				data-lanes = <1 2>;
+				data-lanes = <1 2 3 4>;
 			};
 		};
 	};
@@ -1164,7 +1164,7 @@
 			mipi_in_ucam: endpoint@0 {
 				reg = <0>;
 				remote-endpoint = <&ucam_out>;
-				data-lanes = <1 2>;
+				data-lanes = <1 2 3 4>;
 			};
 		};
 	};
