@@ -59,8 +59,8 @@
 #define OV8858_GAIN_H_MASK		0x07
 #define OV8858_GAIN_H_SHIFT		8
 #define OV8858_GAIN_L_MASK		0xff
-#define OV8858_GAIN_MIN			0x80
-#define OV8858_GAIN_MAX			0x400
+#define OV8858_GAIN_MIN			0x0
+#define OV8858_GAIN_MAX			0x7ff
 #define OV8858_GAIN_STEP		1
 #define OV8858_GAIN_DEFAULT		0x80
 
