@@ -71,7 +71,7 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   size_t client_size = 0;
 
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
-    if (IsClientLayer(display, layers[z_order])) {
+    if (IsClientLayer(display, layers[z_order], z_order == 0)) {
       if (client_start < 0)
         client_start = (int)z_order;
       client_size = (z_order - client_start) + 1;
@@ -81,7 +81,8 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   return GetExtraClientRange(display, layers, client_start, client_size);
 }
 
-bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
+bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer,
+                            bool /*most_bottom*/) {
   return !HardwareSupportsLayerType(layer->GetSfType()) ||
          !layer->IsLayerUsableAsDevice() ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||

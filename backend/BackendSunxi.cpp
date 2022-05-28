@@ -22,14 +22,33 @@
 
 namespace android {
 
-bool BackendSunxi::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
-  if (Backend::IsClientLayer(display, layer))
+bool BackendSunxi::IsClientLayer(HwcDisplay *display, HwcLayer *layer,
+                                 bool most_bottom) {
+  if (Backend::IsClientLayer(display, layer, most_bottom))
     return true;
 
   auto &ld = layer->GetLayerData();
 
-  /* Dynamic scaling is broken. Keep scaling support only for video layers */
-  return ld.pi.RequireScalingOrPhasing() && ld.bi->prime_fds[1] == 0;
+  float src_width{};
+  float src_height{};
+  float dst_width{};
+  float dst_height{};
+
+  ld.pi.GetSrcSize(&src_width, &src_height);
+  ld.pi.GetDstSize(&dst_width, &dst_height);
+
+  float width_ratio = src_width / dst_width;
+  float height_ratio = src_height / dst_height;
+
+  /* VI layer scaler can support downscale up to 16x  */
+  constexpr float kViMaxRatio = 15.0;
+  bool fits_vi_layer = std::max(width_ratio, height_ratio) <= kViMaxRatio;
+
+  constexpr float kUiMaxRatio = 3.8;
+  bool fits_ui_layer = std::max(width_ratio, height_ratio) <= kUiMaxRatio;
+//  bool fits_ui_layer = !ld.pi.RequireScalingOrPhasing();
+
+  return (!fits_vi_layer && most_bottom) || (!fits_ui_layer && !most_bottom);
 }
 
 // clang-format off

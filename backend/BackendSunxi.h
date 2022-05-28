@@ -24,7 +24,8 @@ namespace android {
 
 class BackendSunxi : public Backend {
  public:
-  bool IsClientLayer(HwcDisplay *display, HwcLayer *layer) override;
+  bool IsClientLayer(HwcDisplay *display, HwcLayer *layer,
+                     bool most_bottom) override;
 };
 }  // namespace android
 

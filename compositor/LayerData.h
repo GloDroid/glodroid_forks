@@ -48,12 +48,24 @@ struct PresentInfo {
   hwc_frect_t source_crop{};
   hwc_rect_t display_frame{};
 
-  bool RequireScalingOrPhasing() const {
-    float src_width = source_crop.right - source_crop.left;
-    float src_height = source_crop.bottom - source_crop.top;
+  void GetSrcSize(float *out_width, float *out_height) const {
+    *out_width = source_crop.right - source_crop.left;
+    *out_height = source_crop.bottom - source_crop.top;
+  }
 
-    auto dest_width = float(display_frame.right - display_frame.left);
-    auto dest_height = float(display_frame.bottom - display_frame.top);
+  void GetDstSize(float *out_width, float *out_height) const {
+    *out_width = float(display_frame.right - display_frame.left);
+    *out_height = float(display_frame.bottom - display_frame.top);
+  }
+
+  bool RequireScalingOrPhasing() const {
+    float src_width{};
+    float src_height{};
+    float dest_width{};
+    float dest_height{};
+
+    GetSrcSize(&src_width, &src_height);
+    GetDstSize(&dest_width, &dest_height);
 
     bool scaling = src_width != dest_width || src_height != dest_height;
     bool phasing = (source_crop.left - std::floor(source_crop.left) != 0) ||
