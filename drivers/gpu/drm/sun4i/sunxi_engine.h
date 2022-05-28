@@ -9,7 +9,6 @@
 struct drm_plane;
 struct drm_device;
 struct drm_crtc_state;
-struct drm_display_mode;
 
 struct sunxi_engine;
 
@@ -109,17 +108,6 @@ struct sunxi_engine_ops {
 	 * This function is optional.
 	 */
 	void (*vblank_quirk)(struct sunxi_engine *engine);
-
-	/**
-	 * @mode_set:
-	 *
-	 * This callback is used to update engine registers that
-	 * responsible for display frame size and other mode attributes.
-	 *
-	 * This function is optional.
-	 */
-	void (*mode_set)(struct sunxi_engine *engine,
-			 struct drm_display_mode *mode);
 };
 
 /**
