@@ -180,7 +180,7 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
                                      int count)
 {
    struct lima_screen *screen = lima_screen(pscreen);
-   bool should_tile = lima_debug & LIMA_DEBUG_NO_TILING ? false : true;
+   bool should_tile = false;
    unsigned width, height;
    bool should_align_dimensions;
    bool has_user_modifiers = true;
