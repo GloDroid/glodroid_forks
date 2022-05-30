@@ -606,6 +606,10 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
     return HWC2::Error::None;
   }
 
+  if (IsInHeadlessMode()) {
+    return HWC2::Error::None;
+  }
+
   client_layer_.PopulateLayerData(/*test = */ true);
   if (!client_layer_.IsLayerUsableAsDevice()) {
     ALOGE("Client layer must be always usable by DRM/KMS");
