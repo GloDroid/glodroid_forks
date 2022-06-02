@@ -351,8 +351,9 @@ static void sun8i_mixer_mode_set(struct sunxi_engine *engine,
 	else
 		val = 0;
 
-	regmap_update_bits(engine->regs, SUN8I_MIXER_BLEND_OUTCTL(bld_base),
-			   SUN8I_MIXER_BLEND_OUTCTL_INTERLACED, val);
+	val |= SUN8I_MIXER_BLEND_OUTCTL_PREMULTIPLY;
+
+	regmap_write(engine->regs, SUN8I_MIXER_BLEND_OUTCTL(bld_base), val);
 
 	DRM_DEBUG_DRIVER("Switching display mixer interlaced mode %s\n",
 			 interlaced ? "on" : "off");
