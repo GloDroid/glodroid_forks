@@ -695,9 +695,6 @@
 		#address-cells = <3>;
 		#size-cells = <2>;
 		bus-range = <0x0 0xf>;
-		assigned-clocks = <&cru ACLK_PCIE20_MST>, <&cru ACLK_PCIE20_SLV>,
-			 <&cru ACLK_PCIE20_DBI>, <&cru PCLK_PCIE20>,
-			 <&cru CLK_PCIE20_AUX_NDFT>;
 		clocks = <&cru ACLK_PCIE20_MST>, <&cru ACLK_PCIE20_SLV>,
 			 <&cru ACLK_PCIE20_DBI>, <&cru PCLK_PCIE20>,
 			 <&cru CLK_PCIE20_AUX_NDFT>;
@@ -725,11 +722,11 @@
 		phys = <&combphy2 PHY_TYPE_PCIE>;
 		phy-names = "pcie-phy";
 		power-domains = <&power RK3568_PD_PIPE>;
-		reg = <0x3 0xc0000000 0x0 0x00400000>,
-		      <0x0 0xfe260000 0x0 0x00010000>,
-		      <0x3 0x00000000 0x0 0x01000000>;
-		ranges =  <0x01000000 0x0 0x01000000 0x3 0x01000000 0x0 0x00100000
-			   0x02000000 0x0 0x02000000 0x3 0x02000000 0x0 0x3e000000>;
+ 		reg = <0x3 0xc0000000 0x0 0x00400000>,
+ 		      <0x0 0xfe260000 0x0 0x00010000>,
+		      <0x3 0x3f000000 0x0 0x01000000>;
+		ranges = <0x01000000 0x0 0x3ef00000 0x3 0x3ef00000 0x0 0x00100000
+			  0x02000000 0x0 0x00000000 0x3 0x00000000 0x0 0x3ef00000>;
 		reg-names = "dbi", "apb", "config";
 		resets = <&cru SRST_PCIE20_POWERUP>;
 		reset-names = "pipe";
@@ -742,7 +739,6 @@
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 72 IRQ_TYPE_EDGE_RISING>;
 		};
-
 	};
 
 	sdmmc0: mmc@fe2b0000 {
