@@ -21,6 +21,10 @@
 #define SUN8I_MIXER_GLOBAL_SIZE			0xc
 
 #define SUN8I_MIXER_GLOBAL_CTL_RT_EN		BIT(0)
+#define SUN8I_MIXER_GLOBAL_FINISH_IRQ_EN	BIT(4)
+
+#define SUN8I_MIXER_GLOBAL_FINISH_IRQ_STATUS	BIT(0)
+#define SUN8I_MIXER_GLOBAL_BUSY_STATUS		BIT(4)
 
 #define SUN8I_MIXER_GLOBAL_DBUFF_ENABLE		BIT(0)
 
@@ -144,6 +148,8 @@
 #define SUN50I_MIXER_CDC0_EN			0xd0000
 #define SUN50I_MIXER_CDC1_EN			0xd8000
 
+#define SUN8I_MAX_LAYERS			5
+
 /**
  * struct sun8i_mixer_cfg - mixer HW configuration
  * @vi_num: number of VI channels
@@ -184,6 +190,11 @@ struct sun8i_mixer {
 	struct sun4i_drv		*drv;
 	bool				hw_preconfigured;
 	int                             used_layers;
+
+	bool				has_irq;
+	bool				scale_updated;
+	bool				scale_update_staged;
+	void				*scale[SUN8I_MAX_LAYERS];
 };
 
 static inline struct sun8i_mixer *

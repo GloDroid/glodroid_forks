@@ -14,6 +14,8 @@
 
 #include <drm/drm_plane.h>
 
+#include "sun8i_ui_scaler.h"
+
 #define SUN8I_MIXER_CHAN_UI_LAYER_ATTR(base, layer) \
 			((base) + 0x20 * (layer) + 0x0)
 #define SUN8I_MIXER_CHAN_UI_LAYER_SIZE(base, layer) \
@@ -60,6 +62,7 @@ struct sun8i_ui_layer {
 	int			overlay;
 
 	bool			en_state;
+	struct sun8i_uis_data   scale;
 };
 
 static inline struct sun8i_ui_layer *

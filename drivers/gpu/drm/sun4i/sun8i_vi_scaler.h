@@ -69,10 +69,28 @@
 #define SUN50I_SCALER_VSU_ANGLE_SHIFT(x)		(((x) << 16) & 0xF)
 #define SUN50I_SCALER_VSU_ANGLE_OFFSET(x)		((x) & 0xFF)
 
-void sun8i_vi_scaler_enable(struct sun8i_mixer *mixer, int layer, bool enable);
-void sun8i_vi_scaler_setup(struct sun8i_mixer *mixer, int layer,
-			   u32 src_w, u32 src_h, u32 dst_w, u32 dst_h,
-			   u32 hscale, u32 vscale, u32 hphase, u32 vphase,
-			   const struct drm_format_info *format);
+struct sun8i_vis_data {
+	bool				en;
+	u32				src_w;
+	u32				src_h;
+	u32				dst_w;
+	u32				dst_h;
+	u32				hscale;
+	u32				vscale;
+	u32				hphase;
+	u32				vphase;
+	const struct drm_format_info	*format;
+};
+
+struct sun8i_vi_layer;
+
+void sun8i_vi_scaler_deferred_disable(struct sun8i_mixer *mixer, struct sun8i_vi_layer *layer);
+
+void sun8i_vi_scaler_deferred_setup(struct sun8i_mixer *mixer, struct sun8i_vi_layer *layer,
+				    u32 src_w, u32 src_h, u32 dst_w, u32 dst_h,
+				    u32 hscale, u32 vscale, u32 hphase, u32 vphase,
+				    const struct drm_format_info *format);
+
+void sun8i_vi_scaler_apply(struct sun8i_mixer *mixer, int layer, struct sun8i_vis_data *data);
 
 #endif

@@ -103,13 +103,14 @@ static void sun8i_vi_layer_update_alpha(struct sun8i_mixer *mixer, int channel,
 		out_premulti ? SUN8I_MIXER_BLEND_PREMULTIPLY_EN(zpos) : 0);
 }
 
-static int sun8i_vi_layer_update_coord(struct sun8i_mixer *mixer, int channel,
+static int sun8i_vi_layer_update_coord(struct sun8i_mixer *mixer, struct sun8i_vi_layer *layer,
 				       int overlay, struct drm_plane *plane,
 				       unsigned int zpos)
 {
 	struct drm_plane_state *state = plane->state;
 	const struct drm_format_info *format = state->fb->format;
 	u32 src_w, src_h, dst_w, dst_h;
+	int channel = layer->channel;
 	u32 bld_base, ch_base;
 	u32 outsize, insize;
 	u32 hphase, vphase;
@@ -208,13 +209,12 @@ static int sun8i_vi_layer_update_coord(struct sun8i_mixer *mixer, int channel,
 		hscale = (src_w << 16) / dst_w;
 		vscale = (src_h << 16) / dst_h;
 
-		sun8i_vi_scaler_setup(mixer, channel, src_w, src_h, dst_w,
-				      dst_h, hscale, vscale, hphase, vphase,
-				      format);
-		sun8i_vi_scaler_enable(mixer, channel, true);
+		sun8i_vi_scaler_deferred_setup(mixer, layer, src_w, src_h, dst_w,
+					       dst_h, hscale, vscale, hphase, vphase,
+					       format);
 	} else {
 		DRM_DEBUG_DRIVER("HW scaling is not needed\n");
-		sun8i_vi_scaler_enable(mixer, channel, false);
+		sun8i_vi_scaler_deferred_disable(mixer, layer);
 	}
 
 	regmap_write(mixer->engine.regs,
@@ -410,6 +410,7 @@ static void sun8i_vi_layer_atomic_disable(struct drm_plane *plane,
 		mixer->used_layers--;
 		sun8i_vi_layer_enable(mixer, layer->channel, layer->overlay, false,
 				      mixer->used_layers);
+		sun8i_vi_scaler_deferred_disable(mixer, layer);
 	}
 }
 
@@ -427,8 +428,7 @@ static void sun8i_vi_layer_atomic_update(struct drm_plane *plane,
 		mixer->used_layers++;
 	}
 
-	sun8i_vi_layer_update_coord(mixer, layer->channel,
-				    layer->overlay, plane, zpos);
+	sun8i_vi_layer_update_coord(mixer, layer, layer->overlay, plane, zpos);
 	sun8i_vi_layer_update_alpha(mixer, layer->channel,
 				    layer->overlay, plane, zpos, false);
 	sun8i_vi_layer_update_formats(mixer, layer->channel,

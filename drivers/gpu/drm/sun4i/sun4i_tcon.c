@@ -805,6 +805,9 @@ static irqreturn_t sun4i_tcon_handler(int irq, void *private)
 			SUN4I_TCON_GINT0_TCON0_TRI_FINISH_INT)))
 		return IRQ_NONE;
 
+	if (engine->ops->vblank_quirk)
+		engine->ops->vblank_quirk(engine);
+
 	drm_crtc_handle_vblank(&scrtc->crtc);
 	sun4i_tcon_finish_page_flip(drm, scrtc);
 
@@ -814,9 +817,6 @@ static irqreturn_t sun4i_tcon_handler(int irq, void *private)
 			   SUN4I_TCON_GINT0_VBLANK_INT(1) |
 			   SUN4I_TCON_GINT0_TCON0_TRI_FINISH_INT,
 			   0);
-
-	if (engine->ops->vblank_quirk)
-		engine->ops->vblank_quirk(engine);
 
 	return IRQ_HANDLED;
 }

@@ -8,6 +8,8 @@
 
 #include <drm/drm_plane.h>
 
+#include "sun8i_vi_scaler.h"
+
 #define SUN8I_MIXER_CHAN_VI_LAYER_ATTR(base, layer) \
 		((base) + 0x30 * (layer) + 0x0)
 #define SUN8I_MIXER_CHAN_VI_LAYER_SIZE(base, layer) \
@@ -65,6 +67,8 @@ struct sun8i_vi_layer {
 	int			overlay;
 
 	bool			en_state;
+
+	struct sun8i_vis_data   scale;
 };
 
 static inline struct sun8i_vi_layer *

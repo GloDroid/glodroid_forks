@@ -11,6 +11,8 @@
 
 #include "sun8i_vi_scaler.h"
 
+#include "sun8i_vi_layer.h"
+
 static const u32 lan3coefftab32_left[480] = {
 	0x40000000, 0x40fe0000, 0x3ffd0100, 0x3efc0100,
 	0x3efb0100, 0x3dfa0200, 0x3cf90200, 0x3bf80200,
@@ -907,7 +909,7 @@ static void sun8i_vi_scaler_set_coeff(struct regmap *map, u32 base,
 	}
 }
 
-void sun8i_vi_scaler_enable(struct sun8i_mixer *mixer, int layer, bool enable)
+static void sun8i_vi_scaler_enable(struct sun8i_mixer *mixer, int layer, bool enable)
 {
 	u32 val, base;
 
@@ -923,10 +925,10 @@ void sun8i_vi_scaler_enable(struct sun8i_mixer *mixer, int layer, bool enable)
 		     SUN8I_SCALER_VSU_CTRL(base), val);
 }
 
-void sun8i_vi_scaler_setup(struct sun8i_mixer *mixer, int layer,
-			   u32 src_w, u32 src_h, u32 dst_w, u32 dst_h,
-			   u32 hscale, u32 vscale, u32 hphase, u32 vphase,
-			   const struct drm_format_info *format)
+static void sun8i_vi_scaler_setup(struct sun8i_mixer *mixer, int layer,
+				  u32 src_w, u32 src_h, u32 dst_w, u32 dst_h,
+				  u32 hscale, u32 vscale, u32 hphase, u32 vphase,
+				  const struct drm_format_info *format)
 {
 	u32 chphase, cvphase;
 	u32 insize, outsize;
@@ -996,4 +998,51 @@ void sun8i_vi_scaler_setup(struct sun8i_mixer *mixer, int layer,
 		     SUN8I_SCALER_VSU_CVPHASE(base), cvphase);
 	sun8i_vi_scaler_set_coeff(mixer->engine.regs, base,
 				  hscale, vscale, format);
+}
+
+void sun8i_vi_scaler_deferred_disable(struct sun8i_mixer *mixer, struct sun8i_vi_layer *layer)
+{
+	if (layer->scale.en) {
+		layer->scale.en = false;
+		mixer->scale[layer->channel] = &layer->scale;
+		mixer->scale_updated = true;
+	}
+}
+
+void sun8i_vi_scaler_deferred_setup(struct sun8i_mixer *mixer, struct sun8i_vi_layer *layer,
+				    u32 src_w, u32 src_h, u32 dst_w, u32 dst_h,
+				    u32 hscale, u32 vscale, u32 hphase, u32 vphase,
+				    const struct drm_format_info *format)
+{
+	struct sun8i_vis_data data = {
+		.en = true,
+		.src_w = src_w,
+		.src_h = src_h,
+		.dst_w = dst_w,
+		.dst_h = dst_h,
+		.hscale = hscale,
+		.vscale = vscale,
+		.hphase = hphase,
+		.vphase = vphase,
+		.format = format,
+	};
+
+	/* Skip expensive register setup if nothing changed, saves ~40uS @ 1.8MHz */
+	if (!memcmp(&data, &layer->scale, sizeof(data)))
+		return;
+
+	sun8i_vi_scaler_setup(mixer, layer->channel, data.src_w, data.src_h, data.dst_w, data.dst_h,
+			      data.hscale, data.vscale, data.hphase, data.vphase, data.format);
+
+	if (!layer->scale.en) {
+		mixer->scale[layer->channel] = &layer->scale;
+		mixer->scale_updated = true;
+	}
+
+	memcpy(&layer->scale, &data, sizeof(data));
+}
+
+void sun8i_vi_scaler_apply(struct sun8i_mixer *mixer, int layer, struct sun8i_vis_data *data)
+{
+	sun8i_vi_scaler_enable(mixer, layer, data->en);
 }

@@ -100,11 +100,12 @@ static void sun8i_ui_layer_update_alpha(struct sun8i_mixer *mixer, int channel,
 		out_premulti ? SUN8I_MIXER_BLEND_PREMULTIPLY_EN(zpos) : 0);
 }
 
-static int sun8i_ui_layer_update_coord(struct sun8i_mixer *mixer, int channel,
+static int sun8i_ui_layer_update_coord(struct sun8i_mixer *mixer, struct sun8i_ui_layer *layer,
 				       int overlay, struct drm_plane *plane,
 				       unsigned int zpos)
 {
 	struct drm_plane_state *state = plane->state;
+	int channel = layer->channel;
 	u32 src_w, src_h, dst_w, dst_h;
 	u32 bld_base, ch_base;
 	u32 outsize, insize;
@@ -127,6 +128,21 @@ static int sun8i_ui_layer_update_coord(struct sun8i_mixer *mixer, int channel,
 	insize = SUN8I_MIXER_SIZE(src_w, src_h);
 	outsize = SUN8I_MIXER_SIZE(dst_w, dst_h);
 
+	if (insize != outsize || hphase || vphase) {
+		u32 hscale, vscale;
+
+		DRM_DEBUG_DRIVER("HW scaling is enabled\n");
+
+		hscale = state->src_w / state->crtc_w;
+		vscale = state->src_h / state->crtc_h;
+
+		sun8i_ui_scaler_deferred_setup(mixer, layer, src_w, src_h, dst_w, dst_h,
+					       hscale, vscale, hphase, vphase);
+	} else {
+		DRM_DEBUG_DRIVER("HW scaling is not needed\n");
+		sun8i_ui_scaler_deferred_disable(mixer, layer);
+	}
+
 	/* Set height and width */
 	DRM_DEBUG_DRIVER("Layer source offset X: %d Y: %d\n",
 			 state->src.x1 >> 16, state->src.y1 >> 16);
@@ -137,22 +153,6 @@ static int sun8i_ui_layer_update_coord(struct sun8i_mixer *mixer, int channel,
 	regmap_write(mixer->engine.regs,
 		     SUN8I_MIXER_CHAN_UI_OVL_SIZE(ch_base),
 		     insize);
-
-	if (insize != outsize || hphase || vphase) {
-		u32 hscale, vscale;
-
-		DRM_DEBUG_DRIVER("HW scaling is enabled\n");
-
-		hscale = state->src_w / state->crtc_w;
-		vscale = state->src_h / state->crtc_h;
-
-		sun8i_ui_scaler_setup(mixer, channel, src_w, src_h, dst_w,
-				      dst_h, hscale, vscale, hphase, vphase);
-		sun8i_ui_scaler_enable(mixer, channel, true);
-	} else {
-		DRM_DEBUG_DRIVER("HW scaling is not needed\n");
-		sun8i_ui_scaler_enable(mixer, channel, false);
-	}
 
 	/* Set base coordinates */
 	DRM_DEBUG_DRIVER("Layer destination coordinates X: %d Y: %d\n",
@@ -276,6 +276,7 @@ static void sun8i_ui_layer_atomic_disable(struct drm_plane *plane,
 		mixer->used_layers--;
 		sun8i_ui_layer_enable(mixer, layer->channel, layer->overlay, false,
 				      mixer->used_layers);
+		sun8i_ui_scaler_deferred_disable(mixer, layer);
 	}
 }
 
@@ -293,8 +294,7 @@ static void sun8i_ui_layer_atomic_update(struct drm_plane *plane,
 		mixer->used_layers++;
 	}
 
-	sun8i_ui_layer_update_coord(mixer, layer->channel,
-				    layer->overlay, plane, zpos);
+	sun8i_ui_layer_update_coord(mixer, layer, layer->overlay, plane, zpos);
 	sun8i_ui_layer_update_alpha(mixer, layer->channel,
 				    layer->overlay, plane, zpos, false);
 	sun8i_ui_layer_update_formats(mixer, layer->channel,
