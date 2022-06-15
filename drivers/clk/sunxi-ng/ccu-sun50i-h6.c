@@ -1249,6 +1249,19 @@ static int sun50i_h6_ccu_probe(struct platform_device *pdev)
 	val |= (62 << 8) | BIT(1);
 	writel(val, reg + SUN50I_H6_PLL_GPU_REG);
 
+	/*
+	 * Set DDR0 PLL to 1800MHz.
+	 * It fixes UI glitches when DE3.0 requests wide bandwidth for UI plane
+	 * to downscale 1920x1080 RGBA8888 buffer while other layers has buffers as well.
+	 * Unfortunalely I have no idea how should it fit into <=800MHz of MAX LPDDR3
+	 * memory frequency, but I see no glitches so far on my opi3.
+	 */
+
+	val = readl(reg + SUN50I_H6_PLL_DDR0_REG);
+	val &= ~GENMASK(15, 0);
+	val |= 74 << 8;
+	writel(val, reg + SUN50I_H6_PLL_DDR0_REG);
+
 	return devm_sunxi_ccu_probe(&pdev->dev, reg, &sun50i_h6_ccu_desc);
 }
 
