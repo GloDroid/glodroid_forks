@@ -172,7 +172,7 @@ static int sun8i_vi_layer_update_coord(struct sun8i_mixer *mixer, struct sun8i_v
 	 */
 	subsampled = format->hsub > 1 || format->vsub > 1;
 
-	if (insize != outsize || subsampled || hphase || vphase) {
+	if (insize != outsize || subsampled || hphase || vphase || true) {
 		unsigned int scanline, required;
 		struct drm_display_mode *mode;
 		u32 hscale, vscale, fps;
