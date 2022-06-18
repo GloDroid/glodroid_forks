@@ -1692,6 +1692,10 @@
 				If specified, z/VM IUCV HVC accepts connections
 				from listed z/VM user IDs only.
 
+	hvc_dcc.enable=	[ARM,ARM64]	Enable DCC driver at runtime. For GKI,
+				disabled at runtime by default to prevent
+				crashes in devices which do not support DCC.
+
 	hv_nopvspin	[X86,HYPER_V] Disables the paravirt spinlock optimizations
 				      which allow the hypervisor to 'idle' the
 				      guest on lock contention.
@@ -1701,6 +1705,10 @@
 			useful for debugging when something happens in the window
 			between unregistering the boot console and initializing
 			the real console.
+
+	kunit.enable=	[KUNIT] Enable executing KUnit tests in modules on load.
+			Requires CONFIG_KUNIT to be enabled.
+			Default is 0 (disabled)
 
 	i2c_bus=	[HW]	Override the default board specific I2C bus speed
 				or register an additional I2C bus that is not
