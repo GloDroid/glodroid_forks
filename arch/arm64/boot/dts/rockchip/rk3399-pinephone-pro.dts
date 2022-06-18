@@ -902,6 +902,7 @@
 		powerdown-gpios = <&gpio2 RK_PD4 GPIO_ACTIVE_HIGH>;
 
 		rotation = <180>;
+		orientation = <1>;
 		
 		lens-focus = <&wcam_lens>;
 		flash-leds = <&sgm3140_flash>;
@@ -942,6 +943,7 @@
 		rockchip,camera-module-lens-name = "Largan-9569A2";
 
 		rotation = <180>;
+		orientation = <0>;
 
 		port {
 			ucam_out: endpoint {
