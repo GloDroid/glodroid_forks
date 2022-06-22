@@ -118,8 +118,10 @@ void HwcDisplay::SetPipeline(DrmDisplayPipeline *pipeline) {
 void HwcDisplay::Deinit() {
   if (pipeline_ != nullptr) {
     AtomicCommitArgs a_args{};
-    a_args.active = false;
     a_args.composition = std::make_shared<DrmKmsPlan>();
+    GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
+    a_args.composition = {};
+    a_args.active = false;
     GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
 
     vsync_worker_.Init(nullptr, [](int64_t) {});
