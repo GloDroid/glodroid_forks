@@ -925,6 +925,7 @@ __thermal_cooling_device_register(struct device_node *np,
 	cdev->device.class = &thermal_class;
 	cdev->devdata = devdata;
 	thermal_cooling_device_setup_sysfs(cdev);
+	dev_set_uevent_suppress(&cdev->device, true);
 	ret = device_register(&cdev->device);
 	if (ret)
 		goto out_kfree_type;
