@@ -120,9 +120,22 @@ void HwcDisplay::Deinit() {
     AtomicCommitArgs a_args{};
     a_args.composition = std::make_shared<DrmKmsPlan>();
     GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
+/*
+ *  TODO:
+ *  Unfortunately the following causes regressions on db845c
+ *  with VtsHalGraphicsComposerV2_3TargetTest due to the display
+ *  never coming back. Patches to avoiding that issue on the
+ *  the kernel side unfortunately causes further crashes in
+ *  drm_hwcomposer, because the client detach takes longer then the
+ *  1 second max VTS expects. So for now as a workaround, lets skip
+ *  deactivating the display on deinit, which matches previous
+ *  behavior prior to commit d0494d9b8097
+ */
+#if 0
     a_args.composition = {};
     a_args.active = false;
     GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
+#endif
 
     vsync_worker_.Init(nullptr, [](int64_t) {});
     current_plan_.reset();
