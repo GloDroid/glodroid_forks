@@ -86,7 +86,7 @@ auto BufferInfoMaliMeson::GetBoInfo(buffer_handle_t handle)
   bi.pitches[0] = hnd->byte_stride;
   bi.offsets[0] = 0;
 
-  return {};
+  return bi;
 }
 
 }  // namespace android
