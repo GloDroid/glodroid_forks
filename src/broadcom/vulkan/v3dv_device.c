@@ -150,6 +150,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_shader_float_controls           = true,
       .KHR_shader_non_semantic_info        = true,
       .KHR_sampler_mirror_clamp_to_edge    = true,
+      .KHR_sampler_ycbcr_conversion        = true,
       .KHR_spirv_1_4                       = true,
       .KHR_storage_buffer_storage_class    = true,
       .KHR_timeline_semaphore              = true,
@@ -1241,7 +1242,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       /* FIXME: this needs support for non-constant index on UBO/SSBO */
       .variablePointers = false,
       .protectedMemory = false,
-      .samplerYcbcrConversion = false,
+      .samplerYcbcrConversion = true,
       .shaderDrawParameters = false,
    };
 
@@ -2827,7 +2828,22 @@ v3dv_CreateSampler(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT);
 
-   v3dv_X(device, pack_sampler_state)(sampler, pCreateInfo, bc_info);
+   const VkSamplerYcbcrConversionInfo *ycbcr_conv_info =
+      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_YCBCR_CONVERSION_INFO);
+
+   const struct vk_format_ycbcr_info *ycbcr_info = NULL;
+
+   if (ycbcr_conv_info) {
+      VK_FROM_HANDLE(vk_ycbcr_conversion, conversion, ycbcr_conv_info->conversion);
+      ycbcr_info = vk_format_get_ycbcr_info(conversion->format);
+      if (ycbcr_info) {
+         sampler->plane_count = ycbcr_info->n_planes;
+         sampler->conversion = conversion;
+      }
+   }
+
+   v3dv_X(device, pack_sampler_state)(sampler, pCreateInfo, bc_info,
+                                      ycbcr_info);
 
    *pSampler = v3dv_sampler_to_handle(sampler);
 

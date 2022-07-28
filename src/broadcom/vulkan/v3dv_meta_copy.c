@@ -1461,15 +1461,11 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    if (!job)
       return true;
 
-   uint8_t plane = v3dv_plane_from_aspect(region->imageSubresource.aspectMask);
-
    /* Handle copy to compressed format using a compatible format */
    const uint32_t block_w = vk_format_get_blockwidth(image->vk.format);
    const uint32_t block_h = vk_format_get_blockheight(image->vk.format);
    const uint32_t width = DIV_ROUND_UP(region->imageExtent.width, block_w);
    const uint32_t height = DIV_ROUND_UP(region->imageExtent.height, block_h);
-
-   printf("start frame: %u:%u\n", width, height);
 
    v3dv_job_start_frame(job, width, height, num_layers, false, true,
                         1, internal_bpp, false);

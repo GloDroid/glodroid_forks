@@ -168,7 +168,8 @@ static union pipe_color_union encode_border_color(
 void
 v3dX(pack_sampler_state)(struct v3dv_sampler *sampler,
                          const VkSamplerCreateInfo *pCreateInfo,
-                         const VkSamplerCustomBorderColorCreateInfoEXT *bc_info)
+                         const VkSamplerCustomBorderColorCreateInfoEXT *bc_info,
+                         const struct vk_format_ycbcr_info *ycbcr_info)
 {
    enum V3DX(Border_Color_Mode) border_color_mode;
 

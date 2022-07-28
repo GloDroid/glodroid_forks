@@ -320,9 +320,9 @@ v3dv_bo_map(struct v3dv_device *device, struct v3dv_bo *bo, uint32_t size)
    if (!ok)
       return false;
 
-   ok = v3dv_bo_wait(device, bo, PIPE_TIMEOUT_INFINITE);
+   ok = v3dv_bo_wait(device, bo, /* PIPE_TIMEOUT_INFINITE */ 10000);
    if (!ok) {
-      fprintf(stderr, "memory wait for map failed\n");
+      fprintf(stderr, "memory wait for map failed: %m: %u\n", bo->offset);
       return false;
    }
 

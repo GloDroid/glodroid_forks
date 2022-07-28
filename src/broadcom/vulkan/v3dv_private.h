@@ -46,6 +46,7 @@
 #include "vk_sync.h"
 #include "vk_sync_timeline.h"
 #include "vk_util.h"
+#include "vk_ycbcr_conversion.h"
 
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
@@ -1936,6 +1937,7 @@ struct v3dv_descriptor_map {
 
 struct v3dv_sampler {
    struct vk_object_base base;
+   struct vk_ycbcr_conversion *conversion;
 
    bool compare_enable;
    bool unnormalized_coordinates;
