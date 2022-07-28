@@ -356,7 +356,7 @@ lower_ycbcr_tex_instr(nir_builder *b, nir_instr *instr, void *_state)
 
    VkFormat y_format = VK_FORMAT_UNDEFINED;
    for (uint32_t p = 0; p < format_ycbcr_info->n_planes; p++) {
-      if (!format_ycbcr_info->planes[p].has_chroma)
+      if (format_ycbcr_info->planes[p].has_luma)
          y_format = format_ycbcr_info->planes[p].format;
    }
    assert(y_format != VK_FORMAT_UNDEFINED);

@@ -211,6 +211,9 @@ struct vk_format_ycbcr_plane {
    /* Whether this plane contains chroma channels */
    bool has_chroma;
 
+   /* Whether this plane contains luma channels */
+   bool has_luma;
+
    /* For downscaling of YUV planes */
    uint8_t denominator_scales[2];
 
