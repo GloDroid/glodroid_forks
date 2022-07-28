@@ -1147,6 +1147,7 @@ cmd_buffer_state_set_attachment_clear_color(struct v3dv_cmd_buffer *cmd_buffer,
                                             const VkClearColorValue *color)
 {
    assert(attachment_idx < cmd_buffer->state.pass->attachment_count);
+   uint8_t plane = v3dv_plane_from_aspect(VK_IMAGE_ASPECT_COLOR_BIT);
 
    const struct v3dv_render_pass_attachment *attachment =
       &cmd_buffer->state.pass->attachments[attachment_idx];
@@ -1156,7 +1157,7 @@ cmd_buffer_state_set_attachment_clear_color(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_X(cmd_buffer->device, get_format)(attachment->desc.format);
 
    v3dv_X(cmd_buffer->device, get_internal_type_bpp_for_output_format)
-      (format->rt_type, &internal_type, &internal_bpp);
+      (format->planes[plane].rt_type, &internal_type, &internal_bpp);
 
    uint32_t internal_size = 4 << internal_bpp;
 

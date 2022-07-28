@@ -546,9 +546,8 @@ struct v3dv_device_memory {
 #define V3D_OUTPUT_IMAGE_FORMAT_NO 255
 #define TEXTURE_DATA_FORMAT_NO     255
 
-struct v3dv_format {
-   bool supported;
-
+#define V3DV_MAX_PLANE_COUNT 3
+struct v3dv_format_plane {
    /* One of V3D33_OUTPUT_IMAGE_FORMAT_*, or OUTPUT_IMAGE_FORMAT_NO */
    uint8_t rt_type;
 
@@ -564,10 +563,34 @@ struct v3dv_format {
 
    /* Whether the return value is 16F/I/UI or 32F/I/UI. */
    uint8_t return_size;
+};
+
+struct v3dv_format {
+   /* non 0 plane count implies supported */
+   uint8_t plane_count;
+
+   struct v3dv_format_plane planes[V3DV_MAX_PLANE_COUNT];
 
    /* If the format supports (linear) filtering when texturing. */
    bool supports_filtering;
 };
+
+static uint8_t v3dv_plane_from_aspect(VkImageAspectFlagBits aspect)
+{
+   switch (aspect) {
+   case VK_IMAGE_ASPECT_COLOR_BIT:
+   case VK_IMAGE_ASPECT_DEPTH_BIT:
+   case VK_IMAGE_ASPECT_STENCIL_BIT:
+   case VK_IMAGE_ASPECT_PLANE_0_BIT:
+      return 0;
+   case VK_IMAGE_ASPECT_PLANE_1_BIT:
+      return 1;
+   case VK_IMAGE_ASPECT_PLANE_2_BIT:
+      return 2;
+   default:
+      unreachable("invalid image aspect");
+   }
+}
 
 struct v3d_resource_slice {
    uint32_t offset;
@@ -590,24 +613,53 @@ struct v3dv_image {
    struct vk_image vk;
 
    const struct v3dv_format *format;
-   uint32_t cpp;
    bool tiled;
 
-   struct v3d_resource_slice slices[V3D_MAX_MIP_LEVELS];
-   uint64_t size; /* Total size in bytes */
-   uint32_t cube_map_stride;
+   uint8_t plane_count;
 
-   struct v3dv_device_memory *mem;
-   VkDeviceSize mem_offset;
-   uint32_t alignment;
+   /* When 0, planes use disjoint memory and the buffer has one bound device
+    * memory per plane. When non 0, planes use a single bound device memory
+    * and this stores the total size of the image in bytes.
+    */
+   uint64_t non_disjoint_size;
+
+   struct {
+      uint32_t cpp;
+
+      struct v3d_resource_slice slices[V3D_MAX_MIP_LEVELS];
+      /* Total size of the plane in bytes. */
+      uint64_t size;
+      uint32_t cube_map_stride;
+
+      /* if not using disjoint memory, mem is the same for all planes
+       */
+      struct v3dv_device_memory *mem;
+      VkDeviceSize mem_offset;
+      uint32_t alignment;
+
+      /* pre-subsampled per plane width and height
+       */
+      uint32_t width;
+      uint32_t height;
+   } planes[V3DV_MAX_PLANE_COUNT];
 
 #ifdef ANDROID
    /* Image is backed by VK_ANDROID_native_buffer, */
-   bool is_native_buffer_memory;
+   bool is_native_buffer_memory; // TODO: does this need to be per plane
 #endif
 };
 
 VkImageViewType v3dv_image_type_to_view_type(VkImageType type);
+
+static uint32_t
+v3dv_image_aspect_to_plane(const struct v3dv_image *image,
+                           VkImageAspectFlagBits aspect)
+{
+   assert(util_bitcount(aspect) == 1);
+   assert(!(aspect & ~image->vk.aspects));
+
+   return util_bitcount(image->vk.aspects & (aspect - 1));
+}
 
 /* Pre-generating packets needs to consider changes in packet sizes across hw
  * versions. Keep things simple and allocate enough space for any supported
@@ -626,36 +678,43 @@ struct v3dv_image_view {
    struct vk_image_view vk;
 
    const struct v3dv_format *format;
-   bool swap_rb;
-   bool channel_reverse;
-   uint32_t internal_bpp;
-   uint32_t internal_type;
-   uint32_t offset;
 
-   /* Precomputed (composed from createinfo->components and formar swizzle)
-    * swizzles to pass in to the shader key.
-    *
-    * This could be also included on the descriptor bo, but the shader state
-    * packet doesn't need it on a bo, so we can just avoid a memory copy
-    */
-   uint8_t swizzle[4];
+   uint8_t plane_count;
+   struct {
+      uint8_t image_plane;
 
-   /* Prepacked TEXTURE_SHADER_STATE. It will be copied to the descriptor info
-    * during UpdateDescriptorSets.
-    *
-    * Empirical tests show that cube arrays need a different shader state
-    * depending on whether they are used with a sampler or not, so for these
-    * we generate two states and select the one to use based on the descriptor
-    * type.
-    */
-   uint8_t texture_shader_state[2][V3DV_TEXTURE_SHADER_STATE_LENGTH];
+      bool swap_rb;
+      bool channel_reverse;
+      uint32_t internal_bpp;
+      uint32_t internal_type;
+      uint32_t offset;
+
+      /* Precomputed (composed from createinfo->components and formar swizzle)
+       * swizzles to pass in to the shader key.
+       *
+       * This could be also included on the descriptor bo, but the shader state
+       * packet doesn't need it on a bo, so we can just avoid a memory copy
+       */
+      uint8_t swizzle[4];
+
+      /* Prepacked TEXTURE_SHADER_STATE. It will be copied to the descriptor info
+       * during UpdateDescriptorSets.
+       *
+       * Empirical tests show that cube arrays need a different shader state
+       * depending on whether they are used with a sampler or not, so for these
+       * we generate two states and select the one to use based on the descriptor
+       * type.
+       */
+      uint8_t texture_shader_state[2][V3DV_TEXTURE_SHADER_STATE_LENGTH];
+   } planes[V3DV_MAX_PLANE_COUNT];
 };
 
 VkResult v3dv_create_image_view(struct v3dv_device *device,
                                 const VkImageViewCreateInfo *pCreateInfo,
                                 VkImageView *pView);
 
-uint32_t v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer);
+uint32_t v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer,
+                           uint8_t plane);
 
 struct v3dv_buffer {
    struct vk_object_base base;
@@ -1027,6 +1086,7 @@ struct v3dv_copy_buffer_to_image_cpu_job_info {
    uint32_t mip_level;
    uint32_t base_layer;
    uint32_t layer_count;
+   uint8_t plane;
 };
 
 struct v3dv_csd_indirect_cpu_job_info {
@@ -1866,6 +1926,8 @@ struct v3dv_descriptor_map {
    int array_size[DESCRIPTOR_MAP_SIZE];
    bool used[DESCRIPTOR_MAP_SIZE];
 
+   uint8_t plane[DESCRIPTOR_MAP_SIZE];
+
    /* NOTE: the following is only for sampler, but this is the easier place to
     * put it.
     */
@@ -1879,11 +1941,12 @@ struct v3dv_sampler {
    bool unnormalized_coordinates;
    bool clamp_to_transparent_black_border;
 
-   /* Prepacked SAMPLER_STATE, that is referenced as part of the tmu
+   /* Prepacked per plane SAMPLER_STATE, that is referenced as part of the tmu
     * configuration. If needed it will be copied to the descriptor info during
     * UpdateDescriptorSets
     */
-   uint8_t sampler_state[V3DV_SAMPLER_STATE_LENGTH];
+   uint8_t plane_count;
+   uint8_t sampler_states[V3DV_MAX_PLANE_COUNT][V3DV_SAMPLER_STATE_LENGTH];
 };
 
 struct v3dv_descriptor_template_entry {
@@ -2152,7 +2215,8 @@ uint32_t v3dv_physical_device_device_id(struct v3dv_physical_device *dev);
 #define v3dv_debug_ignored_stype(sType) \
    mesa_logd("%s: ignored VkStructureType %u:%s\n\n", __func__, (sType), vk_StructureType_to_str(sType))
 
-const uint8_t *v3dv_get_format_swizzle(struct v3dv_device *device, VkFormat f);
+const uint8_t *v3dv_get_format_swizzle(struct v3dv_device *device, VkFormat f,
+                                       uint8_t plane);
 uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, bool compare_enable);
 const struct v3dv_format *
 v3dv_get_compatible_tfu_format(struct v3dv_device *device,
@@ -2225,6 +2289,7 @@ v3dv_descriptor_map_get_descriptor_bo(struct v3dv_device *device,
                                       struct v3dv_descriptor_map *map,
                                       struct v3dv_pipeline_layout *pipeline_layout,
                                       uint32_t index,
+                                      uint8_t plane,
                                       VkDescriptorType *out_type);
 
 const struct v3dv_sampler *
@@ -2238,14 +2303,16 @@ v3dv_descriptor_map_get_sampler_state(struct v3dv_device *device,
                                       struct v3dv_descriptor_state *descriptor_state,
                                       struct v3dv_descriptor_map *map,
                                       struct v3dv_pipeline_layout *pipeline_layout,
-                                      uint32_t index);
+                                      uint32_t index,
+                                      uint8_t plane);
 
 struct v3dv_cl_reloc
 v3dv_descriptor_map_get_texture_shader_state(struct v3dv_device *device,
                                              struct v3dv_descriptor_state *descriptor_state,
                                              struct v3dv_descriptor_map *map,
                                              struct v3dv_pipeline_layout *pipeline_layout,
-                                             uint32_t index);
+                                             uint32_t index,
+                                             uint8_t plane);
 
 struct v3dv_bo*
 v3dv_descriptor_map_get_texture_bo(struct v3dv_descriptor_state *descriptor_state,
