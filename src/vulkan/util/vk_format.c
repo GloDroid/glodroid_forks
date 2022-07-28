@@ -435,6 +435,7 @@ vk_component_mapping_to_pipe_swizzle(VkComponentMapping mapping,
 
 #define y_plane(__plane_fmt, __ycbcr_swizzle, dhs, dvs) \
    { .format = __plane_fmt, \
+     .has_luma = true, \
      .has_chroma = false, \
      .denominator_scales = { dhs, dvs, }, \
      .ycbcr_swizzle = __ycbcr_swizzle, \
@@ -442,6 +443,15 @@ vk_component_mapping_to_pipe_swizzle(VkComponentMapping mapping,
 
 #define c_plane(__plane_fmt, __ycbcr_swizzle, dhs, dvs) \
    { .format = __plane_fmt, \
+     .has_luma = false, \
+     .has_chroma = true, \
+     .denominator_scales = { dhs, dvs, }, \
+     .ycbcr_swizzle = __ycbcr_swizzle, \
+   }
+
+#define yc_plane(__plane_fmt, __ycbcr_swizzle, dhs, dvs) \
+   { .format = __plane_fmt, \
+     .has_luma = true, \
      .has_chroma = true, \
      .denominator_scales = { dhs, dvs, }, \
      .ycbcr_swizzle = __ycbcr_swizzle, \
@@ -463,28 +473,58 @@ vk_component_mapping_to_pipe_swizzle(VkComponentMapping mapping,
    }
 
 static const struct vk_format_ycbcr_info ycbcr_infos[] = {
+   /* Single plane Combined YYCbCr 4:2:2. */
    ycbcr_fmt(VK_FORMAT_G8B8G8R8_422_UNORM, 1,
-             y_plane(VK_FORMAT_G8B8G8R8_422_UNORM, YCBCR_SWIZ(B, G, R, ZERO), 1, 1)),
+             yc_plane(VK_FORMAT_G8B8G8R8_422_UNORM, YCBCR_SWIZ(B, G, R, ZERO), 1, 1)),
    ycbcr_fmt(VK_FORMAT_B8G8R8G8_422_UNORM, 1,
-             y_plane(VK_FORMAT_B8G8R8G8_422_UNORM, YCBCR_SWIZ(B, G, R, ZERO), 1, 1)),
+             yc_plane(VK_FORMAT_B8G8R8G8_422_UNORM, YCBCR_SWIZ(B, G, R, ZERO), 1, 1)),
+
+   ycbcr_fmt(VK_FORMAT_G16B16G16R16_422_UNORM, 1,
+             yc_plane(VK_FORMAT_G16B16G16R16_422_UNORM, YCBCR_SWIZ(B, G, R, ZERO), 1, 1)),
+   ycbcr_fmt(VK_FORMAT_B16G16R16G16_422_UNORM, 1,
+             yc_plane(VK_FORMAT_B16G16R16G16_422_UNORM, YCBCR_SWIZ(B, G, R, ZERO), 1, 1)),
+
+   /* Two planes Y CbCr 4:2:0/4:2:2 */
+   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, 2,
+             y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R8G8_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 2, 2)),
+   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_422_UNORM, 2,
+             y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R8G8_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 2, 1)),
+
+   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_420_UNORM, 2,
+             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R16G16_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 2, 2)),
+   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_422_UNORM, 2,
+             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R16G16_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 2, 1)),
+
+   /* Three planes Y Cb Cr 4:2:0/4:2:2/4:4:4 */
    ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM, 3,
              y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
              c_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 2, 2),
              c_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 2, 2)),
-   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, 2,
-             y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
-             c_plane(VK_FORMAT_R8G8_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 2, 2)),
    ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM, 3,
              y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
              c_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 2, 1),
              c_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 2, 1)),
-   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_422_UNORM, 2,
-             y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
-             c_plane(VK_FORMAT_R8G8_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 2, 1)),
    ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM, 3,
              y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
              c_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 1, 1),
              c_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 1, 1)),
+
+   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM, 3,
+             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 2, 2),
+             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 2, 2)),
+   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM, 3,
+             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 2, 1),
+             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 2, 1)),
+   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM, 3,
+             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 1, 1)),
 
    fmt_unsupported(VK_FORMAT_R10X6_UNORM_PACK16),
    fmt_unsupported(VK_FORMAT_R10X6G10X6_UNORM_2PACK16),
@@ -506,27 +546,20 @@ static const struct vk_format_ycbcr_info ycbcr_infos[] = {
    fmt_unsupported(VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16),
    fmt_unsupported(VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16),
    fmt_unsupported(VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16),
-   fmt_unsupported(VK_FORMAT_G16B16G16R16_422_UNORM),
-   fmt_unsupported(VK_FORMAT_B16G16R16G16_422_UNORM),
+};
 
-   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM, 3,
+/* Two planes Y CbCr 444 */
+static const struct vk_format_ycbcr_info ycbcr_2plane_444_infos[] = {
+   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_444_UNORM, 2,
+             y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R8G8_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 1, 1)),
+
+   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_444_UNORM, 2,
              y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
-             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 2, 2),
-             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 2, 2)),
-   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_420_UNORM, 2,
-             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
-             c_plane(VK_FORMAT_R16G16_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 2, 2)),
-   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM, 3,
-             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
-             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 2, 1),
-             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 2, 1)),
-   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_422_UNORM, 2,
-             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
-             c_plane(VK_FORMAT_R16G16_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 2, 1)),
-   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM, 3,
-             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
-             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 1, 1),
-             c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 1, 1)),
+             c_plane(VK_FORMAT_R16G16_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 1, 1)),
+
+   fmt_unsupported(VK_FORMAT_G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16),
+   fmt_unsupported(VK_FORMAT_G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16),
 };
 
 const struct vk_format_ycbcr_info *
@@ -534,14 +567,35 @@ vk_format_get_ycbcr_info(VkFormat format)
 {
    uint32_t enum_offset = VK_ENUM_OFFSET(format);
    uint32_t ext_number = VK_ENUM_EXTENSION(format);
-   if (ext_number != _VK_KHR_sampler_ycbcr_conversion_number)
+
+   const struct vk_format_ycbcr_info *ycbcr_info = NULL;
+
+   switch (ext_number) {
+   case _VK_KHR_sampler_ycbcr_conversion_number:
+      if (enum_offset >= ARRAY_SIZE(ycbcr_infos))
+         return NULL;
+
+      ycbcr_info = &ycbcr_infos[enum_offset];
+      break;
+
+   case _VK_EXT_ycbcr_2plane_444_formats_number:
+      /* TODO: this requires addition of pipe formats to work correctly */
+#if 1
+      return NULL;
+#else
+      if (enum_offset >= ARRAY_SIZE(ycbcr_2plane_444_infos))
+         return NULL;
+
+      ycbcr_info = &ycbcr_2plane_444_infos[enum_offset];
+      break;
+#endif
+
+   default:
+      return NULL;
+   }
+
+   if (ycbcr_info->n_planes == 0)
       return NULL;
 
-   if (enum_offset >= ARRAY_SIZE(ycbcr_infos))
-      return NULL;
-
-   if (ycbcr_infos[enum_offset].n_planes == 0)
-      return NULL;
-
-   return &ycbcr_infos[enum_offset];
+   return ycbcr_info;
 }
