@@ -27,6 +27,8 @@
 
 #include "util/format/u_format.h"
 #include "vulkan/util/vk_util.h"
+#include "vk_enum_to_str.h"
+#include "vk_enum_defines.h"
 
 #define SWIZ(x,y,z,w) {   \
    PIPE_SWIZZLE_##x,      \
@@ -45,6 +47,23 @@
          return_size,                                               \
       }},                                                           \
       supports_filtering,                                           \
+   }
+
+#define PLANE(rt, tex, swiz, return_size)  \
+   {                                       \
+      V3D_OUTPUT_IMAGE_FORMAT_##rt,        \
+      TEXTURE_DATA_FORMAT_##tex,           \
+      swiz,                                \
+      return_size                          \
+   }
+
+#define YCBCR_FORMAT(vk, supports_filtering, plane_count, ...)  \
+   [VK_ENUM_OFFSET(VK_FORMAT_##vk)] = {                         \
+      plane_count,                                              \
+      {                                                         \
+         __VA_ARGS__,                                           \
+      },                                                        \
+      supports_filtering,                                       \
    }
 
 #define SWIZ_X001 SWIZ(X, 0, 0, 1)
@@ -222,6 +241,97 @@ static const struct v3dv_format format_table_4444[] = {
    FORMAT(A4R4G4B4_UNORM_PACK16_EXT, ABGR4444, RGBA4, SWIZ_YZWX, 16, true), /* Reverse + RB swap */
 };
 
+static const struct v3dv_format format_table_ycbcr[] = {
+   /* Single plane YYUV 4:2:2 formats
+    * TODO: there are bugs with handling these most likely due to Vulkan
+    * considering them compressed.
+    */
+#if 0
+   YCBCR_FORMAT(B8G8R8G8_422_UNORM, false, 1,
+       PLANE(RGBA8, RGBA8, SWIZ(X, Y, Z, W), 16)
+   ),
+   YCBCR_FORMAT(G8B8G8R8_422_UNORM, false, 1,
+       PLANE(NO, RGBA8, SWIZ(Y, Z, W, X), 16)
+   ),
+
+   YCBCR_FORMAT(B16G16R16G16_422_UNORM, false, 1,
+       PLANE(NO, RGBA16, SWIZ(X, Y, Z, W), 32)
+   ),
+   YCBCR_FORMAT(G16B16G16R16_422_UNORM, false, 1,
+       PLANE(NO, RGBA16, SWIZ(Y, Z, W, X), 32)
+   ),
+#endif
+
+   YCBCR_FORMAT(G8_B8R8_2PLANE_420_UNORM, false, 2,
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16),
+       PLANE(RG8, RG8, SWIZ(X, Y, 0, 1), 16)
+   ),
+   YCBCR_FORMAT(G8_B8R8_2PLANE_422_UNORM, false, 2,
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16),
+       PLANE(RG8, RG8, SWIZ(X, Y, 0, 1), 16)
+   ),
+
+   YCBCR_FORMAT(G16_B16R16_2PLANE_420_UNORM, false, 2,
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 16),
+       PLANE(NO, RG16, SWIZ(X, Y, 0, 1), 16)
+   ),
+   YCBCR_FORMAT(G16_B16R16_2PLANE_422_UNORM, false, 2,
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 16),
+       PLANE(NO, RG16, SWIZ(X, Y, 0, 1), 16)
+   ),
+
+#if 0
+   /* TODO: work out hardware conversion */
+   YCBCR_FORMAT(G16_B16R16_2PLANE_420_UNORM, false, 2,
+       PLANE(NO, YCBCR_LUMA, SWIZ(0, 0, 0, 1), 16),
+       PLANE(NO, YCBCR_420_CHROMA, SWIZ(0, 0, 0, 1), 16)
+   ),
+#endif
+
+   YCBCR_FORMAT(G8_B8_R8_3PLANE_420_UNORM, false, 3,
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16),
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16),
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16)
+   ),
+   YCBCR_FORMAT(G8_B8_R8_3PLANE_422_UNORM, false, 3,
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16),
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16),
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16)
+   ),
+   YCBCR_FORMAT(G8_B8_R8_3PLANE_444_UNORM, false, 3,
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16),
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16),
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16)
+   ),
+
+   YCBCR_FORMAT(G16_B16_R16_3PLANE_420_UNORM, false, 3,
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 32),
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 32),
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 32)
+   ),
+   YCBCR_FORMAT(G16_B16_R16_3PLANE_422_UNORM, false, 3,
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 32),
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 32),
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 32)
+   ),
+   YCBCR_FORMAT(G16_B16_R16_3PLANE_444_UNORM, false, 3,
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 32),
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 32),
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 32)
+   ),
+};
+
+static const struct v3dv_format format_table_ycbcr_2plane_444[] = {
+   YCBCR_FORMAT(G8_B8R8_2PLANE_444_UNORM, false, 2,
+       PLANE(R8, R8, SWIZ(X, 0, 0, 1), 16),
+       PLANE(RG8, RG8, SWIZ(X, Y, 0, 1), 16)
+   ),
+   YCBCR_FORMAT(G16_B16R16_2PLANE_444_UNORM, false, 2,
+       PLANE(NO, R16, SWIZ(X, 0, 0, 1), 16),
+       PLANE(NO, RG16, SWIZ(X, Y, 0, 1), 16)
+   ),
+};
+
 const struct v3dv_format *
 v3dX(get_format)(VkFormat format)
 {
@@ -229,12 +339,19 @@ v3dX(get_format)(VkFormat format)
    if (format < ARRAY_SIZE(format_table) && format_table[format].plane_count)
       return &format_table[format];
 
-   switch (format) {
-   /* VK_EXT_4444_formats */
-   case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
-   case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
-      return &format_table_4444[VK_ENUM_OFFSET(format)];
+   uint32_t ext_number = VK_ENUM_EXTENSION(format);
+   uint32_t enum_offset = VK_ENUM_OFFSET(format);
 
+   switch (ext_number) {
+   case _VK_EXT_4444_formats_number:
+      return &format_table_4444[enum_offset];
+   case _VK_KHR_sampler_ycbcr_conversion_number:
+      return &format_table_ycbcr[enum_offset];
+/* Need to add a couple extra pipe formats to support this */
+#if 0
+   case _VK_EXT_ycbcr_2plane_444_formats_number:
+      return &format_table_ycbcr_2plane_444[enum_offset];
+#endif
    default:
       return NULL;
    }

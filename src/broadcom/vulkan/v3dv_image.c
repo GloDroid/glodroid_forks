@@ -351,6 +351,9 @@ create_image(struct v3dv_device *device,
    image->format = format;
    image->plane_count = vk_format_get_plane_count(pCreateInfo->format);
 
+   const struct vk_format_ycbcr_info *ycbcr_info =
+      vk_format_get_ycbcr_info(image->vk.format);
+
    for (uint8_t plane = 0; plane < image->plane_count; plane++) {
       VkFormat plane_format =
          vk_format_get_plane_format(image->vk.format, plane);
@@ -359,6 +362,14 @@ create_image(struct v3dv_device *device,
 
       image->planes[plane].width = image->vk.extent.width;
       image->planes[plane].height = image->vk.extent.height;
+
+      if (ycbcr_info) {
+         image->planes[plane].width /=
+            ycbcr_info->planes[plane].denominator_scales[0];
+
+         image->planes[plane].height /=
+            ycbcr_info->planes[plane].denominator_scales[1];
+      }
    }
    image->tiled = tiling == VK_IMAGE_TILING_OPTIMAL ||
                   (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT &&

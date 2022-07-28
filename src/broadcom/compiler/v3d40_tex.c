@@ -190,7 +190,8 @@ handle_tex_src(struct v3d_compile *c,
                 }
                 break;
         }
-
+        case nir_tex_src_plane:
+                break;
         default:
                 unreachable("unknown texture source");
         }

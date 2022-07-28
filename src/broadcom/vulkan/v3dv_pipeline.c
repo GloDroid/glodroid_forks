@@ -30,6 +30,7 @@
 #include "qpu/qpu_disasm.h"
 
 #include "compiler/nir/nir_builder.h"
+#include "nir/nir_vulkan.h"
 #include "nir/nir_serialize.h"
 
 #include "util/u_atomic.h"
@@ -356,6 +357,31 @@ nir_optimize(nir_shader *nir, bool allow_copies)
    } while (progress);
 }
 
+static const struct vk_ycbcr_conversion *
+lookup_ycbcr_conversion(const void *_pipeline_layout, uint32_t set,
+                        uint32_t binding, uint32_t array_index)
+{
+   struct v3dv_pipeline_layout *pipeline_layout =
+      (struct v3dv_pipeline_layout *) _pipeline_layout;
+
+   struct v3dv_descriptor_set_layout *set_layout =
+      pipeline_layout->set[set].layout;
+
+   struct v3dv_descriptor_set_binding_layout *bind_layout =
+      &set_layout->binding[binding];
+
+   if (bind_layout->immutable_samplers_offset) {
+      const struct v3dv_sampler *immutable_samplers =
+         v3dv_immutable_samplers(set_layout, bind_layout);
+
+      const struct v3dv_sampler *sampler = &immutable_samplers[array_index];
+
+      return sampler->conversion;
+   } else {
+      return NULL;
+   }
+}
+
 static void
 preprocess_nir(nir_shader *nir)
 {
@@ -665,6 +691,23 @@ lower_vulkan_resource_index(nir_builder *b,
    nir_instr_remove(&instr->instr);
 }
 
+static uint8_t
+tex_instr_get_and_remove_plane_src(nir_tex_instr *tex)
+{
+   int plane_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_plane);
+   if (plane_src_idx < 0)
+       return 0;
+
+   uint8_t plane = nir_src_as_uint(tex->src[plane_src_idx].src);
+
+   // don't remove instr; needed to stop texture loads on different planes
+   // from being optimised away as the compiler thinks they're doing the
+   // same load twice.
+   // nir_tex_instr_remove_src(tex, plane_src_idx);
+
+   return plane;
+}
+
 /* Returns return_size, so it could be used for the case of not having a
  * sampler object
  */
@@ -679,6 +722,8 @@ lower_tex_src_to_offset(nir_builder *b,
    unsigned array_elements = 1;
    nir_tex_src *src = &instr->src[src_idx];
    bool is_sampler = src->src_type == nir_tex_src_sampler_deref;
+
+   uint8_t plane = tex_instr_get_and_remove_plane_src(instr);
 
    /* We compute first the offsets */
    nir_deref_instr *deref = nir_instr_as_deref(src->src.ssa->parent_instr);
@@ -765,7 +810,7 @@ lower_tex_src_to_offset(nir_builder *b,
                          binding_layout->array_size,
                          0,
                          return_size,
-                         0);
+                         plane);
 
    if (is_sampler)
       instr->sampler_index = desc_index;
@@ -1752,6 +1797,9 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
 
    assert(pipeline->shared_data &&
           pipeline->shared_data->maps[p_stage->stage]);
+
+   NIR_PASS_V(p_stage->nir, nir_vk_lower_ycbcr_tex,
+              lookup_ycbcr_conversion, layout);
 
    nir_shader_gather_info(p_stage->nir, nir_shader_get_entrypoint(p_stage->nir));
 

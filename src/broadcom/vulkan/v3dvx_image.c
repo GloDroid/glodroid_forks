@@ -45,6 +45,9 @@ pack_texture_shader_state_helper(struct v3dv_device *device,
           image->vk.samples == VK_SAMPLE_COUNT_4_BIT);
    const uint32_t msaa_scale = image->vk.samples == VK_SAMPLE_COUNT_1_BIT ? 1 : 2;
 
+   const struct vk_format_ycbcr_info *ycbcr_info =
+      vk_format_get_ycbcr_info(image->vk.format);
+
    for (uint8_t plane = 0; plane < image_view->plane_count; plane++) {
       uint8_t iplane = image_view->planes[plane].image_plane;
       v3dvx_pack(image_view->planes[plane].texture_shader_state[index], TEXTURE_SHADER_STATE, tex) {
