@@ -35,8 +35,12 @@ static void *
 descriptor_bo_map(struct v3dv_device *device,
                   struct v3dv_descriptor_set *set,
                   const struct v3dv_descriptor_set_binding_layout *binding_layout,
-                  uint32_t array_index)
+                  uint32_t array_index,
+                  uint8_t plane)
 {
+   // don't suport arrays with multiplanar images TODO FIXME whatever
+   if (plane)
+      assert(array_index == 0);
    /* Inline uniform blocks use BO memory to store UBO contents, not
     * descriptor data, so their descriptor BO size is 0 even though they
     * do use BO memory.
@@ -47,7 +51,7 @@ descriptor_bo_map(struct v3dv_device *device,
 
    return set->pool->bo->map +
       set->base_offset + binding_layout->descriptor_offset +
-      array_index * bo_size;
+      array_index * bo_size + plane * bo_size;
 }
 
 static bool
@@ -115,6 +119,7 @@ v3dv_descriptor_map_get_descriptor_bo(struct v3dv_device *device,
                                       struct v3dv_descriptor_map *map,
                                       struct v3dv_pipeline_layout *pipeline_layout,
                                       uint32_t index,
+                                      uint8_t plane,
                                       VkDescriptorType *out_type)
 {
    assert(index < map->num_desc);
@@ -132,18 +137,24 @@ v3dv_descriptor_map_get_descriptor_bo(struct v3dv_device *device,
    const struct v3dv_descriptor_set_binding_layout *binding_layout =
       &set->layout->binding[binding_number];
 
+
+   uint32_t bo_size = v3dv_X(device, descriptor_bo_size)(binding_layout->type);
+
    assert(binding_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK ||
-          v3dv_X(device, descriptor_bo_size)(binding_layout->type) > 0);
+          bo_size > 0);
    if (out_type)
       *out_type = binding_layout->type;
 
    uint32_t array_index = map->array_index[index];
    assert(array_index < binding_layout->array_size);
 
+   // don't suport arrays with multiplanar images TODO FIXME whatever
+   if (plane)
+      assert(array_index == 0);
    struct v3dv_cl_reloc reloc = {
       .bo = set->pool->bo,
       .offset = set->base_offset + binding_layout->descriptor_offset +
-      array_index * v3dv_X(device, descriptor_bo_size)(binding_layout->type),
+      array_index * bo_size + plane * bo_size,
    };
 
    return reloc;
@@ -210,13 +221,14 @@ v3dv_descriptor_map_get_sampler_state(struct v3dv_device *device,
                                       struct v3dv_descriptor_state *descriptor_state,
                                       struct v3dv_descriptor_map *map,
                                       struct v3dv_pipeline_layout *pipeline_layout,
-                                      uint32_t index)
+                                      uint32_t index,
+                                      uint8_t plane)
 {
    VkDescriptorType type;
    struct v3dv_cl_reloc reloc =
       v3dv_descriptor_map_get_descriptor_bo(device, descriptor_state, map,
                                             pipeline_layout,
-                                            index, &type);
+                                            index, map->plane[index], &type);
 
    assert(type == VK_DESCRIPTOR_TYPE_SAMPLER ||
           type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
@@ -250,7 +262,8 @@ v3dv_descriptor_map_get_texture_bo(struct v3dv_descriptor_state *descriptor_stat
       assert(descriptor->image_view);
       struct v3dv_image *image =
          (struct v3dv_image *) descriptor->image_view->vk.image;
-      return image->mem->bo;
+      // TODO: disjoint
+      return image->planes[0].mem->bo;
    }
    default:
       unreachable("descriptor type doesn't has a texture bo");
@@ -262,14 +275,15 @@ v3dv_descriptor_map_get_texture_shader_state(struct v3dv_device *device,
                                              struct v3dv_descriptor_state *descriptor_state,
                                              struct v3dv_descriptor_map *map,
                                              struct v3dv_pipeline_layout *pipeline_layout,
-                                             uint32_t index)
+                                             uint32_t index,
+                                             uint8_t plane)
 {
    VkDescriptorType type;
    struct v3dv_cl_reloc reloc =
       v3dv_descriptor_map_get_descriptor_bo(device,
                                             descriptor_state, map,
                                             pipeline_layout,
-                                            index, &type);
+                                            index, map->plane[index], &type);
 
    assert(type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
           type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
@@ -887,13 +901,15 @@ descriptor_set_create(struct v3dv_device *device,
          uint32_t combined_offset =
             layout->binding[b].type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ?
             v3dv_X(device, combined_image_sampler_sampler_state_offset)() : 0;
+         for (uint8_t plane = 0; plane < samplers[i].plane_count; plane++) {
+            void *desc_map = descriptor_bo_map(device, set, &layout->binding[b],
+                                               i, plane);
+            desc_map += combined_offset;
 
-         void *desc_map = descriptor_bo_map(device, set, &layout->binding[b], i);
-         desc_map += combined_offset;
-
-         memcpy(desc_map,
-                samplers[i].sampler_state,
-                sizeof(samplers[i].sampler_state));
+            memcpy(desc_map,
+                   samplers[i].sampler_states[plane],
+                   sizeof(samplers[i].sampler_states[plane]));
+         }
       }
    }
 
@@ -966,8 +982,10 @@ descriptor_bo_copy(struct v3dv_device *device,
 {
    assert(dst_binding_layout->type == src_binding_layout->type);
 
-   void *dst_map = descriptor_bo_map(device, dst_set, dst_binding_layout, dst_array_index);
-   void *src_map = descriptor_bo_map(device, src_set, src_binding_layout, src_array_index);
+   void *dst_map = descriptor_bo_map(device, dst_set, dst_binding_layout,
+                                     dst_array_index, 0);
+   void *src_map = descriptor_bo_map(device, src_set, src_binding_layout,
+                                     src_array_index, 0);
 
    memcpy(dst_map, src_map, v3dv_X(device, descriptor_bo_size)(src_binding_layout->type));
 }
@@ -1004,26 +1022,28 @@ write_image_descriptor(struct v3dv_device *device,
    descriptor->sampler = sampler;
    descriptor->image_view = iview;
 
-   void *desc_map = descriptor_bo_map(device, set,
-                                      binding_layout, array_index);
+   for (uint8_t plane = 0; plane < iview->plane_count; plane++) {
+      void *desc_map = descriptor_bo_map(device, set,
+                                         binding_layout, array_index, plane);
 
-   if (iview) {
-      const uint32_t tex_state_index =
-         iview->vk.view_type != VK_IMAGE_VIEW_TYPE_CUBE_ARRAY ||
-         desc_type != VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ? 0 : 1;
-      memcpy(desc_map,
-             iview->texture_shader_state[tex_state_index],
-             sizeof(iview->texture_shader_state[0]));
-      desc_map += v3dv_X(device, combined_image_sampler_sampler_state_offset)();
-   }
+      if (iview) {
+         const uint32_t tex_state_index =
+            iview->vk.view_type != VK_IMAGE_VIEW_TYPE_CUBE_ARRAY ||
+            desc_type != VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ? 0 : 1;
+         memcpy(desc_map,
+                iview->planes[plane].texture_shader_state[tex_state_index],
+                sizeof(iview->planes[plane].texture_shader_state[0]));
+         desc_map += v3dv_X(device, combined_image_sampler_sampler_state_offset)();
+      }
 
-   if (sampler && !binding_layout->immutable_samplers_offset) {
-      /* For immutable samplers this was already done as part of the
-       * descriptor set create, as that info can't change later
-       */
-      memcpy(desc_map,
-             sampler->sampler_state,
-             sizeof(sampler->sampler_state));
+      if (sampler && !binding_layout->immutable_samplers_offset) {
+         /* For immutable samplers this was already done as part of the
+          * descriptor set create, as that info can't change later
+          */
+         memcpy(desc_map,
+                sampler->sampler_states[plane],
+                sizeof(sampler->sampler_states[plane]));
+      }
    }
 }
 
@@ -1041,7 +1061,8 @@ write_buffer_view_descriptor(struct v3dv_device *device,
    descriptor->type = desc_type;
    descriptor->buffer_view = bview;
 
-   void *desc_map = descriptor_bo_map(device, set, binding_layout, array_index);
+   void *desc_map = descriptor_bo_map(device, set, binding_layout,
+                                      array_index, 0);
 
    memcpy(desc_map,
           bview->texture_shader_state,
@@ -1061,7 +1082,7 @@ write_inline_uniform_descriptor(struct v3dv_device *device,
    descriptor->type = VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK;
    descriptor->buffer = NULL;
 
-   void *desc_map = descriptor_bo_map(device, set, binding_layout, 0);
+   void *desc_map = descriptor_bo_map(device, set, binding_layout, 0, 0);
    memcpy(desc_map + offset, data, size);
 
    /* Inline uniform buffers allocate BO space in the pool for all inline
@@ -1143,7 +1164,12 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
             const VkDescriptorImageInfo *image_info = writeset->pImageInfo + j;
             V3DV_FROM_HANDLE(v3dv_image_view, iview, image_info->imageView);
-            V3DV_FROM_HANDLE(v3dv_sampler, sampler, image_info->sampler);
+            struct v3dv_sampler *sampler = NULL;
+            if (!binding_layout->immutable_samplers_offset) {
+                V3DV_FROM_HANDLE(v3dv_sampler, _sampler, image_info->sampler);
+                sampler = _sampler;
+            }
+
             write_image_descriptor(device, descriptor, writeset->descriptorType,
                                    set, binding_layout, iview, sampler,
                                    writeset->dstArrayElement + j);

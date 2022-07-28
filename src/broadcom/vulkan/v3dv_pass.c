@@ -332,10 +332,12 @@ subpass_get_granularity(struct v3dv_device *device,
          &pass->attachments[attachment_idx].desc;
       const struct v3dv_format *format = v3dv_X(device, get_format)(desc->format);
       uint32_t internal_type, internal_bpp;
-      v3dv_X(device, get_internal_type_bpp_for_output_format)
-         (format->rt_type, &internal_type, &internal_bpp);
+      for (uint8_t plane = 0; plane < format->plane_count; plane++) {
+         v3dv_X(device, get_internal_type_bpp_for_output_format)
+            (format->planes[plane].rt_type, &internal_type, &internal_bpp);
 
-      max_bpp = MAX2(max_bpp, internal_bpp);
+         max_bpp = MAX2(max_bpp, internal_bpp);
+      }
 
       if (desc->samples > VK_SAMPLE_COUNT_1_BIT)
          msaa = true;

@@ -37,11 +37,13 @@
 
 #define FORMAT(vk, rt, tex, swiz, return_size, supports_filtering)  \
    [VK_ENUM_OFFSET(VK_FORMAT_##vk)] = {                             \
-      true,                                                         \
-      V3D_OUTPUT_IMAGE_FORMAT_##rt,                                 \
-      TEXTURE_DATA_FORMAT_##tex,                                    \
-      swiz,                                                         \
-      return_size,                                                  \
+      1,                                                            \
+      {{                                                            \
+         V3D_OUTPUT_IMAGE_FORMAT_##rt,                              \
+         TEXTURE_DATA_FORMAT_##tex,                                 \
+         swiz,                                                      \
+         return_size,                                               \
+      }},                                                           \
       supports_filtering,                                           \
    }
 
@@ -224,7 +226,7 @@ const struct v3dv_format *
 v3dX(get_format)(VkFormat format)
 {
    /* Core formats */
-   if (format < ARRAY_SIZE(format_table) && format_table[format].supported)
+   if (format < ARRAY_SIZE(format_table) && format_table[format].plane_count)
       return &format_table[format];
 
    switch (format) {
@@ -368,22 +370,35 @@ v3dX(get_internal_type_bpp_for_output_format)(uint32_t format,
    }
 }
 
-bool
-v3dX(format_supports_tlb_resolve)(const struct v3dv_format *format)
+static bool
+format_plane_supports_tbl_resolve(const struct v3dv_format_plane *plane)
 {
    uint32_t type, bpp;
-   v3dX(get_internal_type_bpp_for_output_format)(format->rt_type, &type, &bpp);
+   v3dX(get_internal_type_bpp_for_output_format)(plane->rt_type, &type, &bpp);
    return type == V3D_INTERNAL_TYPE_8 || type == V3D_INTERNAL_TYPE_16F;
 }
 
 bool
-v3dX(format_supports_blending)(const struct v3dv_format *format)
+v3dX(format_supports_tlb_resolve)(const struct v3dv_format *format)
+{
+   if (!format->plane_count)
+      return false;
+
+   for (uint8_t plane = 0; plane < format->plane_count; plane++) {
+      if (!format_plane_supports_tbl_resolve(&format->planes[plane]))
+         return false;
+   }
+   return true;
+}
+
+static bool
+format_plane_supports_blending(const struct v3dv_format_plane *plane)
 {
    /* Hardware blending is only supported on render targets that are configured
     * 4x8-bit unorm, 2x16-bit float or 4x16-bit float.
     */
    uint32_t type, bpp;
-   v3dX(get_internal_type_bpp_for_output_format)(format->rt_type, &type, &bpp);
+   v3dX(get_internal_type_bpp_for_output_format)(plane->rt_type, &type, &bpp);
    switch (type) {
    case V3D_INTERNAL_TYPE_8:
       return bpp == V3D_INTERNAL_BPP_32;
@@ -392,6 +407,19 @@ v3dX(format_supports_blending)(const struct v3dv_format *format)
    default:
       return false;
    }
+}
+
+bool
+v3dX(format_supports_blending)(const struct v3dv_format *format)
+{
+   if (!format->plane_count)
+      return false;
+
+   for (uint8_t plane = 0; plane < format->plane_count; plane++) {
+      if (!format_plane_supports_blending(&format->planes[plane]))
+         return false;
+   }
+   return true;
 }
 
 bool
@@ -485,7 +513,8 @@ v3dX(get_internal_type_bpp_for_image_aspects)(VkFormat vk_format,
       }
    } else {
       const struct v3dv_format *format = v3dX(get_format)(vk_format);
-      v3dX(get_internal_type_bpp_for_output_format)(format->rt_type,
+      uint32_t plane = v3dv_plane_from_aspect(aspect_mask);
+      v3dX(get_internal_type_bpp_for_output_format)(format->planes[plane].rt_type,
                                                     internal_type, internal_bpp);
    }
 }

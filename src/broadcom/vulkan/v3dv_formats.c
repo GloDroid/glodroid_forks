@@ -30,7 +30,7 @@
 #include "vulkan/wsi/wsi_common.h"
 
 const uint8_t *
-v3dv_get_format_swizzle(struct v3dv_device *device, VkFormat f)
+v3dv_get_format_swizzle(struct v3dv_device *device, VkFormat f, uint8_t plane)
 {
    const struct v3dv_format *vf = v3dv_X(device, get_format)(f);
    static const uint8_t fallback[] = {0, 1, 2, 3};
@@ -38,7 +38,7 @@ v3dv_get_format_swizzle(struct v3dv_device *device, VkFormat f)
    if (!vf)
       return fallback;
 
-   return vf->swizzle;
+   return vf->planes[plane].swizzle;
 }
 
 bool
@@ -90,7 +90,7 @@ v3dv_get_tex_return_size(const struct v3dv_format *vf,
    if (compare_enable)
       return 16;
 
-   return vf->return_size;
+   return vf->planes[0].return_size;
 }
 
 /* Some cases of transfer operations are raw data copies that don't depend
@@ -118,7 +118,7 @@ v3dv_get_compatible_tfu_format(struct v3dv_device *device,
       *out_vk_format = vk_format;
 
    const struct v3dv_format *format = v3dv_X(device, get_format)(vk_format);
-   assert(v3dv_X(device, tfu_supports_tex_format)(format->tex_type));
+   assert(v3dv_X(device, tfu_supports_tex_format)(format->planes[0].tex_type));
 
    return format;
 }
@@ -129,15 +129,19 @@ image_format_features(struct v3dv_physical_device *pdevice,
                       const struct v3dv_format *v3dv_format,
                       VkImageTiling tiling)
 {
-   if (!v3dv_format || !v3dv_format->supported)
+   if (!v3dv_format || !v3dv_format->plane_count)
       return 0;
 
    const VkImageAspectFlags aspects = vk_format_aspects(vk_format);
 
    const VkImageAspectFlags zs_aspects = VK_IMAGE_ASPECT_DEPTH_BIT |
                                          VK_IMAGE_ASPECT_STENCIL_BIT;
+   const VkImageAspectFlags ycbcr_aspects = VK_IMAGE_ASPECT_PLANE_0_BIT |
+                                            VK_IMAGE_ASPECT_PLANE_1_BIT |
+                                            VK_IMAGE_ASPECT_PLANE_2_BIT;
    const VkImageAspectFlags supported_aspects = VK_IMAGE_ASPECT_COLOR_BIT |
-                                                zs_aspects;
+                                                zs_aspects |
+                                                ycbcr_aspects;
    if ((aspects & supported_aspects) != aspects)
       return 0;
 
@@ -145,8 +149,8 @@ image_format_features(struct v3dv_physical_device *pdevice,
    if ((aspects & zs_aspects) == VK_IMAGE_ASPECT_STENCIL_BIT)
       return 0;
 
-   if (v3dv_format->tex_type == TEXTURE_DATA_FORMAT_NO &&
-       v3dv_format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_NO) {
+   if (v3dv_format->planes[0].tex_type == TEXTURE_DATA_FORMAT_NO &&
+       v3dv_format->planes[0].rt_type == V3D_OUTPUT_IMAGE_FORMAT_NO) {
       return 0;
    }
 
@@ -157,7 +161,7 @@ image_format_features(struct v3dv_physical_device *pdevice,
     * Note: even if the user requests optimal for a 1D image, we will still
     * use raster format since that is what the HW requires.
     */
-   if (v3dv_format->tex_type != TEXTURE_DATA_FORMAT_NO &&
+   if (v3dv_format->planes[0].tex_type != TEXTURE_DATA_FORMAT_NO &&
        tiling == VK_IMAGE_TILING_OPTIMAL) {
       flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
                VK_FORMAT_FEATURE_2_BLIT_SRC_BIT;
@@ -166,7 +170,7 @@ image_format_features(struct v3dv_physical_device *pdevice,
          flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
    }
 
-   if (v3dv_format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
+   if (v3dv_format->planes[0].rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
       if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
          flags |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
                   VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
@@ -211,10 +215,10 @@ image_format_features(struct v3dv_physical_device *pdevice,
 static VkFormatFeatureFlags2
 buffer_format_features(VkFormat vk_format, const struct v3dv_format *v3dv_format)
 {
-   if (!v3dv_format || !v3dv_format->supported)
+   if (!v3dv_format || !v3dv_format->plane_count)
       return 0;
 
-   if (!v3dv_format->supported)
+   if (!v3dv_format->plane_count)
       return 0;
 
    /* We probably only want to support buffer formats that have a
@@ -231,7 +235,7 @@ buffer_format_features(VkFormat vk_format, const struct v3dv_format *v3dv_format
        desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB &&
        desc->is_array) {
       flags |=  VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT;
-      if (v3dv_format->tex_type != TEXTURE_DATA_FORMAT_NO) {
+      if (v3dv_format->planes[0].tex_type != TEXTURE_DATA_FORMAT_NO) {
          flags |= VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT |
                   VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
       }
@@ -470,7 +474,8 @@ get_image_format_properties(
       pImageFormatProperties->maxExtent.width = V3D_MAX_IMAGE_DIMENSION;
       pImageFormatProperties->maxExtent.height = V3D_MAX_IMAGE_DIMENSION;
       pImageFormatProperties->maxExtent.depth = 1;
-      pImageFormatProperties->maxArrayLayers = V3D_MAX_ARRAY_LAYERS;
+      pImageFormatProperties->maxArrayLayers =
+         v3dv_format->plane_count == 1 ? V3D_MAX_ARRAY_LAYERS : 1;
       pImageFormatProperties->maxMipLevels = V3D_MAX_MIP_LEVELS;
       break;
    case VK_IMAGE_TYPE_3D:

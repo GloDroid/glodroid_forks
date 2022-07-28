@@ -131,47 +131,51 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
                                  uint32_t buffer)
 {
    const struct v3dv_image *image = (struct v3dv_image *) iview->vk.image;
-   const struct v3d_resource_slice *slice =
-      &image->slices[iview->vk.base_mip_level];
-   uint32_t layer_offset =
-      v3dv_layer_offset(image, iview->vk.base_mip_level,
-                        iview->vk.base_array_layer + layer);
+   for (uint8_t plane = 0; plane < iview->plane_count; plane++) {
+      uint8_t image_plane = iview->planes[plane].image_plane;
+      const struct v3d_resource_slice *slice =
+         &image->planes[image_plane].slices[iview->vk.base_mip_level];
 
-   cl_emit(cl, LOAD_TILE_BUFFER_GENERAL, load) {
-      load.buffer_to_load = buffer;
-      load.address = v3dv_cl_address(image->mem->bo, layer_offset);
+      uint32_t layer_offset =
+         v3dv_layer_offset(image, iview->vk.base_mip_level,
+                           iview->vk.base_array_layer + layer, image_plane);
 
-      load.input_image_format = iview->format->rt_type;
+      cl_emit(cl, LOAD_TILE_BUFFER_GENERAL, load) {
+         load.buffer_to_load = buffer;
+         load.address = v3dv_cl_address(image->planes[image_plane].mem->bo, layer_offset);
 
-      /* If we create an image view with only the stencil format, we
-       * re-interpret the format as RGBA8_UINT, as it is want we want in
-       * general (see CreateImageView).
-       *
-       * However, when we are loading/storing tiles from the ZSTENCIL tile
-       * buffer, we need to use the underlying DS format.
-       */
-      if (buffer == ZSTENCIL &&
-          iview->format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI) {
-         assert(image->format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_D24S8);
-         load.input_image_format = image->format->rt_type;
+         load.input_image_format = iview->format->planes[plane].rt_type;
+
+         /* If we create an image view with only the stencil format, we
+          * re-interpret the format as RGBA8_UINT, as it is want we want in
+          * general (see CreateImageView).
+          *
+          * However, when we are loading/storing tiles from the ZSTENCIL tile
+          * buffer, we need to use the underlying DS format.
+          */
+         if (buffer == ZSTENCIL &&
+             iview->format->planes[plane].rt_type == V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI) {
+            assert(image->format->planes[plane].rt_type == V3D_OUTPUT_IMAGE_FORMAT_D24S8);
+            load.input_image_format = image->format->planes[plane].rt_type;
+         }
+
+         load.r_b_swap = iview->planes[plane].swap_rb;
+         load.channel_reverse = iview->planes[plane].channel_reverse;
+         load.memory_format = slice->tiling;
+
+         if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
+             slice->tiling == V3D_TILING_UIF_XOR) {
+            load.height_in_ub_or_stride =
+               slice->padded_height_of_output_image_in_uif_blocks;
+         } else if (slice->tiling == V3D_TILING_RASTER) {
+            load.height_in_ub_or_stride = slice->stride;
+         }
+
+         if (image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
+            load.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
+         else
+            load.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
       }
-
-      load.r_b_swap = iview->swap_rb;
-      load.channel_reverse = iview->channel_reverse;
-      load.memory_format = slice->tiling;
-
-      if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
-          slice->tiling == V3D_TILING_UIF_XOR) {
-         load.height_in_ub_or_stride =
-            slice->padded_height_of_output_image_in_uif_blocks;
-      } else if (slice->tiling == V3D_TILING_RASTER) {
-         load.height_in_ub_or_stride = slice->stride;
-      }
-
-      if (image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
-         load.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
-      else
-         load.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
    }
 }
 
@@ -301,50 +305,56 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
    const struct v3dv_image_view *iview =
       cmd_buffer->state.attachments[attachment_idx].image_view;
    const struct v3dv_image *image = (struct v3dv_image *) iview->vk.image;
-   const struct v3d_resource_slice *slice =
-      &image->slices[iview->vk.base_mip_level];
-   uint32_t layer_offset = v3dv_layer_offset(image,
-                                             iview->vk.base_mip_level,
-                                             iview->vk.base_array_layer + layer);
 
-   cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
-      store.buffer_to_store = buffer;
-      store.address = v3dv_cl_address(image->mem->bo, layer_offset);
-      store.clear_buffer_being_stored = clear;
+   for (uint8_t plane = 0; plane < iview->plane_count; plane++) {
+      uint8_t image_plane = iview->planes[plane].image_plane;
+      const struct v3d_resource_slice *slice =
+         &image->planes[image_plane].slices[iview->vk.base_mip_level];
+      uint32_t layer_offset = v3dv_layer_offset(image,
+                                                iview->vk.base_mip_level,
+                                                iview->vk.base_array_layer +
+                                                layer,
+                                                image_plane);
 
-      store.output_image_format = iview->format->rt_type;
+      cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
+         store.buffer_to_store = buffer;
+         store.address = v3dv_cl_address(image->planes[image_plane].mem->bo, layer_offset);
+         store.clear_buffer_being_stored = clear;
 
-      /* If we create an image view with only the stencil format, we
-       * re-interpret the format as RGBA8_UINT, as it is want we want in
-       * general (see CreateImageView).
-       *
-       * However, when we are loading/storing tiles from the ZSTENCIL tile
-       * buffer, we need to use the underlying DS format.
-       */
-      if (buffer == ZSTENCIL &&
-          iview->format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI) {
-         assert(image->format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_D24S8);
-         store.output_image_format = image->format->rt_type;
+         store.output_image_format = iview->format->planes[plane].rt_type;
+
+         /* If we create an image view with only the stencil format, we
+          * re-interpret the format as RGBA8_UINT, as it is want we want in
+          * general (see CreateImageView).
+          *
+          * However, when we are loading/storing tiles from the ZSTENCIL tile
+          * buffer, we need to use the underlying DS format.
+          */
+         if (buffer == ZSTENCIL &&
+             iview->format->planes[plane].rt_type == V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI) {
+            assert(image->format->planes[plane].rt_type == V3D_OUTPUT_IMAGE_FORMAT_D24S8);
+            store.output_image_format = image->format->planes[plane].rt_type;
+         }
+
+         store.r_b_swap = iview->planes[plane].swap_rb;
+         store.channel_reverse = iview->planes[plane].channel_reverse;
+         store.memory_format = slice->tiling;
+
+         if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
+             slice->tiling == V3D_TILING_UIF_XOR) {
+            store.height_in_ub_or_stride =
+               slice->padded_height_of_output_image_in_uif_blocks;
+         } else if (slice->tiling == V3D_TILING_RASTER) {
+            store.height_in_ub_or_stride = slice->stride;
+         }
+
+         if (image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
+            store.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
+         else if (is_multisample_resolve)
+            store.decimate_mode = V3D_DECIMATE_MODE_4X;
+         else
+            store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
       }
-
-      store.r_b_swap = iview->swap_rb;
-      store.channel_reverse = iview->channel_reverse;
-      store.memory_format = slice->tiling;
-
-      if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
-          slice->tiling == V3D_TILING_UIF_XOR) {
-         store.height_in_ub_or_stride =
-            slice->padded_height_of_output_image_in_uif_blocks;
-      } else if (slice->tiling == V3D_TILING_RASTER) {
-         store.height_in_ub_or_stride = slice->stride;
-      }
-
-      if (image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
-         store.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
-      else if (is_multisample_resolve)
-         store.decimate_mode = V3D_DECIMATE_MODE_4X;
-      else
-         store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
    }
 }
 
@@ -791,7 +801,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
       if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
          const struct v3dv_image_view *iview =
             state->attachments[ds_attachment_idx].image_view;
-         config.internal_depth_type = iview->internal_type;
+         config.internal_depth_type = iview->planes[0].internal_type;
 
          set_rcl_early_z_config(job,
                                 &config.early_z_disable,
@@ -868,7 +878,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
 
       const struct v3dv_image *image = (struct v3dv_image *) iview->vk.image;
       const struct v3d_resource_slice *slice =
-         &image->slices[iview->vk.base_mip_level];
+         &image->planes[0].slices[iview->vk.base_mip_level];
 
       const uint32_t *clear_color =
          &state->attachments[attachment_idx].clear_value.color[0];
@@ -876,7 +886,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
       uint32_t clear_pad = 0;
       if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
           slice->tiling == V3D_TILING_UIF_XOR) {
-         int uif_block_height = v3d_utile_height(image->cpp) * 2;
+         int uif_block_height = v3d_utile_height(image->planes[0].cpp) * 2;
 
          uint32_t implicit_padded_height =
             align(framebuffer->height, uif_block_height) / uif_block_height;
@@ -893,7 +903,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
          clear.render_target_number = i;
       };
 
-      if (iview->internal_bpp >= V3D_INTERNAL_BPP_64) {
+      if (iview->planes[0].internal_bpp >= V3D_INTERNAL_BPP_64) {
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART2, clear) {
             clear.clear_color_mid_low_32_bits =
                ((clear_color[1] >> 24) | (clear_color[2] << 8));
@@ -903,7 +913,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
          };
       }
 
-      if (iview->internal_bpp >= V3D_INTERNAL_BPP_128 || clear_pad) {
+      if (iview->planes[0].internal_bpp >= V3D_INTERNAL_BPP_128 || clear_pad) {
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART3, clear) {
             clear.uif_padded_height_in_uif_blocks = clear_pad;
             clear.clear_color_high_16_bits = clear_color[3] >> 16;
@@ -2301,8 +2311,9 @@ v3dX(cmd_buffer_render_pass_setup_render_target)(struct v3dv_cmd_buffer *cmd_buf
    struct v3dv_image_view *iview = state->attachments[attachment_idx].image_view;
    assert(vk_format_is_color(iview->vk.format));
 
-   *rt_bpp = iview->internal_bpp;
-   *rt_type = iview->internal_type;
+   // render targets are always single plane for now
+   *rt_bpp = iview->planes[0].internal_bpp;
+   *rt_type = iview->planes[0].internal_type;
    if (vk_format_is_int(iview->vk.view_format))
       *rt_clamp = V3D_RENDER_TARGET_CLAMP_INT;
    else if (vk_format_is_srgb(iview->vk.view_format))

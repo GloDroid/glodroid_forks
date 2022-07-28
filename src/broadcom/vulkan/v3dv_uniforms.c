@@ -173,11 +173,12 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
    assert(texture_idx < V3D_MAX_TEXTURE_SAMPLERS);
    tex_bos->tex[texture_idx] = texture_bo;
 
+   // TODO: need some way of specifying plane here
    struct v3dv_cl_reloc state_reloc =
       v3dv_descriptor_map_get_texture_shader_state(cmd_buffer->device, descriptor_state,
                                                    &pipeline->shared_data->maps[stage]->texture_map,
                                                    pipeline->layout,
-                                                   texture_idx);
+                                                   texture_idx, 0);
 
    cl_aligned_u32(uniforms, state_reloc.bo->offset +
                             state_reloc.offset +
@@ -209,10 +210,11 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
    assert(sampler_idx != V3DV_NO_SAMPLER_16BIT_IDX &&
           sampler_idx != V3DV_NO_SAMPLER_32BIT_IDX);
 
+   // TODO: need some way of specifying plane here
    struct v3dv_cl_reloc sampler_state_reloc =
       v3dv_descriptor_map_get_sampler_state(cmd_buffer->device, descriptor_state,
                                             &pipeline->shared_data->maps[stage]->sampler_map,
-                                            pipeline->layout, sampler_idx);
+                                            pipeline->layout, sampler_idx, 0);
 
    const struct v3dv_sampler *sampler =
       v3dv_descriptor_map_get_sampler(descriptor_state,
@@ -323,7 +325,7 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                v3dv_descriptor_map_get_descriptor_bo(cmd_buffer->device,
                                                      descriptor_state, map,
                                                      pipeline->layout, index,
-                                                     NULL);
+                                                     0, NULL);
             bo = reloc.bo;
             addr = reloc.bo->offset + reloc.offset + offset;
          } else {
@@ -371,7 +373,7 @@ write_inline_uniform(struct v3dv_cl_out **uniforms,
       v3dv_descriptor_map_get_descriptor_bo(cmd_buffer->device,
                                             descriptor_state, map,
                                             pipeline->layout, index,
-                                            NULL);
+                                            0, NULL);
 
    /* Offset comes in 32-bit units */
    uint32_t *addr = reloc.bo->map + reloc.offset + 4 * offset;

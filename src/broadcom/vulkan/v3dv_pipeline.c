@@ -493,7 +493,8 @@ descriptor_map_add(struct v3dv_descriptor_map *map,
                    int array_index,
                    int array_size,
                    int start_index,
-                   uint8_t return_size)
+                   uint8_t return_size,
+                   uint8_t plane)
 {
    assert(array_index < array_size);
    assert(return_size == 16 || return_size == 32);
@@ -503,7 +504,8 @@ descriptor_map_add(struct v3dv_descriptor_map *map,
       if (map->used[index] &&
           set == map->set[index] &&
           binding == map->binding[index] &&
-          array_index == map->array_index[index]) {
+          array_index == map->array_index[index] &&
+          plane == map->plane[index]) {
          assert(array_size == map->array_size[index]);
          if (return_size != map->return_size[index]) {
             /* It the return_size is different it means that the same sampler
@@ -528,6 +530,7 @@ descriptor_map_add(struct v3dv_descriptor_map *map,
    map->array_index[index] = array_index;
    map->array_size[index] = array_size;
    map->return_size[index] = return_size;
+   map->plane[index] = plane;
    map->num_desc = MAX2(map->num_desc, index + 1);
 
    return index;
@@ -635,7 +638,8 @@ lower_vulkan_resource_index(nir_builder *b,
                                  const_val->u32,
                                  binding_layout->array_size,
                                  start_index,
-                                 32 /* return_size: doesn't really apply for this case */);
+                                 32 /* return_size: doesn't really apply for this case */,
+                                 0);
 
       /* We always reserve index 0 for push constants */
       if (binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
@@ -760,7 +764,8 @@ lower_tex_src_to_offset(nir_builder *b,
                          array_index,
                          binding_layout->array_size,
                          0,
-                         return_size);
+                         return_size,
+                         0);
 
    if (is_sampler)
       instr->sampler_index = desc_index;
@@ -867,7 +872,8 @@ lower_image_deref(nir_builder *b,
                          array_index,
                          binding_layout->array_size,
                          0,
-                         32 /* return_size: doesn't apply for textures */);
+                         32 /* return_size: doesn't apply for textures */,
+                         0);
 
    /* Note: we don't need to do anything here in relation to the precision and
     * the output size because for images we can infer that info from the image
@@ -1212,7 +1218,9 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
       if (key->logicop_func != PIPE_LOGICOP_COPY) {
          key->color_fmt[i].format = fb_pipe_format;
          memcpy(key->color_fmt[i].swizzle,
-                v3dv_get_format_swizzle(p_stage->pipeline->device, fb_format),
+                v3dv_get_format_swizzle(p_stage->pipeline->device,
+                                        fb_format,
+                                        0),
                 sizeof(key->color_fmt[i].swizzle));
       }
 
@@ -1758,10 +1766,10 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
       pipeline->shared_data->maps[p_stage->stage];
 
    UNUSED unsigned index;
-   index = descriptor_map_add(&maps->sampler_map, -1, -1, -1, 0, 0, 16);
+   index = descriptor_map_add(&maps->sampler_map, -1, -1, -1, 0, 0, 16, 0);
    assert(index == V3DV_NO_SAMPLER_16BIT_IDX);
 
-   index = descriptor_map_add(&maps->sampler_map, -2, -2, -2, 0, 0, 32);
+   index = descriptor_map_add(&maps->sampler_map, -2, -2, -2, 0, 0, 32, 0);
    assert(index == V3DV_NO_SAMPLER_32BIT_IDX);
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
@@ -1993,7 +2001,7 @@ pipeline_populate_graphics_key(struct v3dv_pipeline *pipeline,
       if (key->logicop_func != PIPE_LOGICOP_COPY) {
          key->color_fmt[i].format = fb_pipe_format;
          memcpy(key->color_fmt[i].swizzle,
-                v3dv_get_format_swizzle(pipeline->device, fb_format),
+                v3dv_get_format_swizzle(pipeline->device, fb_format, 0),
                 sizeof(key->color_fmt[i].swizzle));
       }
 

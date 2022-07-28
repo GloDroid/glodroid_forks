@@ -2450,8 +2450,8 @@ v3dv_GetImageMemoryRequirements2(VkDevice device,
 
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
       .memoryTypeBits = 0x1,
-      .alignment = image->alignment,
-      .size = image->size
+      .alignment = image->planes[0].alignment,
+      .size = image->non_disjoint_size
    };
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext) {
@@ -2482,11 +2482,19 @@ bind_image_memory(const VkBindImageMemoryInfo *info)
     *    the VkMemoryRequirements structure returned from a call to
     *    vkGetImageMemoryRequirements with image"
     */
-   assert(info->memoryOffset % image->alignment == 0);
    assert(info->memoryOffset < mem->bo->size);
 
-   image->mem = mem;
-   image->mem_offset = info->memoryOffset;
+   if (image->non_disjoint_size) {
+      uint64_t offset = info->memoryOffset;
+      for (uint8_t plane = 0; plane < image->plane_count; plane++) {
+         assert(offset % image->planes[plane].alignment == 0);
+         image->planes[plane].mem = mem;
+         image->planes[plane].mem_offset = offset;
+         // offset += image->planes[plane].size;
+      }
+   } else {
+      unreachable("Binding disjoint images is not implemented yet");
+   }
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -2503,11 +2511,12 @@ v3dv_BindImageMemory2(VkDevice _device,
          struct v3dv_image *swapchain_image =
             v3dv_wsi_get_image_from_swapchain(swapchain_info->swapchain,
                                               swapchain_info->imageIndex);
+         // Making the assumption that swapchain images are a single plane
          VkBindImageMemoryInfo swapchain_bind = {
             .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
             .image = pBindInfos[i].image,
-            .memory = v3dv_device_memory_to_handle(swapchain_image->mem),
-            .memoryOffset = swapchain_image->mem_offset,
+            .memory = v3dv_device_memory_to_handle(swapchain_image->planes[0].mem),
+            .memoryOffset = swapchain_image->planes[0].mem_offset,
          };
          bind_image_memory(&swapchain_bind);
       } else
@@ -2808,6 +2817,8 @@ v3dv_CreateSampler(VkDevice _device,
                               VK_OBJECT_TYPE_SAMPLER);
    if (!sampler)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   sampler->plane_count = 1;
 
    sampler->compare_enable = pCreateInfo->compareEnable;
    sampler->unnormalized_coordinates = pCreateInfo->unnormalizedCoordinates;
