@@ -337,8 +337,15 @@ handle_wait_events_cpu_job(struct v3dv_job *job)
 
    /* Wait for events to be signaled */
    const useconds_t wait_interval_ms = 1;
-   while (!check_wait_events_complete(job))
+   const useconds_t wait_timeout_ms = 500;
+   useconds_t elapsed_ms = 0;
+   while (!check_wait_events_complete(job)) {
+      elapsed_ms += wait_interval_ms;
+      if (elapsed_ms > wait_timeout_ms)
+         break;
+
       usleep(wait_interval_ms * 1000);
+   }
 
    return VK_SUCCESS;
 }
