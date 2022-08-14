@@ -388,8 +388,8 @@ create_image(struct v3dv_device *device,
 
 #ifdef ANDROID
    if (native_buffer != NULL) {
-      image->slices[0].stride = native_buf_stride;
-      image->slices[0].size = image->size = native_buf_size;
+      image->planes[0].slices[0].stride = native_buf_stride;
+      image->planes[0].slices[0].size = image->planes[0].size = native_buf_size;
 
       VkResult result = v3dv_import_native_buffer_fd(v3dv_device_to_handle(device),
                                                      native_buf_fd, pAllocator,
@@ -526,7 +526,9 @@ v3dv_DestroyImage(VkDevice _device,
 
 #ifdef ANDROID
    if (image->is_native_buffer_memory)
-      v3dv_FreeMemory(_device,  v3dv_device_memory_to_handle(image->mem), pAllocator);
+      v3dv_FreeMemory(_device,
+                      v3dv_device_memory_to_handle(image->planes[0].mem),
+                      pAllocator);
 #endif
 
    vk_image_destroy(&device->vk, pAllocator, &image->vk);
