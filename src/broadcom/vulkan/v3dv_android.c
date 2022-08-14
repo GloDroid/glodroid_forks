@@ -261,7 +261,7 @@ v3dv_import_native_buffer_fd(VkDevice device_h,
                           &(VkMemoryAllocateInfo) {
                              .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                              .pNext = &import_info,
-                             .allocationSize = image->size,
+                             .allocationSize = image->planes[0].size,
                              .memoryTypeIndex = 0,
                           },
                           alloc, &memory_h);
