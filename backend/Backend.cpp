@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+// #define LOG_NDEBUG 0
+
+#define LOG_TAG "hwc2-backend"
+
 #include "Backend.h"
 
 #include <climits>
@@ -83,11 +88,27 @@ std::tuple<int, size_t> Backend::GetClientLayers(
 
 bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer,
                             bool /*most_bottom*/) {
-  return !HardwareSupportsLayerType(layer->GetSfType()) ||
-         !layer->IsLayerUsableAsDevice() ||
-         display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
-         (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
-          display->GetHwc2()->GetResMan().ForcedScalingWithGpu());
+  if (!HardwareSupportsLayerType(layer->GetSfType())) {
+    ALOGV("SF layer type not supported");
+    return true;
+  }
+
+  if (!layer->IsLayerUsableAsDevice()) {
+    ALOGV("Layer wasn't properly inported");
+    return true;
+  }
+
+  if (display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY) {
+    ALOGV("Color transform %i not supported", int(display->color_transform_hint()));
+    return true;
+  }
+
+  if (layer->GetLayerData().pi.RequireScalingOrPhasing() && display->GetHwc2()->GetResMan().ForcedScalingWithGpu()) {
+    ALOGV("Scaling forced to be done on GPU");
+    return true;
+  }
+
+  return false;
 }
 
 bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
@@ -109,6 +130,10 @@ uint32_t Backend::CalcPixOps(const std::vector<HwcLayer *> &layers,
 
 void Backend::MarkValidated(std::vector<HwcLayer *> &layers,
                             size_t client_first_z, size_t client_size) {
+  if (client_size > 0) {
+    ALOGV("Client range: %zu - %zu", client_first_z, client_first_z + client_size - 1);
+  }
+
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (z_order >= client_first_z && z_order < client_first_z + client_size)
       layers[z_order]->SetValidatedType(HWC2::Composition::Client);
