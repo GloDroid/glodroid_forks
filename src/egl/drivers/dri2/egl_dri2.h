@@ -70,6 +70,8 @@ struct zwp_linux_dmabuf_feedback_v1;
 
 #include <hardware/gralloc.h>
 
+#include "util/android/buffer_info.h"
+
 #if ANDROID_API_LEVEL >= 26
 #include <vndk/window.h>
 #else
@@ -294,7 +296,7 @@ struct dri2_egl_display
 #endif
 
 #ifdef HAVE_ANDROID_PLATFORM
-   const gralloc_module_t *gralloc;
+   struct gralloc gralloc;
    /* gralloc vendor usage bit for front rendering */
    uint32_t front_rendering_usage;
 #endif

@@ -1252,6 +1252,10 @@ dri2_display_destroy(_EGLDisplay *disp)
    free(dri2_dpy->device_name);
 #endif
 
+#ifdef HAVE_ANDROID_PLATFORM
+   destroy_gralloc(&dri2_dpy->gralloc);
+#endif
+
    switch (disp->Platform) {
    case _EGL_PLATFORM_X11:
       dri2_teardown_x11(dri2_dpy);
