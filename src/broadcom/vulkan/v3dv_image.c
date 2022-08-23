@@ -242,7 +242,7 @@ v3d_setup_plane_slices(struct v3dv_image *image, uint8_t plane,
    }
 }
 
-static void
+void
 v3d_setup_slices(struct v3dv_image *image)
 {
    // this assumes non_disjoint. for disjoint an offset of 0 would be passed
@@ -267,25 +267,6 @@ v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer
       return image->planes[plane].mem_offset + slice->offset +
          layer * image->planes[plane].cube_map_stride;
 }
-
-#ifdef ANDROID
-VkResult
-v3d_create_from_android_metadata(struct v3dv_image *image, struct buffer_info *in_buffer) 
-{
-   image->vk.tiling = in_buffer->modifier == DRM_FORMAT_MOD_BROADCOM_UIF ? VK_IMAGE_TILING_OPTIMAL : VK_IMAGE_TILING_LINEAR;
-   image->tiled = image->vk.tiling == VK_IMAGE_TILING_OPTIMAL;
-   image->vk.drm_format_mod = in_buffer->modifier;
-   v3d_setup_slices(image);
-
-   /* Assume that only linear layouts are flexible */
-   if (!image->tiled) {
-      image->planes[0].slices[0].stride = in_buffer->strides[0];
-      image->planes[0].slices[0].size = in_buffer->sizes[0];
-      image->planes[0].size = in_buffer->sizes[0];
-   }
-   return VK_SUCCESS;
-}
-#endif
 
 static VkResult
 create_image(struct v3dv_device *device,
@@ -398,7 +379,6 @@ create_image(struct v3dv_device *device,
                         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
 
    if (a_hardware_buffer) {
-      mesa_logi("%s: AHB", __func__);
       assert(!(image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT));
    }
 
@@ -406,19 +386,19 @@ create_image(struct v3dv_device *device,
       vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
 
    if (!a_hardware_buffer && native_buffer != NULL) {
-      mesa_logi("%s: NATIVE", __func__);
-      struct buffer_info buffer_metadata = {0};
-      result = v3dv_gralloc_info(device, native_buffer, &buffer_metadata);
-      if (result != VK_SUCCESS)
-         goto fail;
+      struct android_handle android_handle = {
+         .handle = native_buffer->handle,
+         .hal_format = native_buffer->format,
+         .pixel_stride = native_buffer->stride,
+      };
 
-      result = v3d_create_from_android_metadata(image, &buffer_metadata);
+      result = v3dv_android_populate_image_layout(device, image, &android_handle);
       if (result != VK_SUCCESS)
          goto fail;
 
       result = v3dv_import_native_buffer_fd(v3dv_device_to_handle(device),
-                                                     buffer_metadata.fds[0], pAllocator,
-                                                     v3dv_image_to_handle(image));
+                                            native_buffer->handle->data[0], pAllocator,
+                                            v3dv_image_to_handle(image));
       if (result != VK_SUCCESS)
          goto fail;
    }

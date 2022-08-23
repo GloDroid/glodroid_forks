@@ -22,15 +22,16 @@
  */
 
 #include "v3dv_private.h"
+
 #include <hardware/gralloc.h>
+#include <hardware/hardware.h>
+#include <hardware/hwvulkan.h>
 
 #if ANDROID_API_LEVEL >= 26
 #include <hardware/gralloc1.h>
 #endif
 
 #include "drm-uapi/drm_fourcc.h"
-#include <hardware/hardware.h>
-#include <hardware/hwvulkan.h>
 
 #include <vulkan/vk_android_native_buffer.h>
 #include <vulkan/vk_icd.h>
@@ -116,126 +117,39 @@ v3dv_hal_close(struct hw_device_t *dev)
    return -1;
 }
 
-static int
-get_format_bpp(int native)
+VkResult
+v3dv_android_populate_image_layout(struct v3dv_device *device,
+                                   struct v3dv_image *image,
+                                   struct android_handle *handle)
 {
-   int bpp;
+   struct buffer_info buffer_info;
 
-   switch (native) {
-   case HAL_PIXEL_FORMAT_RGBA_FP16:
-      bpp = 8;
-      break;
-   case HAL_PIXEL_FORMAT_RGBA_8888:
-   case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-   case HAL_PIXEL_FORMAT_RGBX_8888:
-   case HAL_PIXEL_FORMAT_BGRA_8888:
-   case HAL_PIXEL_FORMAT_RGBA_1010102:
-      bpp = 4;
-      break;
-   case HAL_PIXEL_FORMAT_RGB_565:
-      bpp = 2;
-      break;
-   default:
-      bpp = 0;
-      break;
-   }
+   init_empty_buffer_info(&buffer_info);
 
-   return bpp;
-}
-
-/* get buffer info from VkNativeBufferANDROID */
-static VkResult
-v3dv_gralloc_info_other(struct v3dv_device *device,
-                        const VkNativeBufferANDROID *native_buffer,
-                        struct buffer_info *out_buffer_info)
-{
-   if (native_buffer->format == 0)
-      return VK_ERROR_FORMAT_NOT_SUPPORTED;
-
-   out_buffer_info->strides[0] = native_buffer->stride /*in pixels*/ *
-                                 get_format_bpp(native_buffer->format);
-   out_buffer_info->fds[0] = native_buffer->handle->data[0];
-   out_buffer_info->modifier = DRM_FORMAT_MOD_LINEAR;
-   out_buffer_info->num_planes = 1;
-   return VK_SUCCESS;
-}
-
-static const char cros_gralloc_module_name[] = "CrOS Gralloc";
-
-#define CROS_GRALLOC_DRM_GET_BUFFER_INFO 4
-
-struct cros_gralloc0_buffer_info
-{
-   uint32_t drm_fourcc;
-   int num_fds;
-   int fds[4];
-   uint64_t modifier;
-   int offset[4];
-   int stride[4];
-};
-
-static VkResult
-v3dv_gralloc_info_cros(struct v3dv_device *device,
-                       const VkNativeBufferANDROID *native_buffer,
-                       struct buffer_info *out_buffer_info)
-{
-   const gralloc_module_t *gralloc = device->gralloc;
-   struct cros_gralloc0_buffer_info info;
-   int ret;
-
-   ret = gralloc->perform(gralloc, CROS_GRALLOC_DRM_GET_BUFFER_INFO,
-                          native_buffer->handle, &info);
-   if (ret)
+   if (!gralloc_get_fmt_mod_info(&device->gralloc, handle, &buffer_info))
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
-   out_buffer_info->strides[0] = info.stride[0];
-   out_buffer_info->modifier = info.modifier;
-   out_buffer_info->fds[0] = native_buffer->handle->data[0];
-   out_buffer_info->num_planes = info.num_fds;
+   if (buffer_info.modifier == DRM_FORMAT_MOD_BROADCOM_UIF)
+      image->vk.tiling = VK_IMAGE_TILING_OPTIMAL;
+   else 
+      image->vk.tiling = VK_IMAGE_TILING_LINEAR;
 
-   return VK_SUCCESS;
-}
+   image->tiled = image->vk.tiling == VK_IMAGE_TILING_OPTIMAL;
+   image->vk.drm_format_mod = buffer_info.modifier;
+   v3d_setup_slices(image);
 
-VkResult
-v3dv_gralloc_info(struct v3dv_device *device,
-                  const VkNativeBufferANDROID *native_buffer,
-                  struct buffer_info *out_buffer_info)
-{
-   VkResult result = VK_SUCCESS;
+   /* Assume that only linear layouts are flexible */
+   if (!image->tiled) {
+      if (!gralloc_get_layout_info(&device->gralloc, handle, &buffer_info))
+         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
-   if (device->gralloc_type == V3DV_GRALLOC_UNKNOWN) {
-      /* get gralloc module for gralloc buffer info query */
-      int err = hw_get_module(GRALLOC_HARDWARE_MODULE_ID,
-                              (const hw_module_t **) &device->gralloc);
-
-      device->gralloc_type = V3DV_GRALLOC_OTHER;
-
-      if (err == 0) {
-         const gralloc_module_t *gralloc = device->gralloc;
-         mesa_logi("opened gralloc module name: %s", gralloc->common.name);
-
-         if (strcmp(gralloc->common.name, cros_gralloc_module_name) == 0 &&
-             gralloc->perform) {
-            device->gralloc_type = V3DV_GRALLOC_CROS;
-         }
+      for (int i = 0; i < buffer_info.num_planes; i++) {
+         image->planes[i].slices[0].stride = buffer_info.strides[i];
+         image->planes[i].slices[0].offset = buffer_info.offsets[i];
+         image->planes[i].slices[0].size = lseek(buffer_info.fds[i], 0, SEEK_END);
+         image->planes[i].size = image->planes[i].slices[0].size;
       }
    }
-
-   if (device->gralloc_type == V3DV_GRALLOC_CROS) {
-      result = v3dv_gralloc_info_cros(device, native_buffer, out_buffer_info);
-   } else {
-      result = mapper_metadata_get_buffer_info(native_buffer->handle,
-                                               out_buffer_info);
-
-      if (result != VK_SUCCESS)
-         result =
-            v3dv_gralloc_info_other(device, native_buffer, out_buffer_info);
-   }
-
-   if (result != VK_SUCCESS)
-      return result;
-
-   out_buffer_info->sizes[0] = lseek(out_buffer_info->fds[0], 0, SEEK_END);
 
    return VK_SUCCESS;
 }
@@ -403,7 +317,6 @@ v3dv_GetSwapchainGrallocUsage2ANDROID(
 
    *grallocConsumerUsage = 0;
    *grallocProducerUsage = 0;
-   mesa_logd("%s: format=%d, usage=0x%x", __func__, format, imageUsage);
 
    result = format_supported_with_usage(device_h, format, imageUsage);
    if (result != VK_SUCCESS)
@@ -690,14 +603,14 @@ v3dv_import_ahb_memory(struct v3dv_device *device,
 {
    VkResult result;
 
+   AHardwareBuffer_Desc description;
+
    const native_handle_t *handle =
       AHardwareBuffer_getNativeHandle(info->buffer);
 
    int fd = (handle && handle->numFds) ? handle->data[0] : -1;
    if (fd < 0)
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-
-   struct buffer_info buf_info = { 0 };
 
    VkNativeBufferANDROID native_buffer = {
       .sType = VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID,
@@ -706,20 +619,15 @@ v3dv_import_ahb_memory(struct v3dv_device *device,
 
    if (image_h) {
       struct v3dv_image *image = v3dv_image_from_handle(image_h);
-      struct buffer_info buf_info = {0};
+      AHardwareBuffer_describe(info->buffer, &description);
 
-      VkNativeBufferANDROID native_buffer = {
-         .sType = VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID,
+      struct android_handle android_handle = {
          .handle = handle,
-         .stride = 0,
-         .format = 0,
+         .pixel_stride = description.stride,
+         .hal_format = description.format,
       };
 
-      int err = v3dv_gralloc_info(device, &native_buffer, &buf_info);
-      if (err)
-         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-
-      result = v3d_create_from_android_metadata(image, &buf_info);
+      result = v3dv_android_populate_image_layout(device, image, &android_handle);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -747,7 +655,6 @@ v3dv_GetAndroidHardwareBufferPropertiesANDROID(
    const struct AHardwareBuffer *buffer,
    VkAndroidHardwareBufferPropertiesANDROID *pProperties)
 {
-   mesa_logi("In %s", __func__);
    V3DV_FROM_HANDLE(v3dv_device, dev, device_h);
    struct v3dv_physical_device *pdevice = dev->pdevice;
 
@@ -781,8 +688,6 @@ v3dv_GetAndroidHardwareBufferPropertiesANDROID(
    pProperties->allocationSize = lseek(dma_buf, 0, SEEK_END);
    pProperties->memoryTypeBits = memory_types;
 
-   mesa_logi("%s: Size: %llu", __func__, (unsigned long long) pProperties->allocationSize);
-
    return VK_SUCCESS;
 }
 
@@ -792,7 +697,6 @@ v3dv_GetMemoryAndroidHardwareBufferANDROID(
    const VkMemoryGetAndroidHardwareBufferInfoANDROID *pInfo,
    struct AHardwareBuffer **pBuffer)
 {
-   mesa_logi("In %s", __func__);
    V3DV_FROM_HANDLE(v3dv_device_memory, mem, pInfo->memory);
 
    /* Some quotes from Vulkan spec:

@@ -64,7 +64,7 @@
 
 #ifdef ANDROID
 #include <vndk/hardware_buffer.h>
-#include "platform_android.h"
+#include "util/android/buffer_info.h"
 #endif
 
 #include "v3dv_limits.h"
@@ -531,12 +531,7 @@ struct v3dv_device {
    struct util_dynarray device_address_bo_list; /* Array of struct v3dv_bo * */
 
 #ifdef ANDROID
-   const void *gralloc;
-   enum {
-      V3DV_GRALLOC_UNKNOWN,
-      V3DV_GRALLOC_CROS,
-      V3DV_GRALLOC_OTHER,
-   } gralloc_type;
+   struct gralloc gralloc;
 #endif
 };
 
@@ -2496,7 +2491,15 @@ v3dv_device_import_bo(struct v3dv_device *device,
                       int fd, uint64_t size,
                       struct v3dv_bo **bo);
 
+void
+v3d_setup_slices(struct v3dv_image *image);
+
 #ifdef ANDROID
+VkResult
+v3dv_android_populate_image_layout(struct v3dv_device *device,
+                                   struct v3dv_image *image,
+                                   struct android_handle *handle);
+
 VkResult
 v3dv_gralloc_info(struct v3dv_device *device,
                   const VkNativeBufferANDROID *gralloc_info,
@@ -2511,9 +2514,6 @@ v3dv_import_native_buffer_fd(VkDevice device_h,
 uint64_t
 v3dv_ahb_usage_from_vk_usage(const VkImageCreateFlags vk_create,
                              const VkImageUsageFlags vk_usage);
-VkResult
-v3d_create_from_android_metadata(struct v3dv_image *image,
-                                 struct buffer_info *in_buffer);
 
 VkResult
 v3dv_import_ahb_memory(struct v3dv_device *device,

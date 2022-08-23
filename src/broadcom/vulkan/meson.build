@@ -100,14 +100,9 @@ if with_platform_wayland
 endif
 
 if with_platform_android
-  v3dv_deps += dep_android
+  v3dv_deps += [dep_android, idep_android_buffer]
   v3dv_flags += '-DVK_USE_PLATFORM_ANDROID_KHR'
   libv3dv_files += files('v3dv_android.c')
-  if dep_android_mapper4.found()
-    libv3dv_files += files('platform_android_mapper.cpp')
-    v3dv_flags += '-DUSE_IMAPPER4_METADATA_API'
-    v3dv_flags_cpp += ['-std=c++17', '-DUSE_IMAPPER4_METADATA_API']
-  endif
 endif
 
 per_version_libs = []

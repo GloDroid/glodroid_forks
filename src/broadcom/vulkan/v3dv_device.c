@@ -1964,6 +1964,13 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
       return vk_error(NULL, result);
    }
 
+#ifdef ANDROID
+   if (probe_gralloc(&device->gralloc)) {
+      vk_free(&device->vk.alloc, device);
+      return vk_error("", result);
+   }   
+#endif
+
    device->instance = instance;
    device->pdevice = physical_device;
 
@@ -2020,6 +2027,9 @@ fail:
    cnd_destroy(&device->query_ended);
    mtx_destroy(&device->query_mutex);
    vk_device_finish(&device->vk);
+#ifdef ANDROID
+   destroy_gralloc(&device->gralloc);
+#endif
    vk_free(&device->vk.alloc, device);
 
    return result;
@@ -2052,6 +2062,9 @@ v3dv_DestroyDevice(VkDevice _device,
    mtx_destroy(&device->query_mutex);
 
    vk_device_finish(&device->vk);
+#ifdef ANDROID
+   destroy_gralloc(&device->gralloc);
+#endif
    vk_free2(&device->vk.alloc, pAllocator, device);
 }
 
