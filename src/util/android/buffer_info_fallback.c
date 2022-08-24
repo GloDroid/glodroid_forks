@@ -358,8 +358,6 @@ fallback_gralloc_probe(struct gralloc *gralloc)
    gralloc_module_t *gr_mod = NULL;
    int err = 0;
 
-   mesa_logw("Using fallback buffer info impl. (limited functionality)");
-
    err =
       hw_get_module(GRALLOC_HARDWARE_MODULE_ID, (const hw_module_t **)&gr_mod);
 
@@ -369,17 +367,13 @@ fallback_gralloc_probe(struct gralloc *gralloc)
    } else if (!gr_mod->lock_ycbcr) {
       mesa_logw(
          "Gralloc doesn't support lock_ycbcr (video buffers won't be supported)");
-      goto fail;
    } else {
       gralloc->priv = gr_mod;
    }
 
    gralloc->ops = &fallback_gralloc_ops;
 
+   mesa_logi("Using fallback gralloc implementation");
+
    return 0;
-
-fail:
-   destroy(gralloc);
-
-   return -ENOTSUP;
 }

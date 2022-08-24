@@ -154,6 +154,8 @@ gralloc_v0_cros_api_probe(struct gralloc *gralloc)
    gralloc->priv = gr_mod;
    gralloc->ops = &cros_api_ops;
 
+   mesa_logi("Using gralloc0 CrOS API");
+
    return 0;
 
 fail:

@@ -339,6 +339,8 @@ gralloc_v4_meatdata_api_probe(struct gralloc *gralloc)
    gralloc->priv = priv;
    gralloc->ops = &gralloc4_ops;
 
+   mesa_logi("Using IMapper v4 API");
+
    return 0;
 }
 
