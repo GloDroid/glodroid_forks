@@ -51,7 +51,7 @@ auto BufferInfoImagination::GetBoInfo(buffer_handle_t handle)
   switch (hnd->iFormat) {
 #ifdef HAL_PIXEL_FORMAT_BGRX_8888
     case HAL_PIXEL_FORMAT_BGRX_8888:
-      bo->format = DRM_FORMAT_XRGB8888;
+      bi.format = DRM_FORMAT_XRGB8888;
       break;
 #endif
     default:
