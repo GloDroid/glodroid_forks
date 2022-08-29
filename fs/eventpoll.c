@@ -1501,7 +1501,7 @@ static int ep_insert(struct eventpoll *ep, const struct epoll_event *event,
 		return -EINVAL;
 	}
 
-	if (epi->event.events & EPOLLWAKEUP) {
+	if (0/*epi->event.events & EPOLLWAKEUP*/) {
 		error = ep_create_wakeup_source(epi);
 		if (error) {
 			ep_remove(ep, epi);
@@ -1580,7 +1580,7 @@ static int ep_modify(struct eventpoll *ep, struct epitem *epi,
 	 */
 	epi->event.events = event->events; /* need barrier below */
 	epi->event.data = event->data; /* protected by mtx */
-	if (epi->event.events & EPOLLWAKEUP) {
+	if (0/*epi->event.events & EPOLLWAKEUP*/) {
 		if (!ep_has_wakeup_source(epi))
 			ep_create_wakeup_source(epi);
 	} else if (ep_has_wakeup_source(epi)) {
