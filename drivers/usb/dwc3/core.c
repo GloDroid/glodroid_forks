@@ -836,7 +836,9 @@ static void dwc3_core_exit(struct dwc3 *dwc)
 	usb_phy_set_suspend(dwc->usb2_phy, 1);
 	usb_phy_set_suspend(dwc->usb3_phy, 1);
 	phy_power_off(dwc->usb2_generic_phy);
-	phy_power_off(dwc->usb3_generic_phy);
+	if (dwc->usb3_phy_powered)
+		phy_power_off(dwc->usb3_generic_phy);
+	dwc->usb3_phy_powered = false;
 
 	usb_phy_shutdown(dwc->usb2_phy);
 	usb_phy_shutdown(dwc->usb3_phy);
@@ -1163,6 +1165,8 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	if (ret < 0)
 		goto err3;
 
+	dwc->usb3_phy_powered = true;
+
 	ret = dwc3_event_buffers_setup(dwc);
 	if (ret) {
 		dev_err(dwc->dev, "failed to setup event buffers\n");
@@ -1270,6 +1274,7 @@ static int dwc3_core_init(struct dwc3 *dwc)
 
 err4:
 	phy_power_off(dwc->usb3_generic_phy);
+	dwc->usb3_phy_powered = false;
 
 err3:
 	phy_power_off(dwc->usb2_generic_phy);
