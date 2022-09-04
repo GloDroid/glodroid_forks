@@ -10,6 +10,7 @@
  */
 
 /dts-v1/;
+#include <dt-bindings/input/gpio-keys.h>
 #include <dt-bindings/input/linux-event-codes.h>
 #include "rk3399.dtsi"
 #include "rk3399-opp.dtsi"
@@ -27,6 +28,26 @@
 
 	chosen {
 		stdout-path = "serial2:115200n8";
+	};
+
+	adc-keys {
+		compatible = "adc-keys";
+		io-channels = <&saradc 1>;
+		io-channel-names = "buttons";
+		keyup-threshold-microvolt = <1600000>;
+		poll-interval = <100>;
+
+		button-up {
+			label = "Volume Up";
+			linux,code = <KEY_VOLUMEUP>;
+			press-threshold-microvolt = <100000>;
+		};
+
+		button-down {
+			label = "Volume Down";
+			linux,code = <KEY_VOLUMEDOWN>;
+			press-threshold-microvolt = <300000>;
+		};
 	};
 
 	gpio-keys {
@@ -365,6 +386,11 @@
 			rockchip,pins = <3 RK_PA4 RK_FUNC_GPIO &pcfg_pull_down>;
 		};
 	};
+};
+
+&saradc {
+	vref-supply = <&vcca1v8_s3>;
+	status = "okay";
 };
 
 &sdmmc {
