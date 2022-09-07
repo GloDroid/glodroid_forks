@@ -558,6 +558,7 @@ out:
 	put_task_stack(p);
 	return ret;
 }
+EXPORT_SYMBOL_GPL(get_wchan);
 
 unsigned long arch_align_stack(unsigned long sp)
 {
@@ -639,7 +640,8 @@ long set_tagged_addr_ctrl(struct task_struct *task, unsigned long arg)
 		return -EINVAL;
 
 	if (system_supports_mte())
-		valid_mask |= PR_MTE_TCF_MASK | PR_MTE_TAG_MASK;
+		valid_mask |= PR_MTE_TCF_SYNC | PR_MTE_TCF_ASYNC \
+			| PR_MTE_TAG_MASK;
 
 	if (arg & ~valid_mask)
 		return -EINVAL;

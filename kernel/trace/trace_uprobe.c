@@ -1619,6 +1619,11 @@ create_local_trace_uprobe(char *name, unsigned long offs,
 	tu->path = path;
 	tu->ref_ctr_offset = ref_ctr_offset;
 	tu->filename = kstrdup(name, GFP_KERNEL);
+	if (!tu->filename) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
 	init_trace_event_call(tu);
 
 	ptype = is_ret_probe(tu) ? PROBE_PRINT_RETURN : PROBE_PRINT_NORMAL;
@@ -1656,10 +1661,10 @@ static __init int init_uprobe_trace(void)
 	if (ret)
 		return 0;
 
-	trace_create_file("uprobe_events", TRACE_MODE_WRITE, NULL,
+	trace_create_file("uprobe_events", 0644, NULL,
 				    NULL, &uprobe_events_ops);
 	/* Profile interface */
-	trace_create_file("uprobe_profile", TRACE_MODE_READ, NULL,
+	trace_create_file("uprobe_profile", 0444, NULL,
 				    NULL, &uprobe_profile_ops);
 	return 0;
 }

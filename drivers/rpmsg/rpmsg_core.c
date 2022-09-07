@@ -20,6 +20,9 @@
 
 #include "rpmsg_internal.h"
 
+struct class *rpmsg_class;
+EXPORT_SYMBOL(rpmsg_class);
+
 /**
  * rpmsg_create_channel() - create a new rpmsg channel
  * using its name and address info.
@@ -363,6 +366,26 @@ int rpmsg_set_signals(struct rpmsg_endpoint *ept, u32 set, u32 clear)
 }
 EXPORT_SYMBOL(rpmsg_set_signals);
 
+/**
+ * rpmsg_rx_done() - release resources related to @data from a @rx_cb
+ * @ept:	the rpmsg endpoint
+ * @data:	payload from a message
+ *
+ * Returns 0 on success and an appropriate error value on failure.
+ */
+int rpmsg_rx_done(struct rpmsg_endpoint *ept, void *data)
+{
+	if (WARN_ON(!ept))
+		return -EINVAL;
+	if (!ept->ops->rx_done)
+		return -ENXIO;
+	if (!ept->rx_done)
+		return -EINVAL;
+
+	return ept->ops->rx_done(ept, data);
+}
+EXPORT_SYMBOL(rpmsg_rx_done);
+
 /*
  * match a rpmsg channel with a channel info struct.
  * this is used to make sure we're not creating rpmsg devices for channels
@@ -681,10 +704,17 @@ static int __init rpmsg_init(void)
 {
 	int ret;
 
-	ret = bus_register(&rpmsg_bus);
-	if (ret)
-		pr_err("failed to register rpmsg bus: %d\n", ret);
+	rpmsg_class = class_create(THIS_MODULE, "rpmsg");
+	if (IS_ERR(rpmsg_class)) {
+		pr_err("failed to create rpmsg class\n");
+		return PTR_ERR(rpmsg_class);
+	}
 
+	ret = bus_register(&rpmsg_bus);
+	if (ret) {
+		pr_err("failed to register rpmsg bus: %d\n", ret);
+		class_destroy(rpmsg_class);
+	}
 	return ret;
 }
 postcore_initcall(rpmsg_init);
@@ -692,6 +722,7 @@ postcore_initcall(rpmsg_init);
 static void __exit rpmsg_fini(void)
 {
 	bus_unregister(&rpmsg_bus);
+	class_destroy(rpmsg_class);
 }
 module_exit(rpmsg_fini);
 

@@ -31,7 +31,7 @@ static int __init set_kprobe_boot_events(char *str)
 	strlcpy(kprobe_boot_events_buf, str, COMMAND_LINE_SIZE);
 	disable_tracing_selftest("running kprobe events");
 
-	return 0;
+	return 1;
 }
 __setup("kprobe_event=", set_kprobe_boot_events);
 
@@ -1928,16 +1928,16 @@ static __init int init_kprobe_trace(void)
 	if (ret)
 		return 0;
 
-	entry = tracefs_create_file("kprobe_events", TRACE_MODE_WRITE,
-				    NULL, NULL, &kprobe_events_ops);
+	entry = tracefs_create_file("kprobe_events", 0644, NULL,
+				    NULL, &kprobe_events_ops);
 
 	/* Event list interface */
 	if (!entry)
 		pr_warn("Could not create tracefs 'kprobe_events' entry\n");
 
 	/* Profile interface */
-	entry = tracefs_create_file("kprobe_profile", TRACE_MODE_READ,
-				    NULL, NULL, &kprobe_profile_ops);
+	entry = tracefs_create_file("kprobe_profile", 0444, NULL,
+				    NULL, &kprobe_profile_ops);
 
 	if (!entry)
 		pr_warn("Could not create tracefs 'kprobe_profile' entry\n");

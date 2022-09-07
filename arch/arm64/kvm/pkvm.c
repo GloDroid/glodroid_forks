@@ -82,6 +82,7 @@ void __init kvm_hyp_reserve(void)
 	hyp_mem_pages += host_s2_pgtable_pages();
 	hyp_mem_pages += hyp_shadow_table_pages(KVM_SHADOW_VM_SIZE);
 	hyp_mem_pages += hyp_vmemmap_pages(STRUCT_HYP_PAGE_SIZE);
+	hyp_mem_pages += hyp_ffa_proxy_pages();
 
 	/*
 	 * Try to allocate a PMD-aligned region to reduce TLB pressure once
@@ -105,14 +106,6 @@ void __init kvm_hyp_reserve(void)
 }
 
 /*
- * Updates the state of the host's version of the vcpu state.
- */
-static void update_vcpu_state(struct kvm_vcpu *vcpu, int shadow_handle)
-{
-	vcpu->arch.pkvm.shadow_handle = shadow_handle;
-}
-
-/*
  * Allocates and donates memory for EL2 shadow structs.
  *
  * Allocates space for the shadow state, which includes the shadow vm as well as
@@ -129,7 +122,7 @@ static int __create_el2_shadow(struct kvm *kvm)
 	void *pgd, *shadow_addr;
 	unsigned long idx;
 	int shadow_handle;
-	int ret, i;
+	int ret;
 
 	if (kvm->created_vcpus < 1)
 		return -EINVAL;
@@ -170,10 +163,6 @@ static int __create_el2_shadow(struct kvm *kvm)
 	/* Store the shadow handle given by hyp for future call reference. */
 	kvm->arch.pkvm.shadow_handle = shadow_handle;
 
-	/* Adjust host's vcpu state as it doesn't control it anymore. */
-	for (i = 0; i < kvm->created_vcpus; i++)
-		update_vcpu_state(kvm->vcpus[i], shadow_handle);
-
 	return 0;
 
 free_shadow:
@@ -193,6 +182,31 @@ int create_el2_shadow(struct kvm *kvm)
 	mutex_unlock(&kvm->arch.pkvm.shadow_lock);
 
 	return ret;
+}
+
+void kvm_shadow_destroy(struct kvm *kvm)
+{
+	struct kvm_pinned_page *ppage, *tmp;
+	struct mm_struct *mm = current->mm;
+	struct list_head *ppages;
+
+	if (kvm->arch.pkvm.shadow_handle)
+		WARN_ON(kvm_call_hyp_nvhe(__pkvm_teardown_shadow,
+					  kvm->arch.pkvm.shadow_handle));
+
+	free_hyp_memcache(&kvm->arch.pkvm.teardown_mc);
+
+	ppages = &kvm->arch.pkvm.pinned_pages;
+	list_for_each_entry_safe(ppage, tmp, ppages, link) {
+		WARN_ON(kvm_call_hyp_nvhe(__pkvm_host_reclaim_page,
+					  page_to_pfn(ppage->page)));
+		cond_resched();
+
+		account_locked_vm(mm, 1, false);
+		unpin_user_pages_dirty_lock(&ppage->page, 1, true);
+		list_del(&ppage->link);
+		kfree(ppage);
+	}
 }
 
 static int __init pkvm_firmware_rmem_err(struct reserved_mem *rmem,
