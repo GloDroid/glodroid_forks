@@ -763,6 +763,23 @@ void drv_bo_log_info(const struct bo *bo, const char *prefix)
 	}
 }
 
+uint32_t drv_bo_get_pixel_stride(struct bo *bo)
+{
+	struct driver *drv = bo->drv;
+	uint32_t bytes_per_pixel = 0;
+	uint32_t map_stride = 0;
+
+	bytes_per_pixel = drv_bytes_per_pixel_from_format(bo->meta.format, 0);
+
+	if ((bo->meta.use_flags & BO_USE_SW_MASK) && drv->backend->bo_get_map_stride)
+		map_stride = drv->backend->bo_get_map_stride(bo);
+
+	if (!map_stride)
+		map_stride = bo->meta.strides[0];
+
+	return DIV_ROUND_UP(map_stride, bytes_per_pixel);
+}
+
 /*
  * Map internal fourcc codes back to standard fourcc codes.
  */

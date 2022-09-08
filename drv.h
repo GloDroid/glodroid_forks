@@ -211,6 +211,8 @@ size_t drv_bo_get_total_size(struct bo *bo);
 
 void drv_bo_log_info(const struct bo *bo, const char *prefix);
 
+uint32_t drv_bo_get_pixel_stride(struct bo *bo);
+
 uint32_t drv_get_standard_fourcc(uint32_t fourcc_internal);
 
 uint32_t drv_bytes_per_pixel_from_format(uint32_t format, size_t plane);
