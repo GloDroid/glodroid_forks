@@ -136,8 +136,8 @@ Pwl Pwl::inverse(bool *trueInverse, const double eps) const
 	for (Point const &p : points_) {
 		if (inverse.empty())
 			inverse.append(p.y, p.x, eps);
-		else if (std::abs(inverse.points_.back().x - p.y) <= eps ||
-			 std::abs(inverse.points_.front().x - p.y) <= eps)
+		else if (fabs(inverse.points_.back().x - p.y) <= eps ||
+			 fabs(inverse.points_.front().x - p.y) <= eps)
 			/* do nothing */;
 		else if (p.y > inverse.points_.back().x) {
 			inverse.append(p.y, p.x, eps);

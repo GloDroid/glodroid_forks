@@ -48,7 +48,7 @@ int CameraHalManager::init()
 {
 	cameraManager_ = std::make_unique<CameraManager>();
 
-#ifdef HAVE_LIBYAML
+#if 0
 	/*
 	 * If the configuration file is not available the HAL only supports
 	 * external cameras. If it exists but it's not valid then error out.
@@ -135,7 +135,7 @@ void CameraHalManager::cameraAdded(std::shared_ptr<Camera> cam)
 		}
 	}
 
-#ifdef HAVE_LIBYAML
+#if 0
 	/*
 	 * The configuration file must be valid, and contain a corresponding
 	 * entry for internal cameras. External cameras can be initialized

@@ -54,14 +54,6 @@ android_hal_sources = files([
 
 android_cpp_args = []
 
-libyaml_dep = dependency('yaml-0.1', required : false)
-if libyaml_dep.found()
-    config_h.set('HAVE_LIBYAML', 1)
-    android_hal_sources += files([
-        'camera_hal_config.cpp',
-    ])
-endif
-
 subdir('cros')
 subdir('mm')
 

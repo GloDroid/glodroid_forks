@@ -14,8 +14,8 @@ LIBCAMERA_TOP := $(dir $(LOCAL_PATH))
 include $(CLEAR_VARS)
 
 LOCAL_CPPFLAGS := -fexceptions
-LOCAL_SHARED_LIBRARIES := libc libexif libjpeg libyuv_chromium libdl boost
-MESON_GEN_PKGCONFIGS := libexif libjpeg libyuv dl
+LOCAL_SHARED_LIBRARIES := libc libexif libjpeg libyuv_chromium libdl boost libyaml
+MESON_GEN_PKGCONFIGS := libexif libjpeg libyuv dl yaml-0.1
 
 ifeq ($(TARGET_IS_64_BIT),true)
 LOCAL_MULTILIB := 64

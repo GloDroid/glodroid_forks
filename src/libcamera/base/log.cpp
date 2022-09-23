@@ -603,7 +603,7 @@ Logger::Logger()
 void Logger::parseLogFile()
 {
 	const char *file = "syslog"; //utils::secure_getenv("LIBCAMERA_LOG_FILE");
-	if (!file) {
+	if (!file)
 		return;
 
 	if (!strcmp(file, "syslog")) {

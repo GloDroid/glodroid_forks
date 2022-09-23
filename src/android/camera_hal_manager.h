@@ -56,7 +56,7 @@ private:
 	CameraDevice *cameraDeviceFromHalId(unsigned int id) LIBCAMERA_TSA_REQUIRES(mutex_);
 
 	std::unique_ptr<libcamera::CameraManager> cameraManager_;
-#ifdef HAVE_LIBYAML
+#if 0
 	CameraHalConfig halConfig_;
 #endif
 
