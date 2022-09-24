@@ -1411,6 +1411,7 @@
 	pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_cd &sdmmc_bus4>;
 	vmmc-supply = <&vcc3v3_sys>;
 	vqmmc-supply = <&vccio_sd>;
+	sd-uhs-sdr104;
 	status = "okay";
 };
 
