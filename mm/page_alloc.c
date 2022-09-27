@@ -3095,6 +3095,7 @@ retry:
 						  alloc_flags))
 		goto retry;
 
+out:
 	if (page)
 		trace_mm_page_alloc_zone_locked(page, order, migratetype);
 	return page;
