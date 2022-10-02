@@ -48,4 +48,6 @@ void drv_resolve_format_and_use_flags_helper(struct driver *drv, uint32_t format
 					     uint64_t use_flags, uint32_t *out_format,
 					     uint64_t *out_use_flags);
 
+uint32_t drv_get_inode(int dmabuf_fd);
+
 #endif

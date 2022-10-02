@@ -835,7 +835,7 @@ static int virgl_bo_invalidate(struct bo *bo, struct mapping *mapping)
 	if (params[param_resource_blob].value && (bo->meta.tiling & VIRTGPU_BLOB_FLAG_USE_MAPPABLE))
 		return 0;
 
-	xfer.bo_handle = mapping->vma->handle;
+	xfer.bo_handle = bo->handles[mapping->vma->plane].u32;
 
 	if (mapping->rect.x || mapping->rect.y) {
 		/*
@@ -889,7 +889,7 @@ static int virgl_bo_invalidate(struct bo *bo, struct mapping *mapping)
 	// The transfer needs to complete before invalidate returns so that any host changes
 	// are visible and to ensure the host doesn't overwrite subsequent guest changes.
 	// TODO(b/136733358): Support returning fences from transfers
-	waitcmd.handle = mapping->vma->handle;
+	waitcmd.handle = bo->handles[mapping->vma->plane].u32;
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_VIRTGPU_WAIT, &waitcmd);
 	if (ret) {
 		drv_loge("DRM_IOCTL_VIRTGPU_WAIT failed with %s\n", strerror(errno));
@@ -917,7 +917,7 @@ static int virgl_bo_flush(struct bo *bo, struct mapping *mapping)
 	if (params[param_resource_blob].value && (bo->meta.tiling & VIRTGPU_BLOB_FLAG_USE_MAPPABLE))
 		return 0;
 
-	xfer.bo_handle = mapping->vma->handle;
+	xfer.bo_handle = bo->handles[mapping->vma->plane].u32;
 
 	if (mapping->rect.x || mapping->rect.y) {
 		/*
@@ -967,7 +967,7 @@ static int virgl_bo_flush(struct bo *bo, struct mapping *mapping)
 	// buffer, we need to wait for the transfer to complete for consistency.
 	// TODO(b/136733358): Support returning fences from transfers
 	if (bo->meta.use_flags & BO_USE_NON_GPU_HW) {
-		waitcmd.handle = mapping->vma->handle;
+		waitcmd.handle = bo->handles[mapping->vma->plane].u32;
 
 		ret = drmIoctl(bo->drv->fd, DRM_IOCTL_VIRTGPU_WAIT, &waitcmd);
 		if (ret) {

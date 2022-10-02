@@ -44,7 +44,9 @@ struct bo {
 	struct driver *drv;
 	struct bo_metadata meta;
 	bool is_test_buffer;
+	/* handles are mandatory only for SCANOUT buffers */
 	union bo_handle handles[DRV_MAX_PLANES];
+	uint32_t inodes[DRV_MAX_PLANES];
 	void *priv;
 };
 

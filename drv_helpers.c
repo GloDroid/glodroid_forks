@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <xf86drm.h>
@@ -600,4 +601,16 @@ void drv_resolve_format_and_use_flags_helper(struct driver *drv, uint32_t format
 	default:
 		break;
 	}
+}
+
+uint32_t drv_get_inode(int dmabuf_fd)
+{
+	struct stat sb = { 0 };
+	int ret = 0;
+
+	ret = fstat(dmabuf_fd, &sb);
+	if (ret)
+		drv_loge("Failed to fstat dmabuf %d: %s\n", dmabuf_fd, strerror(errno));
+
+	return sb.st_ino;
 }

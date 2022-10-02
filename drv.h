@@ -105,7 +105,8 @@ struct drv_import_fd_data {
 struct vma {
 	void *addr;
 	size_t length;
-	uint32_t handle;
+	uint32_t plane;
+	uint32_t inode;
 	uint32_t map_flags;
 	int32_t refcount;
 	uint32_t map_strides[DRV_MAX_PLANES];
