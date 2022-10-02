@@ -218,8 +218,10 @@ int cros_gralloc_driver::create_reserved_region(const std::string &buffer_name,
 
 #if ANDROID_API_LEVEL >= 31 && defined(HAS_DMABUF_SYSTEM_HEAP)
 	ret = allocator_.Alloc(kDmabufSystemHeapName, reserved_region_size);
-	if (ret >= 0)
+	if (ret >= 0) {
+		ioctl(ret, DMA_BUF_SET_NAME, "gralloc-meta");
 		return ret;
+	}
 #endif
 
 	ret = memfd_create_reserved_region(buffer_name, reserved_region_size);
