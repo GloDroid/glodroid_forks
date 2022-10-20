@@ -31,7 +31,7 @@ namespace android {
 std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
   if (delta.total_pixops_ == 0)
     return "No stats yet";
-  double ratio = 1.0 - double(delta.gpu_pixops_) / double(delta.total_pixops_);
+  auto ratio = 1.0 - double(delta.gpu_pixops_) / double(delta.total_pixops_);
 
   std::stringstream ss;
   ss << " Total frames count: " << delta.total_frames_ << "\n"
@@ -69,9 +69,9 @@ std::string HwcDisplay::Dump() {
                              " VSync remains";
   }
 
-  std::string connector_name = IsInHeadlessMode()
-                                   ? "NULL-DISPLAY"
-                                   : GetPipe().connector->Get()->GetName();
+  auto connector_name = IsInHeadlessMode()
+                            ? std::string("NULL-DISPLAY")
+                            : GetPipe().connector->Get()->GetName();
 
   std::stringstream ss;
   ss << "- Display on: " << connector_name << "\n"
@@ -236,7 +236,7 @@ HWC2::Error HwcDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
   }
 
   uint32_t num_changes = 0;
-  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
+  for (auto &l : layers_) {
     if (l.second.IsTypeChanged()) {
       if (layers && num_changes < *num_elements)
         layers[num_changes] = l.first;
@@ -257,8 +257,8 @@ HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
     return HWC2::Error::None;
   }
 
-  std::pair<uint32_t, uint32_t> min = pipeline_->device->GetMinResolution();
-  std::pair<uint32_t, uint32_t> max = pipeline_->device->GetMaxResolution();
+  auto min = pipeline_->device->GetMinResolution();
+  auto max = pipeline_->device->GetMaxResolution();
 
   if (width < min.first || height < min.second)
     return HWC2::Error::Unsupported;
@@ -296,8 +296,8 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   auto &hwc_config = configs_.hwc_configs[conf];
 
   static const int32_t kUmPerInch = 25400;
-  uint32_t mm_width = configs_.mm_width;
-  uint32_t mm_height = configs_.mm_height;
+  auto mm_width = configs_.mm_width;
+  auto mm_height = configs_.mm_height;
   auto attribute = static_cast<HWC2::Attribute>(attribute_in);
   switch (attribute) {
     case HWC2::Attribute::Width:
@@ -364,8 +364,8 @@ HWC2::Error HwcDisplay::GetDisplayName(uint32_t *size, char *name) {
   } else {
     stream << "display-" << GetPipe().connector->Get()->GetId();
   }
-  std::string string = stream.str();
-  size_t length = string.length();
+  auto string = stream.str();
+  auto length = string.length();
   if (!name) {
     *size = length;
     return HWC2::Error::None;
@@ -450,7 +450,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     return HWC2::Error::None;
   }
 
-  int PrevModeVsyncPeriodNs = static_cast<int>(
+  auto PrevModeVsyncPeriodNs = static_cast<int>(
       1E9 / GetPipe().connector->Get()->GetActiveMode().v_refresh());
 
   auto mode_update_commited_ = false;
@@ -477,7 +477,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
     switch (l.second.GetValidatedType()) {
       case HWC2::Composition::Device:
-        z_map.emplace(std::make_pair(l.second.GetZOrder(), &l.second));
+        z_map.emplace(l.second.GetZOrder(), &l.second);
         break;
       case HWC2::Composition::Client:
         // Place it at the z_order of the lowest client layer
@@ -489,7 +489,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     }
   }
   if (use_client_layer)
-    z_map.emplace(std::make_pair(client_z_order, &client_layer_));
+    z_map.emplace(client_z_order, &client_layer_);
 
   if (z_map.empty())
     return HWC2::Error::BadLayer;
@@ -530,7 +530,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 
   a_args.composition = current_plan_;
 
-  int ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
+  auto ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
 
   if (ret) {
     if (!a_args.test_only)
@@ -632,10 +632,15 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
   }
 
   auto &bi = client_layer_.GetLayerData().bi;
-  hwc_frect_t source_crop = {.left = 0.0F,
-                             .top = 0.0F,
-                             .right = static_cast<float>(bi->width),
-                             .bottom = static_cast<float>(bi->height)};
+  if (!bi) {
+    ALOGE("%s: Invalid state", __func__);
+    return HWC2::Error::BadLayer;
+  }
+
+  auto source_crop = (hwc_frect_t){.left = 0.0F,
+                                   .top = 0.0F,
+                                   .right = static_cast<float>(bi->width),
+                                   .bottom = static_cast<float>(bi->height)};
   client_layer_.SetLayerSourceCrop(source_crop);
 
   return HWC2::Error::None;
@@ -709,7 +714,7 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
                : HWC2::Error::BadParameter;
   };
 
-  int err = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
+  auto err = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
   if (err) {
     ALOGE("Failed to apply the dpms composition err=%d", err);
     return HWC2::Error::BadParameter;
@@ -940,7 +945,7 @@ void HwcDisplay::set_backend(std::unique_ptr<Backend> backend) {
 
 /* returns true if composition should be sent to client */
 bool HwcDisplay::ProcessClientFlatteningState(bool skip) {
-  int flattenning_state = flattenning_state_;
+  const int flattenning_state = flattenning_state_;
   if (flattenning_state == ClientFlattenningState::Disabled) {
     return false;
   }

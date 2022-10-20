@@ -68,7 +68,7 @@ std::optional<BufferUniqueId> BufferInfoGetter::GetUniqueId(
 }
 
 int LegacyBufferInfoGetter::Init() {
-  int ret = hw_get_module(
+  const int ret = hw_get_module(
       GRALLOC_HARDWARE_MODULE_ID,
       // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
       reinterpret_cast<const hw_module_t **>(&gralloc_));

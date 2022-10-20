@@ -161,7 +161,7 @@ auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
   create_blob.data = (__u64)data;
 
-  int ret = drmIoctl(GetFd(), DRM_IOCTL_MODE_CREATEPROPBLOB, &create_blob);
+  auto ret = drmIoctl(GetFd(), DRM_IOCTL_MODE_CREATEPROPBLOB, &create_blob);
   if (ret != 0) {
     ALOGE("Failed to create mode property blob %d", ret);
     return {};
@@ -171,8 +171,8 @@ auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const
       new uint32_t(create_blob.blob_id), [this](const uint32_t *it) {
         struct drm_mode_destroy_blob destroy_blob {};
         destroy_blob.blob_id = (__u32)*it;
-        int err = drmIoctl(GetFd(), DRM_IOCTL_MODE_DESTROYPROPBLOB,
-                           &destroy_blob);
+        auto err = drmIoctl(GetFd(), DRM_IOCTL_MODE_DESTROYPROPBLOB,
+                            &destroy_blob);
         if (err != 0) {
           ALOGE("Failed to destroy mode property blob %" PRIu32 "/%d", *it,
                 err);
@@ -231,7 +231,7 @@ auto DrmDevice::IsKMSDev(const char *path) -> bool {
     return false;
   }
 
-  bool is_kms = res->count_crtcs > 0 && res->count_connectors > 0 &&
+  auto is_kms = res->count_crtcs > 0 && res->count_connectors > 0 &&
                 res->count_encoders > 0;
 
   return is_kms;

@@ -16,7 +16,7 @@ A short list of contribution guidelines:
   you with formatting of your patches:
 
     ```
-    git diff | clang-format-diff-14 -p 1 -style=file
+    git diff | clang-format-diff-15 -p 1 -style=file
     ```
 
 * Hardware specific changes should be tested on relevant platforms before

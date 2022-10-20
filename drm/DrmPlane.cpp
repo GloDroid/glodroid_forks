@@ -169,6 +169,11 @@ bool DrmPlane::IsCrtcSupported(const DrmCrtc &crtc) const {
 }
 
 bool DrmPlane::IsValidForLayer(LayerData *layer) {
+  if (layer == nullptr || !layer->bi) {
+    ALOGE("%s: Invalid parameters", __func__);
+    return false;
+  }
+
   if (!rotation_property_) {
     if (layer->pi.transform != LayerTransform::kIdentity) {
       ALOGV("No rotation property on plane %d", GetId());
@@ -193,7 +198,7 @@ bool DrmPlane::IsValidForLayer(LayerData *layer) {
     return false;
   }
 
-  uint32_t format = layer->bi->format;
+  auto format = layer->bi->format;
   if (!IsFormatSupported(format)) {
     ALOGV("Plane %d does not supports %c%c%c%c format", GetId(), format,
           format >> 8, format >> 16, format >> 24);
@@ -241,8 +246,8 @@ static int To1616FixPt(float in) {
 
 auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
                               uint32_t zpos, uint32_t crtc_id) -> int {
-  if (!layer.fb) {
-    ALOGE("Expected a valid framebuffer for pset");
+  if (!layer.fb || !layer.bi) {
+    ALOGE("%s: Invalid arguments", __func__);
     return -EINVAL;
   }
 
@@ -317,8 +322,8 @@ auto DrmPlane::AtomicDisablePlane(drmModeAtomicReq &pset) -> int {
 
 auto DrmPlane::GetPlaneProperty(const char *prop_name, DrmProperty &property,
                                 Presence presence) -> bool {
-  int err = drm_->GetProperty(GetId(), DRM_MODE_OBJECT_PLANE, prop_name,
-                              &property);
+  auto err = drm_->GetProperty(GetId(), DRM_MODE_OBJECT_PLANE, prop_name,
+                               &property);
   if (err != 0) {
     if (presence == Presence::kMandatory) {
       ALOGE("Could not get mandatory property \"%s\" from plane %d", prop_name,

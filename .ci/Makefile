@@ -2,8 +2,8 @@
 INCLUDE_DIRS := . ../libdrm/include/drm include ./.ci/android_headers ./tests/test_include
 SYSTEM_INCLUDE_DIRS := /usr/include/libdrm
 
-CLANG := clang++-14
-CLANG_TIDY := clang-tidy-14
+CLANG := clang++-15
+CLANG_TIDY := clang-tidy-15
 OUT_DIR := /tmp/drm_hwcomposer/build
 SRC_DIR := .
 

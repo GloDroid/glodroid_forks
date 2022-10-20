@@ -44,6 +44,7 @@ namespace android {
 
 // NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
 auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
+  // NOLINTNEXTLINE(misc-const-correctness)
   ATRACE_CALL();
 
   if (args.active && *args.active == active_frame_state_.crtc_active_state) {
@@ -141,10 +142,11 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   if (last_present_fence_) {
+    // NOLINTNEXTLINE(misc-const-correctness)
     ATRACE_NAME("WaitPriorFramePresented");
 
     constexpr int kTimeoutMs = 500;
-    int err = sync_wait(last_present_fence_.Get(), kTimeoutMs);
+    const int err = sync_wait(last_present_fence_.Get(), kTimeoutMs);
     if (err != 0) {
       ALOGE("sync_wait(fd=%i) returned: %i (errno: %i)",
             last_present_fence_.Get(), err, errno);
@@ -157,7 +159,7 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     flags |= DRM_MODE_ATOMIC_NONBLOCK;
   }
 
-  int err = drmModeAtomicCommit(drm->GetFd(), pset.get(), flags, drm);
+  auto err = drmModeAtomicCommit(drm->GetFd(), pset.get(), flags, drm);
 
   if (err != 0) {
     ALOGE("Failed to commit pset ret=%d\n", err);
@@ -223,9 +225,10 @@ void PresentTrackerThread::PresentTrackerThreadFn() {
     }
 
     {
+      // NOLINTNEXTLINE(misc-const-correctness)
       ATRACE_NAME("AsyncWaitForBuffersSwap");
       constexpr int kTimeoutMs = 500;
-      int err = sync_wait(present_fence.Get(), kTimeoutMs);
+      auto err = sync_wait(present_fence.Get(), kTimeoutMs);
       if (err != 0) {
         ALOGE("sync_wait(fd=%i) returned: %i (errno: %i)", present_fence.Get(),
               err, errno);
@@ -233,7 +236,7 @@ void PresentTrackerThread::PresentTrackerThreadFn() {
     }
 
     {
-      std::unique_lock lk(*mutex_);
+      const std::unique_lock lk(*mutex_);
       if (st_man_ == nullptr) {
         break;
       }
@@ -250,6 +253,7 @@ void DrmAtomicStateManager::CleanupPriorFrameResources() {
   assert(frames_staged_ - frames_tracked_ == 1);
   assert(last_present_fence_);
 
+  // NOLINTNEXTLINE(misc-const-correctness)
   ATRACE_NAME("CleanupPriorFrameResources");
   frames_tracked_++;
   active_frame_state_ = std::move(staged_frame_state_);
@@ -257,7 +261,7 @@ void DrmAtomicStateManager::CleanupPriorFrameResources() {
 }
 
 auto DrmAtomicStateManager::ExecuteAtomicCommit(AtomicCommitArgs &args) -> int {
-  int err = CommitFrame(args);
+  auto err = CommitFrame(args);
 
   if (!args.test_only) {
     if (err != 0) {

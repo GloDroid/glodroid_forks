@@ -47,8 +47,8 @@ void UEventListener::Routine() {
     if (!hotplug_handler_ || !uevent_str)
       continue;
 
-    bool drm_event = uevent_str->find("DEVTYPE=drm_minor") != std::string::npos;
-    bool hotplug_event = uevent_str->find("HOTPLUG=1") != std::string::npos;
+    auto drm_event = uevent_str->find("DEVTYPE=drm_minor") != std::string::npos;
+    auto hotplug_event = uevent_str->find("HOTPLUG=1") != std::string::npos;
 
     if (drm_event && hotplug_event) {
       constexpr useconds_t kDelayAfterUeventUs = 200000;

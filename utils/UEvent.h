@@ -46,7 +46,7 @@ class UEvent {
     addr.nl_groups = UINT32_MAX;
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
-    int ret = bind(fd.Get(), (struct sockaddr *)&addr, sizeof(addr));
+    const int ret = bind(fd.Get(), (struct sockaddr *)&addr, sizeof(addr));
     if (ret != 0) {
       ALOGE("Failed to bind uevent socket: errno=%i", errno);
       return {};

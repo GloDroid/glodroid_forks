@@ -77,7 +77,7 @@ auto BufferInfoMaliHisi::GetBoInfo(buffer_handle_t handle)
   if (!(hnd->usage & GRALLOC_USAGE_HW_FB))
     return {};
 
-  uint32_t fmt = ConvertHalFormatToDrm(hnd->req_format);
+  const uint32_t fmt = ConvertHalFormatToDrm(hnd->req_format);
   if (fmt == DRM_FORMAT_INVALID)
     return {};
 
@@ -100,10 +100,10 @@ auto BufferInfoMaliHisi::GetBoInfo(buffer_handle_t handle)
       if (hnd->usage &
           (GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK))
         align = 16;
-      int adjusted_height = MALI_ALIGN(hnd->height, 2);
-      int y_size = adjusted_height * hnd->byte_stride;
-      int vu_stride = MALI_ALIGN(hnd->byte_stride / 2, align);
-      int v_size = vu_stride * (adjusted_height / 2);
+      const int adjusted_height = MALI_ALIGN(hnd->height, 2);
+      const int y_size = adjusted_height * hnd->byte_stride;
+      const int vu_stride = MALI_ALIGN(hnd->byte_stride / 2, align);
+      const int v_size = vu_stride * (adjusted_height / 2);
 
       /* V plane*/
       bi.prime_fds[1] = hnd->share_fd;

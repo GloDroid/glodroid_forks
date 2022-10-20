@@ -30,7 +30,7 @@ Worker::~Worker() {
 }
 
 int Worker::InitWorker() {
-  std::lock_guard<std::mutex> lk(mutex_);
+  const std::lock_guard<std::mutex> lk(mutex_);
   if (initialized())
     return -EALREADY;
 

@@ -84,10 +84,10 @@ int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
     refresh = pipe_->connector->Get()->GetActiveMode().v_refresh();
   }
 
-  int64_t phased_timestamp = GetPhasedVSync(kOneSecondNs /
-                                                static_cast<int>(refresh),
-                                            vsync.tv_sec * kOneSecondNs +
-                                                vsync.tv_nsec);
+  auto phased_timestamp = GetPhasedVSync(kOneSecondNs /
+                                             static_cast<int>(refresh),
+                                         vsync.tv_sec * kOneSecondNs +
+                                             vsync.tv_nsec);
   vsync.tv_sec = phased_timestamp / kOneSecondNs;
   vsync.tv_nsec = int(phased_timestamp - (vsync.tv_sec * kOneSecondNs));
   do {
@@ -120,8 +120,8 @@ void VSyncWorker::Routine() {
   drmVBlank vblank{};
 
   if (pipe != nullptr) {
-    uint32_t high_crtc = (pipe->crtc->Get()->GetIndexInResArray()
-                          << DRM_VBLANK_HIGH_CRTC_SHIFT);
+    auto high_crtc = (pipe->crtc->Get()->GetIndexInResArray()
+                      << DRM_VBLANK_HIGH_CRTC_SHIFT);
 
     vblank.request.type = (drmVBlankSeqType)(DRM_VBLANK_RELATIVE |
                                              (high_crtc &

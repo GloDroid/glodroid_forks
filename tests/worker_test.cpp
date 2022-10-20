@@ -17,7 +17,7 @@ struct TestWorker : public Worker {
   void Routine() override {
     Lock();
     if (!enabled_) {
-      int ret = WaitForSignalOrExitLocked();
+      auto ret = WaitForSignalOrExitLocked();
       if (ret == -EINTR) {
         Unlock();
         return;

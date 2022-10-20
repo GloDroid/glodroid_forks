@@ -38,7 +38,7 @@ auto BufferInfoMaliMediatek::GetBoInfo(buffer_handle_t handle)
   if (!hnd)
     return {};
 
-  uint32_t fmt = ConvertHalFormatToDrm(hnd->req_format);
+  const uint32_t fmt = ConvertHalFormatToDrm(hnd->req_format);
   if (fmt == DRM_FORMAT_INVALID)
     return {};
 

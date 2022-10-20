@@ -177,7 +177,7 @@ int DrmConnector::UpdateModes() {
     }
 
     if (!exists) {
-      modes_.emplace_back(DrmMode(&connector_->modes[i]));
+      modes_.emplace_back(&connector_->modes[i]);
     }
   }
 

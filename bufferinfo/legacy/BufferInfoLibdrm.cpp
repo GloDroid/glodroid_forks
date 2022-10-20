@@ -154,7 +154,7 @@ bool BufferInfoLibdrm::GetYuvPlaneInfo(uint32_t hal_format, int num_fds,
   if (num_fds == 1) {
     bo->prime_fds[2] = bo->prime_fds[1] = bo->prime_fds[0];
   } else {
-    int expected_planes = (ycbcr.chroma_step == 2) ? 2 : 3;
+    const int expected_planes = (ycbcr.chroma_step == 2) ? 2 : 3;
     if (num_fds != expected_planes)
       return false;
   }

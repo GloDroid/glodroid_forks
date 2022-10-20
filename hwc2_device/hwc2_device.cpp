@@ -35,11 +35,11 @@ namespace android {
  * to the short "android::HwcLayer::SetLayerBuffer" for better logs readability
  */
 static std::string GetFuncName(const char *pretty_function) {
-  std::string str(pretty_function);
+  const std::string str(pretty_function);
   const char *start = "func = &";
-  size_t p1 = str.find(start);
+  auto p1 = str.find(start);
   p1 += strlen(start);
-  size_t p2 = str.find(',', p1);
+  auto p2 = str.find(',', p1);
   return str.substr(p1, p2 - p1);
 }
 
@@ -102,7 +102,7 @@ static int32_t LayerHook(hwc2_device_t *dev, hwc2_display_t display_handle,
 static int HookDevClose(hw_device_t *dev) {
   // NOLINTNEXTLINE (cppcoreguidelines-pro-type-reinterpret-cast): Safe
   auto *hwc2_dev = reinterpret_cast<hwc2_device_t *>(dev);
-  std::unique_ptr<DrmHwcTwo> ctx(ToDrmHwcTwo(hwc2_dev));
+  const std::unique_ptr<DrmHwcTwo> ctx(ToDrmHwcTwo(hwc2_dev));
   return 0;
 }
 

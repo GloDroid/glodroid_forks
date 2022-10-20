@@ -61,7 +61,7 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
    * mode*/
   FillHeadless();
   /* Read real configs */
-  int ret = connector.UpdateModes();
+  auto ret = connector.UpdateModes();
   if (ret != 0) {
     ALOGE("Failed to update display modes %d", ret);
     return HWC2::Error::BadDisplay;
@@ -79,7 +79,7 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
   preferred_config_id = 0;
   uint32_t preferred_config_group_id = 0;
 
-  uint32_t first_config_id = last_config_id;
+  auto first_config_id = last_config_id;
   uint32_t last_group_id = 1;
 
   /* Group modes */
@@ -143,7 +143,7 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
       }
     }
 
-    bool has_both = has_interlaced && has_progressive;
+    auto has_both = has_interlaced && has_progressive;
     if (!has_both) {
       continue;
     }
@@ -159,7 +159,7 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
         continue;
       }
 
-      bool disable = group_contains_preferred_interlaced
+      auto disable = group_contains_preferred_interlaced
                          ? !hwc_config.second.IsInterlaced()
                          : hwc_config.second.IsInterlaced();
 

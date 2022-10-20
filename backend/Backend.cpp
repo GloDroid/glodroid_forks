@@ -43,7 +43,7 @@ HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
 
     MarkValidated(layers, client_start, client_size);
 
-    bool testing_needed = !(client_start == 0 && client_size == layers.size());
+    auto testing_needed = client_start != 0 || client_size != layers.size();
 
     AtomicCommitArgs a_args = {.test_only = true};
 
@@ -99,7 +99,7 @@ uint32_t Backend::CalcPixOps(const std::vector<HwcLayer *> &layers,
   uint32_t pixops = 0;
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (z_order >= first_z && z_order < first_z + size) {
-      hwc_rect_t &df = layers[z_order]->GetLayerData().pi.display_frame;
+      auto &df = layers[z_order]->GetLayerData().pi.display_frame;
       pixops += (df.right - df.left) * (df.bottom - df.top);
     }
   }
@@ -129,16 +129,16 @@ std::tuple<int, int> Backend::GetExtraClientRange(
   if (avail_planes < display->layers().size())
     avail_planes--;
 
-  int extra_client = int(layers.size() - client_size) - int(avail_planes);
+  const int extra_client = int(layers.size() - client_size) - int(avail_planes);
 
   if (extra_client > 0) {
     int start = 0;
     size_t steps = 0;
     if (client_size != 0) {
-      int prepend = std::min(client_start, extra_client);
-      int append = std::min(int(layers.size()) -
-                                int(client_start + client_size),
-                            extra_client);
+      const int prepend = std::min(client_start, extra_client);
+      const int append = std::min(int(layers.size()) -
+                                      int(client_start + client_size),
+                                  extra_client);
       start = client_start - (int)prepend;
       client_size += extra_client;
       steps = 1 + std::min(std::min(append, prepend),
@@ -150,7 +150,7 @@ std::tuple<int, int> Backend::GetExtraClientRange(
 
     uint32_t gpu_pixops = UINT32_MAX;
     for (size_t i = 0; i < steps; i++) {
-      uint32_t po = CalcPixOps(layers, start + i, client_size);
+      const uint32_t po = CalcPixOps(layers, start + i, client_size);
       if (po < gpu_pixops) {
         gpu_pixops = po;
         client_start = start + int(i);

@@ -54,8 +54,8 @@ void ResourceManager::Init() {
   char path_pattern[PROPERTY_VALUE_MAX];
   // Could be a valid path or it can have at the end of it the wildcard %
   // which means that it will try open all devices until an error is met.
-  int path_len = property_get("vendor.hwc.drm.device", path_pattern,
-                              "/dev/dri/card%");
+  auto path_len = property_get("vendor.hwc.drm.device", path_pattern,
+                               "/dev/dri/card%");
   if (path_pattern[path_len - 1] != '%') {
     auto dev = DrmDevice::CreateInstance(path_pattern, this);
     if (dev) {
@@ -123,8 +123,8 @@ void ResourceManager::UpdateFrontendDisplays() {
 
   for (auto *conn : ordered_connectors) {
     conn->UpdateModes();
-    bool connected = conn->IsConnected();
-    bool attached = attached_pipelines_.count(conn) != 0;
+    auto connected = conn->IsConnected();
+    auto attached = attached_pipelines_.count(conn) != 0;
 
     if (connected != attached) {
       ALOGI("%s connector %s", connected ? "Attaching" : "Detaching",

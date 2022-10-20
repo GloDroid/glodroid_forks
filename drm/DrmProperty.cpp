@@ -50,7 +50,7 @@ void DrmProperty::Init(uint32_t obj_id, drmModePropertyPtr p, uint64_t value) {
     values_.emplace_back(p->values[i]);
 
   for (int i = 0; i < p->count_enums; ++i)
-    enums_.emplace_back(DrmPropertyEnum(&p->enums[i]));
+    enums_.emplace_back(&p->enums[i]);
 
   for (int i = 0; i < p->count_blobs; ++i)
     blob_ids_.emplace_back(p->blob_ids[i]);

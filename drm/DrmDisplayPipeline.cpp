@@ -171,9 +171,9 @@ auto DrmDisplayPipeline::GetUsablePlanes()
   std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> planes;
   planes.emplace_back(primary_plane);
 
-  static bool use_overlay_planes = ReadUseOverlayProperty();
+  const static bool kUseOverlayPlanes = ReadUseOverlayProperty();
 
-  if (use_overlay_planes) {
+  if (kUseOverlayPlanes) {
     for (const auto &plane : device->GetPlanes()) {
       if (plane->IsCrtcSupported(*crtc->Get())) {
         if (plane->GetType() == DRM_PLANE_TYPE_OVERLAY) {

@@ -205,6 +205,11 @@ void HwcLayer::ImportFb() {
 void HwcLayer::PopulateLayerData(bool test) {
   ImportFb();
 
+  if (!layer_data_.bi) {
+    ALOGE("%s: Invalid state", __func__);
+    return;
+  }
+
   if (blend_mode_ != BufferBlendMode::kUndefined) {
     layer_data_.bi->blend_mode = blend_mode_;
   }
@@ -227,7 +232,7 @@ bool HwcLayer::SwChainGetBufferFromCache(BufferUniqueId unique_id) {
     return false;
   }
 
-  int seq = swchain_lookup_table_[unique_id];
+  auto seq = swchain_lookup_table_[unique_id];
 
   if (swchain_cache_.count(seq) == 0) {
     return false;
@@ -274,7 +279,7 @@ void HwcLayer::SwChainAddCurrentBuffer(BufferUniqueId unique_id) {
       return;
     }
 
-    int seq = swchain_lookup_table_[unique_id];
+    auto seq = swchain_lookup_table_[unique_id];
 
     if (swchain_cache_.count(seq) == 0) {
       swchain_cache_[seq] = {};
