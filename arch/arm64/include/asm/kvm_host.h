@@ -211,14 +211,9 @@ struct kvm_arch {
 	u8 pfr0_csv3;
 
 	struct kvm_protected_vm pkvm;
-
-	u64 hypercall_exit_enabled;
 };
 
 struct kvm_protected_vcpu {
-	/* A unique id to the shadow structs in the hyp shadow area. */
-	int shadow_handle;
-
 	/* A pointer to the host's vcpu. */
 	struct kvm_vcpu *host_vcpu;
 
@@ -355,6 +350,7 @@ struct kvm_host_data {
 struct kvm_host_psci_config {
 	/* PSCI version used by host. */
 	u32 version;
+	u32 smccc_version;
 
 	/* Function IDs used by host if version is v0.1. */
 	struct psci_0_1_function_ids function_ids_0_1;
@@ -374,16 +370,28 @@ extern s64 kvm_nvhe_sym(hyp_physvirt_offset);
 extern u64 kvm_nvhe_sym(hyp_cpu_logical_map)[NR_CPUS];
 #define hyp_cpu_logical_map CHOOSE_NVHE_SYM(hyp_cpu_logical_map)
 
-enum kvm_iommu_driver {
-	KVM_IOMMU_DRIVER_NONE,
-	KVM_IOMMU_DRIVER_S2MPU,
+enum pkvm_iommu_driver_id {
+	PKVM_IOMMU_DRIVER_S2MPU,
+	PKVM_IOMMU_DRIVER_SYSMMU_SYNC,
+	PKVM_IOMMU_NR_DRIVERS,
 };
 
-#ifdef CONFIG_KVM_S2MPU
-int kvm_s2mpu_init(void);
-#else
-static inline int kvm_s2mpu_init(void) { return -ENODEV; }
-#endif
+enum pkvm_iommu_pm_event {
+	PKVM_IOMMU_PM_SUSPEND,
+	PKVM_IOMMU_PM_RESUME,
+};
+
+int pkvm_iommu_driver_init(enum pkvm_iommu_driver_id drv_id, void *data, size_t size);
+int pkvm_iommu_register(struct device *dev, enum pkvm_iommu_driver_id drv_id,
+			phys_addr_t pa, size_t size, struct device *parent);
+int pkvm_iommu_suspend(struct device *dev);
+int pkvm_iommu_resume(struct device *dev);
+
+int pkvm_iommu_s2mpu_register(struct device *dev, phys_addr_t pa);
+int pkvm_iommu_sysmmu_sync_register(struct device *dev, phys_addr_t pa,
+				    struct device *parent);
+/* Reject future calls to pkvm_iommu_driver_init() and pkvm_iommu_register(). */
+int pkvm_iommu_finalize(void);
 
 struct vcpu_reset_state {
 	unsigned long	pc;
@@ -850,6 +858,11 @@ static inline void kvm_init_host_cpu_context(struct kvm_cpu_context *cpu_ctxt)
 	ctxt_sys_reg(cpu_ctxt, MPIDR_EL1) = read_cpuid_mpidr();
 }
 
+static inline bool kvm_system_needs_idmapped_vectors(void)
+{
+	return cpus_have_const_cap(ARM64_SPECTRE_V3A);
+}
+
 void kvm_arm_vcpu_ptrauth_trap(struct kvm_vcpu *vcpu);
 
 static inline void kvm_arch_hardware_unsetup(void) {}
@@ -924,6 +937,10 @@ bool kvm_arm_vcpu_is_finalized(struct kvm_vcpu *vcpu);
 	 test_bit(KVM_ARCH_FLAG_MTE_ENABLED, &(kvm)->arch.flags))
 #define kvm_vcpu_has_pmu(vcpu)					\
 	(test_bit(KVM_ARM_VCPU_PMU_V3, (vcpu)->arch.features))
+
+#define kvm_supports_32bit_el0()				\
+	(system_supports_32bit_el0() &&				\
+	 !static_branch_unlikely(&arm64_mismatched_32bit_el0))
 
 int kvm_trng_call(struct kvm_vcpu *vcpu);
 #ifdef CONFIG_KVM

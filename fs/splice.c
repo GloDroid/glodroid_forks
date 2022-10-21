@@ -326,7 +326,7 @@ ssize_t generic_file_splice_read(struct file *in, loff_t *ppos,
 
 	return ret;
 }
-EXPORT_SYMBOL(generic_file_splice_read);
+EXPORT_SYMBOL_NS(generic_file_splice_read, ANDROID_GKI_VFS_EXPORT_ONLY);
 
 const struct pipe_buf_operations default_pipe_buf_ops = {
 	.release	= generic_pipe_buf_release,
@@ -725,7 +725,7 @@ done:
 	return ret;
 }
 
-EXPORT_SYMBOL(iter_file_splice_write);
+EXPORT_SYMBOL_NS(iter_file_splice_write, ANDROID_GKI_VFS_EXPORT_ONLY);
 
 /**
  * generic_splice_sendpage - splice data from a pipe to a socket
@@ -814,17 +814,15 @@ ssize_t splice_direct_to_actor(struct file *in, struct splice_desc *sd,
 {
 	struct pipe_inode_info *pipe;
 	long ret, bytes;
-	umode_t i_mode;
 	size_t len;
 	int i, flags, more;
 
 	/*
-	 * We require the input being a regular file, as we don't want to
-	 * randomly drop data for eg socket -> socket splicing. Use the
-	 * piped splicing for that!
+	 * We require the input to be seekable, as we don't want to randomly
+	 * drop data for eg socket -> socket splicing. Use the piped splicing
+	 * for that!
 	 */
-	i_mode = file_inode(in)->i_mode;
-	if (unlikely(!S_ISREG(i_mode) && !S_ISBLK(i_mode)))
+	if (unlikely(!(in->f_mode & FMODE_LSEEK)))
 		return -EINVAL;
 
 	/*
