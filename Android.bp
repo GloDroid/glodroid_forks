@@ -1,0 +1,22 @@
+cc_library {
+    name: "libudev",
+    vendor: true,
+    export_include_dirs: ["."],
+
+    srcs: [
+        "udev.c",
+        "udev_device.c",
+        "udev_enumerate.c",
+        "udev_list.c",
+        "udev_monitor.c"
+    ],
+
+    cflags: [
+        "-Wno-unused-parameter",
+    ],
+
+    shared_libs: [
+        "libcutils",
+        "liblog",
+    ],
+}
