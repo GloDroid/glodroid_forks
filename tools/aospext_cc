@@ -1,0 +1,68 @@
+#!/bin/bash -e
+
+# SPDX-License-Identifier: Apache-2.0
+#
+# AOSPEXT project (https://github.com/GloDroid/aospext)
+#
+# Copyright (C) 2021-2022 Roman Stratiienko (r.stratiienko@gmail.com)
+
+usage() { echo "Usage: $0 -c (c or cxx) -d dir_to_build_flags <cc_args>" 1>&2; exit 1; }
+
+while getopts ":c:d:" o; do
+    case "${o}" in
+        c)
+            COMPILER=${OPTARG}
+            ((COMPILER == "c" || COMPILER == "cxx")) || usage
+            ;;
+        d)
+            FLAGSDIR=${OPTARG}
+            ;;
+        *)
+            break;
+            ;;
+    esac
+done
+
+if [ -z "${COMPILER}" ] || [ -z "${FLAGSDIR}" ]; then
+    usage
+fi
+
+shift 4
+
+extract_flags() {
+    # $1 - Flag files prefix (sharedlib or exec)
+    CC=$(cat ${FLAGSDIR}/$1.cc)
+    CXX=$(cat ${FLAGSDIR}/$1.cxx)
+    CFLAGS=$(cat ${FLAGSDIR}/$1.cflags)
+    CPPFLAGS=$(cat ${FLAGSDIR}/$1.cppflags)
+    LINK_ARGS=$(cat ${FLAGSDIR}/$1.link_args)
+}
+
+if [[ " $@ " =~ .*\ -shared\ .* ]]; then
+    extract_flags sharedlib
+else
+    extract_flags exec
+fi
+
+if [ "${COMPILER}" == "c" ]; then
+    ARGS="${CC} $@"
+else
+    ARGS="${CXX} $@"
+fi
+
+
+ARGS="${ARGS/\[C_ARGS\]/${CFLAGS}}"
+ARGS="${ARGS/\[CPP_ARGS\]/${CPPFLAGS}}"
+ARGS="${ARGS/\[C_LINK_ARGS\]/${LINK_ARGS}}"
+ARGS="${ARGS/\[CPP_LINK_ARGS\]/${LINK_ARGS}}"
+
+# Remove duplicate placeholders (can occur when meson is building cmake subproject)
+ARGS="${ARGS//\[C_ARGS\]/}"
+ARGS="${ARGS//\[CPP_ARGS\]/}"
+ARGS="${ARGS//\[C_LINK_ARGS\]/}"
+ARGS="${ARGS//\[CPP_LINK_ARGS\]/}"
+
+ARGS="${ARGS//\[BASE_DIR\]/${BASE_DIR}}"
+
+# run compiler with arguments
+${ARGS}
