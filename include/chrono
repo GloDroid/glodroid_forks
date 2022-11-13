@@ -1290,7 +1290,12 @@ struct __duration_divide_result<duration<_Rep1, _Period>, _Rep2, false>
 template <class _Rep1, class _Period, class _Rep2>
 inline _LIBCPP_INLINE_VISIBILITY
 _LIBCPP_CONSTEXPR
-typename __duration_divide_result<duration<_Rep1, _Period>, _Rep2>::type
+typename enable_if
+<
+    !__is_duration<_Rep2>::value &&
+    is_convertible<_Rep2, typename common_type<_Rep1, _Rep2>::type>::value,
+    duration<typename common_type<_Rep1, _Rep2>::type, _Period>
+>::type
 operator/(const duration<_Rep1, _Period>& __d, const _Rep2& __s)
 {
     typedef typename common_type<_Rep1, _Rep2>::type _Cr;
