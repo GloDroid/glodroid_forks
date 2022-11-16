@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+cc_library_headers {
+    name: "drm_hwcomposer_headers",
+    vendor: true,
+    export_include_dirs: ["."],
+}
+
 // =====================
 // libdrmhwc_utils.a
 // =====================
@@ -20,7 +26,7 @@ cc_library_static {
 
     srcs: ["utils/Worker.cpp"],
 
-    include_dirs: ["external/drm_hwcomposer"],
+    header_libs: ["drm_hwcomposer_headers"],
 
     cflags: [
         "-Wall",
@@ -48,9 +54,8 @@ cc_defaults {
         "libutils",
     ],
 
-    include_dirs: ["external/drm_hwcomposer"],
-
     static_libs: ["libdrmhwc_utils"],
+    header_libs: ["drm_hwcomposer_headers"],
 
     cflags: [
         "-Wall",

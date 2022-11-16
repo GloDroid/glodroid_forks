@@ -25,10 +25,12 @@ cc_test {
     srcs: ["worker_test.cpp"],
 
     vendor: true,
-    header_libs: ["libhardware_headers"],
+    header_libs: [
+        "drm_hwcomposer_headers",
+        "libhardware_headers",
+    ],
     static_libs: ["libdrmhwc_utils"],
     shared_libs: ["hwcomposer.drm"],
-    include_dirs: ["external/drm_hwcomposer"],
 }
 
 // Tool for listening and dumping uevents
@@ -38,9 +40,9 @@ cc_test {
     srcs: ["uevent_print.cpp"],
 
     vendor: true,
-    header_libs: ["libhardware_headers"],
-    shared_libs: ["liblog"],
-    include_dirs: [
-        "external/drm_hwcomposer",
+    header_libs: [
+        "drm_hwcomposer_headers",
+        "libhardware_headers",
     ],
+    shared_libs: ["liblog"],
 }
