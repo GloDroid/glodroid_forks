@@ -702,7 +702,7 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
     return HWC2::Error::None;
   }
 
-  if (a_args.active) {
+  if (a_args.active && *a_args.active) {
     /*
      * Setting the display to active before we have a composition
      * can break some drivers, so skip setting a_args.active to
