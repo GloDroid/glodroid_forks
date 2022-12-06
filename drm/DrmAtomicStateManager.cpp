@@ -287,7 +287,7 @@ auto DrmAtomicStateManager::ActivateDisplayUsingDPMS() -> int {
                                      pipe_->connector->Get()->GetId(),
                                      pipe_->connector->Get()
                                          ->GetDpmsProperty()
-                                         .id(),
+                                         .GetId(),
                                      DRM_MODE_DPMS_ON);
 }
 

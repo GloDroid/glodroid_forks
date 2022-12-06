@@ -99,18 +99,17 @@ int DrmConnector::UpdateEdidProperty() {
 }
 
 auto DrmConnector::GetEdidBlob() -> DrmModePropertyBlobUnique {
-  uint64_t blob_id = 0;
-  int ret = UpdateEdidProperty();
+  auto ret = UpdateEdidProperty();
   if (ret != 0) {
     return {};
   }
 
-  std::tie(ret, blob_id) = GetEdidProperty().value();
-  if (ret != 0) {
+  auto blob_id = GetEdidProperty().GetValue();
+  if (!blob_id) {
     return {};
   }
 
-  return MakeDrmModePropertyBlobUnique(drm_->GetFd(), blob_id);
+  return MakeDrmModePropertyBlobUnique(drm_->GetFd(), *blob_id);
 }
 
 bool DrmConnector::IsInternal() const {

@@ -20,19 +20,11 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace android {
-
-enum DrmPropertyType {
-  DRM_PROPERTY_TYPE_INT,
-  DRM_PROPERTY_TYPE_ENUM,
-  DRM_PROPERTY_TYPE_OBJECT,
-  DRM_PROPERTY_TYPE_BLOB,
-  DRM_PROPERTY_TYPE_BITMASK,
-  DRM_PROPERTY_TYPE_INVALID,
-};
 
 class DrmProperty {
  public:
@@ -44,15 +36,26 @@ class DrmProperty {
   auto Init(uint32_t obj_id, drmModePropertyPtr p, uint64_t value) -> void;
   std::tuple<uint64_t, int> GetEnumValueWithName(const std::string &name) const;
 
-  uint32_t id() const;
-  std::string name() const;
+  auto GetId() const {
+    return id_;
+  }
 
-  std::tuple<int, uint64_t> value() const;
-  bool is_immutable() const;
+  auto GetName() const {
+    return name_;
+  }
 
-  bool is_range() const;
-  std::tuple<int, uint64_t> range_min() const;
-  std::tuple<int, uint64_t> range_max() const;
+  auto GetValue() const -> std::optional<uint64_t>;
+
+  bool IsImmutable() const {
+    return id_ != 0 && (flags_ & DRM_MODE_PROP_IMMUTABLE) != 0;
+  }
+
+  bool IsRange() const {
+    return id_ != 0 && (flags_ & DRM_MODE_PROP_RANGE) != 0;
+  }
+
+  auto RangeMin() const -> std::tuple<int, uint64_t>;
+  auto RangeMax() const -> std::tuple<int, uint64_t>;
 
   [[nodiscard]] auto AtomicSet(drmModeAtomicReq &pset, uint64_t value) const
       -> bool;
@@ -71,14 +74,13 @@ class DrmProperty {
     explicit DrmPropertyEnum(drm_mode_property_enum *e);
     ~DrmPropertyEnum() = default;
 
-    uint64_t value_;
-    std::string name_;
+    uint64_t value;
+    std::string name;
   };
 
   uint32_t obj_id_ = 0;
   uint32_t id_ = 0;
 
-  DrmPropertyType type_ = DRM_PROPERTY_TYPE_INVALID;
   uint32_t flags_ = 0;
   std::string name_;
   uint64_t value_ = 0;
