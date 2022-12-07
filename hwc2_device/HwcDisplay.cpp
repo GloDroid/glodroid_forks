@@ -301,25 +301,25 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   auto attribute = static_cast<HWC2::Attribute>(attribute_in);
   switch (attribute) {
     case HWC2::Attribute::Width:
-      *value = static_cast<int>(hwc_config.mode.h_display());
+      *value = static_cast<int>(hwc_config.mode.GetRawMode().hdisplay);
       break;
     case HWC2::Attribute::Height:
-      *value = static_cast<int>(hwc_config.mode.v_display());
+      *value = static_cast<int>(hwc_config.mode.GetRawMode().vdisplay);
       break;
     case HWC2::Attribute::VsyncPeriod:
       // in nanoseconds
-      *value = static_cast<int>(1E9 / hwc_config.mode.v_refresh());
+      *value = static_cast<int>(1E9 / hwc_config.mode.GetVRefresh());
       break;
     case HWC2::Attribute::DpiX:
       // Dots per 1000 inches
-      *value = mm_width ? static_cast<int>(hwc_config.mode.h_display() *
-                                           kUmPerInch / mm_width)
+      *value = mm_width ? int(hwc_config.mode.GetRawMode().hdisplay *
+                              kUmPerInch / mm_width)
                         : -1;
       break;
     case HWC2::Attribute::DpiY:
       // Dots per 1000 inches
-      *value = mm_height ? static_cast<int>(hwc_config.mode.v_display() *
-                                            kUmPerInch / mm_height)
+      *value = mm_height ? int(hwc_config.mode.GetRawMode().vdisplay *
+                               kUmPerInch / mm_height)
                          : -1;
       break;
 #if PLATFORM_SDK_VERSION > 29
@@ -451,7 +451,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   }
 
   auto PrevModeVsyncPeriodNs = static_cast<int>(
-      1E9 / GetPipe().connector->Get()->GetActiveMode().v_refresh());
+      1E9 / GetPipe().connector->Get()->GetActiveMode().GetVRefresh());
 
   auto mode_update_commited_ = false;
   if (staged_mode_ &&
@@ -459,8 +459,8 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     client_layer_.SetLayerDisplayFrame(
         (hwc_rect_t){.left = 0,
                      .top = 0,
-                     .right = static_cast<int>(staged_mode_->h_display()),
-                     .bottom = static_cast<int>(staged_mode_->v_display())});
+                     .right = int(staged_mode_->GetRawMode().hdisplay),
+                     .bottom = int(staged_mode_->GetRawMode().vdisplay)});
 
     configs_.active_config_id = staged_mode_config_id_;
 

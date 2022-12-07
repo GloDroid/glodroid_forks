@@ -87,8 +87,10 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
     /* Find group for the new mode or create new group */
     uint32_t group_found = 0;
     for (auto &hwc_config : hwc_configs) {
-      if (mode.h_display() == hwc_config.second.mode.h_display() &&
-          mode.v_display() == hwc_config.second.mode.v_display()) {
+      if (mode.GetRawMode().hdisplay ==
+              hwc_config.second.mode.GetRawMode().hdisplay &&
+          mode.GetRawMode().vdisplay ==
+              hwc_config.second.mode.GetRawMode().vdisplay) {
         group_found = hwc_config.second.group_id;
       }
     }
@@ -97,9 +99,9 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
     }
 
     bool disabled = false;
-    if ((mode.flags() & DRM_MODE_FLAG_3D_MASK) != 0) {
+    if ((mode.GetRawMode().flags & DRM_MODE_FLAG_3D_MASK) != 0) {
       ALOGI("Disabling display mode %s (Modes with 3D flag aren't supported)",
-            mode.name().c_str());
+            mode.GetName().c_str());
       disabled = true;
     }
 
@@ -112,7 +114,7 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
     };
 
     /* Chwck if the mode is preferred */
-    if ((mode.type() & DRM_MODE_TYPE_PREFERRED) != 0 &&
+    if ((mode.GetRawMode().type & DRM_MODE_TYPE_PREFERRED) != 0 &&
         preferred_config_id == 0) {
       preferred_config_id = last_config_id;
       preferred_config_group_id = group_found;
@@ -167,7 +169,7 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
         ALOGI(
             "Group %i: Disabling display mode %s (This group should consist "
             "of %s modes)",
-            group, hwc_config.second.mode.name().c_str(),
+            group, hwc_config.second.mode.GetName().c_str(),
             group_contains_preferred_interlaced ? "interlaced" : "progressive");
 
         hwc_config.second.disabled = true;
@@ -183,13 +185,13 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
     for (uint32_t m2 = first_config_id; m2 < last_config_id; m2++) {
       if (m1 != m2 && hwc_configs[m1].group_id == hwc_configs[m2].group_id &&
           !hwc_configs[m1].disabled && !hwc_configs[m2].disabled &&
-          fabsf(hwc_configs[m1].mode.v_refresh() -
-                hwc_configs[m2].mode.v_refresh()) < kMinFpsDelta) {
+          fabsf(hwc_configs[m1].mode.GetVRefresh() -
+                hwc_configs[m2].mode.GetVRefresh()) < kMinFpsDelta) {
         ALOGI(
             "Group %i: Disabling display mode %s (Refresh rate value is "
             "too close to existing mode %s)",
-            hwc_configs[m2].group_id, hwc_configs[m2].mode.name().c_str(),
-            hwc_configs[m1].mode.name().c_str());
+            hwc_configs[m2].group_id, hwc_configs[m2].mode.GetName().c_str(),
+            hwc_configs[m1].mode.GetName().c_str());
 
         hwc_configs[m2].disabled = true;
       }

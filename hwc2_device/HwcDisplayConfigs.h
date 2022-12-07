@@ -29,11 +29,11 @@ class DrmConnector;
 struct HwcDisplayConfig {
   uint32_t id{};
   uint32_t group_id{};
-  DrmMode mode;
+  DrmMode mode{};
   bool disabled{};
 
   bool IsInterlaced() const {
-    return (mode.flags() & DRM_MODE_FLAG_INTERLACE) != 0;
+    return (mode.GetRawMode().flags & DRM_MODE_FLAG_INTERLACE) != 0;
   }
 };
 

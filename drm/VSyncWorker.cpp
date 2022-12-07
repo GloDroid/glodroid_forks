@@ -80,8 +80,8 @@ int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
 
   float refresh = 60.0F;  // Default to 60Hz refresh rate
   if (pipe_ != nullptr &&
-      pipe_->connector->Get()->GetActiveMode().v_refresh() != 0.0F) {
-    refresh = pipe_->connector->Get()->GetActiveMode().v_refresh();
+      pipe_->connector->Get()->GetActiveMode().GetVRefresh() != 0.0F) {
+    refresh = pipe_->connector->Get()->GetActiveMode().GetVRefresh();
   }
 
   auto phased_timestamp = GetPhasedVSync(kOneSecondNs /

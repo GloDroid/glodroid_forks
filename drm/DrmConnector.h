@@ -123,7 +123,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
 
   const uint32_t index_in_res_array_;
 
-  DrmMode active_mode_;
+  DrmMode active_mode_{};
   std::vector<DrmMode> modes_;
 
   DrmProperty dpms_property_;

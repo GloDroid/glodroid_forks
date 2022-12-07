@@ -22,7 +22,6 @@ TIDY_FILES_OVERRIDE := \
     bufferinfo/legacy/BufferInfoMaliMeson.cpp:COARSE    \
     bufferinfo/legacy/BufferInfoMinigbm.cpp:COARSE      \
     drm/DrmFbImporter.h:FINE                            \
-    drm/DrmMode.h:COARSE                                \
     drm/DrmUnique.h:FINE                                \
     drm/VSyncWorker.cpp:COARSE                          \
     hwc2_device/DrmHwcTwo.cpp:COARSE                    \

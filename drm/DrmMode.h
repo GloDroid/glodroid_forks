@@ -35,47 +35,26 @@ class DrmMode {
 
   bool operator==(const drmModeModeInfo &m) const;
 
-  uint32_t clock() const;
+  auto &GetRawMode() const {
+    return mode_;
+  }
 
-  uint16_t h_display() const;
-  uint16_t h_sync_start() const;
-  uint16_t h_sync_end() const;
-  uint16_t h_total() const;
-  uint16_t h_skew() const;
+  auto GetVRefresh() const {
+    if (mode_.clock == 0) {
+      return float(mode_.vrefresh);
+    }
+    // Always recalculate refresh to report correct float rate
+    return static_cast<float>(mode_.clock) /
+           (float)(mode_.vtotal * mode_.htotal) * 1000.0F;
+  }
 
-  uint16_t v_display() const;
-  uint16_t v_sync_start() const;
-  uint16_t v_sync_end() const;
-  uint16_t v_total() const;
-  uint16_t v_scan() const;
-  float v_refresh() const;
-
-  uint32_t flags() const;
-  uint32_t type() const;
-
-  std::string name() const;
+  auto GetName() const {
+    return std::string(mode_.name) + "@" + std::to_string(GetVRefresh());
+  }
 
   auto CreateModeBlob(const DrmDevice &drm) -> DrmModeUserPropertyBlobUnique;
 
  private:
-  uint32_t clock_ = 0;
-
-  uint16_t h_display_ = 0;
-  uint16_t h_sync_start_ = 0;
-  uint16_t h_sync_end_ = 0;
-  uint16_t h_total_ = 0;
-  uint16_t h_skew_ = 0;
-
-  uint16_t v_display_ = 0;
-  uint16_t v_sync_start_ = 0;
-  uint16_t v_sync_end_ = 0;
-  uint16_t v_total_ = 0;
-  uint16_t v_scan_ = 0;
-  uint16_t v_refresh_ = 0;
-
-  uint32_t flags_ = 0;
-  uint32_t type_ = 0;
-
-  std::string name_;
+  drmModeModeInfo mode_;
 };
 }  // namespace android
