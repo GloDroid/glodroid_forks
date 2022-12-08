@@ -15,4 +15,5 @@ include $(LOCAL_PATH)/meson_libcamera.mk
 #include $(LOCAL_PATH)/meson_libqrtr.mk
 include $(LOCAL_PATH)/meson_libqmi.mk
 include $(LOCAL_PATH)/meson_modemmanager.mk
+include $(LOCAL_PATH)/meson_mmradio.mk
 include $(LOCAL_PATH)/ffmpeg.mk
