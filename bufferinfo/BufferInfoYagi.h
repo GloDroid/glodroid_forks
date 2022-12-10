@@ -17,17 +17,32 @@
 #pragma once
 
 #include "bufferinfo/BufferInfoGetter.h"
+#include "yagi/android_yagi.h"
 
 namespace android {
 
-class BufferInfoMapperMetadata : public BufferInfoGetter {
+class BufferInfoYagi : public BufferInfoGetter {
  public:
-  using BufferInfoGetter::BufferInfoGetter;
+  ~BufferInfoYagi() override;
 
   auto GetBoInfo(buffer_handle_t handle) -> std::optional<BufferInfo> override;
 
-  int GetFds(buffer_handle_t handle, BufferInfo *bo);
-
   static std::unique_ptr<BufferInfoGetter> CreateInstance();
+
+ private:
+  BufferInfoYagi() = default;
+
+  void *dl_handle_ = nullptr;
+
+  static constexpr auto kYagiBiGetSymName = "yagi_bi_get";
+  yagi_bi_get_t yagi_bi_get_fn_{};
+
+  static constexpr auto kYagiInitSymName = "yagi_init";
+  yagi_init_t yagi_init_fn_{};
+
+  static constexpr auto kYagiDestroySymName = "yagi_destroy";
+  yagi_destroy_t yagi_destroy_fn_{};
+
+  struct yagi *yagi_{};
 };
 }  // namespace android

@@ -16,6 +16,7 @@ srcs = [
     'compositor/DrmKmsPlan.cpp',
     'utils/Worker.cpp',
     'bufferinfo/BufferInfoMapperMetadata.cpp',
+    'bufferinfo/BufferInfoYagi.cpp',
     'bufferinfo/legacy/BufferInfoLibdrm.cpp',
     'bufferinfo/BufferInfoGetter.cpp',
     'backend/BackendManager.cpp',

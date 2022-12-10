@@ -33,6 +33,7 @@ TIDY_FILES_OVERRIDE := \
     utils/UniqueFd.h:FINE                               \
     utils/log.h:FINE                                    \
     utils/properties.h:FINE                             \
+    bufferinfo/yagi/android_yagi.h:NONE                 \
 
 TIDY_CHECKS_FINE := *                                   \
     -llvmlibc* -fuchsia-* -altera-*                     \

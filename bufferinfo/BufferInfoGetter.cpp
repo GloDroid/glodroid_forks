@@ -30,6 +30,7 @@
 
 #include <mutex>
 
+#include "BufferInfoYagi.h"
 #include "utils/log.h"
 #include "utils/properties.h"
 
@@ -38,8 +39,11 @@ namespace android {
 BufferInfoGetter *BufferInfoGetter::GetInstance() {
   static std::unique_ptr<BufferInfoGetter> inst;
   if (!inst) {
+    inst = BufferInfoYagi::CreateInstance();
 #if __ANDROID_API__ >= 30 && defined(USE_IMAPPER4_METADATA_API)
-    inst.reset(BufferInfoMapperMetadata::CreateInstance());
+    if (!inst) {
+      inst = BufferInfoMapperMetadata::CreateInstance();
+    }
     if (!inst) {
       ALOGW(
           "Generic buffer getter is not available. Falling back to legacy...");
