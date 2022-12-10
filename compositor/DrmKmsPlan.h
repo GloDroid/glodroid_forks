@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRM_KMS_PLAN_H_
-#define ANDROID_DRM_KMS_PLAN_H_
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -41,4 +40,3 @@ struct DrmKmsPlan {
 };
 
 }  // namespace android
-#endif

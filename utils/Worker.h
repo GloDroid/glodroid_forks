@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_WORKER_H_
-#define ANDROID_WORKER_H_
+#pragma once
 
 #include <condition_variable>
 #include <cstdint>
@@ -78,4 +77,3 @@ class Worker {
   bool initialized_;
 };
 }  // namespace android
-#endif

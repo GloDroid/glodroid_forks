@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef DRM_UNIQUE_H_
-#define DRM_UNIQUE_H_
+#pragma once
 
 #include <xf86drmMode.h>
 
@@ -83,5 +82,3 @@ auto inline MakeDrmModeResUnique(int fd) {
   return DrmModeResUnique(drmModeGetResources(fd),
                           [](drmModeRes *it) { drmModeFreeResources(it); });
 }
-
-#endif

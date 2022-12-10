@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef BUFFERINFOLIBDRM_H_
-#define BUFFERINFOLIBDRM_H_
+#pragma once
 
 #include <hardware/gralloc.h>
 
@@ -35,5 +34,3 @@ class BufferInfoLibdrm : public LegacyBufferInfoGetter {
 };
 
 }  // namespace android
-
-#endif

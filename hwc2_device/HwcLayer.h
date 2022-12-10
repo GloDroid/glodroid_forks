@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HWC2_DEVICE_HWC_LAYER_H
-#define ANDROID_HWC2_DEVICE_HWC_LAYER_H
+#pragma once
 
 #include <hardware/hwcomposer2.h>
 
@@ -140,5 +139,3 @@ class HwcLayer {
 };
 
 }  // namespace android
-
-#endif

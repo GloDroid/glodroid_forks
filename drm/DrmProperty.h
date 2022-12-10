@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRM_PROPERTY_H_
-#define ANDROID_DRM_PROPERTY_H_
+#pragma once
 
 #include <xf86drmMode.h>
 
@@ -104,5 +103,3 @@ auto DrmProperty::AddEnumToMap(const std::string &name, E key,
 }
 
 }  // namespace android
-
-#endif  // ANDROID_DRM_PROPERTY_H_

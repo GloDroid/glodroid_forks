@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_BUFFERINFOGETTER_H_
-#define ANDROID_BUFFERINFOGETTER_H_
+#pragma once
 
 #include <drm/drm_fourcc.h>
 #include <hardware/gralloc.h>
@@ -89,4 +88,3 @@ class LegacyBufferInfoGetter : public BufferInfoGetter {
 #endif
 
 }  // namespace android
-#endif

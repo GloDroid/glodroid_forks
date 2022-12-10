@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRM_ENCODER_H_
-#define ANDROID_DRM_ENCODER_H_
+#pragma once
 
 #include <xf86drmMode.h>
 
@@ -65,5 +64,3 @@ class DrmEncoder : public PipelineBindable<DrmEncoder> {
   const uint32_t index_in_res_array_;
 };
 }  // namespace android
-
-#endif  // ANDROID_DRM_ENCODER_H_

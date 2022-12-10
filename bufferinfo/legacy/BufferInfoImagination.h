@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef BUFFERINFOIMAGINATION_H
-#define BUFFERINFOIMAGINATION_H
+#pragma once
 
 #include <hardware/gralloc.h>
 
@@ -30,5 +29,3 @@ class BufferInfoImagination : public LegacyBufferInfoGetter {
   auto GetBoInfo(buffer_handle_t handle) -> std::optional<BufferInfo> override;
 };
 }  // namespace android
-
-#endif  // PLATFORMIMAGINATION_H

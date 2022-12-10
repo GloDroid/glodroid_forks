@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef UNIQUEFD_H_
-#define UNIQUEFD_H_
+#pragma once
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -114,5 +113,3 @@ class UniqueFd {
 };
 
 }  // namespace android
-
-#endif

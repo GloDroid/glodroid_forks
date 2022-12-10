@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HWC2_DEVICE_HWC_DISPLAY_CONFIGS_H
-#define ANDROID_HWC2_DEVICE_HWC_DISPLAY_CONFIGS_H
+#pragma once
 
 #include <hardware/hwcomposer2.h>
 
@@ -55,5 +54,3 @@ struct HwcDisplayConfigs {
 };
 
 }  // namespace android
-
-#endif

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRM_H_
-#define ANDROID_DRM_H_
+#pragma once
 
 #include <cstdint>
 #include <map>
@@ -24,7 +23,6 @@
 #include "DrmConnector.h"
 #include "DrmCrtc.h"
 #include "DrmEncoder.h"
-#include "DrmFbImporter.h"
 #include "utils/UniqueFd.h"
 
 namespace android {
@@ -121,5 +119,3 @@ class DrmDevice {
   ResourceManager *const res_man_;
 };
 }  // namespace android
-
-#endif  // ANDROID_DRM_H_

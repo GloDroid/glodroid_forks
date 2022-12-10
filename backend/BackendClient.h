@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_BACKEND_CLIENT_H
-#define ANDROID_BACKEND_CLIENT_H
+#pragma once
 
 #include "Backend.h"
 
@@ -27,5 +26,3 @@ class BackendClient : public Backend {
                               uint32_t *num_requests) override;
 };
 }  // namespace android
-
-#endif

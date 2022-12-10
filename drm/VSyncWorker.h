@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_EVENT_WORKER_H_
-#define ANDROID_EVENT_WORKER_H_
+#pragma once
 
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
@@ -55,5 +54,3 @@ class VSyncWorker : public Worker {
   int64_t last_timestamp_ = -1;
 };
 }  // namespace android
-
-#endif

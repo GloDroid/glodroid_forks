@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_BACKEND_MANAGER_H
-#define ANDROID_BACKEND_MANAGER_H
+#pragma once
 
 #include <functional>
 #include <map>
@@ -54,5 +53,3 @@ class BackendManager {
   std::map<std::string, BackendConstructorT> available_backends_;
 };
 }  // namespace android
-
-#endif

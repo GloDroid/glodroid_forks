@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef BUFFERINFOMALIHISI_H_
-#define BUFFERINFOMALIHISI_H_
+#pragma once
 
 #include <hardware/gralloc.h>
 
@@ -32,5 +31,3 @@ class BufferInfoMaliMeson : public LegacyBufferInfoGetter {
   uint64_t ConvertGrallocFormatToDrmModifiers(uint64_t flags);
 };
 }  // namespace android
-
-#endif

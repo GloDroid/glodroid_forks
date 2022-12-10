@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRMDISPLAYPIPELINE_H_
-#define ANDROID_DRMDISPLAYPIPELINE_H_
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -86,5 +85,3 @@ struct DrmDisplayPipeline {
 };
 
 }  // namespace android
-
-#endif

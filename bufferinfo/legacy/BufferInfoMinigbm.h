@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef BUFFERINFOMINIGBM_H_
-#define BUFFERINFOMINIGBM_H_
+#pragma once
 
 #include <hardware/gralloc.h>
 
@@ -31,5 +30,3 @@ class BufferInfoMinigbm : public LegacyBufferInfoGetter {
 };
 
 }  // namespace android
-
-#endif

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRM_HWC_TWO_H_
-#define ANDROID_DRM_HWC_TWO_H_
+#pragma once
 
 #include <hardware/hwcomposer2.h>
 
@@ -86,5 +85,3 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
   uint32_t last_display_handle_ = kPrimaryDisplay;
 };
 }  // namespace android
-
-#endif

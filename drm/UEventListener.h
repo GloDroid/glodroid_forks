@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_UEVENT_LISTENER_H_
-#define ANDROID_UEVENT_LISTENER_H_
+#pragma once
 
 #include <functional>
 
@@ -44,5 +43,3 @@ class UEventListener : public Worker {
   std::function<void()> hotplug_handler_;
 };
 }  // namespace android
-
-#endif

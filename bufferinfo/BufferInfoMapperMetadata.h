@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef PLATFORMIMAGINATION_H
-#define PLATFORMIMAGINATION_H
+#pragma once
 
 #include "bufferinfo/BufferInfoGetter.h"
 
@@ -32,5 +31,3 @@ class BufferInfoMapperMetadata : public BufferInfoGetter {
   static BufferInfoGetter *CreateInstance();
 };
 }  // namespace android
-
-#endif  // PLATFORMIMAGINATION_H

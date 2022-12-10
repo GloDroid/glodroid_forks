@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRM_MODE_H_
-#define ANDROID_DRM_MODE_H_
+#pragma once
 
 #include <xf86drmMode.h>
 
@@ -80,5 +79,3 @@ class DrmMode {
   std::string name_;
 };
 }  // namespace android
-
-#endif  // ANDROID_DRM_MODE_H_

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef RESOURCEMANAGER_H
-#define RESOURCEMANAGER_H
+#pragma once
 
 #include <cstring>
 
@@ -79,5 +78,3 @@ class ResourceManager {
   bool initialized_{};
 };
 }  // namespace android
-
-#endif  // RESOURCEMANAGER_H

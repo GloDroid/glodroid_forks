@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef BUFFERINFOMALIMTK_H_
-#define BUFFERINFOMALIMTK_H_
+#pragma once
 
 #include <hardware/gralloc.h>
 
@@ -30,5 +29,3 @@ class BufferInfoMaliMediatek : public LegacyBufferInfoGetter {
   auto GetBoInfo(buffer_handle_t handle) -> std::optional<BufferInfo> override;
 };
 }  // namespace android
-
-#endif

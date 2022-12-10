@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRM_CONNECTOR_H_
-#define ANDROID_DRM_CONNECTOR_H_
+#pragma once
 
 #include <xf86drmMode.h>
 
@@ -135,5 +134,3 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmProperty writeback_out_fence_;
 };
 }  // namespace android
-
-#endif  // ANDROID_DRM_PLANE_H_

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef DRM_DRMFBIMPORTER_H_
-#define DRM_DRMFBIMPORTER_H_
+#pragma once
 
 #include <drm/drm_fourcc.h>
 #include <hardware/gralloc.h>
@@ -87,5 +86,3 @@ class DrmFbImporter {
 };
 
 }  // namespace android
-
-#endif

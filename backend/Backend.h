@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_BACKEND_H
-#define ANDROID_BACKEND_H
+#pragma once
 
 #include "hwc2_device/DrmHwcTwo.h"
 
@@ -41,5 +40,3 @@ class Backend {
       int client_start, size_t client_size);
 };
 }  // namespace android
-
-#endif

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_DRM_CRTC_H_
-#define ANDROID_DRM_CRTC_H_
+#pragma once
 
 #include <xf86drmMode.h>
 
@@ -72,5 +71,3 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
   DrmProperty out_fence_ptr_property_;
 };
 }  // namespace android
-
-#endif  // ANDROID_DRM_CRTC_H_
