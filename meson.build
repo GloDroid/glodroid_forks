@@ -63,3 +63,10 @@ shared_library(
     install : true,
     install_dir : get_option('libdir') / 'hw',
 )
+
+shared_library(
+    'yagi_crosapi',
+    'bufferinfo/yagi/yagi_crosapi.c',
+    dependencies : deps,
+    install : true,
+)

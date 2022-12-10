@@ -66,6 +66,7 @@ bd: ## Build for Andoid and deploy onto the target device (require active adb de
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -C ~/aospless all"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "cp -r ~/aospless/install/* ~/drm_hwcomposer/.out/arm64"
 	adb push .out/arm64/vendor/lib64/hw/hwcomposer.drm.so /vendor/lib64/hw/hwcomposer.drm.so
+	adb push .out/arm64/vendor/lib64/libyagi_crosapi.so /vendor/lib64/libyagi_crosapi.so
 	adb shell stop
 	adb shell stop vendor.hwcomposer-2-1 && adb shell start vendor.hwcomposer-2-1 || true
 	adb shell stop vendor.hwcomposer-2-2 && adb shell start vendor.hwcomposer-2-2 || true
