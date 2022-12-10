@@ -68,12 +68,6 @@ cc_defaults {
         "-std=c++17",
     ],
 
-    product_variables: {
-        platform_sdk_version: {
-            cflags: ["-DPLATFORM_SDK_VERSION=%d"],
-        },
-    },
-
     relative_install_path: "hw",
     vendor: true,
 }

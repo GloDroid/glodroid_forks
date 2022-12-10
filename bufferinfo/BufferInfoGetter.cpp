@@ -18,7 +18,7 @@
 
 #include "BufferInfoGetter.h"
 
-#if PLATFORM_SDK_VERSION >= 30
+#if __ANDROID_API__ >= 30
 #include "BufferInfoMapperMetadata.h"
 #endif
 
@@ -38,7 +38,7 @@ namespace android {
 BufferInfoGetter *BufferInfoGetter::GetInstance() {
   static std::unique_ptr<BufferInfoGetter> inst;
   if (!inst) {
-#if PLATFORM_SDK_VERSION >= 30 && defined(USE_IMAPPER4_METADATA_API)
+#if __ANDROID_API__ >= 30 && defined(USE_IMAPPER4_METADATA_API)
     inst.reset(BufferInfoMapperMetadata::CreateInstance());
     if (!inst) {
       ALOGW(

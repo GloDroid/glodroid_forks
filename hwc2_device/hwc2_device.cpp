@@ -244,7 +244,7 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
       return ToHook<HWC2_PFN_VALIDATE_DISPLAY>(
           DisplayHook<decltype(&HwcDisplay::ValidateDisplay),
                       &HwcDisplay::ValidateDisplay, uint32_t *, uint32_t *>);
-#if PLATFORM_SDK_VERSION > 27
+#if __ANDROID_API__ > 27
     case HWC2::FunctionDescriptor::GetRenderIntents:
       return ToHook<HWC2_PFN_GET_RENDER_INTENTS>(
           DisplayHook<decltype(&HwcDisplay::GetRenderIntents),
@@ -255,7 +255,7 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
           DisplayHook<decltype(&HwcDisplay::SetColorModeWithIntent),
                       &HwcDisplay::SetColorModeWithIntent, int32_t, int32_t>);
 #endif
-#if PLATFORM_SDK_VERSION > 28
+#if __ANDROID_API__ > 28
     case HWC2::FunctionDescriptor::GetDisplayIdentificationData:
       return ToHook<HWC2_PFN_GET_DISPLAY_IDENTIFICATION_DATA>(
           DisplayHook<decltype(&HwcDisplay::GetDisplayIdentificationData),
@@ -274,8 +274,8 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
       return ToHook<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(
           DisplayHook<decltype(&HwcDisplay::SetDisplayBrightness),
                       &HwcDisplay::SetDisplayBrightness, float>);
-#endif /* PLATFORM_SDK_VERSION > 28 */
-#if PLATFORM_SDK_VERSION > 29
+#endif /* __ANDROID_API__ > 28 */
+#if __ANDROID_API__ > 29
     case HWC2::FunctionDescriptor::GetDisplayConnectionType:
       return ToHook<HWC2_PFN_GET_DISPLAY_CONNECTION_TYPE>(
           DisplayHook<decltype(&HwcDisplay::GetDisplayConnectionType),

@@ -30,7 +30,7 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
 
   std::pair<HWC2_PFN_HOTPLUG, hwc2_callback_data_t> hotplug_callback_{};
   std::pair<HWC2_PFN_VSYNC, hwc2_callback_data_t> vsync_callback_{};
-#if PLATFORM_SDK_VERSION > 29
+#if __ANDROID_API__ > 29
   std::pair<HWC2_PFN_VSYNC_2_4, hwc2_callback_data_t> vsync_2_4_callback_{};
   std::pair<HWC2_PFN_VSYNC_PERIOD_TIMING_CHANGED, hwc2_callback_data_t>
       period_timing_changed_callback_{};

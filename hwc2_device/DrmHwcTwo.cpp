@@ -196,7 +196,7 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
       vsync_callback_ = std::make_pair(HWC2_PFN_VSYNC(function), data);
       break;
     }
-#if PLATFORM_SDK_VERSION > 29
+#if __ANDROID_API__ > 29
     case HWC2::Callback::Vsync_2_4: {
       vsync_2_4_callback_ = std::make_pair(HWC2_PFN_VSYNC_2_4(function), data);
       break;
@@ -239,7 +239,7 @@ void DrmHwcTwo::SendVsyncEventToClient(
     hwc2_display_t displayid, int64_t timestamp,
     [[maybe_unused]] uint32_t vsync_period) const {
   /* vsync callback */
-#if PLATFORM_SDK_VERSION > 29
+#if __ANDROID_API__ > 29
   if (vsync_2_4_callback_.first != nullptr &&
       vsync_2_4_callback_.second != nullptr) {
     vsync_2_4_callback_.first(vsync_2_4_callback_.second, displayid, timestamp,
@@ -255,7 +255,7 @@ void DrmHwcTwo::SendVsyncEventToClient(
 void DrmHwcTwo::SendVsyncPeriodTimingChangedEventToClient(
     [[maybe_unused]] hwc2_display_t displayid,
     [[maybe_unused]] int64_t timestamp) const {
-#if PLATFORM_SDK_VERSION > 29
+#if __ANDROID_API__ > 29
   hwc_vsync_period_change_timeline_t timeline = {
       .newVsyncAppliedTimeNanos = timestamp,
       .refreshRequired = false,

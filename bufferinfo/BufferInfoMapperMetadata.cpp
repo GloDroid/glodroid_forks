@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#if PLATFORM_SDK_VERSION >= 30
+#if __ANDROID_API__ >= 30
 
 #define LOG_TAG "hwc-bufferinfo-mappermetadata"
 

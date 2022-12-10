@@ -68,12 +68,12 @@ class HwcDisplay {
                                  uint32_t *num_elements, hwc2_layer_t *layers,
                                  int32_t *layer_requests);
   HWC2::Error GetDisplayType(int32_t *type);
-#if PLATFORM_SDK_VERSION > 27
+#if __ANDROID_API__ > 27
   HWC2::Error GetRenderIntents(int32_t mode, uint32_t *outNumIntents,
                                int32_t *outIntents);
   HWC2::Error SetColorModeWithIntent(int32_t mode, int32_t intent);
 #endif
-#if PLATFORM_SDK_VERSION > 28
+#if __ANDROID_API__ > 28
   HWC2::Error GetDisplayIdentificationData(uint8_t *outPort,
                                            uint32_t *outDataSize,
                                            uint8_t *outData);
@@ -82,7 +82,7 @@ class HwcDisplay {
   HWC2::Error GetDisplayBrightnessSupport(bool *supported);
   HWC2::Error SetDisplayBrightness(float);
 #endif
-#if PLATFORM_SDK_VERSION > 29
+#if __ANDROID_API__ > 29
   HWC2::Error GetDisplayConnectionType(uint32_t *outType);
 
   HWC2::Error SetActiveConfigWithConstraints(

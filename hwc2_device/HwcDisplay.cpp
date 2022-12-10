@@ -322,7 +322,7 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
                                kUmPerInch / mm_height)
                          : -1;
       break;
-#if PLATFORM_SDK_VERSION > 29
+#if __ANDROID_API__ > 29
     case HWC2::Attribute::ConfigGroup:
       /* Dispite ConfigGroup is a part of HWC2.4 API, framework
        * able to request it even if service @2.1 is used */
@@ -772,7 +772,7 @@ HWC2::Error HwcDisplay::GetDisplayVsyncPeriod(
                              (int32_t *)(outVsyncPeriod));
 }
 
-#if PLATFORM_SDK_VERSION > 29
+#if __ANDROID_API__ > 29
 HWC2::Error HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
   if (IsInHeadlessMode()) {
     *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
@@ -850,7 +850,7 @@ HWC2::Error HwcDisplay::SetContentType(int32_t contentType) {
 }
 #endif
 
-#if PLATFORM_SDK_VERSION > 28
+#if __ANDROID_API__ > 28
 HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
                                                      uint32_t *outDataSize,
                                                      uint8_t *outData) {
@@ -895,9 +895,9 @@ HWC2::Error HwcDisplay::SetDisplayBrightness(float /* brightness */) {
   return HWC2::Error::Unsupported;
 }
 
-#endif /* PLATFORM_SDK_VERSION > 28 */
+#endif /* __ANDROID_API__ > 28 */
 
-#if PLATFORM_SDK_VERSION > 27
+#if __ANDROID_API__ > 27
 
 HWC2::Error HwcDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
@@ -933,7 +933,7 @@ HWC2::Error HwcDisplay::SetColorModeWithIntent(int32_t mode, int32_t intent) {
   return HWC2::Error::None;
 }
 
-#endif /* PLATFORM_SDK_VERSION > 27 */
+#endif /* __ANDROID_API__ > 27 */
 
 const Backend *HwcDisplay::backend() const {
   return backend_.get();

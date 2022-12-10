@@ -7,7 +7,7 @@ CLANG_TIDY := clang-tidy-15
 OUT_DIR := /tmp/drm_hwcomposer/build
 SRC_DIR := .
 
-CXXFLAGS := -fPIC -Wall -Wextra -Werror -DPLATFORM_SDK_VERSION=31 -D__ANDROID_API__=31
+CXXFLAGS := -fPIC -Wall -Wextra -Werror -D__ANDROID_API__=31
 CXXFLAGS += -D_LIBCPP_ENABLE_THREAD_SAFETY_ANNOTATIONS
 CXXFLAGS += -fvisibility-inlines-hidden -std=gnu++17 -DHWC2_USE_CPP11 -DHWC2_INCLUDE_STRINGIFICATION -fno-rtti
 
