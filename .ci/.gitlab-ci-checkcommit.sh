@@ -1,5 +1,13 @@
 #! /usr/bin/env bash
 
+check_tool_installed() {
+	if ! command -v $1 &> /dev/null
+	then
+		echo "Please install '$1' tool"
+		exit 1
+	fi
+}
+
 echoerr() {
 	printf "ERROR: %s\n" "$*" >&2
 }
@@ -26,6 +34,9 @@ findtag() {
 
 	return 1
 }
+
+check_tool_installed bpfmt
+check_tool_installed clang-format-diff-15
 
 git fetch https://gitlab.freedesktop.org/drm-hwcomposer/drm-hwcomposer.git
 
