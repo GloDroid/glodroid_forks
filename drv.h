@@ -162,8 +162,8 @@ struct combination *drv_get_combination(struct driver *drv, uint32_t format, uin
 struct bo *drv_bo_new(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
 		      uint64_t use_flags, bool is_test_buffer);
 
-struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
-			 uint64_t use_flags);
+int drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
+		  uint64_t use_flags, bool test_only, struct bo **out_bo);
 
 struct bo *drv_bo_create_with_modifiers(struct driver *drv, uint32_t width, uint32_t height,
 					uint32_t format, const uint64_t *modifiers, uint32_t count);

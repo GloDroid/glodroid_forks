@@ -353,10 +353,10 @@ static bool drv_bo_release(struct bo *bo)
 	return true;
 }
 
-struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
-			 uint64_t use_flags)
+int drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
+		  uint64_t use_flags, bool test_only, struct bo **out_bo)
 {
-	int ret;
+	int ret = -EINVAL;
 	struct bo *bo;
 	bool is_test_alloc;
 
@@ -366,10 +366,15 @@ struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, ui
 	bo = drv_bo_new(drv, width, height, format, use_flags, is_test_alloc);
 
 	if (!bo)
-		return NULL;
+		return -ENOMEM;
 
-	ret = -EINVAL;
-	if (drv->backend->bo_compute_metadata) {
+	if (drv->backend->bo_create_v2) {
+		if (!is_test_alloc)
+			ret = drv->backend->bo_create_v2(bo, width, height, format, use_flags,
+							 test_only);
+	} else if (test_only) {
+		return -ENOTSUP;
+	} else if (drv->backend->bo_compute_metadata) {
 		ret = drv->backend->bo_compute_metadata(bo, width, height, format, use_flags, NULL,
 							0);
 		if (!is_test_alloc && ret == 0)
@@ -378,10 +383,9 @@ struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, ui
 		ret = drv->backend->bo_create(bo, width, height, format, use_flags);
 	}
 
-	if (ret) {
-		errno = -ret;
+	if (ret || test_only) {
 		free(bo);
-		return NULL;
+		return ret;
 	}
 
 	drv_bo_acquire(bo);
@@ -389,7 +393,8 @@ struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, ui
 	if (drv->log_bos)
 		drv_bo_log_info(bo, "legacy created");
 
-	return bo;
+	*out_bo = bo;
+	return 0;
 }
 
 struct bo *drv_bo_create_with_modifiers(struct driver *drv, uint32_t width, uint32_t height,

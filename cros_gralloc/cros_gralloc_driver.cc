@@ -188,9 +188,21 @@ bool cros_gralloc_driver::get_resolved_format_and_use_flags(
 	uint32_t resolved_format;
 	uint64_t resolved_use_flags;
 	struct combination *combo;
+	int ret = 0;
 
 	drv_resolve_format_and_use_flags(drv_.get(), descriptor->drm_format, descriptor->use_flags,
 					 &resolved_format, &resolved_use_flags);
+
+	ret = drv_bo_create(drv_.get(), descriptor->width, descriptor->height, resolved_format,
+			    resolved_use_flags, /*test_only =*/true, NULL);
+	if (ret == 0) {
+		*out_format = resolved_format;
+		*out_use_flags = resolved_use_flags;
+		return true;
+	}
+
+	if (ret != -ENOTSUP)
+		return false;
 
 	combo = drv_get_combination(drv_.get(), resolved_format, resolved_use_flags);
 	if (!combo && (descriptor->droid_usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) &&
@@ -267,11 +279,11 @@ int32_t cros_gralloc_driver::allocate(const struct cros_gralloc_buffer_descripto
 		return -EINVAL;
 	}
 
-	bo = drv_bo_create(drv_.get(), descriptor->width, descriptor->height, resolved_format,
-			   resolved_use_flags);
-	if (!bo) {
+	ret = drv_bo_create(drv_.get(), descriptor->width, descriptor->height, resolved_format,
+			    resolved_use_flags, /*test_only =*/false, &bo);
+	if (ret) {
 		ALOGE("Failed to create bo.");
-		return -errno;
+		return ret;
 	}
 
 	num_planes = drv_bo_get_num_planes(bo);

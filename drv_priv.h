@@ -82,6 +82,8 @@ struct backend {
 	void (*close)(struct driver *drv);
 	int (*bo_create)(struct bo *bo, uint32_t width, uint32_t height, uint32_t format,
 			 uint64_t use_flags);
+	int (*bo_create_v2)(struct bo *bo, uint32_t width, uint32_t height, uint32_t format,
+			    uint64_t use_flags, bool test_only);
 	int (*bo_create_with_modifiers)(struct bo *bo, uint32_t width, uint32_t height,
 					uint32_t format, const uint64_t *modifiers, uint32_t count);
 	// Either both or neither _metadata functions must be implemented.
