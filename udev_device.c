@@ -15,6 +15,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#define LOG_TAG "libudev"
+// Enable ALOGV
+//#define LOG_NDEBUG 0
+
+#include <cutils/log.h>
+
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -532,6 +538,58 @@ static void set_properties_from_props(struct udev_device *udev_device)
     udev_list_entry_add(&udev_device->properties, "ID_PATH", id, 0);
 }
 
+static void set_env_for_glodroid(struct udev_device *udev_device) {
+    bool is_ec25 = false;
+
+    // Quectel EC25
+    const char *devname = udev_device_get_property_value(udev_device, "DEVNAME");
+    if (devname) {
+        if (strcmp(devname, "/dev/ttyUSB0") == 0) {
+            udev_list_entry_add(&udev_device->properties, "ID_MM_CANDIDATE", "1", 0);
+            udev_list_entry_add(&udev_device->properties, "ID_MM_PORT_TYPE_QCDM", "1", 0);
+            is_ec25 = true;
+        }
+        if (strcmp(devname, "/dev/ttyUSB1") == 0) {
+            udev_list_entry_add(&udev_device->properties, "ID_MM_CANDIDATE", "1", 0);
+            udev_list_entry_add(&udev_device->properties, "ID_MM_PORT_TYPE_GPS", "1", 0);
+            is_ec25 = true;
+        }
+        if (strcmp(devname, "/dev/ttyUSB2") == 0) {
+            udev_list_entry_add(&udev_device->properties, "ID_MM_CANDIDATE", "1", 0);
+            udev_list_entry_add(&udev_device->properties, "ID_MM_PORT_TYPE_AT_PRIMARY", "1", 0);
+            is_ec25 = true;
+        }
+        if (strcmp(devname, "/dev/ttyUSB3") == 0) {
+            udev_list_entry_add(&udev_device->properties, "ID_MM_CANDIDATE", "1", 0);
+            udev_list_entry_add(&udev_device->properties, "ID_MM_PORT_TYPE_AT_SECONDARY", "1", 0);
+            is_ec25 = true;
+        }
+        if (strcmp(devname, "/dev/cdc-wdm0") == 0) {
+            udev_list_entry_add(&udev_device->properties, "ID_MM_CANDIDATE", "1", 0);
+            is_ec25 = true;
+        }
+    }
+
+    const char *subsystem = udev_device_get_property_value(udev_device, "SUBSYSTEM");
+    if (subsystem) {
+        if (strcmp(subsystem, "net") == 0) {
+            udev_list_entry_add(&udev_device->properties, "ID_MM_CANDIDATE", "1", 0);
+            is_ec25 = true;
+        }
+    }
+
+    if (is_ec25) {
+        struct udev_list_entry *entry;
+        ALOGV("Device name: %s", udev_device_get_sysname(udev_device));
+
+        for (entry = udev_device_get_properties_list_entry(udev_device);
+             entry != NULL; entry = udev_list_entry_get_next(entry)) {
+            ALOGV(" - Property: %s = %s", udev_list_entry_get_name(entry),
+                  udev_list_entry_get_value(entry));
+        }
+    }
+}
+
 struct udev_device *udev_device_new_from_syspath(struct udev *udev, const char *syspath)
 {
     char *subsystem, *driver, *sysname;
@@ -588,6 +646,7 @@ struct udev_device *udev_device_new_from_syspath(struct udev *udev, const char *
     set_properties_from_uevent(udev_device);
     set_properties_from_evdev(udev_device);
     set_properties_from_props(udev_device);
+    set_env_for_glodroid(udev_device);
 
     free(driver);
     free(subsystem);
@@ -707,6 +766,7 @@ struct udev_device *udev_device_new_from_uevent(struct udev *udev, char *buf, si
 
     set_properties_from_props(udev_device);
     set_properties_from_evdev(udev_device);
+    set_env_for_glodroid(udev_device);
     return udev_device;
 }
 
