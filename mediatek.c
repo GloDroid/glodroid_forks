@@ -104,7 +104,7 @@ static int mediatek_init(struct driver *drv)
 	struct format_metadata metadata;
 
 	drv_add_combinations(drv, render_target_formats, ARRAY_SIZE(render_target_formats),
-			     &LINEAR_METADATA, BO_USE_RENDER_MASK | BO_USE_SCANOUT);
+			     &LINEAR_METADATA, BO_USE_RENDER_MASK | BO_USE_SCANOUT | BO_USE_PROTECTED);
 
 	drv_add_combinations(drv, texture_source_formats, ARRAY_SIZE(texture_source_formats),
 			     &LINEAR_METADATA, BO_USE_TEXTURE_MASK);
@@ -265,6 +265,10 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 	}
 
 	gem_create.size = bo->meta.total_size;
+
+	/* For protected data buffer needs to be allocated from GEM */
+	if (bo->meta.use_flags & BO_USE_PROTECTED)
+		gem_create.flags |= DRM_MTK_GEM_CREATE_ENCRYPTED;
 
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_MTK_GEM_CREATE, &gem_create);
 	if (ret) {
