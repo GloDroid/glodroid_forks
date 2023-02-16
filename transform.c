@@ -67,8 +67,6 @@
 
 #define BIT(x) (1 << (x))
 
-#define PROXIMITY_THRESHOLD 1
-
 inline unsigned int set_bit_range (int start, int end)
 {
 	int i;
@@ -365,17 +363,6 @@ static int finalize_sample_default (int s, sensors_event_t* data)
 			clamp_gyro_readings_to_zero(s, data);
 			break;
 
-		case SENSOR_TYPE_PROXIMITY:
-			/*
-			 * See iio spec for in_proximity* - depending on the device
-			 * this value is either in meters either unit-less and cannot
-			 * be translated to SI units. Where the translation is not possible
-			 * lower values indicate something is close and higher ones indicate distance.
-			 */
-			if (data->data[0] > PROXIMITY_THRESHOLD)
-				data->data[0] = PROXIMITY_THRESHOLD;
-
-			/* ... fall through ... */
 		case SENSOR_TYPE_LIGHT:
 		case SENSOR_TYPE_AMBIENT_TEMPERATURE:
 		case SENSOR_TYPE_TEMPERATURE:
@@ -384,6 +371,9 @@ static int finalize_sample_default (int s, sensors_event_t* data)
 			/* Only keep two decimals for these readings */
 			data->data[0] = 0.01 * ((int) (data->data[0] * 100));
 
+			/* ... fall through ... */
+
+		case SENSOR_TYPE_PROXIMITY:
 			/* These are on change sensors ; drop the sample if it has the same value as the previously reported one. */
 			if (data->data[0] == sensor[s].prev_val.data)
 				return 0;
@@ -395,7 +385,6 @@ static int finalize_sample_default (int s, sensors_event_t* data)
 				return 0;
 			sensor[s].prev_val.data64 = data->u64.data[0];
 			break;
-
 	}
 
 	/* If there are active virtual sensors depending on this one - process the event */
