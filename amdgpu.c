@@ -520,7 +520,7 @@ static int amdgpu_create_bo_linear(struct bo *bo, uint32_t width, uint32_t heigh
 	int ret;
 	bool need_align = false;
 	uint32_t stride_align = 1;
-	uint32_t plane, stride;
+	uint32_t stride;
 	union drm_amdgpu_gem_create gem_create = { { 0 } };
 	struct amdgpu_priv *priv = bo->drv->priv;
 
@@ -609,8 +609,7 @@ static int amdgpu_create_bo_linear(struct bo *bo, uint32_t width, uint32_t heigh
 	if (ret < 0)
 		return ret;
 
-	for (plane = 0; plane < bo->meta.num_planes; plane++)
-		bo->handles[plane].u32 = gem_create.out.handle;
+	bo->handle.u32 = gem_create.out.handle;
 
 	bo->meta.format_modifier = DRM_FORMAT_MOD_LINEAR;
 
@@ -703,7 +702,7 @@ static void *amdgpu_map_bo(struct bo *bo, struct vma *vma, uint32_t map_flags)
 	union drm_amdgpu_gem_mmap gem_map = { { 0 } };
 	struct drm_amdgpu_gem_create_in bo_info = { 0 };
 	struct drm_amdgpu_gem_op gem_op = { 0 };
-	uint32_t handle = bo->handles[0].u32;
+	uint32_t handle = bo->handle.u32;
 	struct amdgpu_linear_vma_priv *priv = NULL;
 	struct amdgpu_priv *drv_priv;
 
@@ -745,7 +744,7 @@ static void *amdgpu_map_bo(struct bo *bo, struct vma *vma, uint32_t map_flags)
 		priv->map_flags = map_flags;
 		handle = priv->handle = gem_create.out.handle;
 
-		ret = sdma_copy(bo->drv->priv, bo->drv->fd, bo->handles[0].u32, priv->handle,
+		ret = sdma_copy(bo->drv->priv, bo->drv->fd, bo->handle.u32, priv->handle,
 				bo_info.bo_size);
 		if (ret) {
 			drv_loge("SDMA copy for read failed\n");
@@ -793,7 +792,7 @@ static int amdgpu_unmap_bo(struct bo *bo, struct vma *vma)
 
 			if (BO_MAP_WRITE & priv->map_flags) {
 				r = sdma_copy(bo->drv->priv, bo->drv->fd, priv->handle,
-					      bo->handles[0].u32, vma->length);
+					      bo->handle.u32, vma->length);
 				if (r)
 					return r;
 			}
@@ -814,7 +813,7 @@ static int amdgpu_bo_invalidate(struct bo *bo, struct mapping *mapping)
 	if (bo->priv)
 		return 0;
 
-	wait_idle.in.handle = bo->handles[0].u32;
+	wait_idle.in.handle = bo->handle.u32;
 	wait_idle.in.timeout = AMDGPU_TIMEOUT_INFINITE;
 
 	ret = drmCommandWriteRead(bo->drv->fd, DRM_AMDGPU_GEM_WAIT_IDLE, &wait_idle,

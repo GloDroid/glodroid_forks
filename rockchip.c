@@ -118,7 +118,6 @@ static int rockchip_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 					     uint32_t count)
 {
 	int ret;
-	size_t plane;
 	struct drm_rockchip_gem_create gem_create = { 0 };
 	uint64_t afbc_modifier;
 
@@ -178,8 +177,7 @@ static int rockchip_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 		return -errno;
 	}
 
-	for (plane = 0; plane < bo->meta.num_planes; plane++)
-		bo->handles[plane].u32 = gem_create.handle;
+	bo->handle.u32 = gem_create.handle;
 
 	return 0;
 }
@@ -205,7 +203,7 @@ static void *rockchip_bo_map(struct bo *bo, struct vma *vma, uint32_t map_flags)
 	    bo->meta.format_modifier == DRM_FORMAT_MOD_ROCKCHIP_AFBC)
 		return MAP_FAILED;
 
-	gem_map.handle = bo->handles[0].u32;
+	gem_map.handle = bo->handle.u32;
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_ROCKCHIP_GEM_MAP_OFFSET, &gem_map);
 	if (ret) {
 		drv_loge("DRM_IOCTL_ROCKCHIP_GEM_MAP_OFFSET failed\n");

@@ -296,7 +296,6 @@ static int msm_bo_create_for_modifier(struct bo *bo, uint32_t width, uint32_t he
 {
 	struct drm_msm_gem_new req = { 0 };
 	int ret;
-	size_t i;
 
 	bo->meta.tiling = (modifier == DRM_FORMAT_MOD_QCOM_COMPRESSED) ? MSM_UBWC_TILING : 0;
 	msm_calculate_layout(bo);
@@ -310,12 +309,7 @@ static int msm_bo_create_for_modifier(struct bo *bo, uint32_t width, uint32_t he
 		return -errno;
 	}
 
-	/*
-	 * Though we use only one plane, we need to set handle for
-	 * all planes to pass kernel checks
-	 */
-	for (i = 0; i < bo->meta.num_planes; i++)
-		bo->handles[i].u32 = req.handle;
+	bo->handle.u32 = req.handle;
 
 	bo->meta.format_modifier = modifier;
 	return 0;
@@ -360,7 +354,7 @@ static void *msm_bo_map(struct bo *bo, struct vma *vma, uint32_t map_flags)
 	if (bo->meta.format_modifier)
 		return MAP_FAILED;
 
-	req.handle = bo->handles[0].u32;
+	req.handle = bo->handle.u32;
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_MSM_GEM_INFO, &req);
 	if (ret) {
 		drv_loge("DRM_IOCLT_MSM_GEM_INFO failed with %s\n", strerror(errno));

@@ -404,8 +404,7 @@ static int cross_domain_bo_create(struct bo *bo, uint32_t width, uint32_t height
 		return -errno;
 	}
 
-	for (uint32_t plane = 0; plane < bo->meta.num_planes; plane++)
-		bo->handles[plane].u32 = drm_rc_blob.bo_handle;
+	bo->handle.u32 = drm_rc_blob.bo_handle;
 
 	return 0;
 }
@@ -415,7 +414,7 @@ static void *cross_domain_bo_map(struct bo *bo, struct vma *vma, uint32_t map_fl
 	int ret;
 	struct drm_virtgpu_map gem_map = { 0 };
 
-	gem_map.handle = bo->handles[0].u32;
+	gem_map.handle = bo->handle.u32;
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_VIRTGPU_MAP, &gem_map);
 	if (ret) {
 		drv_loge("DRM_IOCTL_VIRTGPU_MAP failed with %s\n", strerror(errno));

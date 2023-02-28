@@ -44,7 +44,7 @@ struct bo {
 	struct driver *drv;
 	struct bo_metadata meta;
 	bool is_test_buffer;
-	union bo_handle handles[DRV_MAX_PLANES];
+	union bo_handle handle;
 	void *priv;
 };
 

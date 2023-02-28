@@ -498,8 +498,7 @@ static int virgl_3d_bo_create(struct bo *bo, uint32_t width, uint32_t height, ui
 		return ret;
 	}
 
-	for (uint32_t plane = 0; plane < bo->meta.num_planes; plane++)
-		bo->handles[plane].u32 = res_create.bo_handle;
+	bo->handle.u32 = res_create.bo_handle;
 
 	return 0;
 }
@@ -509,7 +508,7 @@ static void *virgl_3d_bo_map(struct bo *bo, struct vma *vma, uint32_t map_flags)
 	int ret;
 	struct drm_virtgpu_map gem_map = { 0 };
 
-	gem_map.handle = bo->handles[0].u32;
+	gem_map.handle = bo->handle.u32;
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_VIRTGPU_MAP, &gem_map);
 	if (ret) {
 		drv_loge("DRM_IOCTL_VIRTGPU_MAP failed with %s\n", strerror(errno));
@@ -721,8 +720,7 @@ static int virgl_bo_create_blob(struct driver *drv, struct bo *bo)
 		return -errno;
 	}
 
-	for (uint32_t plane = 0; plane < bo->meta.num_planes; plane++)
-		bo->handles[plane].u32 = drm_rc_blob.bo_handle;
+	bo->handle.u32 = drm_rc_blob.bo_handle;
 
 	return 0;
 }
@@ -814,7 +812,7 @@ static bool is_arc_screen_capture_bo(struct bo *bo)
 	    (bo->meta.format != DRM_FORMAT_ABGR8888 && bo->meta.format != DRM_FORMAT_ARGB8888 &&
 	     bo->meta.format != DRM_FORMAT_XRGB8888 && bo->meta.format != DRM_FORMAT_XBGR8888))
 		return false;
-	prime_handle.handle = bo->handles[0].u32;
+	prime_handle.handle = bo->handle.u32;
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &prime_handle);
 	if (ret < 0)
 		return false;
@@ -1124,7 +1122,7 @@ static int virgl_resource_info(struct bo *bo, uint32_t strides[DRV_MAX_PLANES],
 	if (!params[param_3d].value)
 		return 0;
 
-	res_info.bo_handle = bo->handles[0].u32;
+	res_info.bo_handle = bo->handle.u32;
 	res_info.type = VIRTGPU_RESOURCE_INFO_TYPE_EXTENDED;
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_VIRTGPU_RESOURCE_INFO_CROS, &res_info);
 	if (ret) {

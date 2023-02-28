@@ -74,8 +74,7 @@ static int vc4_bo_create_for_modifier(struct bo *bo, uint32_t width, uint32_t he
 		return -errno;
 	}
 
-	for (plane = 0; plane < bo->meta.num_planes; plane++)
-		bo->handles[plane].u32 = bo_create.handle;
+	bo->handle.u32 = bo_create.handle;
 
 	return 0;
 }
@@ -110,7 +109,7 @@ static void *vc4_bo_map(struct bo *bo, struct vma *vma, uint32_t map_flags)
 	int ret;
 	struct drm_vc4_mmap_bo bo_map = { 0 };
 
-	bo_map.handle = bo->handles[0].u32;
+	bo_map.handle = bo->handle.u32;
 	ret = drmCommandWriteRead(bo->drv->fd, DRM_VC4_MMAP_BO, &bo_map, sizeof(bo_map));
 	if (ret) {
 		drv_loge("DRM_VC4_MMAP_BO failed\n");

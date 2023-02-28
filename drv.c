@@ -250,7 +250,7 @@ static void drv_bo_mapping_destroy(struct bo *bo)
 		while (idx < drv_array_size(drv->mappings)) {
 			struct mapping *mapping =
 			    (struct mapping *)drv_array_at_idx(drv->mappings, idx);
-			if (mapping->vma->handle != bo->handles[plane].u32) {
+			if (mapping->vma->handle != bo->handle.u32) {
 				idx++;
 				continue;
 			}
@@ -285,10 +285,10 @@ static void drv_bo_acquire(struct bo *bo)
 	for (size_t plane = 0; plane < bo->meta.num_planes; plane++) {
 		uintptr_t num = 0;
 
-		if (!drmHashLookup(drv->buffer_table, bo->handles[plane].u32, (void **)&num))
-			drmHashDelete(drv->buffer_table, bo->handles[plane].u32);
+		if (!drmHashLookup(drv->buffer_table, bo->handle.u32, (void **)&num))
+			drmHashDelete(drv->buffer_table, bo->handle.u32);
 
-		drmHashInsert(drv->buffer_table, bo->handles[plane].u32, (void *)(num + 1));
+		drmHashInsert(drv->buffer_table, bo->handle.u32, (void *)(num + 1));
 	}
 	pthread_mutex_unlock(&drv->buffer_table_lock);
 }
@@ -307,19 +307,18 @@ static bool drv_bo_release(struct bo *bo)
 
 	pthread_mutex_lock(&drv->buffer_table_lock);
 	for (size_t plane = 0; plane < bo->meta.num_planes; plane++) {
-		if (!drmHashLookup(drv->buffer_table, bo->handles[plane].u32, (void **)&num)) {
-			drmHashDelete(drv->buffer_table, bo->handles[plane].u32);
+		if (!drmHashLookup(drv->buffer_table, bo->handle.u32, (void **)&num)) {
+			drmHashDelete(drv->buffer_table, bo->handle.u32);
 
 			if (num > 1) {
-				drmHashInsert(drv->buffer_table, bo->handles[plane].u32,
-					      (void *)(num - 1));
+				drmHashInsert(drv->buffer_table, bo->handle.u32, (void *)(num - 1));
 			}
 		}
 	}
 
 	/* The same buffer can back multiple planes with different offsets. */
 	for (size_t plane = 0; plane < bo->meta.num_planes; plane++) {
-		if (!drmHashLookup(drv->buffer_table, bo->handles[plane].u32, (void **)&num)) {
+		if (!drmHashLookup(drv->buffer_table, bo->handle.u32, (void **)&num)) {
 			/* num is positive if found in the hashmap. */
 			pthread_mutex_unlock(&drv->buffer_table_lock);
 			return false;
@@ -491,8 +490,7 @@ void *drv_bo_map(struct bo *bo, const struct rectangle *rect, uint32_t map_flags
 
 	for (i = 0; i < drv_array_size(drv->mappings); i++) {
 		struct mapping *prior = (struct mapping *)drv_array_at_idx(drv->mappings, i);
-		if (prior->vma->handle != bo->handles[plane].u32 ||
-		    prior->vma->map_flags != map_flags)
+		if (prior->vma->handle != bo->handle.u32 || prior->vma->map_flags != map_flags)
 			continue;
 
 		if (rect->x != prior->rect.x || rect->y != prior->rect.y ||
@@ -506,8 +504,7 @@ void *drv_bo_map(struct bo *bo, const struct rectangle *rect, uint32_t map_flags
 
 	for (i = 0; i < drv_array_size(drv->mappings); i++) {
 		struct mapping *prior = (struct mapping *)drv_array_at_idx(drv->mappings, i);
-		if (prior->vma->handle != bo->handles[plane].u32 ||
-		    prior->vma->map_flags != map_flags)
+		if (prior->vma->handle != bo->handle.u32 || prior->vma->map_flags != map_flags)
 			continue;
 
 		prior->vma->refcount++;
@@ -533,7 +530,7 @@ void *drv_bo_map(struct bo *bo, const struct rectangle *rect, uint32_t map_flags
 
 	mapping.vma->refcount = 1;
 	mapping.vma->addr = addr;
-	mapping.vma->handle = bo->handles[plane].u32;
+	mapping.vma->handle = bo->handle.u32;
 	mapping.vma->map_flags = map_flags;
 
 success:
@@ -639,7 +636,7 @@ size_t drv_bo_get_num_planes(struct bo *bo)
 
 union bo_handle drv_bo_get_plane_handle(struct bo *bo, size_t plane)
 {
-	return bo->handles[plane];
+	return bo->handle;
 }
 
 #ifndef DRM_RDWR
@@ -655,11 +652,11 @@ int drv_bo_get_plane_fd(struct bo *bo, size_t plane)
 	if (bo->is_test_buffer)
 		return -EINVAL;
 
-	ret = drmPrimeHandleToFD(bo->drv->fd, bo->handles[plane].u32, DRM_CLOEXEC | DRM_RDWR, &fd);
+	ret = drmPrimeHandleToFD(bo->drv->fd, bo->handle.u32, DRM_CLOEXEC | DRM_RDWR, &fd);
 
 	// Older DRM implementations blocked DRM_RDWR, but gave a read/write mapping anyways
 	if (ret)
-		ret = drmPrimeHandleToFD(bo->drv->fd, bo->handles[plane].u32, DRM_CLOEXEC, &fd);
+		ret = drmPrimeHandleToFD(bo->drv->fd, bo->handle.u32, DRM_CLOEXEC, &fd);
 
 	if (ret)
 		drv_loge("Failed to get plane fd: %s\n", strerror(errno));
@@ -725,25 +722,6 @@ void drv_resolve_format_and_use_flags(struct driver *drv, uint32_t format, uint6
 
 	drv->backend->resolve_format_and_use_flags(drv, format, use_flags, out_format,
 						   out_use_flags);
-}
-
-uint32_t drv_num_buffers_per_bo(struct bo *bo)
-{
-	uint32_t count = 0;
-	size_t plane, p;
-
-	if (bo->is_test_buffer)
-		return 0;
-
-	for (plane = 0; plane < bo->meta.num_planes; plane++) {
-		for (p = 0; p < plane; p++)
-			if (bo->handles[p].u32 == bo->handles[plane].u32)
-				break;
-		if (p == plane)
-			count++;
-	}
-
-	return count;
 }
 
 void drv_log_prefix(enum drv_log_level level, const char *prefix, const char *file, int line,

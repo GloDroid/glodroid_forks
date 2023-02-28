@@ -329,7 +329,6 @@ int drv_dumb_bo_create_ex(struct bo *bo, uint32_t width, uint32_t height, uint32
 			  uint64_t use_flags, uint64_t quirks)
 {
 	int ret;
-	size_t plane;
 	uint32_t aligned_width, aligned_height;
 	struct drm_mode_create_dumb create_dumb = { 0 };
 
@@ -387,8 +386,7 @@ int drv_dumb_bo_create_ex(struct bo *bo, uint32_t width, uint32_t height, uint32
 
 	drv_bo_from_format(bo, create_dumb.pitch, 1, height, format);
 
-	for (plane = 0; plane < bo->meta.num_planes; plane++)
-		bo->handles[plane].u32 = create_dumb.handle;
+	bo->handle.u32 = create_dumb.handle;
 
 	bo->meta.total_size = create_dumb.size;
 	return 0;
@@ -405,42 +403,36 @@ int drv_dumb_bo_destroy(struct bo *bo)
 	int ret;
 	struct drm_mode_destroy_dumb destroy_dumb = { 0 };
 
-	destroy_dumb.handle = bo->handles[0].u32;
+	destroy_dumb.handle = bo->handle.u32;
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_dumb);
 	if (ret) {
-		drv_loge("DRM_IOCTL_MODE_DESTROY_DUMB failed (handle=%x)\n", bo->handles[0].u32);
+		drv_loge("DRM_IOCTL_MODE_DESTROY_DUMB failed (handle=%x)\n", bo->handle.u32);
 		return -errno;
 	}
 
 	return 0;
 }
 
-int drv_gem_bo_destroy(struct bo *bo)
+static int drv_gem_close(struct driver *drv, uint32_t gem_handle)
 {
 	struct drm_gem_close gem_close;
 	int ret, error = 0;
-	size_t plane, i;
 
-	for (plane = 0; plane < bo->meta.num_planes; plane++) {
-		for (i = 0; i < plane; i++)
-			if (bo->handles[i].u32 == bo->handles[plane].u32)
-				break;
-		/* Make sure close hasn't already been called on this handle */
-		if (i != plane)
-			continue;
+	memset(&gem_close, 0, sizeof(gem_close));
+	gem_close.handle = gem_handle;
 
-		memset(&gem_close, 0, sizeof(gem_close));
-		gem_close.handle = bo->handles[plane].u32;
-
-		ret = drmIoctl(bo->drv->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
-		if (ret) {
-			drv_loge("DRM_IOCTL_GEM_CLOSE failed (handle=%x) error %d\n",
-				 bo->handles[plane].u32, ret);
-			error = -errno;
-		}
+	ret = drmIoctl(drv->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
+	if (ret) {
+		drv_loge("DRM_IOCTL_GEM_CLOSE failed (handle=%x) error %d\n", gem_handle, ret);
+		error = -errno;
 	}
 
 	return error;
+}
+
+int drv_gem_bo_destroy(struct bo *bo)
+{
+	return drv_gem_close(bo->drv, bo->handle.u32);
 }
 
 int drv_prime_bo_import(struct bo *bo, struct drv_import_fd_data *data)
@@ -455,21 +447,20 @@ int drv_prime_bo_import(struct bo *bo, struct drv_import_fd_data *data)
 
 		ret = drmIoctl(bo->drv->fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime_handle);
 
+		if (plane > 0 && !ret && bo->handle.u32 != prime_handle.handle) {
+			drv_gem_close(bo->drv, prime_handle.handle);
+			ret = -1;
+			errno = EINVAL;
+		}
+
 		if (ret) {
 			drv_loge("DRM_IOCTL_PRIME_FD_TO_HANDLE failed (fd=%u)\n", prime_handle.fd);
-
-			/*
-			 * Need to call GEM close on planes that were opened,
-			 * if any. Adjust the num_planes variable to be the
-			 * plane that failed, so GEM close will be called on
-			 * planes before that plane.
-			 */
-			bo->meta.num_planes = plane;
-			drv_gem_bo_destroy(bo);
+			if (plane > 0)
+				drv_gem_close(bo->drv, bo->handle.u32);
 			return -errno;
 		}
 
-		bo->handles[plane].u32 = prime_handle.handle;
+		bo->handle.u32 = prime_handle.handle;
 	}
 	bo->meta.tiling = data->tiling;
 
@@ -483,7 +474,7 @@ void *drv_dumb_bo_map(struct bo *bo, struct vma *vma, uint32_t map_flags)
 	struct drm_mode_map_dumb map_dumb;
 
 	memset(&map_dumb, 0, sizeof(map_dumb));
-	map_dumb.handle = bo->handles[0].u32;
+	map_dumb.handle = bo->handle.u32;
 
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_MODE_MAP_DUMB, &map_dumb);
 	if (ret) {

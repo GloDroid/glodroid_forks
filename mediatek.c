@@ -268,8 +268,7 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 		return -errno;
 	}
 
-	for (plane = 0; plane < bo->meta.num_planes; plane++)
-		bo->handles[plane].u32 = gem_create.handle;
+	bo->handle.u32 = gem_create.handle;
 
 	return 0;
 }
@@ -289,7 +288,7 @@ static void *mediatek_bo_map(struct bo *bo, struct vma *vma, uint32_t map_flags)
 	struct mediatek_private_map_data *priv;
 	void *addr = NULL;
 
-	gem_map.handle = bo->handles[0].u32;
+	gem_map.handle = bo->handle.u32;
 
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_MTK_GEM_MAP_OFFSET, &gem_map);
 	if (ret) {

@@ -133,15 +133,6 @@ int32_t cros_gralloc_buffer::lock(const struct rectangle *rect, uint32_t map_fla
 
 	memset(addr, 0, DRV_MAX_PLANES * sizeof(*addr));
 
-	/*
-	 * Gralloc consumers don't support more than one kernel buffer per buffer object yet, so
-	 * just use the first kernel buffer.
-	 */
-	if (drv_num_buffers_per_bo(bo_) != 1) {
-		ALOGE("Can only support one buffer per bo.");
-		return -EINVAL;
-	}
-
 	if (map_flags) {
 		if (lock_data_[0]) {
 			drv_bo_invalidate(bo_, lock_data_[0]);

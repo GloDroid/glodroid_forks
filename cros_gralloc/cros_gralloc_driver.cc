@@ -273,16 +273,6 @@ int32_t cros_gralloc_driver::allocate(const struct cros_gralloc_buffer_descripto
 		return -errno;
 	}
 
-	/*
-	 * If there is a desire for more than one kernel buffer, this can be
-	 * removed once the ArcCodec and Wayland service have the ability to
-	 * send more than one fd. GL/Vulkan drivers may also have to modified.
-	 */
-	if (drv_num_buffers_per_bo(bo) != 1) {
-		ALOGE("Can only support one buffer per bo.");
-		goto destroy_bo;
-	}
-
 	num_planes = drv_bo_get_num_planes(bo);
 	num_fds = num_planes;
 
@@ -359,7 +349,6 @@ destroy_hnd:
 	native_handle_close(hnd);
 	native_handle_delete(hnd);
 
-destroy_bo:
 	drv_bo_destroy(bo);
 	return ret;
 }

@@ -126,6 +126,7 @@ static int import_into_minigbm(struct dri_driver *dri, struct bo *bo)
 		return ret;
 	}
 
+	bo->handle.u32 = handle;
 	for (int i = 0; i < num_planes; ++i) {
 		int stride, offset;
 		plane_image = dri->image_extension->fromPlanar(bo->priv, i, NULL);
@@ -139,10 +140,6 @@ static int import_into_minigbm(struct dri_driver *dri, struct bo *bo)
 
 		bo->meta.strides[i] = stride;
 		bo->meta.offsets[i] = offset;
-
-		if (i > 0 && bo->meta.offsets[i] <= bo->meta.offsets[i - 1])
-			goto cleanup;
-		bo->handles[i].u32 = handle;
 
 		if (plane_image)
 			dri->image_extension->destroyImage(plane_image);
@@ -396,7 +393,7 @@ int dri_bo_release(struct bo *bo)
 int dri_bo_destroy(struct bo *bo)
 {
 	assert(bo->priv);
-	close_gem_handle(bo->handles[0].u32, bo->drv->fd);
+	close_gem_handle(bo->handle.u32, bo->drv->fd);
 	bo->priv = NULL;
 	return 0;
 }
