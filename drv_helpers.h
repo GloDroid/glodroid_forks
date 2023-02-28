@@ -51,4 +51,9 @@ void drv_resolve_format_and_use_flags_helper(struct driver *drv, uint32_t format
 					     uint64_t use_flags, uint32_t *out_format,
 					     uint64_t *out_use_flags);
 
+/*
+ * Get an option. Should return NULL if specified option is not set.
+ */
+const char *drv_get_os_option(const char *name);
+
 #endif
