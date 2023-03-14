@@ -87,9 +87,9 @@ static void close_gem_handle(uint32_t handle, int fd)
  */
 static int import_into_minigbm(struct dri_driver *dri, struct bo *bo)
 {
-	uint32_t handle;
-	int ret, modifier_upper, modifier_lower, num_planes, i, j;
-	off_t dmabuf_sizes[DRV_MAX_PLANES];
+	uint32_t handle = 0;
+	int ret, modifier_upper, modifier_lower, num_planes, prime_fd;
+	off_t dmabuf_size;
 	__DRIimage *plane_image = NULL;
 
 	if (dri->image_extension->queryImage(bo->priv, __DRI_IMAGE_ATTRIB_MODIFIER_UPPER,
@@ -105,8 +105,29 @@ static int import_into_minigbm(struct dri_driver *dri, struct bo *bo)
 		return -errno;
 
 	bo->meta.num_planes = num_planes;
-	for (i = 0; i < num_planes; ++i) {
-		int prime_fd, stride, offset;
+
+	if (!dri->image_extension->queryImage(bo->priv, __DRI_IMAGE_ATTRIB_FD, &prime_fd))
+		return -errno;
+
+	dmabuf_size = lseek(prime_fd, 0, SEEK_END);
+	if (dmabuf_size == (off_t)-1) {
+		close(prime_fd);
+		return -errno;
+	}
+
+	lseek(prime_fd, 0, SEEK_SET);
+
+	ret = drmPrimeFDToHandle(bo->drv->fd, prime_fd, &handle);
+
+	close(prime_fd);
+
+	if (ret) {
+		drv_loge("drmPrimeFDToHandle failed with %s\n", strerror(errno));
+		return ret;
+	}
+
+	for (int i = 0; i < num_planes; ++i) {
+		int stride, offset;
 		plane_image = dri->image_extension->fromPlanar(bo->priv, i, NULL);
 		__DRIimage *image = plane_image ? plane_image : bo->priv;
 
@@ -116,73 +137,32 @@ static int import_into_minigbm(struct dri_driver *dri, struct bo *bo)
 			goto cleanup;
 		}
 
-		if (!dri->image_extension->queryImage(image, __DRI_IMAGE_ATTRIB_FD, &prime_fd)) {
-			ret = -errno;
-			goto cleanup;
-		}
-
-		dmabuf_sizes[i] = lseek(prime_fd, 0, SEEK_END);
-		if (dmabuf_sizes[i] == (off_t)-1) {
-			ret = -errno;
-			close(prime_fd);
-			goto cleanup;
-		}
-
-		lseek(prime_fd, 0, SEEK_SET);
-
-		ret = drmPrimeFDToHandle(bo->drv->fd, prime_fd, &handle);
-
-		close(prime_fd);
-
-		if (ret) {
-			drv_loge("drmPrimeFDToHandle failed with %s\n", strerror(errno));
-			goto cleanup;
-		}
-
-		bo->handles[i].u32 = handle;
-
 		bo->meta.strides[i] = stride;
 		bo->meta.offsets[i] = offset;
 
+		if (i > 0 && bo->meta.offsets[i] <= bo->meta.offsets[i - 1])
+			goto cleanup;
+		bo->handles[i].u32 = handle;
+
 		if (plane_image)
 			dri->image_extension->destroyImage(plane_image);
+
+		if (i > 0)
+			bo->meta.sizes[i - 1] = bo->meta.offsets[i] - bo->meta.offsets[i - 1];
 	}
 
-	for (i = 0; i < num_planes; ++i) {
-		off_t next_plane = dmabuf_sizes[i];
-		for (j = 0; j < num_planes; ++j) {
-			if (bo->meta.offsets[j] < next_plane &&
-			    bo->meta.offsets[j] > bo->meta.offsets[i] &&
-			    bo->handles[j].u32 == bo->handles[i].u32)
-				next_plane = bo->meta.offsets[j];
-		}
-
-		bo->meta.sizes[i] = next_plane - bo->meta.offsets[i];
-
-		/* This is kind of misleading if different planes use
-		   different dmabufs. */
-		bo->meta.total_size += bo->meta.sizes[i];
-	}
+	bo->meta.sizes[num_planes - 1] = dmabuf_size - bo->meta.offsets[num_planes - 1];
+	bo->meta.total_size = dmabuf_size;
 
 	return 0;
 
 cleanup:
 	if (plane_image)
 		dri->image_extension->destroyImage(plane_image);
-	while (--i >= 0) {
-		for (j = 0; j <= i; ++j)
-			if (bo->handles[j].u32 == bo->handles[i].u32)
-				break;
 
-		/* Multiple equivalent handles) */
-		if (i == j)
-			break;
+	if (handle != 0)
+		close_gem_handle(handle, bo->drv->fd);
 
-		/* This kind of goes horribly wrong when we already imported
-		 * the same handles earlier, as we should really reference
-		 * count handles. */
-		close_gem_handle(bo->handles[i].u32, bo->drv->fd);
-	}
 	return ret;
 }
 
