@@ -525,7 +525,10 @@ static int amdgpu_create_bo_linear(struct bo *bo, uint32_t width, uint32_t heigh
 
 	stride = drv_stride_from_format(format, width, 0);
 
-	if (use_flags & BO_USE_HW_MASK) {
+	/* some clients (e.g., virtio-wl) set BO_USE_LINEAR to mean
+	 * BO_USE_SCANOUT or BO_USE_TEXTURE
+	 */
+	if (use_flags & (BO_USE_HW_MASK | BO_USE_LINEAR)) {
 		/* GFX9+ requires the stride to be aligned to 256 bytes */
 		stride_align = 256;
 		stride = ALIGN(stride, stride_align);
