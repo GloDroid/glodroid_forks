@@ -518,6 +518,7 @@ static int amdgpu_create_bo_linear(struct bo *bo, uint32_t width, uint32_t heigh
 				   uint64_t use_flags)
 {
 	int ret;
+	bool need_align = false;
 	uint32_t stride_align = 1;
 	uint32_t plane, stride;
 	union drm_amdgpu_gem_create gem_create = { { 0 } };
@@ -528,7 +529,17 @@ static int amdgpu_create_bo_linear(struct bo *bo, uint32_t width, uint32_t heigh
 	/* some clients (e.g., virtio-wl) set BO_USE_LINEAR to mean
 	 * BO_USE_SCANOUT or BO_USE_TEXTURE
 	 */
-	if (use_flags & (BO_USE_HW_MASK | BO_USE_LINEAR)) {
+	need_align = use_flags & (BO_USE_HW_MASK | BO_USE_LINEAR);
+
+#if defined(ANDROID) && ANDROID_API_LEVEL < 30
+	/* work around
+	 * android.hardware.camera2.cts.ImageWriterTest#testYuvImageWriterReaderOperation
+	 * failure before R
+	 */
+	need_align = true;
+#endif
+
+	if (need_align) {
 		/* GFX9+ requires the stride to be aligned to 256 bytes */
 		stride_align = 256;
 		stride = ALIGN(stride, stride_align);
