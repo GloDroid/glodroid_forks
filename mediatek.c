@@ -192,8 +192,10 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 #endif
 
 	if ((bo->meta.use_flags & BO_USE_HW_VIDEO_ENCODER) || is_camera_preview) {
-		uint32_t aligned_height = ALIGN(height, 32);
 		uint32_t padding[DRV_MAX_PLANES] = { 0 };
+		uint32_t aligned_height = height;
+		if (format != DRM_FORMAT_R8 || height > 1)
+			aligned_height = ALIGN(height, 32);
 
 		for (plane = 0; plane < bo->meta.num_planes; ++plane) {
 			uint32_t plane_stride = drv_stride_from_format(format, stride, plane);
