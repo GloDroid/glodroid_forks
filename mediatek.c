@@ -170,6 +170,13 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 	 */
 	const bool is_camera_preview =
 	    (bo->meta.use_flags & BO_USE_SCANOUT) && (bo->meta.use_flags & BO_USE_CAMERA_WRITE);
+	const bool is_hw_video_encoder = bo->meta.use_flags & BO_USE_HW_VIDEO_ENCODER;
+	/*
+	 * Android sends blobs for encoding in the shape of a single-row pixel buffer. Use R8 +
+	 * single row as a proxy for Android HAL_PIXEL_FORMAT_BLOB until a drm equivalent is
+	 * defined.
+	 */
+	const bool is_format_blob = format == DRM_FORMAT_R8 && height == 1;
 
 	if (!drv_has_modifier(modifiers, count, DRM_FORMAT_MOD_LINEAR)) {
 		errno = EINVAL;
@@ -191,9 +198,7 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 	stride = ALIGN(stride, 64);
 #endif
 
-	const bool is_format_blob = format == DRM_FORMAT_R8 && height == 1;
-	if (((bo->meta.use_flags & BO_USE_HW_VIDEO_ENCODER) && !is_format_blob) ||
-	    is_camera_preview) {
+	if ((is_hw_video_encoder && !is_format_blob) || is_camera_preview) {
 		uint32_t aligned_height = ALIGN(height, 32);
 		uint32_t padding[DRV_MAX_PLANES] = { 0 };
 
@@ -205,6 +210,22 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 
 		drv_bo_from_format_and_padding(bo, stride, 1, aligned_height, format, padding);
 	} else {
+#ifdef USE_EXTRA_PADDING_FOR_YVU420
+		/*
+		 * Apply extra padding for YV12 if the height does not meet round up requirement and
+		 * the image is to be sampled by gpu.
+		 */
+		static const uint32_t required_round_up = 4;
+		const uint32_t height_mod = height % required_round_up;
+		const bool is_texture = bo->meta.use_flags & BO_USE_TEXTURE;
+		/*
+		 * YVU420 and YVU420_ANDROID treatments have been aligned in mediatek backend. Check
+		 * both since gbm frontend still maps linear YVU420 to YVU420_ANDROID for other hw
+		 * backends.
+		 */
+		const bool is_format_yv12 =
+		    format == DRM_FORMAT_YVU420 || format == DRM_FORMAT_YVU420_ANDROID;
+#endif
 #ifdef SUPPORTS_YUV422
 		/*
 		 * JPEG Encoder Accelerator requires 16x16 alignment. We want the buffer
@@ -217,17 +238,13 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 		drv_bo_from_format(bo, stride, 1, height, format);
 
 #ifdef USE_EXTRA_PADDING_FOR_YVU420
-		/*
-		 * Apply extra padding for YV12 if the height does not meet round up requirement and
-		 * the image is to be sampled by gpu.
-		 */
-		static const uint32_t required_round_up = 4;
-		const uint32_t height_mod = height % required_round_up;
-		if ((format == DRM_FORMAT_YVU420 || format == DRM_FORMAT_YVU420_ANDROID) &&
-		    (bo->meta.use_flags & BO_USE_TEXTURE) && height_mod) {
+		if (is_format_yv12 && is_texture && height_mod) {
 			const uint32_t height_padding = required_round_up - height_mod;
+			const uint32_t y_padding =
+			    drv_size_from_format(format, bo->meta.strides[0], height_padding, 0);
 			const uint32_t u_padding =
 			    drv_size_from_format(format, bo->meta.strides[2], height_padding, 2);
+			const uint32_t vu_size = drv_bo_get_plane_size(bo, 2) * 2;
 
 			bo->meta.total_size += u_padding;
 
@@ -235,9 +252,6 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 			 * Since we are not aligning Y, we must make sure that its padding fits
 			 * inside the rest of the space allocated for the V/U planes.
 			 */
-			const uint32_t y_padding =
-			    drv_size_from_format(format, bo->meta.strides[0], height_padding, 0);
-			const uint32_t vu_size = drv_bo_get_plane_size(bo, 2) * 2;
 			if (y_padding > vu_size) {
 				/* Align with mali workaround to pad all 3 planes. */
 				bo->meta.total_size += y_padding + u_padding;
