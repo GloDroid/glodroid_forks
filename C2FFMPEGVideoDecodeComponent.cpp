@@ -19,6 +19,10 @@
 #include <log/log.h>
 #include <algorithm>
 
+extern "C" {
+#include <libswscale/swscale.h>
+}
+
 #include <SimpleC2Interface.h>
 #include "C2FFMPEGVideoDecodeComponent.h"
 #include "ffmpeg_hwaccel.h"

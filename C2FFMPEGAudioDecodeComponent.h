@@ -17,6 +17,10 @@
 #ifndef C2_FFMPEG_AUDIO_DECODE_COMPONENT_H
 #define C2_FFMPEG_AUDIO_DECODE_COMPONENT_H
 
+extern "C" {
+#include <libswresample/swresample.h>
+}
+
 #include <SimpleC2Component.h>
 #include "C2FFMPEGCommon.h"
 #include "C2FFMPEGAudioDecodeInterface.h"
@@ -72,6 +76,14 @@ private:
     int mTargetChannels;
     // Misc
     CodecHelper* mCodecHelper;
+
+    // Store configuration to track changes
+    enum AVSampleFormat mOutSampleFmt;
+    int mOutSampleRate;
+    struct AVChannelLayout mInChLayout;
+    enum AVSampleFormat mInSampleFmt;
+    int mInSampleRate;
+    int mOutChannels;
 };
 
 } // namespace android

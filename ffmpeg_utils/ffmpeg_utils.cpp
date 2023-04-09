@@ -22,6 +22,8 @@
 
 extern "C" {
 
+#include <libavformat/avformat.h>
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <inttypes.h>

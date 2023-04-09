@@ -36,18 +36,6 @@
 
 namespace android {
 
-// This is the absolute on-device path of the prebuild_etc module
-// "android.hardware.media.c2@1.1-ffmpeg-seccomp_policy" in Android.bp.
-static constexpr char kBaseSeccompPolicyPath[] =
-        "/vendor/etc/seccomp_policy/"
-        "android.hardware.media.c2@1.2-ffmpeg.policy";
-
-// Additional seccomp permissions can be added in this file.
-// This file does not exist by default.
-static constexpr char kExtSeccompPolicyPath[] =
-        "/vendor/etc/seccomp_policy/"
-        "android.hardware.media.c2@1.2-ffmpeg-extended.policy";
-
 static const C2FFMPEGComponentInfo kFFMPEGVideoComponents[] = {
     { "c2.ffmpeg.av1.decoder"   , MEDIA_MIMETYPE_VIDEO_AV1   , AV_CODEC_ID_AV1        },
     { "c2.ffmpeg.h263.decoder"  , MEDIA_MIMETYPE_VIDEO_H263  , AV_CODEC_ID_H263       },
@@ -278,10 +266,6 @@ private:
 int main(int /* argc */, char** /* argv */) {
     using namespace ::android;
     LOG(DEBUG) << "android.hardware.media.c2@1.2-service-ffmpeg starting...";
-
-    // Set up minijail to limit system calls.
-    signal(SIGPIPE, SIG_IGN);
-    SetUpMinijail(kBaseSeccompPolicyPath, kExtSeccompPolicyPath);
 
     ProcessState::self()->startThreadPool();
     // Extra threads may be needed to handle a stacked IPC sequence that

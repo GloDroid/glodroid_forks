@@ -18,9 +18,14 @@
 #include <android-base/stringprintf.h>
 #include <log/log.h>
 
+extern "C" {
+#include <libswscale/swscale.h>
+#include <libswresample/swresample.h>
+#include <libavutil/channel_layout.h>
+}
+
 #include <SimpleC2Interface.h>
 #include "C2FFMPEGAudioDecodeComponent.h"
-#include <libswresample/swresample_internal.h>
 
 #define DEBUG_FRAMES 0
 #define DEBUG_EXTRADATA 0
@@ -398,18 +403,23 @@ c2_status_t C2FFMPEGAudioDecodeComponent::receiveFrame(bool* hasFrame) {
 }
 
 c2_status_t C2FFMPEGAudioDecodeComponent::getOutputBuffer(C2WriteView* outBuffer) {
-    if (! mSwrCtx ||
-        mSwrCtx->in_sample_fmt != mFrame->format ||
-        mSwrCtx->in_sample_rate != mFrame->sample_rate ||
-        av_channel_layout_compare(&mSwrCtx->in_ch_layout, &mFrame->ch_layout) != 0 ||
-        mSwrCtx->out_sample_fmt != mTargetSampleFormat ||
-        mSwrCtx->out_sample_rate != mTargetSampleRate ||
-        mSwrCtx->out_ch_layout.nb_channels != mTargetChannels) {
+    if (! mSwrCtx || mInSampleFmt != mFrame->format ||
+        mInSampleRate != mFrame->sample_rate ||
+        av_channel_layout_compare(&mInChLayout, &mFrame->ch_layout) != 0 ||
+        mOutSampleFmt != mTargetSampleFormat ||
+        mOutSampleRate != mTargetSampleRate ||
+        mOutChannels != mTargetChannels) {
         if (mSwrCtx) {
             swr_free(&mSwrCtx);
         }
 
         AVChannelLayout newLayout;
+        mInSampleFmt = (enum AVSampleFormat)mFrame->format;
+        mInSampleRate = mFrame->sample_rate;
+        mInChLayout = mFrame->ch_layout;
+        mOutSampleFmt = mTargetSampleFormat;
+        mOutSampleRate = mTargetSampleRate;
+        mOutChannels = mTargetChannels;
 
         av_channel_layout_default(&newLayout, mTargetChannels);
         swr_alloc_set_opts2(&mSwrCtx,

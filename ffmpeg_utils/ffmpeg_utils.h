@@ -28,11 +28,8 @@
 
 extern "C" {
 
-#include "libavformat/avformat.h"
 #include "libavcodec/avcodec.h"
 #include "libavcodec/bsf.h"
-#include "libswscale/swscale.h"
-#include "libswresample/swresample.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 
