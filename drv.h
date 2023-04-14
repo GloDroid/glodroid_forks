@@ -225,7 +225,11 @@ enum drv_log_level {
 	} while (0)
 
 #define drv_loge(format, ...) _drv_log(DRV_LOGE, format, ##__VA_ARGS__)
+#ifdef NDEBUG
+#define drv_logv(format, ...)
+#else
 #define drv_logv(format, ...) _drv_log(DRV_LOGV, format, ##__VA_ARGS__)
+#endif
 #define drv_logd(format, ...) _drv_log(DRV_LOGD, format, ##__VA_ARGS__)
 #define drv_logi(format, ...) _drv_log(DRV_LOGI, format, ##__VA_ARGS__)
 
