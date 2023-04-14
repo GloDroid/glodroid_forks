@@ -406,9 +406,14 @@ static void i915_clflush(void *start, size_t size)
 
 	__builtin_ia32_mfence();
 	while (p < end) {
+#if defined(__CLFLUSHOPT__)
+		__builtin_ia32_clflushopt(p);
+#else
 		__builtin_ia32_clflush(p);
+#endif
 		p = (void *)((uintptr_t)p + I915_CACHELINE_SIZE);
 	}
+	__builtin_ia32_mfence();
 }
 
 static int i915_init(struct driver *drv)
