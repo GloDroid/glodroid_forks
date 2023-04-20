@@ -29,10 +29,11 @@
 #if defined(MTK_MT8183) || \
     defined(MTK_MT8186)
 // clang-format on
-#define SUPPORTS_YUV422
+#define SUPPORT_YUV422
 #endif
 
-// All platforms except MT8173 should USE_NV12_FOR_HW_VIDEO_DECODING.
+// All platforms except MT8173 should USE_NV12_FOR_HW_VIDEO_DECODING
+// and SUPPORT_FP16_AND_10BIT_ABGR
 // clang-format off
 #if defined(MTK_MT8183) || \
     defined(MTK_MT8186) || \
@@ -41,6 +42,7 @@
     defined(MTK_MT8195)
 // clang-format on
 #define USE_NV12_FOR_HW_VIDEO_DECODING
+#define SUPPORT_FP16_AND_10BIT_ABGR
 #else
 #define DONT_USE_64_ALIGNMENT_FOR_VIDEO_BUFFERS
 #endif
@@ -65,12 +67,14 @@ static const uint32_t render_target_formats[] = { DRM_FORMAT_ABGR8888, DRM_FORMA
 
 // clang-format off
 static const uint32_t texture_source_formats[] = {
-#ifdef SUPPORTS_YUV422
+#ifdef SUPPORT_YUV422
 	DRM_FORMAT_NV21,
 	DRM_FORMAT_YUYV,
 #endif
+#ifdef SUPPORT_FP16_AND_10BIT_ABGR
 	DRM_FORMAT_ABGR2101010,
 	DRM_FORMAT_ABGR16161616F,
+#endif
 	DRM_FORMAT_NV12,
 	DRM_FORMAT_YVU420,
 	DRM_FORMAT_YVU420_ANDROID
@@ -226,7 +230,7 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 		const bool is_format_yv12 =
 		    format == DRM_FORMAT_YVU420 || format == DRM_FORMAT_YVU420_ANDROID;
 #endif
-#ifdef SUPPORTS_YUV422
+#ifdef SUPPORT_YUV422
 		/*
 		 * JPEG Encoder Accelerator requires 16x16 alignment. We want the buffer
 		 * from camera can be put in JEA directly so align the height to 16
