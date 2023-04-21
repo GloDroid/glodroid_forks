@@ -413,7 +413,7 @@ int drv_dumb_bo_destroy(struct bo *bo)
 	return 0;
 }
 
-static int drv_gem_close(struct driver *drv, uint32_t gem_handle)
+int drv_gem_close(struct driver *drv, uint32_t gem_handle)
 {
 	struct drm_gem_close gem_close;
 	int ret, error = 0;

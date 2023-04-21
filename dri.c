@@ -68,20 +68,6 @@ static bool lookup_extension(const __DRIextension *const *extensions, const char
 }
 
 /*
- * Close Gem Handle
- */
-static void close_gem_handle(uint32_t handle, int fd)
-{
-	struct drm_gem_close gem_close = { 0 };
-	int ret = 0;
-
-	gem_close.handle = handle;
-	ret = drmIoctl(fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
-	if (ret)
-		drv_loge("DRM_IOCTL_GEM_CLOSE failed (handle=%x) error %d\n", handle, ret);
-}
-
-/*
  * The DRI GEM namespace may be different from the minigbm's driver GEM namespace. We have
  * to import into minigbm.
  */
@@ -158,7 +144,7 @@ cleanup:
 		dri->image_extension->destroyImage(plane_image);
 
 	if (handle != 0)
-		close_gem_handle(handle, bo->drv->fd);
+		drv_gem_close(bo->drv, handle);
 
 	return ret;
 }
@@ -393,7 +379,7 @@ int dri_bo_release(struct bo *bo)
 int dri_bo_destroy(struct bo *bo)
 {
 	assert(bo->priv);
-	close_gem_handle(bo->handle.u32, bo->drv->fd);
+	drv_gem_close(bo->drv, bo->handle.u32);
 	bo->priv = NULL;
 	return 0;
 }
