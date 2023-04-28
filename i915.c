@@ -293,7 +293,7 @@ static int i915_add_combinations(struct driver *drv)
 				     &metadata_4_tiled, render_not_linear);
 		drv_add_combinations(drv, scanout_render_formats,
 				     ARRAY_SIZE(scanout_render_formats), &metadata_4_tiled,
-				     render_not_linear);
+				     scanout_and_render_not_linear);
 	} else {
 		struct format_metadata metadata_y_tiled = { .tiling = I915_TILING_Y,
 							    .priority = 3,
