@@ -56,4 +56,20 @@ void drv_resolve_format_and_use_flags_helper(struct driver *drv, uint32_t format
  */
 const char *drv_get_os_option(const char *name);
 
+struct lru_entry {
+	struct lru_entry *next;
+	struct lru_entry *prev;
+};
+
+struct lru {
+	struct lru_entry head;
+	int count;
+	int max;
+};
+
+struct lru_entry *lru_find(struct lru *lru, bool (*eq)(struct lru_entry *e, void *data),
+			   void *data);
+void lru_insert(struct lru *lru, struct lru_entry *entry);
+void lru_init(struct lru *lru, int max);
+
 #endif
