@@ -346,7 +346,7 @@ static int cross_domain_init(struct driver *drv)
 		goto free_private;
 
 	const char *name;
-	name = drv_get_os_option("RO_PRODUCT_DEVICE");
+	name = drv_get_os_option("ro.product.name");
 	priv->mt8183_camera_quirk_ = name && !strcmp(name, "kukui");
 
 	// minigbm bookkeeping
