@@ -618,12 +618,14 @@ void drv_resolve_format_and_use_flags_helper(struct driver *drv, uint32_t format
 
 const char *drv_get_os_option(const char *name)
 {
+	const char *ret = getenv(name);
 #ifdef __ANDROID__
-	static char prop[PROPERTY_VALUE_MAX];
-	return property_get(name, prop, NULL) > 1 ? prop : NULL;
-#else
-	return getenv(name);
+	if (!ret) {
+		static char prop[PROPERTY_VALUE_MAX];
+		return property_get(name, prop, NULL) > 1 ? prop : NULL;
+	}
 #endif
+	return ret;
 }
 
 static void lru_remove_entry(struct lru_entry *entry)
