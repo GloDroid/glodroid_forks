@@ -107,14 +107,14 @@ static int mediatek_init(struct driver *drv)
 			     &LINEAR_METADATA, BO_USE_RENDER_MASK | BO_USE_SCANOUT | BO_USE_PROTECTED);
 
 	drv_add_combinations(drv, texture_source_formats, ARRAY_SIZE(texture_source_formats),
-			     &LINEAR_METADATA, BO_USE_TEXTURE_MASK);
+			     &LINEAR_METADATA, BO_USE_TEXTURE_MASK | BO_USE_PROTECTED);
 
-	drv_add_combination(drv, DRM_FORMAT_R8, &LINEAR_METADATA, BO_USE_SW_MASK | BO_USE_LINEAR);
+	drv_add_combination(drv, DRM_FORMAT_R8, &LINEAR_METADATA, BO_USE_SW_MASK | BO_USE_LINEAR | BO_USE_PROTECTED);
 
 	/* YUYV format for video overlay and camera subsystem. */
 	drv_add_combination(drv, DRM_FORMAT_YUYV, &LINEAR_METADATA,
 			    BO_USE_HW_VIDEO_DECODER | BO_USE_SCANOUT | BO_USE_LINEAR |
-				BO_USE_TEXTURE);
+				BO_USE_TEXTURE | BO_USE_PROTECTED);
 
 	/* Android CTS tests require this. */
 	drv_add_combination(drv, DRM_FORMAT_BGR888, &LINEAR_METADATA, BO_USE_SW_MASK);
@@ -123,11 +123,11 @@ static int mediatek_init(struct driver *drv)
 	metadata.tiling = TILE_TYPE_LINEAR;
 	metadata.priority = 1;
 	metadata.modifier = DRM_FORMAT_MOD_LINEAR;
-	drv_modify_combination(drv, DRM_FORMAT_YVU420, &metadata, BO_USE_HW_VIDEO_DECODER);
-	drv_modify_combination(drv, DRM_FORMAT_YVU420_ANDROID, &metadata, BO_USE_HW_VIDEO_DECODER);
+	drv_modify_combination(drv, DRM_FORMAT_YVU420, &metadata, BO_USE_HW_VIDEO_DECODER | BO_USE_PROTECTED);
+	drv_modify_combination(drv, DRM_FORMAT_YVU420_ANDROID, &metadata, BO_USE_HW_VIDEO_DECODER | BO_USE_PROTECTED);
 #ifdef USE_NV12_FOR_HW_VIDEO_DECODING
 	// TODO(hiroh): Switch to use NV12 for video decoder on MT8173 as well.
-	drv_modify_combination(drv, DRM_FORMAT_NV12, &metadata, BO_USE_HW_VIDEO_DECODER);
+	drv_modify_combination(drv, DRM_FORMAT_NV12, &metadata, BO_USE_HW_VIDEO_DECODER | BO_USE_PROTECTED);
 #endif
 
 	/*
