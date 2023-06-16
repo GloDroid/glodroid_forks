@@ -99,20 +99,13 @@ int convertToFenceFd(const hidl_handle& fenceHandle, int* outFenceFd) {
     return 0;
 }
 
-int convertToFenceHandle(int fenceFd, hidl_handle* outFenceHandle) {
-    if (!outFenceHandle) {
-        return -EINVAL;
+hidl_handle convertToFenceHandle(int fenceFd, char* nativeHandleStorage) {
+    native_handle_t* nativeHandle = nullptr;
+    if (fenceFd >= 0) {
+        nativeHandle = native_handle_init(nativeHandleStorage, 1, 0);
+        nativeHandle->data[0] = fenceFd;
     }
-    if (fenceFd < 0) {
-        return 0;
-    }
-
-    NATIVE_HANDLE_DECLARE_STORAGE(handleStorage, 1, 0);
-    auto fenceHandle = native_handle_init(handleStorage, 1, 0);
-    fenceHandle->data[0] = fenceFd;
-
-    *outFenceHandle = fenceHandle;
-    return 0;
+    return hidl_handle(nativeHandle);
 }
 
 const std::unordered_map<uint32_t, std::vector<PlaneLayout>>& GetPlaneLayoutsMap() {
