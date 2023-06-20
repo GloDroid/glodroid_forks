@@ -18,6 +18,9 @@
 #ifdef __ANDROID__
 #include <cutils/log.h>
 #include <libgen.h>
+#define MINIGBM_DEBUG "vendor.minigbm.debug"
+#else
+#define MINIGBM_DEBUG "MINIGBM_DEBUG"
 #endif
 
 #include "drv_helpers.h"
@@ -114,7 +117,7 @@ struct driver *drv_create(int fd)
 		return NULL;
 
 	const char *minigbm_debug;
-	minigbm_debug = drv_get_os_option("MINIGBM_DEBUG");
+	minigbm_debug = drv_get_os_option(MINIGBM_DEBUG);
 	drv->compression = (minigbm_debug == NULL) || (strcmp(minigbm_debug, "nocompression") != 0);
 
 	drv->fd = fd;
