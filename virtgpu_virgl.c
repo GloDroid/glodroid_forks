@@ -834,6 +834,7 @@ static int virgl_blob_get_host_format(struct driver *drv, struct bo_metadata *me
 			}
 			entry->meta.total_size =
 			    entry->meta.offsets[num_planes - 1] + entry->meta.sizes[num_planes - 1];
+			entry->meta.format_modifier = info.format_modifier;
 
 			lru_insert(&priv->virgl_blob_metadata_cache, &entry->entry);
 		}
@@ -842,6 +843,7 @@ static int virgl_blob_get_host_format(struct driver *drv, struct bo_metadata *me
 		memcpy(meta->sizes, entry->meta.sizes, sizeof(meta->sizes));
 		memcpy(meta->strides, entry->meta.strides, sizeof(meta->strides));
 		meta->total_size = entry->meta.total_size;
+		meta->format_modifier = entry->meta.format_modifier;
 	}
 	pthread_mutex_unlock(&priv->host_blob_format_lock);
 
