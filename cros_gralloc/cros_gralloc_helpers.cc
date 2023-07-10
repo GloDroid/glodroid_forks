@@ -153,8 +153,17 @@ uint32_t cros_gralloc_convert_map_usage(uint64_t usage)
 
 cros_gralloc_handle_t cros_gralloc_convert_handle(buffer_handle_t handle)
 {
+	if (sizeof(native_handle_t) + (sizeof(int) * (handle->numFds + handle->numInts)) !=
+	    sizeof(struct cros_gralloc_handle))
+		return nullptr;
+
 	auto hnd = reinterpret_cast<cros_gralloc_handle_t>(handle);
 	if (!hnd || hnd->magic != cros_gralloc_magic)
+		return nullptr;
+
+	// if hnd->reserved_region_size == 0, handle->numFds is hnd->num_planes
+	// if hnd->reserved_region_size > 0, handle->numFds is hnd->num_planes + 1
+	if ((uint32_t)handle->numFds != hnd->num_planes + (hnd->reserved_region_size > 0))
 		return nullptr;
 
 	return hnd;
