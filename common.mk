@@ -314,7 +314,7 @@ COMMON_CFLAGS-clang := -fvisibility=hidden -ggdb
 COMMON_CFLAGS := -Wall -Werror -fno-strict-aliasing $(SSP_CFLAGS) -O1 -Wformat=2
 CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER))
 CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER))
-CPPFLAGS += -D_FORTIFY_SOURCE=2
+CPPFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
 
 # Disable exceptions based on the CXXEXCEPTIONS setting.
 ifeq ($(CXXEXCEPTIONS),0)
