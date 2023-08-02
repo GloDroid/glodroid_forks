@@ -349,7 +349,12 @@ static int i915_align_dimensions(struct bo *bo, uint32_t format, uint32_t tiling
 #else
 		horizontal_alignment = 64;
 #endif
+
 		/*
+		 * For hardware video encoding buffers, we want to align to the size of a
+		 * macroblock, because otherwise we will end up encoding uninitialized data.
+		 * This can result in substantial quality degradations, especially on lower
+		 * resolution videos, because this uninitialized data may be high entropy.
 		 * For R8 and height=1, we assume the surface will be used as a linear buffer blob
 		 * (such as VkBuffer). The hardware allows vertical_alignment=1 only for non-tiled
 		 * 1D surfaces, which covers the VkBuffer case. However, if the app uses the surface
@@ -361,7 +366,9 @@ static int i915_align_dimensions(struct bo *bo, uint32_t format, uint32_t tiling
 		 * constraints with GPU_DATA_BUFFER usage when the guest has migrated to use
 		 * virtgpu_cross_domain backend which passes that flag through.
 		 */
-		if (format == DRM_FORMAT_R8 && *aligned_height == 1) {
+		if (bo->meta.use_flags & BO_USE_HW_VIDEO_ENCODER) {
+			vertical_alignment = 8;
+		} else if (format == DRM_FORMAT_R8 && *aligned_height == 1) {
 			vertical_alignment = 1;
 		} else {
 			vertical_alignment = 4;
