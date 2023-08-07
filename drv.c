@@ -753,13 +753,8 @@ void drv_log_prefix(enum drv_log_level level, const char *prefix, const char *fi
 	};
 	__android_log_vprint(prio, buf, format, args);
 #else
-	if (level == DRV_LOGE) {
-		fprintf(stderr, "%s ", buf);
-		vfprintf(stderr, format, args);
-	} else {
-		fprintf(stdout, "%s ", buf);
-		vfprintf(stdout, format, args);
-	}
+	fprintf(stderr, "%s ", buf);
+	vfprintf(stderr, format, args);
 #endif
 	va_end(args);
 }
