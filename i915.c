@@ -308,14 +308,10 @@ static int i915_add_combinations(struct driver *drv)
 				     ARRAY_SIZE(scanout_render_formats), &metadata_4_tiled,
 				     scanout_and_render_not_linear);
 	} else {
-		struct format_metadata metadata_y_tiled = {
-			.tiling = I915_TILING_Y,
-			.priority = 3,
-			.modifier =
-			    (i915->graphics_version == 12 && i915->is_media_compression_enabled)
-				? I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS
-				: I915_FORMAT_MOD_Y_TILED
-		};
+		struct format_metadata metadata_y_tiled = { .tiling = I915_TILING_Y,
+							    .priority = 3,
+							    .modifier = I915_FORMAT_MOD_Y_TILED };
+
 /* Support y-tiled NV12 and P010 for libva */
 #ifdef I915_SCANOUT_Y_TILED
 		const uint64_t nv12_usage =
@@ -327,13 +323,6 @@ static int i915_add_combinations(struct driver *drv)
 		const uint64_t nv12_usage = BO_USE_TEXTURE | BO_USE_HW_VIDEO_DECODER;
 		const uint64_t p010_usage = nv12_usage;
 #endif
-		drv_add_combination(drv, DRM_FORMAT_NV12, &metadata_y_tiled, nv12_usage);
-		drv_add_combination(drv, DRM_FORMAT_P010, &metadata_y_tiled, p010_usage);
-
-		/* Don't allocate media compressed buffers for formats other than NV12
-		 * and P010.
-		 */
-		metadata_y_tiled.modifier = I915_FORMAT_MOD_Y_TILED;
 		drv_add_combinations(drv, render_formats, ARRAY_SIZE(render_formats),
 				     &metadata_y_tiled, render_not_linear);
 		/* Y-tiled scanout isn't available on old platforms so we add
@@ -342,6 +331,22 @@ static int i915_add_combinations(struct driver *drv)
 		drv_add_combinations(drv, scanout_render_formats,
 				     ARRAY_SIZE(scanout_render_formats), &metadata_y_tiled,
 				     render_not_linear);
+		drv_add_combination(drv, DRM_FORMAT_NV12, &metadata_y_tiled, nv12_usage);
+		drv_add_combination(drv, DRM_FORMAT_P010, &metadata_y_tiled, p010_usage);
+
+		/* For non-protected content, we may be able to support media
+		 * compressed buffers depending on the platform.
+		 */
+		const bool add_media_compressed_combination =
+		    i915->graphics_version == 12 && i915->is_media_compression_enabled;
+		if (add_media_compressed_combination) {
+			metadata_y_tiled.priority = 4;
+			metadata_y_tiled.modifier = I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS;
+			drv_add_combination(drv, DRM_FORMAT_NV12, &metadata_y_tiled,
+					    unset_flags(nv12_usage, BO_USE_PROTECTED));
+			drv_add_combination(drv, DRM_FORMAT_P010, &metadata_y_tiled,
+					    unset_flags(p010_usage, BO_USE_PROTECTED));
+		}
 	}
 	return 0;
 }
@@ -734,6 +739,7 @@ static int i915_bo_compute_metadata(struct bo *bo, uint32_t width, uint32_t heig
 		bo->meta.total_size = offset;
 	} else if (modifier == I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS ||
 		   modifier == I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS) {
+		assert(!(bo->meta.use_flags & BO_USE_PROTECTED));
 		assert(modifier != I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS ||
 		       i915->is_media_compression_enabled);
 		assert(modifier != I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS ||
