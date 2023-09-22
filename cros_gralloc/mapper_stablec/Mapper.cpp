@@ -15,6 +15,8 @@
 #include <cutils/native_handle.h>
 #include <gralloctypes/Gralloc4.h>
 
+#include <memory>
+
 #include "cros_gralloc/cros_gralloc_driver.h"
 #include "cros_gralloc/cros_gralloc_handle.h"
 #include "cros_gralloc/gralloc4/CrosGralloc4Metadata.h"
@@ -54,7 +56,7 @@ static bool isStandardMetadata(AIMapper_MetadataType metadataType) {
 
 class CrosGrallocMapperV5 final : public vendor::mapper::IMapperV5Impl {
   private:
-    cros_gralloc_driver* mDriver = cros_gralloc_driver::get_instance();
+    std::shared_ptr<cros_gralloc_driver> mDriver = cros_gralloc_driver::get_instance();
 
   public:
     explicit CrosGrallocMapperV5() = default;

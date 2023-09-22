@@ -15,7 +15,7 @@
 struct gralloc0_module {
 	gralloc_module_t base;
 	std::unique_ptr<alloc_device_t> alloc;
-	cros_gralloc_driver *driver;
+	std::shared_ptr<cros_gralloc_driver> driver;
 	bool initialized;
 	std::mutex initialization_mutex;
 };

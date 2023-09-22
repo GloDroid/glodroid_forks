@@ -49,7 +49,7 @@ class Allocator : public BnAllocator {
 
     void releaseBufferAndHandle(native_handle_t* handle);
 
-    cros_gralloc_driver* mDriver = nullptr;
+    std::shared_ptr<cros_gralloc_driver> mDriver;
 };
 
 }  // namespace aidl::android::hardware::graphics::allocator::impl

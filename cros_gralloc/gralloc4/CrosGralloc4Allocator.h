@@ -7,6 +7,8 @@
 #include <android/hardware/graphics/allocator/4.0/IAllocator.h>
 #include <android/hardware/graphics/mapper/4.0/IMapper.h>
 
+#include <memory>
+
 #include "cros_gralloc/cros_gralloc_driver.h"
 #include "cros_gralloc/cros_gralloc_helpers.h"
 #include "cros_gralloc/gralloc4/CrosGralloc4Metadata.h"
@@ -30,5 +32,5 @@ class CrosGralloc4Allocator : public android::hardware::graphics::allocator::V4_
                     description,
             uint32_t* outStride, android::hardware::hidl_handle* outHandle);
 
-    cros_gralloc_driver* mDriver = nullptr;
+    std::shared_ptr<cros_gralloc_driver> mDriver;
 };

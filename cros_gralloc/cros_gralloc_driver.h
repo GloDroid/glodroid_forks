@@ -22,7 +22,9 @@
 class cros_gralloc_driver
 {
       public:
-	static cros_gralloc_driver *get_instance();
+	~cros_gralloc_driver();
+
+	static std::shared_ptr<cros_gralloc_driver> get_instance();
 	bool is_supported(const struct cros_gralloc_buffer_descriptor *descriptor);
 	int32_t allocate(const struct cros_gralloc_buffer_descriptor *descriptor,
 			 native_handle_t **out_handle);
@@ -53,7 +55,6 @@ class cros_gralloc_driver
 
       private:
 	cros_gralloc_driver();
-	~cros_gralloc_driver();
 	bool is_initialized();
 	cros_gralloc_buffer *get_buffer(cros_gralloc_handle_t hnd);
 	bool

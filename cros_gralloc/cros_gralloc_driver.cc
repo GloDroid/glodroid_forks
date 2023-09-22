@@ -77,16 +77,18 @@ int memfd_create_reserved_region(const std::string &buffer_name, uint64_t reserv
 	return reserved_region_fd;
 }
 
-cros_gralloc_driver *cros_gralloc_driver::get_instance()
+std::shared_ptr<cros_gralloc_driver> cros_gralloc_driver::get_instance()
 {
-	static cros_gralloc_driver s_instance;
+	static std::shared_ptr<cros_gralloc_driver> s_instance = []() {
+		return std::shared_ptr<cros_gralloc_driver>(new cros_gralloc_driver());
+	}();
 
-	if (!s_instance.is_initialized()) {
+	if (!s_instance->is_initialized()) {
 		ALOGE("Failed to initialize driver.");
 		return nullptr;
 	}
 
-	return &s_instance;
+	return s_instance;
 }
 
 static struct driver *init_try_node(int idx, char const *str)
