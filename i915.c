@@ -42,11 +42,10 @@ static const uint64_t gen12_modifier_order_without_mc[] = { I915_FORMAT_MOD_Y_TI
 							    I915_FORMAT_MOD_X_TILED,
 							    DRM_FORMAT_MOD_LINEAR };
 
-static const uint64_t gen12_modifier_order_with_mc[] = { I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS,
-								I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS,
-								I915_FORMAT_MOD_Y_TILED,
-								I915_FORMAT_MOD_X_TILED,
-								DRM_FORMAT_MOD_LINEAR };
+static const uint64_t gen12_modifier_order_with_mc[] = {
+	I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS, I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS,
+	I915_FORMAT_MOD_Y_TILED, I915_FORMAT_MOD_X_TILED, DRM_FORMAT_MOD_LINEAR
+};
 
 static const uint64_t gen11_modifier_order[] = { I915_FORMAT_MOD_Y_TILED, I915_FORMAT_MOD_X_TILED,
 						 DRM_FORMAT_MOD_LINEAR };
@@ -600,6 +599,7 @@ static size_t i915_num_planes_from_modifier(struct driver *drv, uint32_t format,
 		assert(drv);
 		struct i915_device *i915 = drv->priv;
 		assert(i915 && i915->is_media_compression_enabled);
+		(void)i915;
 
 		assert(num_planes == 2);
 		return 4;
