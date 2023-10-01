@@ -373,6 +373,16 @@ int gbm_mesa_bo_create2(struct bo *bo, uint32_t width, uint32_t height, uint32_t
 		size_align = 4096;
 	}
 
+	/* RPI4 hwcodecs */
+	if (unmask64(&use_flags, BO_USE_HW_VIDEO_DECODER | BO_USE_HW_VIDEO_ENCODER)) {
+		scanout_strong = true;
+		alloc_args.use_scanout = true;
+		alloc_args.width = ALIGN(alloc_args.width, 32);
+		if (alloc_args.height > 1) /* Not sure if this is needed, but keep it for now */
+			alloc_args.height = ALIGN(alloc_args.height, 16);
+		size_align = 4096;
+	}
+
 	if (alloc_args.drm_format == 0) {
 		/* Always use linear for spoofed format allocations. */
 		drv_bo_from_format(bo, alloc_args.width, 1, alloc_args.height, format);
