@@ -468,7 +468,9 @@ static int i915_init(struct driver *drv)
 	const char *enable_intel_media_compression_env_var =
 	    getenv("ENABLE_INTEL_MEDIA_COMPRESSION");
 	if (enable_intel_media_compression_env_var == NULL) {
-		drv_logd("Failed to get ENABLE_INTEL_MEDIA_COMPRESSION");
+		if (drv->compression)
+			drv_logd("Environment variable ENABLE_INTEL_MEDIA_COMPRESSION is not set. "
+				 "Media compression will be disabled.\n");
 		i915->is_media_compression_enabled = false;
 	} else {
 		i915->is_media_compression_enabled =
