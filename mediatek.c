@@ -127,6 +127,15 @@ static int mediatek_init(struct driver *drv)
 	metadata.modifier = DRM_FORMAT_MOD_LINEAR;
 	drv_modify_combination(drv, DRM_FORMAT_YVU420, &metadata,
 			       BO_USE_HW_VIDEO_DECODER | BO_USE_PROTECTED);
+#ifndef USE_NV12_FOR_HW_VIDEO_DECODING
+	/*
+	 * b/292507490: The MT8173 decoder can output YUV420 only. Some CTS tests feed the
+	 * decoded buffer to the hardware encoder and the tests allocate the buffer with
+	 * DRM_FORMAT_FLEX_YCbCr_420_888 with the mask of BO_USE_HW_VIDEO_ENCODER |
+	 * BO_USE_HW_VIDEO_DECODER. Therefore, we have to allocate YUV420 in the case.
+	 */
+	drv_modify_combination(drv, DRM_FORMAT_YVU420, &metadata, BO_USE_HW_VIDEO_ENCODER);
+#endif
 	drv_modify_combination(drv, DRM_FORMAT_YVU420_ANDROID, &metadata,
 			       BO_USE_HW_VIDEO_DECODER | BO_USE_PROTECTED);
 #ifdef USE_NV12_FOR_HW_VIDEO_DECODING
@@ -180,6 +189,7 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 	const bool is_camera_preview =
 	    (bo->meta.use_flags & BO_USE_SCANOUT) && (bo->meta.use_flags & BO_USE_CAMERA_WRITE);
 	const bool is_hw_video_encoder = bo->meta.use_flags & BO_USE_HW_VIDEO_ENCODER;
+	const bool is_hw_video_decoder = bo->meta.use_flags & BO_USE_HW_VIDEO_DECODER;
 	/*
 	 * Android sends blobs for encoding in the shape of a single-row pixel buffer. Use R8 +
 	 * single row as a proxy for Android HAL_PIXEL_FORMAT_BLOB until a drm equivalent is
@@ -207,7 +217,12 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 	stride = ALIGN(stride, 64);
 #endif
 
-	if ((is_hw_video_encoder && !is_format_blob) || is_camera_preview) {
+	/*
+	 * The alignment of the hardware video decoder is larger than the hardware video
+	 * encoder. If a hardware video decoder mask is specified, then the alignment of
+	 * the decoder is to be applied.
+	 */
+	if ((is_hw_video_encoder && !is_hw_video_decoder && !is_format_blob) || is_camera_preview) {
 		uint32_t aligned_height = ALIGN(height, 32);
 		uint32_t padding[DRV_MAX_PLANES] = { 0 };
 
@@ -436,12 +451,24 @@ static void mediatek_resolve_format_and_use_flags(struct driver *drv, uint32_t f
 			break;
 		}
 #endif
+		/*
+		 * b/292507490: The MT8173 decoder can output YUV420 only. Some CTS tests feed the
+		 * decoded buffer to the hardware encoder and the tests allocate the buffer with
+		 * DRM_FORMAT_FLEX_YCbCr_420_888 with the mask of BO_USE_HW_VIDEO_ENCODER |
+		 * BO_USE_HW_VIDEO_DECODER. Therefore, we have to allocate YUV420 in the case.
+		 */
 		if (use_flags &
 		    (BO_USE_CAMERA_READ | BO_USE_CAMERA_WRITE | BO_USE_HW_VIDEO_ENCODER)) {
+#ifdef USE_NV12_FOR_HW_VIDEO_DECODING
 			*out_format = DRM_FORMAT_NV12;
 			break;
+#else
+			if (!(use_flags & BO_USE_HW_VIDEO_DECODER)) {
+				*out_format = DRM_FORMAT_NV12;
+				break;
+			}
+#endif
 		}
-
 		/* HACK: See b/139714614 */
 		*out_format = DRM_FORMAT_YVU420;
 		*out_use_flags &= ~BO_USE_SCANOUT;
