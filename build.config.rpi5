@@ -1,0 +1,16 @@
+KERNEL_DIR=common
+. ${ROOT_DIR}/${KERNEL_DIR}/build.config.common
+. ${ROOT_DIR}/${KERNEL_DIR}/build.config.aarch64
+
+BRANCH=
+DEFCONFIG=android_rpi5_defconfig
+
+MAKE_GOALS="
+Image
+dtbs
+"
+
+FILES="
+arch/arm64/boot/Image
+arch/arm64/boot/dts/broadcom/bcm2711-rpi-5-b.dtb
+"
