@@ -16,6 +16,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 
+#define DRV_GBM_MESA_DRIVER (-2)
+#define DRV_DMAHEAPS_DRIVER (-3)
+
 #define DRV_MAX_PLANES 4
 
 // clang-format off

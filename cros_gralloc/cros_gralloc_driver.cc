@@ -91,7 +91,6 @@ std::shared_ptr<cros_gralloc_driver> cros_gralloc_driver::get_instance()
 	return s_instance;
 }
 
-#ifndef DRV_EXTERNAL
 static struct driver *init_try_node(int idx, char const *str)
 {
 	int fd;
@@ -132,6 +131,27 @@ static struct driver *init_try_nodes()
 	uint32_t min_card_node = DRM_CARD_NODE_START;
 	uint32_t max_card_node = (min_card_node + num_nodes);
 
+	char lib_name[PROPERTY_VALUE_MAX];
+	property_get("vendor.gralloc.minigbm.backend", lib_name, "auto");
+
+	if (strcmp(lib_name, "dmaheaps") == 0) {
+		ALOGI("Initializing dma-buf heaps backend");
+		drv = drv_create(DRV_DMAHEAPS_DRIVER);
+		if (drv)
+			return drv;
+
+		ALOGE("Failed to initialize dma-buf heap backend.");
+	}
+
+	if (strcmp(lib_name, "gbm_mesa") == 0) {
+		ALOGI("Initializing gbm_mesa backend");
+		drv = drv_create(DRV_GBM_MESA_DRIVER);
+		if (drv)
+			return drv;
+
+		ALOGE("Failed to initialize gbm_mesa backend.");
+	}
+
 	// Try render nodes...
 	for (uint32_t i = min_render_node; i < max_render_node; i++) {
 		drv = init_try_node(i, render_nodes_fmt);
@@ -146,17 +166,18 @@ static struct driver *init_try_nodes()
 			return drv;
 	}
 
+	/* Fallback to gbm_mesa which is a way smarter than dumb_driver */
+	if (strcmp(lib_name, "gbm_mesa") != 0) {
+		ALOGI("Falling-back to gbm_mesa backend");
+		drv = drv_create(DRV_GBM_MESA_DRIVER);
+		if (drv)
+			return drv;
+	}
+
+	ALOGE("Failed for find suitable backend");
+
 	return nullptr;
 }
-
-#else
-
-static struct driver *init_try_nodes()
-{
-	return drv_create(-1);
-}
-
-#endif
 
 static void drv_destroy_and_close(struct driver *drv)
 {
