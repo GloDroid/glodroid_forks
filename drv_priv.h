@@ -70,6 +70,7 @@ struct driver {
 	struct drv_array *mappings;
 	struct drv_array *combos;
 	bool compression;
+	bool log_bos;
 };
 
 struct backend {
