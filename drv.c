@@ -28,6 +28,12 @@
 #include "drv_priv.h"
 #include "util.h"
 
+#ifdef DRV_DMABUF_HEAP
+extern const struct backend backend_dmabuf_heap;
+#endif
+#ifdef DRV_GBM_MESA
+extern const struct backend backend_gbm_mesa;
+#endif
 #ifdef DRV_AMDGPU
 extern const struct backend backend_amdgpu;
 #endif
@@ -42,6 +48,7 @@ extern const struct backend backend_vc4;
 #endif
 
 // Dumb / generic drivers
+#ifdef DRV_DUMB
 extern const struct backend backend_evdi;
 extern const struct backend backend_marvell;
 extern const struct backend backend_mediatek;
@@ -55,6 +62,7 @@ extern const struct backend backend_synaptics;
 extern const struct backend backend_virtgpu;
 extern const struct backend backend_udl;
 extern const struct backend backend_vkms;
+#endif
 
 static const struct backend *drv_backend_list[] = {
 #ifdef DRV_AMDGPU
@@ -69,10 +77,12 @@ static const struct backend *drv_backend_list[] = {
 #ifdef DRV_VC4
 	&backend_vc4,
 #endif
+#ifdef DRV_DUMB
 	&backend_evdi,	    &backend_komeda,	&backend_marvell, &backend_mediatek,
 	&backend_meson,	    &backend_nouveau,	&backend_radeon,  &backend_rockchip,
 	&backend_sun4i_drm, &backend_synaptics, &backend_udl,	  &backend_virtgpu,
 	&backend_vkms
+#endif
 };
 
 void drv_preload(bool load)
@@ -122,8 +132,20 @@ struct driver *drv_create(int fd)
 	drv->compression = (minigbm_debug == NULL) || (strstr(minigbm_debug, "nocompression") == NULL);
 	drv->log_bos = (minigbm_debug && strstr(minigbm_debug, "log_bos") != NULL);
 
-	drv->fd = fd;
-	drv->backend = drv_get_backend(fd);
+#ifdef DRV_GBM_MESA
+	if (fd == DRV_GBM_MESA_DRIVER) {
+		drv->backend = &backend_gbm_mesa;
+	} else
+#endif
+#ifdef DRV_DMABUF_HEAP
+	    if (fd == DRV_DMAHEAPS_DRIVER) {
+		drv->backend = &backend_dmabuf_heap;
+	} else
+#endif
+	{
+		drv->fd = fd;
+		drv->backend = drv_get_backend(fd);
+	}
 
 	if (!drv->backend)
 		goto free_driver;
@@ -255,7 +277,7 @@ static void drv_bo_mapping_destroy(struct bo *bo)
 		while (idx < drv_array_size(drv->mappings)) {
 			struct mapping *mapping =
 			    (struct mapping *)drv_array_at_idx(drv->mappings, idx);
-			if (mapping->vma->handle != bo->handle.u32) {
+			if (mapping->vma->inode != bo->inode) {
 				idx++;
 				continue;
 			}
@@ -289,11 +311,16 @@ static void drv_bo_acquire(struct bo *bo)
 	pthread_mutex_lock(&drv->buffer_table_lock);
 	for (size_t plane = 0; plane < bo->meta.num_planes; plane++) {
 		uintptr_t num = 0;
+		if (!bo->inode) {
+			int fd = drv_bo_get_plane_fd(bo, plane);
+			bo->inode = drv_get_inode(fd);
+			close(fd);
+		}
 
-		if (!drmHashLookup(drv->buffer_table, bo->handle.u32, (void **)&num))
-			drmHashDelete(drv->buffer_table, bo->handle.u32);
+		if (!drmHashLookup(drv->buffer_table, bo->inode, (void **)&num))
+			drmHashDelete(drv->buffer_table, bo->inode);
 
-		drmHashInsert(drv->buffer_table, bo->handle.u32, (void *)(num + 1));
+		drmHashInsert(drv->buffer_table, bo->inode, (void *)(num + 1));
 	}
 	pthread_mutex_unlock(&drv->buffer_table_lock);
 }
@@ -312,18 +339,18 @@ static bool drv_bo_release(struct bo *bo)
 
 	pthread_mutex_lock(&drv->buffer_table_lock);
 	for (size_t plane = 0; plane < bo->meta.num_planes; plane++) {
-		if (!drmHashLookup(drv->buffer_table, bo->handle.u32, (void **)&num)) {
-			drmHashDelete(drv->buffer_table, bo->handle.u32);
+		if (!drmHashLookup(drv->buffer_table, bo->inode, (void **)&num)) {
+			drmHashDelete(drv->buffer_table, bo->inode);
 
 			if (num > 1) {
-				drmHashInsert(drv->buffer_table, bo->handle.u32, (void *)(num - 1));
+				drmHashInsert(drv->buffer_table, bo->inode, (void *)(num - 1));
 			}
 		}
 	}
 
 	/* The same buffer can back multiple planes with different offsets. */
 	for (size_t plane = 0; plane < bo->meta.num_planes; plane++) {
-		if (!drmHashLookup(drv->buffer_table, bo->handle.u32, (void **)&num)) {
+		if (!drmHashLookup(drv->buffer_table, bo->inode, (void **)&num)) {
 			/* num is positive if found in the hashmap. */
 			pthread_mutex_unlock(&drv->buffer_table_lock);
 			return false;
@@ -334,10 +361,10 @@ static bool drv_bo_release(struct bo *bo)
 	return true;
 }
 
-struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
-			 uint64_t use_flags)
+int drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
+		  uint64_t use_flags, bool test_only, struct bo **out_bo)
 {
-	int ret;
+	int ret = -EINVAL;
 	struct bo *bo;
 	bool is_test_alloc;
 
@@ -347,10 +374,15 @@ struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, ui
 	bo = drv_bo_new(drv, width, height, format, use_flags, is_test_alloc);
 
 	if (!bo)
-		return NULL;
+		return -ENOMEM;
 
-	ret = -EINVAL;
-	if (drv->backend->bo_compute_metadata) {
+	if (drv->backend->bo_create_v2) {
+		if (!is_test_alloc)
+			ret = drv->backend->bo_create_v2(bo, width, height, format, use_flags,
+							 test_only);
+	} else if (test_only) {
+		return -ENOTSUP;
+	} else if (drv->backend->bo_compute_metadata) {
 		ret = drv->backend->bo_compute_metadata(bo, width, height, format, use_flags, NULL,
 							0);
 		if (!is_test_alloc && ret == 0)
@@ -359,10 +391,9 @@ struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, ui
 		ret = drv->backend->bo_create(bo, width, height, format, use_flags);
 	}
 
-	if (ret) {
-		errno = -ret;
+	if (ret || test_only) {
 		free(bo);
-		return NULL;
+		return ret;
 	}
 
 	drv_bo_acquire(bo);
@@ -370,7 +401,8 @@ struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, ui
 	if (drv->log_bos)
 		drv_bo_log_info(bo, "legacy created");
 
-	return bo;
+	*out_bo = bo;
+	return 0;
 }
 
 struct bo *drv_bo_create_with_modifiers(struct driver *drv, uint32_t width, uint32_t height,
@@ -441,6 +473,8 @@ struct bo *drv_bo_import(struct driver *drv, struct drv_import_fd_data *data)
 		return NULL;
 	}
 
+	bo->inode = drv_get_inode(data->fds[0]);
+
 	drv_bo_acquire(bo);
 
 	bo->meta.format_modifier = data->format_modifier;
@@ -504,7 +538,7 @@ void *drv_bo_map(struct bo *bo, const struct rectangle *rect, uint32_t map_flags
 
 	for (i = 0; i < drv_array_size(drv->mappings); i++) {
 		struct mapping *prior = (struct mapping *)drv_array_at_idx(drv->mappings, i);
-		if (prior->vma->handle != bo->handle.u32 || prior->vma->map_flags != map_flags)
+		if (prior->vma->inode != bo->inode || prior->vma->map_flags != map_flags)
 			continue;
 
 		if (rect->x != prior->rect.x || rect->y != prior->rect.y ||
@@ -518,7 +552,7 @@ void *drv_bo_map(struct bo *bo, const struct rectangle *rect, uint32_t map_flags
 
 	for (i = 0; i < drv_array_size(drv->mappings); i++) {
 		struct mapping *prior = (struct mapping *)drv_array_at_idx(drv->mappings, i);
-		if (prior->vma->handle != bo->handle.u32 || prior->vma->map_flags != map_flags)
+		if (prior->vma->inode != bo->inode || prior->vma->map_flags != map_flags)
 			continue;
 
 		prior->vma->refcount++;
@@ -544,7 +578,7 @@ void *drv_bo_map(struct bo *bo, const struct rectangle *rect, uint32_t map_flags
 
 	mapping.vma->refcount = 1;
 	mapping.vma->addr = addr;
-	mapping.vma->handle = bo->handle.u32;
+	mapping.vma->inode = bo->inode;
 	mapping.vma->map_flags = map_flags;
 
 success:
@@ -666,6 +700,11 @@ int drv_bo_get_plane_fd(struct bo *bo, size_t plane)
 	if (bo->is_test_buffer)
 		return -EINVAL;
 
+	if (bo->drv->backend->bo_get_plane_fd) {
+		fd = bo->drv->backend->bo_get_plane_fd(bo, plane);
+		return fd;
+	}
+
 	ret = drmPrimeHandleToFD(bo->drv->fd, bo->handle.u32, DRM_CLOEXEC | DRM_RDWR, &fd);
 
 	// Older DRM implementations blocked DRM_RDWR, but gave a read/write mapping anyways
@@ -739,6 +778,23 @@ void drv_bo_log_info(const struct bo *bo, const char *prefix)
 			 bo, i, meta->offsets[i], meta->sizes[i],
 			 meta->strides[i]);
 	}
+}
+
+uint32_t drv_bo_get_pixel_stride(struct bo *bo)
+{
+	struct driver *drv = bo->drv;
+	uint32_t bytes_per_pixel = 0;
+	uint32_t map_stride = 0;
+
+	bytes_per_pixel = drv_bytes_per_pixel_from_format(bo->meta.format, 0);
+
+	if ((bo->meta.use_flags & BO_USE_SW_MASK) && drv->backend->bo_get_map_stride)
+		map_stride = drv->backend->bo_get_map_stride(bo);
+
+	if (!map_stride)
+		map_stride = bo->meta.strides[0];
+
+	return DIV_ROUND_UP(map_stride, bytes_per_pixel);
 }
 
 /*

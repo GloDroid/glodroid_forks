@@ -16,6 +16,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 
+#define DRV_GBM_MESA_DRIVER (-2)
+#define DRV_DMAHEAPS_DRIVER (-3)
+
 #define DRV_MAX_PLANES 4
 
 // clang-format off
@@ -126,7 +129,8 @@ struct drv_import_fd_data {
 struct vma {
 	void *addr;
 	size_t length;
-	uint32_t handle;
+
+	uint32_t inode;
 	uint32_t map_flags;
 	int32_t refcount;
 	uint32_t map_strides[DRV_MAX_PLANES];
@@ -161,8 +165,8 @@ struct combination *drv_get_combination(struct driver *drv, uint32_t format, uin
 struct bo *drv_bo_new(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
 		      uint64_t use_flags, bool is_test_buffer);
 
-struct bo *drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
-			 uint64_t use_flags);
+int drv_bo_create(struct driver *drv, uint32_t width, uint32_t height, uint32_t format,
+		  uint64_t use_flags, bool test_only, struct bo **out_bo);
 
 struct bo *drv_bo_create_with_modifiers(struct driver *drv, uint32_t width, uint32_t height,
 					uint32_t format, const uint64_t *modifiers, uint32_t count);
@@ -209,6 +213,8 @@ uint64_t drv_bo_get_use_flags(struct bo *bo);
 size_t drv_bo_get_total_size(struct bo *bo);
 
 void drv_bo_log_info(const struct bo *bo, const char *prefix);
+
+uint32_t drv_bo_get_pixel_stride(struct bo *bo);
 
 uint32_t drv_get_standard_fourcc(uint32_t fourcc_internal);
 

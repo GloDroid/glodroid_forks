@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <xf86drm.h>
@@ -616,6 +617,18 @@ void drv_resolve_format_and_use_flags_helper(struct driver *drv, uint32_t format
 	}
 }
 
+uint32_t drv_get_inode(int dmabuf_fd)
+{
+	struct stat sb = { 0 };
+	int ret = 0;
+
+	ret = fstat(dmabuf_fd, &sb);
+	if (ret)
+		drv_loge("Failed to fstat dmabuf %d: %s\n", dmabuf_fd, strerror(errno));
+
+	return sb.st_ino;
+}
+
 const char *drv_get_os_option(const char *name)
 {
 	const char *ret = getenv(name);
@@ -677,4 +690,53 @@ void lru_init(struct lru *lru, int max)
 	lru->head.prev = &lru->head;
 	lru->count = 0;
 	lru->max = max;
+}
+
+#define FLAG_TO_STR(flag, str)                                                                     \
+	if (use_flags & (flag)) {                                                                  \
+		int len = strlen(out);                                                             \
+		snprintf(out + strlen(out), max_len - len, "%s%s", first ? "" : " ", (str));       \
+		if (first < 2)                                                                     \
+			first = 0;                                                                 \
+	}
+
+int drv_use_flags_to_string(int use_flags, char *out, int max_len)
+{
+	int first = 1;
+	FLAG_TO_STR(BO_USE_LINEAR, "LIN");
+	FLAG_TO_STR(BO_USE_CURSOR, "CURSOR");
+	FLAG_TO_STR(BO_USE_SCANOUT, "SCANOUT");
+	FLAG_TO_STR(BO_USE_SW_MASK, "CPU");
+	FLAG_TO_STR(BO_USE_RENDERING, "RENDER");
+	FLAG_TO_STR(BO_USE_TEXTURE, "TEXTURE");
+	FLAG_TO_STR(BO_USE_CAMERA_WRITE, "CAMOUT");
+	FLAG_TO_STR(BO_USE_CAMERA_READ, "CAMIN");
+	FLAG_TO_STR(BO_USE_PROTECTED, "PROT");
+	FLAG_TO_STR(BO_USE_HW_VIDEO_ENCODER, "VIENC");
+	FLAG_TO_STR(BO_USE_HW_VIDEO_DECODER, "VIDEC");
+	FLAG_TO_STR(BO_USE_FRONT_RENDERING, "FRONT");
+	FLAG_TO_STR(BO_USE_GPU_DATA_BUFFER, "GPUDATA");
+	FLAG_TO_STR(BO_USE_SENSOR_DIRECT_DATA, "SENSDATA");
+
+	return 0;
+}
+
+int drv_use_flags_to_string_short(int use_flags, char *out, int max_len)
+{
+	int first = 2;
+	FLAG_TO_STR(BO_USE_LINEAR, "l");
+	FLAG_TO_STR(BO_USE_CURSOR, "r");
+	FLAG_TO_STR(BO_USE_SCANOUT, "D");
+	FLAG_TO_STR(BO_USE_SW_MASK, "S");
+	FLAG_TO_STR(BO_USE_RENDERING, "G");
+	FLAG_TO_STR(BO_USE_TEXTURE, "g");
+	FLAG_TO_STR(BO_USE_CAMERA_WRITE, "C");
+	FLAG_TO_STR(BO_USE_CAMERA_READ, "c");
+	FLAG_TO_STR(BO_USE_PROTECTED, "p");
+	FLAG_TO_STR(BO_USE_HW_VIDEO_ENCODER | BO_USE_HW_VIDEO_DECODER, "V");
+	FLAG_TO_STR(BO_USE_FRONT_RENDERING, "f");
+	FLAG_TO_STR(BO_USE_GPU_DATA_BUFFER, "b");
+	FLAG_TO_STR(BO_USE_SENSOR_DIRECT_DATA, "s");
+
+	return 0;
 }

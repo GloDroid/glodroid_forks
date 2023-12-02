@@ -130,6 +130,7 @@ PUBLIC struct gbm_bo *gbm_bo_create(struct gbm_device *gbm, uint32_t width, uint
 				    uint32_t format, uint32_t usage)
 {
 	struct gbm_bo *bo;
+	int ret = 0;
 
 	if (!gbm_device_is_format_supported(gbm, format, usage))
 		return NULL;
@@ -147,10 +148,12 @@ PUBLIC struct gbm_bo *gbm_bo_create(struct gbm_device *gbm, uint32_t width, uint
 	if (format == GBM_FORMAT_YVU420 && (usage & GBM_BO_USE_LINEAR))
 		format = DRM_FORMAT_YVU420_ANDROID;
 
-	bo->bo = drv_bo_create(gbm->drv, width, height, format, gbm_convert_usage(usage));
+	ret = drv_bo_create(gbm->drv, width, height, format, gbm_convert_usage(usage),
+			    /*testonly =*/false, &bo->bo);
 
-	if (!bo->bo) {
+	if (ret) {
 		free(bo);
+		errno = -ret;
 		return NULL;
 	}
 

@@ -131,6 +131,27 @@ static struct driver *init_try_nodes()
 	uint32_t min_card_node = DRM_CARD_NODE_START;
 	uint32_t max_card_node = (min_card_node + num_nodes);
 
+	char lib_name[PROPERTY_VALUE_MAX];
+	property_get("vendor.gralloc.minigbm.backend", lib_name, "auto");
+
+	if (strcmp(lib_name, "dmaheaps") == 0) {
+		ALOGI("Initializing dma-buf heaps backend");
+		drv = drv_create(DRV_DMAHEAPS_DRIVER);
+		if (drv)
+			return drv;
+
+		ALOGE("Failed to initialize dma-buf heap backend.");
+	}
+
+	if (strcmp(lib_name, "gbm_mesa") == 0) {
+		ALOGI("Initializing gbm_mesa backend");
+		drv = drv_create(DRV_GBM_MESA_DRIVER);
+		if (drv)
+			return drv;
+
+		ALOGE("Failed to initialize gbm_mesa backend.");
+	}
+
 	// Try render nodes...
 	for (uint32_t i = min_render_node; i < max_render_node; i++) {
 		drv = init_try_node(i, render_nodes_fmt);
@@ -145,6 +166,16 @@ static struct driver *init_try_nodes()
 			return drv;
 	}
 
+	/* Fallback to gbm_mesa which is a way smarter than dumb_driver */
+	if (strcmp(lib_name, "gbm_mesa") != 0) {
+		ALOGI("Falling-back to gbm_mesa backend");
+		drv = drv_create(DRV_GBM_MESA_DRIVER);
+		if (drv)
+			return drv;
+	}
+
+	ALOGE("Failed for find suitable backend");
+
 	return nullptr;
 }
 
@@ -152,7 +183,8 @@ static void drv_destroy_and_close(struct driver *drv)
 {
 	int fd = drv_get_fd(drv);
 	drv_destroy(drv);
-	close(fd);
+	if (fd != -1)
+		close(fd);
 }
 
 cros_gralloc_driver::cros_gralloc_driver() : drv_(init_try_nodes(), drv_destroy_and_close)
@@ -177,9 +209,21 @@ bool cros_gralloc_driver::get_resolved_format_and_use_flags(
 	uint32_t resolved_format;
 	uint64_t resolved_use_flags;
 	struct combination *combo;
+	int ret = 0;
 
 	drv_resolve_format_and_use_flags(drv_.get(), descriptor->drm_format, descriptor->use_flags,
 					 &resolved_format, &resolved_use_flags);
+
+	ret = drv_bo_create(drv_.get(), descriptor->width, descriptor->height, resolved_format,
+			    resolved_use_flags, /*test_only =*/true, NULL);
+	if (ret == 0) {
+		*out_format = resolved_format;
+		*out_use_flags = resolved_use_flags;
+		return true;
+	}
+
+	if (ret != -ENOTSUP)
+		return false;
 
 	combo = drv_get_combination(drv_.get(), resolved_format, resolved_use_flags);
 	if (!combo && (descriptor->droid_usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) &&
@@ -226,8 +270,10 @@ int cros_gralloc_driver::create_reserved_region(const std::string &buffer_name,
 
 #if ANDROID_API_LEVEL >= 31 && defined(HAS_DMABUF_SYSTEM_HEAP)
 	ret = allocator_.Alloc(kDmabufSystemHeapName, reserved_region_size);
-	if (ret >= 0)
+	if (ret >= 0) {
+		ioctl(ret, DMA_BUF_SET_NAME, "gralloc-meta");
 		return ret;
+	}
 #endif
 
 	ret = memfd_create_reserved_region(buffer_name, reserved_region_size);
@@ -246,7 +292,6 @@ int32_t cros_gralloc_driver::allocate(const struct cros_gralloc_buffer_descripto
 	size_t num_fds;
 	size_t num_ints;
 	uint32_t resolved_format;
-	uint32_t bytes_per_pixel;
 	uint64_t resolved_use_flags;
 	struct bo *bo;
 	struct cros_gralloc_handle *hnd;
@@ -257,11 +302,11 @@ int32_t cros_gralloc_driver::allocate(const struct cros_gralloc_buffer_descripto
 		return -EINVAL;
 	}
 
-	bo = drv_bo_create(drv_.get(), descriptor->width, descriptor->height, resolved_format,
-			   resolved_use_flags);
-	if (!bo) {
+	ret = drv_bo_create(drv_.get(), descriptor->width, descriptor->height, resolved_format,
+			    resolved_use_flags, /*test_only =*/false, &bo);
+	if (ret) {
 		ALOGE("Failed to create bo.");
-		return -errno;
+		return ret;
 	}
 
 	num_planes = drv_bo_get_num_planes(bo);
@@ -308,8 +353,7 @@ int32_t cros_gralloc_driver::allocate(const struct cros_gralloc_buffer_descripto
 	hnd->tiling = drv_bo_get_tiling(bo);
 	hnd->format_modifier = drv_bo_get_format_modifier(bo);
 	hnd->use_flags = drv_bo_get_use_flags(bo);
-	bytes_per_pixel = drv_bytes_per_pixel_from_format(hnd->format, 0);
-	hnd->pixel_stride = DIV_ROUND_UP(hnd->strides[0], bytes_per_pixel);
+	hnd->pixel_stride = drv_bo_get_pixel_stride(bo);
 	hnd->magic = cros_gralloc_magic;
 	hnd->droid_format = descriptor->droid_format;
 	hnd->usage = descriptor->droid_usage;

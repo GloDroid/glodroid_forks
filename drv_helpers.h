@@ -51,6 +51,8 @@ void drv_resolve_format_and_use_flags_helper(struct driver *drv, uint32_t format
 					     uint64_t use_flags, uint32_t *out_format,
 					     uint64_t *out_use_flags);
 
+uint32_t drv_get_inode(int dmabuf_fd);
+
 /*
  * Get an option. Should return NULL if specified option is not set.
  */
@@ -71,5 +73,8 @@ struct lru_entry *lru_find(struct lru *lru, bool (*eq)(struct lru_entry *e, void
 			   void *data);
 void lru_insert(struct lru *lru, struct lru_entry *entry);
 void lru_init(struct lru *lru, int max);
+
+int drv_use_flags_to_string(int use_flags, char *out, int max_len);
+int drv_use_flags_to_string_short(int use_flags, char *out, int max_len);
 
 #endif
