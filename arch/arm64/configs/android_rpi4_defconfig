@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm64 6.1.73 Kernel Configuration
+# Linux/arm64 6.1.74 Kernel Configuration
 #
 CONFIG_CC_VERSION_TEXT="Android (8508608, based on r450784e) clang version 14.0.7 (https://android.googlesource.com/toolchain/llvm-project 4c603efb0cca074e9238af8b4106c30add4418f6)"
 CONFIG_GCC_VERSION=0
@@ -143,6 +143,7 @@ CONFIG_TASKS_RUDE_RCU=y
 CONFIG_TASKS_TRACE_RCU=y
 CONFIG_RCU_STALL_COMMON=y
 CONFIG_RCU_NEED_SEGCBLIST=y
+CONFIG_RCU_BOOT_END_DELAY=20000
 # end of RCU Subsystem
 
 CONFIG_IKCONFIG=y
@@ -1805,7 +1806,6 @@ CONFIG_BLK_DEV_NVME=y
 # CONFIG_PCI_ENDPOINT_TEST is not set
 # CONFIG_XILINX_SDFEC is not set
 CONFIG_UID_SYS_STATS=y
-# CONFIG_UID_SYS_STATS_DEBUG is not set
 # CONFIG_HISI_HIKEY_USB is not set
 # CONFIG_OPEN_DICE is not set
 # CONFIG_VCPU_STALL_DETECTOR is not set
