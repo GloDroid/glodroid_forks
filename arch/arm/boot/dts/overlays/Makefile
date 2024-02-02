@@ -90,6 +90,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	hifiberry-amp.dtbo \
 	hifiberry-amp100.dtbo \
 	hifiberry-amp3.dtbo \
+	hifiberry-amp4pro.dtbo \
 	hifiberry-dac.dtbo \
 	hifiberry-dacplus.dtbo \
 	hifiberry-dacplusadc.dtbo \
@@ -175,7 +176,6 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	mipi-dbi-spi.dtbo \
 	mlx90640.dtbo \
 	mmc.dtbo \
-	mpu6050.dtbo \
 	mz61581.dtbo \
 	ov2311.dtbo \
 	ov5647.dtbo \
@@ -186,6 +186,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	pca953x.dtbo \
 	pcf857x.dtbo \
 	pcie-32bit-dma.dtbo \
+	pcie-32bit-dma-pi5.dtbo \
 	pibell.dtbo \
 	pifacedigital.dtbo \
 	pifi-40.dtbo \
@@ -196,6 +197,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	piscreen.dtbo \
 	piscreen2r.dtbo \
 	pisound.dtbo \
+	pisound-pi5.dtbo \
 	pitft22.dtbo \
 	pitft28-capacitive.dtbo \
 	pitft28-resistive.dtbo \

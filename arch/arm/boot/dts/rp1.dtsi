@@ -305,12 +305,9 @@
 			compatible = "snps,designware-i2c";
 			interrupts = <RP1_INT_I2C0 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rp1_clocks RP1_CLK_SYS>;
-			snps,ss_hcnt = <978>;
-			snps,ss_lcnt = <990>;
-			snps,fs_hcnt = <200>;
-			snps,fs_lcnt = <268>;
-			snps,fp_hcnt = <60>;
-			snps,fp_lcnt = <107>;
+			i2c-scl-rising-time-ns = <65>;
+			i2c-scl-falling-time-ns = <100>;
+			i2c-sda-hold-time-ns = <300>;
 			status = "disabled";
 		};
 
@@ -319,12 +316,9 @@
 			compatible = "snps,designware-i2c";
 			interrupts = <RP1_INT_I2C1 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rp1_clocks RP1_CLK_SYS>;
-			snps,ss_hcnt = <978>;
-			snps,ss_lcnt = <990>;
-			snps,fs_hcnt = <200>;
-			snps,fs_lcnt = <268>;
-			snps,fp_hcnt = <60>;
-			snps,fp_lcnt = <107>;
+			i2c-scl-rising-time-ns = <65>;
+			i2c-scl-falling-time-ns = <100>;
+			i2c-sda-hold-time-ns = <300>;
 			status = "disabled";
 		};
 
@@ -333,12 +327,9 @@
 			compatible = "snps,designware-i2c";
 			interrupts = <RP1_INT_I2C2 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rp1_clocks RP1_CLK_SYS>;
-			snps,ss_hcnt = <978>;
-			snps,ss_lcnt = <990>;
-			snps,fs_hcnt = <200>;
-			snps,fs_lcnt = <268>;
-			snps,fp_hcnt = <60>;
-			snps,fp_lcnt = <107>;
+			i2c-scl-rising-time-ns = <65>;
+			i2c-scl-falling-time-ns = <100>;
+			i2c-sda-hold-time-ns = <300>;
 			status = "disabled";
 		};
 
@@ -347,12 +338,9 @@
 			compatible = "snps,designware-i2c";
 			interrupts = <RP1_INT_I2C3 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rp1_clocks RP1_CLK_SYS>;
-			snps,ss_hcnt = <978>;
-			snps,ss_lcnt = <990>;
-			snps,fs_hcnt = <200>;
-			snps,fs_lcnt = <268>;
-			snps,fp_hcnt = <60>;
-			snps,fp_lcnt = <107>;
+			i2c-scl-rising-time-ns = <65>;
+			i2c-scl-falling-time-ns = <100>;
+			i2c-sda-hold-time-ns = <300>;
 			status = "disabled";
 		};
 
@@ -361,12 +349,9 @@
 			compatible = "snps,designware-i2c";
 			interrupts = <RP1_INT_I2C4 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rp1_clocks RP1_CLK_SYS>;
-			snps,ss_hcnt = <978>;
-			snps,ss_lcnt = <990>;
-			snps,fs_hcnt = <200>;
-			snps,fs_lcnt = <268>;
-			snps,fp_hcnt = <60>;
-			snps,fp_lcnt = <107>;
+			i2c-scl-rising-time-ns = <65>;
+			i2c-scl-falling-time-ns = <100>;
+			i2c-sda-hold-time-ns = <300>;
 			status = "disabled";
 		};
 
@@ -375,12 +360,9 @@
 			compatible = "snps,designware-i2c";
 			interrupts = <RP1_INT_I2C5 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rp1_clocks RP1_CLK_SYS>;
-			snps,ss_hcnt = <978>;
-			snps,ss_lcnt = <990>;
-			snps,fs_hcnt = <200>;
-			snps,fs_lcnt = <268>;
-			snps,fp_hcnt = <60>;
-			snps,fp_lcnt = <107>;
+			i2c-scl-rising-time-ns = <65>;
+			i2c-scl-falling-time-ns = <100>;
+			i2c-sda-hold-time-ns = <300>;
 			status = "disabled";
 		};
 
@@ -389,12 +371,9 @@
 			compatible = "snps,designware-i2c";
 			interrupts = <RP1_INT_I2C6 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rp1_clocks RP1_CLK_SYS>;
-			snps,ss_hcnt = <978>;
-			snps,ss_lcnt = <990>;
-			snps,fs_hcnt = <200>;
-			snps,fs_lcnt = <268>;
-			snps,fp_hcnt = <60>;
-			snps,fp_lcnt = <107>;
+			i2c-scl-rising-time-ns = <65>;
+			i2c-scl-falling-time-ns = <100>;
+			i2c-sda-hold-time-ns = <300>;
 			status = "disabled";
 		};
 
@@ -678,66 +657,79 @@
 			rp1_i2c4_34_35: rp1_i2c4_34_35 {
 				function = "i2c4";
 				pins = "gpio34", "gpio35";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c6_38_39: rp1_i2c6_38_39 {
 				function = "i2c6";
 				pins = "gpio38", "gpio39";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c4_40_41: rp1_i2c4_40_41 {
 				function = "i2c4";
 				pins = "gpio40", "gpio41";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c5_44_45: rp1_i2c5_44_45 {
 				function = "i2c5";
 				pins = "gpio44", "gpio45";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c0_0_1: rp1_i2c0_0_1 {
 				function = "i2c0";
 				pins = "gpio0", "gpio1";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c0_8_9: rp1_i2c0_8_9 {
 				function = "i2c0";
 				pins = "gpio8", "gpio9";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c1_2_3: rp1_i2c1_2_3 {
 				function = "i2c1";
 				pins = "gpio2", "gpio3";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c1_10_11: rp1_i2c1_10_11 {
 				function = "i2c1";
 				pins = "gpio10", "gpio11";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c2_4_5: rp1_i2c2_4_5 {
 				function = "i2c2";
 				pins = "gpio4", "gpio5";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c2_12_13: rp1_i2c2_12_13 {
 				function = "i2c2";
 				pins = "gpio12", "gpio13";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c3_6_7: rp1_i2c3_6_7 {
 				function = "i2c3";
 				pins = "gpio6", "gpio7";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c3_14_15: rp1_i2c3_14_15 {
 				function = "i2c3";
 				pins = "gpio14", "gpio15";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 			rp1_i2c3_22_23: rp1_i2c3_22_23 {
 				function = "i2c3";
 				pins = "gpio22", "gpio23";
+				drive-strength = <12>;
 				bias-pull-up;
 			};
 
