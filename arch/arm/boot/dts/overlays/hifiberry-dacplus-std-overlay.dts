@@ -1,4 +1,4 @@
-// Definitions for HiFiBerry DAC+ADC, no onboard clocks
+// Definitions for HiFiBerry DAC+ Standard w/o onboard clocks
 /dts-v1/;
 /plugin/;
 
@@ -29,7 +29,7 @@
 			#size-cells = <0>;
 			status = "okay";
 
-			pcm_codec: pcm5122@4d {
+			pcm5122@4d {
 				#sound-dai-cells = <0>;
 				compatible = "ti,pcm5122";
 				reg = <0x4d>;
@@ -39,34 +39,27 @@
 				CPVDD-supply = <&vdd_3v3_reg>;
 				status = "okay";
 			};
-		};
-	};
-
-	fragment@3 {
-		target-path = "/";
-		__overlay__ {
-			dmic {
-				#sound-dai-cells = <0>;
-				compatible = "dmic-codec";
-				num-channels = <2>;
-				status = "okay";
+			hpamp: hpamp@60 {
+				compatible = "ti,tpa6130a2";
+				reg = <0x60>;
+				status = "disabled";
 			};
 		};
 	};
 
-	fragment@4 {
+	fragment@3 {
 		target = <&sound>;
-		hifiberry_dacplusadc: __overlay__ {
-			compatible = "hifiberry,hifiberry-dacplusadc";
+		hifiberry_dacplus: __overlay__ {
+			compatible = "hifiberry,hifiberry-dacplus";
 			i2s-controller = <&i2s_clk_producer>;
-			hifiberry-dacplusadc,slave;
+			hifiberry-dacplus,slave;
 			status = "okay";
 		};
 	};
 
 	__overrides__ {
 		24db_digital_gain =
-			<&hifiberry_dacplusadc>,"hifiberry,24db_digital_gain?";
-		leds_off = <&hifiberry_dacplusadc>,"hifiberry-dacplusadc,leds_off?";
+			<&hifiberry_dacplus>,"hifiberry,24db_digital_gain?";
+		leds_off = <&hifiberry_dacplus>,"hifiberry-dacplus,leds_off?";
 	};
 };

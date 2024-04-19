@@ -108,10 +108,11 @@
 				   <&touch>, "touchscreen-inverted-x?",
 				   <&touch>, "touchscreen-swapped-x-y?";
 		11_9_inch = <&panel>, "compatible=waveshare,11.9inch-panel",
-				   <&touch>, "touchscreen-size-x:0=320",
-				   <&touch>, "touchscreen-size-y:0=1480",
 				   <&touch>, "touchscreen-inverted-x?",
 				   <&touch>, "touchscreen-swapped-x-y?";
+		4_0_inchC = <&panel>, "compatible=waveshare,4inch-panel",
+				   <&touch>, "touchscreen-size-x:0=720",
+				   <&touch>, "touchscreen-size-y:0=720";
 		i2c1 = <&i2c_frag>, "target:0=",<&i2c1>,
 		       <0>, "-3-4+5";
 		disable_touch = <&touch>, "status=disabled";
