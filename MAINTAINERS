@@ -18062,10 +18062,24 @@ F:	drivers/ras/
 F:	include/linux/ras.h
 F:	include/ras/ras_event.h
 
+RASPBERRY PI RP2040 GPIO BRIDGE DRIVER
+M:	Raspberry Pi Kernel Maintenance <kernel-list@raspberrypi.com>
+S:	Maintained
+F:	Documentation/devicetree/bindings/spi/raspberrypi,rp2040-gpio-bridge.yaml
+F:	drivers/spi/spi-rp2040-gpio-bridge.c
+
 RAYLINK/WEBGEAR 802.11 WIRELESS LAN DRIVER
 L:	linux-wireless@vger.kernel.org
 S:	Orphan
 F:	drivers/net/wireless/legacy/ray*
+
+RASPBERRY PI PISP BACK END
+M:	Jacopo Mondi <jacopo.mondi@ideasonboard.com>
+L:	Raspberry Pi Kernel Maintenance <kernel-list@raspberrypi.com>
+L:	linux-media@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/media/raspberrypi,pispbe.yaml
+F:	include/uapi/linux/media/raspberrypi/
 
 RC-CORE / LIRC FRAMEWORK
 M:	Sean Young <sean@mess.org>
