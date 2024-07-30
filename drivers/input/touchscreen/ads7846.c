@@ -1400,7 +1400,6 @@ static struct spi_driver ads7846_driver = {
 		.pm	= pm_sleep_ptr(&ads7846_pm),
 		.of_match_table = ads7846_dt_ids,
 	},
-	.id_table	= ads7846_spi_ids,
 	.probe		= ads7846_probe,
 	.remove		= ads7846_remove,
 	.id_table	= ads7846_spi_ids,
