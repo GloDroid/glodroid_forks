@@ -783,6 +783,7 @@ _RPI_OVERLAY_OUTS = [
     "arch/arm64/boot/dts/overlays/hd44780-i2c-lcd.dtbo",
     "arch/arm64/boot/dts/overlays/hd44780-lcd.dtbo",
     "arch/arm64/boot/dts/overlays/hdmi-backlight-hwhack-gpio.dtbo",
+    "arch/arm64/boot/dts/overlays/hifiberry-adc8x.dtbo",
     "arch/arm64/boot/dts/overlays/hifiberry-adc.dtbo",
     "arch/arm64/boot/dts/overlays/hifiberry-amp100.dtbo",
     "arch/arm64/boot/dts/overlays/hifiberry-amp3.dtbo",
