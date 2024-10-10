@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0
-#include "bcm2712-rpi-5-b.dts"
+#include "bcm2712d0-rpi-5-b.dts"
+
+/ {
+	compatible = "raspberrypi,500", "brcm,bcm2712";
+	model = "Raspberry Pi 500";
+};
+
+&pwr_key {
+	debounce-interval = <400>;
+};
 
 &gio {
-	brcm,gpio-bank-widths = <32 4>;
-
 	gpio-line-names =
 		"", // GPIO_000
 		"2712_BOOT_CS_N", // GPIO_001
@@ -19,14 +26,14 @@
 		"-", // GPIO_011
 		"-", // GPIO_012
 		"-", // GPIO_013
-		"PCIE_SDA", // GPIO_014
-		"PCIE_SCL", // GPIO_015
+		"M2_DET_WAKE", // GPIO_014
+		"M2_PWR_EN", // GPIO_015
 		"", // GPIO_016
 		"", // GPIO_017
-		"-", // GPIO_018
+		"KEYB_BOOTSEL", // GPIO_018
 		"-", // GPIO_019
 		"PWR_GPIO", // GPIO_020
-		"2712_G21_FS", // GPIO_021
+		"KEYB_RUN", // GPIO_021
 		"-", // GPIO_022
 		"-", // GPIO_023
 		"BT_RTS", // GPIO_024
@@ -44,8 +51,6 @@
 };
 
 &gio_aon {
-	brcm,gpio-bank-widths = <15 6>;
-
 	gpio-line-names =
 		"RP1_SDA", // AON_GPIO_00
 		"RP1_SCL", // AON_GPIO_01
@@ -76,32 +81,62 @@
 		"PMIC_SDA"; // AON_SGPIO_05
 };
 
-&pinctrl {
-	compatible = "brcm,bcm2712d0-pinctrl";
-	reg = <0x7d504100 0x20>;
-};
+&rp1_gpio {
+	gpio-line-names =
+		"ID_SDA", // GPIO0
+		"ID_SCL", // GPIO1
+		"GPIO2", // GPIO2
+		"GPIO3", // GPIO3
+		"GPIO4", // GPIO4
+		"GPIO5", // GPIO5
+		"GPIO6", // GPIO6
+		"GPIO7", // GPIO7
+		"GPIO8", // GPIO8
+		"GPIO9", // GPIO9
+		"GPIO10", // GPIO10
+		"GPIO11", // GPIO11
+		"GPIO12", // GPIO12
+		"GPIO13", // GPIO13
+		"GPIO14", // GPIO14
+		"GPIO15", // GPIO15
+		"GPIO16", // GPIO16
+		"GPIO17", // GPIO17
+		"GPIO18", // GPIO18
+		"GPIO19", // GPIO19
+		"GPIO20", // GPIO20
+		"GPIO21", // GPIO21
+		"GPIO22", // GPIO22
+		"GPIO23", // GPIO23
+		"GPIO24", // GPIO24
+		"GPIO25", // GPIO25
+		"GPIO26", // GPIO26
+		"GPIO27", // GPIO27
 
-&pinctrl_aon {
-	compatible = "brcm,bcm2712d0-aon-pinctrl";
-	reg = <0x7d510700 0x1c>;
-};
+		"PCIE_RP1_WAKE", // GPIO28
+		"-", // GPIO29
+		"HOST_SDA", // GPIO30
+		"HOST_SCL", // GPIO31
+		"ETH_RST_N", // GPIO32
+		"PCIE_DET_WAKE", // GPIO33
 
-&vc4 {
-	compatible = "brcm,bcm2712d0-vc6", "brcm,bcm2712-vc6";
-};
-
-&uart10 {
-	interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
-};
-
-&spi10 {
-	dmas = <&dma40 3>, <&dma40 4>;
-};
-
-&hdmi0 {
-	dmas = <&dma40 (12|(1<<30)|(1<<24)|(10<<16)|(15<<20))>;
-};
-
-&hdmi1 {
-	dmas = <&dma40 (13|(1<<30)|(1<<24)|(10<<16)|(15<<20))>;
+		"-", // GPIO34
+		"-", // GPIO35
+		"RP1_PCIE_CLKREQ_N", // GPIO36
+		"-", // GPIO37
+		"-", // GPIO38
+		"-", // GPIO39
+		"CD1_SDA", // GPIO40
+		"CD1_SCL", // GPIO41
+		"USB_VBUS_EN", // GPIO42
+		"USB_OC_N", // GPIO43
+		"RP1_STAT_LED", // GPIO44
+		"-", // GPIO45
+		"-", // GPIO46
+		"HOST_WAKE", // GPIO47
+		"-", // GPIO48
+		"EN_MAX_USB_CUR", // GPIO49
+		"-", // GPIO50
+		"-", // GPIO51
+		"-", // GPIO52
+		"-"; // GPIO53
 };
