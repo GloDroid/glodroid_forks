@@ -27,7 +27,12 @@ load(
     "merged_kernel_uapi_headers",
 )
 load(":abi.bzl", "cc_binary_with_abi")
-load(":modules.bzl", "get_gki_modules_list", "get_kunit_modules_list")
+load(
+    ":modules.bzl",
+    "get_gki_modules_list",
+    "get_gki_protected_modules_list",
+    "get_kunit_modules_list",
+)
 
 package(
     default_visibility = [
@@ -93,11 +98,20 @@ write_file(
     ],
 )
 
+write_file(
+    name = "gki_aarch64_protected_modules",
+    out = "android/gki_aarch64_protected_modules",
+    content = get_gki_protected_modules_list("arm64") + [
+        "",  # Ensure new line at the end.
+    ],
+)
+
 filegroup(
     name = "aarch64_additional_kmi_symbol_lists",
     srcs = [
         # keep sorted
         "android/abi_gki_aarch64_amlogic",
+        "android/abi_gki_aarch64_asr",
         "android/abi_gki_aarch64_asus",
         "android/abi_gki_aarch64_db845c",
         "android/abi_gki_aarch64_exynos",
@@ -134,7 +148,7 @@ define_common_kernels(target_configs = {
         "additional_kmi_symbol_lists": [":aarch64_additional_kmi_symbol_lists"],
         "trim_nonlisted_kmi": True,
         "protected_exports_list": "android/abi_gki_protected_exports_aarch64",
-        "protected_modules_list": "android/gki_aarch64_protected_modules",
+        "protected_modules_list": ":gki_aarch64_protected_modules",
         "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
         "make_goals": _GKI_AARCH64_MAKE_GOALS,
         "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
@@ -149,7 +163,7 @@ define_common_kernels(target_configs = {
         "additional_kmi_symbol_lists": [":aarch64_additional_kmi_symbol_lists"],
         "trim_nonlisted_kmi": True,
         "protected_exports_list": "android/abi_gki_protected_exports_aarch64",
-        "protected_modules_list": "android/gki_aarch64_protected_modules",
+        "protected_modules_list": ":gki_aarch64_protected_modules",
         "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
         "make_goals": _GKI_AARCH64_MAKE_GOALS,
         "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
@@ -186,6 +200,34 @@ kernel_build(
     make_goals = [
         "Image",
     ],
+)
+
+kernel_build(
+    name = "kernel_aarch64_microdroid_16k",
+    srcs = ["//common:kernel_aarch64_sources"],
+    outs = [
+        "Image",
+        "System.map",
+        "modules.builtin",
+        "modules.builtin.modinfo",
+        "vmlinux",
+        "vmlinux.symvers",
+    ],
+    build_config = "build.config.microdroid.aarch64",
+    make_goals = [
+        "Image",
+    ],
+    page_size = "16k",
+)
+
+copy_to_dist_dir(
+    name = "kernel_aarch64_microdroid_16k_dist",
+    data = [
+        ":kernel_aarch64_microdroid_16k",
+    ],
+    dist_dir = "out/kernel_aarch64_microdroid_16k/dist",
+    flat = True,
+    log = "info",
 )
 
 copy_to_dist_dir(
@@ -1286,6 +1328,14 @@ ddk_headers(
     visibility = ["//visibility:public"],
 )
 
+ddk_headers_archive(
+    name = "kernel_x86_64_ddk_headers_archive",
+    srcs = [
+        "all_headers_x86_64",
+    ],
+    visibility = ["//visibility:private"],
+)
+
 # Implementation details for DDK headers. The targets below cannot be directly
 # depended on by DDK modules.
 
@@ -1435,25 +1485,25 @@ _KSELFTEST_COPTS = [
 
 config_setting(
     name = "x86_64",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_x86_64"},
+    values = {"platforms": str(package_relative_label("//build/kernel/kleaf/impl:android_x86_64"))},
     visibility = ["//visibility:private"],
 )
 
 config_setting(
     name = "i386",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_i386"},
+    values = {"platforms": str(package_relative_label("//build/kernel/kleaf/impl:android_i386"))},
     visibility = ["//visibility:private"],
 )
 
 config_setting(
     name = "arm64",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_arm64"},
+    values = {"platforms": str(package_relative_label("//build/kernel/kleaf/impl:android_arm64"))},
     visibility = ["//visibility:private"],
 )
 
 config_setting(
     name = "arm",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_arm"},
+    values = {"platforms": str(package_relative_label("//build/kernel/kleaf/impl:android_arm"))},
     visibility = ["//visibility:private"],
 )
 
