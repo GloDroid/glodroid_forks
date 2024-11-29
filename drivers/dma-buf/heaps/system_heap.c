@@ -59,6 +59,11 @@ static gfp_t order_flags[] = {HIGH_ORDER_GFP, HIGH_ORDER_GFP, LOW_ORDER_GFP};
 static const unsigned int orders[] = {8, 4, 0};
 #define NUM_ORDERS ARRAY_SIZE(orders)
 
+static unsigned int module_max_order = orders[0];
+
+module_param_named(max_order, module_max_order, uint, 0400);
+MODULE_PARM_DESC(max_order, "Maximum allocation order override.");
+
 static struct sg_table *dup_sg_table(struct sg_table *table)
 {
 	struct sg_table *new_table;
@@ -363,7 +368,7 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	struct system_heap_buffer *buffer;
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
 	unsigned long size_remaining = len;
-	unsigned int max_order = orders[0];
+	unsigned int max_order = module_max_order;
 	struct dma_buf *dmabuf;
 	struct sg_table *table;
 	struct scatterlist *sg;
@@ -511,6 +516,9 @@ static int system_heap_create(void)
 	dma_coerce_mask_and_coherent(dma_heap_get_dev(sys_uncached_heap), DMA_BIT_MASK(64));
 	mb(); /* make sure we only set allocate after dma_mask is set */
 	system_uncached_heap_ops.allocate = system_uncached_heap_allocate;
+
+	if (module_max_order > orders[0])
+		module_max_order = orders[0];
 
 	return 0;
 }
