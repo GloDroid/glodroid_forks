@@ -4,7 +4,7 @@ project(
     version : '2',
     license : 'APACHE-2.0',
     meson_version : '>= 0.56',
-    default_options : ['buildtype=debugoptimized', 'b_ndebug=if-release', 'c_std=c11', 'cpp_std=c++17', 'cpp_rtti=false']
+    default_options : ['buildtype=debugoptimized', 'b_ndebug=if-release', 'c_std=c17', 'cpp_std=c++20', 'cpp_rtti=false']
 )
 
 inc_dir = [include_directories('.')]
@@ -22,6 +22,7 @@ deps = [
 
 cpp_args = [
     '-Wno-inconsistent-missing-override',
+    '-Wno-invalid-specialization',
 ]
 
 subdir('ffmpeg_utils')
